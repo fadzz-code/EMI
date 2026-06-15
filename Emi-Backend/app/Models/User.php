@@ -106,4 +106,20 @@ class User extends Authenticatable
     {
         return $this->hasOne(StudentClassMembership::class, 'student_id')->where('is_active', true);
     }
+
+    public function activeClassId(): ?string
+    {
+        return match ($this->role) {
+            'teacher' => $this->teacherClassAssignments()->where('is_active', true)->value('class_id'),
+            'student' => $this->studentClassMemberships()->where('is_active', true)->value('class_id'),
+            default => null,
+        };
+    }
+
+    public function activeSchoolId(): ?string
+    {
+        $classId = $this->activeClassId();
+
+        return $classId ? SchoolClass::query()->whereKey($classId)->value('school_id') : null;
+    }
 }

@@ -3,7 +3,13 @@
 namespace App\Providers;
 
 use App\Models\RegistrationRequest;
+use App\Models\School;
+use App\Models\SchoolClass;
+use App\Models\User;
 use App\Policies\RegistrationRequestPolicy;
+use App\Policies\SchoolClassPolicy;
+use App\Policies\SchoolPolicy;
+use App\Policies\UserPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -27,6 +33,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::policy(RegistrationRequest::class, RegistrationRequestPolicy::class);
+        Gate::policy(School::class, SchoolPolicy::class);
+        Gate::policy(SchoolClass::class, SchoolClassPolicy::class);
+        Gate::policy(User::class, UserPolicy::class);
 
         RateLimiter::for('emi-login', function (Request $request) {
             $email = Str::lower((string) $request->input('email', ''));
