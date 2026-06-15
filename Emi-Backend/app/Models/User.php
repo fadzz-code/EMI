@@ -4,14 +4,18 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, HasUuids, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -19,9 +23,17 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'full_name',
         'email',
+        'email_verified_at',
         'password',
+        'role',
+        'status',
+        'phone',
+        'approved_by',
+        'approved_at',
+        'rejected_reason',
+        'last_login_at',
     ];
 
     /**
@@ -44,6 +56,53 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'approved_at' => 'datetime',
+            'last_login_at' => 'datetime',
         ];
+    }
+
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'approved_by');
+    }
+
+    public function approvedUsers(): HasMany
+    {
+        return $this->hasMany(self::class, 'approved_by');
+    }
+
+    public function createdSchools(): HasMany
+    {
+        return $this->hasMany(School::class, 'created_by');
+    }
+
+    public function createdClasses(): HasMany
+    {
+        return $this->hasMany(SchoolClass::class, 'created_by');
+    }
+
+    public function registrationRequest(): HasOne
+    {
+        return $this->hasOne(RegistrationRequest::class);
+    }
+
+    public function teacherClassAssignments(): HasMany
+    {
+        return $this->hasMany(TeacherClassAssignment::class, 'teacher_id');
+    }
+
+    public function studentClassMemberships(): HasMany
+    {
+        return $this->hasMany(StudentClassMembership::class, 'student_id');
+    }
+
+    public function activeTeacherClassAssignment(): HasOne
+    {
+        return $this->hasOne(TeacherClassAssignment::class, 'teacher_id')->where('is_active', true);
+    }
+
+    public function activeStudentClassMembership(): HasOne
+    {
+        return $this->hasOne(StudentClassMembership::class, 'student_id')->where('is_active', true);
     }
 }

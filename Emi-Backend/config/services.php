@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'emi_admin' => [
+        'name' => env('EMI_ADMIN_NAME', 'Administrator EMI'),
+        'email' => env('EMI_ADMIN_EMAIL', 'admin@example.com'),
+        'password' => env('EMI_ADMIN_PASSWORD'),
+    ],
+
 ];
