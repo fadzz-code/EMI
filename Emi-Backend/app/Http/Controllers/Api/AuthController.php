@@ -72,6 +72,7 @@ class AuthController extends Controller
     private function loadProfile(User $user): User
     {
         return $user->load([
+            'avatarMedia',
             'activeTeacherClassAssignment.schoolClass.school',
             'activeStudentClassMembership.schoolClass.school',
         ]);

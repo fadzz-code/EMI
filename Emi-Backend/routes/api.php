@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Api\AdminRegistrationRequestController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\AvatarController;
 use App\Http\Controllers\Api\ClassAssignmentController;
+use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\PublicLookupController;
 use App\Http\Controllers\Api\SchoolClassController;
 use App\Http\Controllers\Api\SchoolController;
@@ -13,6 +15,7 @@ Route::prefix('v1')->group(function () {
     Route::prefix('public')->group(function () {
         Route::get('schools', [PublicLookupController::class, 'schools']);
         Route::get('schools/{school_id}/classes', [PublicLookupController::class, 'classes']);
+        Route::get('media/{id}/content', [MediaController::class, 'publicContent']);
     });
 
     Route::prefix('auth')->group(function () {
@@ -24,8 +27,14 @@ Route::prefix('v1')->group(function () {
             Route::get('me', [AuthController::class, 'me']);
             Route::patch('me', [AuthController::class, 'updateProfile']);
             Route::put('password', [AuthController::class, 'updatePassword']);
+            Route::post('me/avatar', [AvatarController::class, 'store']);
+            Route::delete('me/avatar', [AvatarController::class, 'destroy']);
         });
     });
+
+    Route::get('media/{id}/download', [MediaController::class, 'download'])
+        ->name('media.download')
+        ->middleware('signed:relative');
 
     Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
         Route::get('registration-requests', [AdminRegistrationRequestController::class, 'index']);
@@ -52,5 +61,9 @@ Route::prefix('v1')->group(function () {
         Route::get('users/{id}', [UserController::class, 'show']);
         Route::put('users/{id}', [UserController::class, 'update']);
         Route::patch('users/{id}/status', [UserController::class, 'updateStatus']);
+        Route::post('media', [MediaController::class, 'store']);
+        Route::get('media/{id}', [MediaController::class, 'show']);
+        Route::post('media/{id}/temporary-url', [MediaController::class, 'temporaryUrl']);
+        Route::delete('media/{id}', [MediaController::class, 'destroy']);
     });
 });
