@@ -19,6 +19,7 @@ export const publicRoutes = {
 export const roleNavItems: Record<UserRole, NavItem[]> = {
   admin: [
     { label: "Dashboard", href: "/admin/dashboard", status: "ready" },
+    { label: "Persetujuan", href: "/admin/approvals", status: "ready" },
     { label: "Sekolah", href: "/admin/schools", status: "next" },
     { label: "Laporan", href: "/admin/reports/progress", status: "next" },
   ],
