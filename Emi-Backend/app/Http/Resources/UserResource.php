@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\MediaAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -18,12 +19,17 @@ class UserResource extends JsonResource
         $activeRelation = $this->role === 'teacher' ? $teacherAssignment : $studentMembership;
         $schoolClass = $activeRelation?->relationLoaded('schoolClass') ? $activeRelation->schoolClass : null;
         $school = $schoolClass?->relationLoaded('school') ? $schoolClass->school : null;
+        $avatar = $this->resource->relationLoaded('avatarMedia') ? $this->avatarMedia : null;
 
         return [
             'id' => $this->id,
             'full_name' => $this->full_name,
             'email' => $this->email,
             'phone' => $this->phone,
+            'avatar' => $avatar ? [
+                'id' => $avatar->id,
+                'url' => app(MediaAccessService::class)->publicUrl($avatar),
+            ] : null,
             'role' => $this->role,
             'status' => $this->status,
             'active_school' => $school ? new SchoolPublicResource($school) : null,

@@ -31,6 +31,7 @@ class UserController extends Controller
             ->with([
                 'activeTeacherClassAssignment.schoolClass.school',
                 'activeStudentClassMembership.schoolClass.school',
+                'avatarMedia',
             ])
             ->when($actor->role === 'teacher', function ($query) use ($actor) {
                 $query->where('role', 'student')
@@ -68,6 +69,7 @@ class UserController extends Controller
             ->with([
                 'activeTeacherClassAssignment.schoolClass.school',
                 'activeStudentClassMembership.schoolClass.school',
+                'avatarMedia',
             ])
             ->findOrFail($id);
 

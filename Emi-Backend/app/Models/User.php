@@ -31,6 +31,7 @@ class User extends Authenticatable
         'role',
         'status',
         'phone',
+        'avatar_media_id',
         'approved_by',
         'approved_at',
         'rejected_reason',
@@ -105,6 +106,11 @@ class User extends Authenticatable
     public function activeStudentClassMembership(): HasOne
     {
         return $this->hasOne(StudentClassMembership::class, 'student_id')->where('is_active', true);
+    }
+
+    public function avatarMedia(): BelongsTo
+    {
+        return $this->belongsTo(MediaFile::class, 'avatar_media_id');
     }
 
     public function activeClassId(): ?string
