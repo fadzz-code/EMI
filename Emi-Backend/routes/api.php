@@ -1,9 +1,12 @@
 <?php
 
+use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\AdminDictionaryCategoryController;
 use App\Http\Controllers\Api\AdminDictionaryEntryController;
 use App\Http\Controllers\Api\AdminLessonTemplateController;
 use App\Http\Controllers\Api\AdminModuleTemplateController;
+use App\Http\Controllers\Api\AdminProgressReportController;
+use App\Http\Controllers\Api\AdminQuizResultReportController;
 use App\Http\Controllers\Api\AdminQuizTemplateController;
 use App\Http\Controllers\Api\AdminQuizTemplateQuestionController;
 use App\Http\Controllers\Api\AdminRegistrationRequestController;
@@ -22,11 +25,18 @@ use App\Http\Controllers\Api\QuizAttemptController;
 use App\Http\Controllers\Api\QuizQuestionController;
 use App\Http\Controllers\Api\QuizReportController;
 use App\Http\Controllers\Api\QuizTemplateApplyController;
+use App\Http\Controllers\Api\ReportExportController;
 use App\Http\Controllers\Api\SchoolClassController;
 use App\Http\Controllers\Api\SchoolController;
+use App\Http\Controllers\Api\StudentDashboardController;
 use App\Http\Controllers\Api\StudentModuleController;
 use App\Http\Controllers\Api\StudentProgressController;
+use App\Http\Controllers\Api\StudentProgressReportController;
 use App\Http\Controllers\Api\StudentQuizController;
+use App\Http\Controllers\Api\StudentQuizResultReportController;
+use App\Http\Controllers\Api\TeacherDashboardController;
+use App\Http\Controllers\Api\TeacherProgressReportController;
+use App\Http\Controllers\Api\TeacherQuizResultReportController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -60,6 +70,15 @@ Route::prefix('v1')->group(function () {
         Route::get('registration-requests/{id}', [AdminRegistrationRequestController::class, 'show']);
         Route::post('registration-requests/{id}/approve', [AdminRegistrationRequestController::class, 'approve']);
         Route::post('registration-requests/{id}/reject', [AdminRegistrationRequestController::class, 'reject']);
+        Route::get('dashboard/summary', [AdminDashboardController::class, 'summary']);
+        Route::get('reports/progress/schools', [AdminProgressReportController::class, 'schools']);
+        Route::get('reports/progress/classes', [AdminProgressReportController::class, 'classes']);
+        Route::get('reports/progress/students', [AdminProgressReportController::class, 'students']);
+        Route::get('reports/quiz-results', [AdminQuizResultReportController::class, 'index']);
+        Route::get('reports/progress/schools/export', [ReportExportController::class, 'adminSchools']);
+        Route::get('reports/progress/classes/export', [ReportExportController::class, 'adminClasses']);
+        Route::get('reports/progress/students/export', [ReportExportController::class, 'adminStudents']);
+        Route::get('reports/quiz-results/export', [ReportExportController::class, 'adminQuizResults']);
         Route::get('dictionary/categories', [AdminDictionaryCategoryController::class, 'index']);
         Route::post('dictionary/categories', [AdminDictionaryCategoryController::class, 'store']);
         Route::get('dictionary/categories/{id}', [AdminDictionaryCategoryController::class, 'show']);
@@ -171,6 +190,9 @@ Route::prefix('v1')->group(function () {
     });
 
     Route::middleware(['auth:sanctum', 'role:student'])->prefix('student')->group(function () {
+        Route::get('dashboard/summary', [StudentDashboardController::class, 'summary']);
+        Route::get('reports/progress', [StudentProgressReportController::class, 'show']);
+        Route::get('reports/quiz-results', [StudentQuizResultReportController::class, 'index']);
         Route::get('modules', [StudentModuleController::class, 'index']);
         Route::get('modules/{id}', [StudentModuleController::class, 'show']);
         Route::post('modules/{id}/start', [StudentModuleController::class, 'start']);
@@ -178,5 +200,13 @@ Route::prefix('v1')->group(function () {
         Route::get('progress/modules', [StudentProgressController::class, 'modules']);
         Route::get('quizzes', [StudentQuizController::class, 'index']);
         Route::get('quizzes/{id}', [StudentQuizController::class, 'show']);
+    });
+
+    Route::middleware(['auth:sanctum', 'role:teacher'])->prefix('teacher')->group(function () {
+        Route::get('dashboard/summary', [TeacherDashboardController::class, 'summary']);
+        Route::get('reports/progress/students', [TeacherProgressReportController::class, 'students']);
+        Route::get('reports/quiz-results', [TeacherQuizResultReportController::class, 'index']);
+        Route::get('reports/progress/students/export', [ReportExportController::class, 'teacherStudents']);
+        Route::get('reports/quiz-results/export', [ReportExportController::class, 'teacherQuizResults']);
     });
 });
