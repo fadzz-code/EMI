@@ -626,116 +626,281 @@ Menyediakan data ringkasan untuk UI.
 
 ### Tujuan
 
-Mengubah desain Figma menjadi aplikasi web.
+Mengubah desain Figma web EMI menjadi aplikasi web Next.js yang siap digunakan oleh Admin, Guru, dan Siswa.
+
+Fase ini berfokus pada:
+
+* implementasi tampilan web sesuai Figma;
+* pembuatan komponen reusable;
+* integrasi dengan Laravel REST API Fase 1–8;
+* role guard untuk Admin, Guru, dan Siswa;
+* loading, empty, success, dan error state;
+* responsive web;
+* kesiapan frontend untuk pengujian client.
+
+Folder frontend yang digunakan:
+
+```text
+Emi-Frontend/
+└── Next.js
+```
 
 ### Strategi
 
 ```text
 Figma
 ↓
-Figma-to-code React
+Figma MCP sebagai referensi utama desain
 ↓
-Refactor ke Next.js
+Figma-to-code opsional hanya untuk referensi kecil
 ↓
-Komponen reusable
+Implementasi ulang ke Next.js
 ↓
-Mock data
+Refactor menjadi komponen reusable
 ↓
-Integrasi Laravel API
+Design tokens dan shared components
+↓
+Placeholder/mock hanya untuk fitur yang backend-nya belum tersedia
+↓
+Integrasi Laravel API untuk fitur Fase 1–8
+↓
+Visual QA terhadap Figma
 ```
 
-### Pekerjaan awal
+Catatan:
 
-- Setup Next.js
-- TypeScript
-- Tailwind
-- Environment API URL
-- Auth provider
-- Query client
-- Form validation
-- Route guards
-- Layout Admin
-- Layout Guru
-- Layout Siswa
-- Shared component
+* Figma menjadi sumber kebenaran visual.
+* Figma MCP digunakan untuk membantu membaca struktur, ukuran, warna, spacing, dan layer desain.
+* Figma-to-code tidak menjadi sumber kode final.
+* Kode hasil generator tidak boleh langsung dipakai tanpa refactor.
+* Backend Laravel tetap menjadi sumber kebenaran data, role, permission, dan authorization.
+* Frontend guard hanya untuk UX, bukan pengganti Laravel Policy.
 
-### Shared component
+### Tech Stack Frontend Web
 
-- Button
-- Input
-- Select
-- Card
-- Badge
-- Table
-- Modal
-- Sidebar
-- Topbar
-- Pagination
-- Empty state
-- Loading state
-- Error state
-- Audio player
-- Upload component
+* Next.js
+* React
+* TypeScript
+* Tailwind CSS
+* TanStack Query
+* React Hook Form
+* Zod
+* Axios atau native fetch
+* ESLint
+* Environment API URL
 
-### Urutan implementasi screen
+### Pekerjaan Awal
 
-#### Admin
+* Setup `Emi-Frontend`
+* Setup Next.js App Router
+* Setup TypeScript
+* Setup Tailwind CSS
+* Setup ESLint
+* Setup environment API URL
+* Setup API client
+* Setup query client
+* Setup auth provider
+* Setup form validation
+* Setup route guards
+* Setup layout Admin
+* Setup layout Guru
+* Setup layout Siswa
+* Setup shared components
+* Setup design tokens
+* Setup loading, empty, success, dan error state
+* Setup struktur folder frontend
+* Setup dokumentasi cara menjalankan frontend
 
-1. Login
-2. Beranda Admin
-3. Persetujuan Akun
-4. Detail Review
-5. Sekolah & Kelas
-6. Detail Kelas
-7. Data Guru & Siswa
-8. Import Kamus
-9. Kelola Kamus
-10. Basis Pengetahuan
-11. Modul Default
-12. Kuis Default
-13. Progress
-14. Pengaturan
+### Shared Components
 
-#### Guru
+Komponen reusable minimal:
 
-1. Beranda Kelas
-2. Data Siswa
-3. Detail Siswa
-4. Modul Kelas
-5. Editor Modul
-6. Kuis Kelas
-7. Builder Soal
-8. Hasil Kuis
-9. Progress
-10. Speaking
-11. Media
-12. Profil
+* Button
+* Input
+* Select
+* Textarea
+* Card
+* Badge
+* Table
+* Modal
+* Confirm Dialog
+* Sidebar
+* Topbar
+* Pagination
+* Empty State
+* Loading State
+* Error State
+* Alert
+* Toast
+* Audio Player
+* Upload Component
+* File Preview
+* Search Bar
+* Filter Panel
+* Form Field
+* Page Header
+* Stats Card
 
-#### Siswa
+### Total Screen Web
 
-1. Beranda
-2. Modul
-3. Detail Materi
-4. Kamus
-5. Detail Kata
-6. Speaking
-7. Kuis
-8. Pengerjaan Kuis
-9. Hasil Kuis
-10. Budaya
-11. Chatbot
-12. Progress
-13. Profil
+Total screen web Fase 9 berdasarkan desain Figma aktual:
+
+```text
+Auth     : 5 screen
+Admin    : 19 screen
+Guru     : 13 screen
+Siswa    : 14 screen
+Total    : 51 screen web
+```
+
+Screen mobile tidak termasuk Fase 9 dan tetap masuk Fase 10 Flutter Mobile.
+
+---
+
+### Urutan Implementasi Screen
+
+## Auth
+
+1. `AUTH-01` — Login
+2. `AUTH-02` — Registrasi Pilih Role
+3. `AUTH-03` — Registrasi Guru
+4. `AUTH-04` — Registrasi Siswa
+5. `AUTH-05` — Menunggu Persetujuan Admin
+
+## Admin
+
+1. `ADMIN-01` — Beranda Admin
+2. `ADMIN-02` — Persetujuan Akun
+3. `ADMIN-03` — Detail Review Akun
+4. `ADMIN-04` — Sekolah & Kelas
+5. `ADMIN-05` — Detail Kelas
+6. `ADMIN-06` — Data Guru & Siswa
+7. `ADMIN-07` — Detail / Edit Pengguna
+8. `ADMIN-08` — Import Kamus CSV + ZIP Audio
+9. `ADMIN-09` — Kelola Kamus Mekongga
+10. `ADMIN-10` — Detail / Edit Kata Kamus
+11. `ADMIN-11` — Basis Pengetahuan AI
+12. `ADMIN-12` — Detail / Edit Pengetahuan AI
+13. `ADMIN-13` — Modul Pembelajaran / Modul Default
+14. `ADMIN-14` — Editor Modul Default
+15. `ADMIN-15` — Kuis & LKPD / Kuis Default
+16. `ADMIN-16` — Builder Soal Kuis Default
+17. `ADMIN-17` — Progress Siswa
+18. `ADMIN-18` — Detail Progress Kelas / Siswa
+19. `ADMIN-19` — Pengaturan Sistem
+
+## Guru
+
+1. `TEACHER-01` — Beranda Kelas
+2. `TEACHER-02` — Data Siswa
+3. `TEACHER-03` — Detail Siswa & Progress
+4. `TEACHER-04` — Modul Kelas
+5. `TEACHER-05` — Editor Modul
+6. `TEACHER-06` — Tambah / Edit Materi Modul
+7. `TEACHER-07` — Kuis Kelas
+8. `TEACHER-08` — Builder Soal Kuis dengan Gambar
+9. `TEACHER-09` — Hasil Kuis
+10. `TEACHER-10` — Progress Siswa Kelas
+11. `TEACHER-11` — Hasil Speaking
+12. `TEACHER-12` — Media Kelas
+13. `TEACHER-13` — Profil Guru
+
+## Siswa
+
+1. `STUDENT-01` — Beranda Belajar
+2. `STUDENT-02` — Modul Belajar
+3. `STUDENT-03` — Detail Materi
+4. `STUDENT-04` — Kamus Mekongga
+5. `STUDENT-05` — Detail Kata Kamus
+6. `STUDENT-06` — Latihan Speaking
+7. `STUDENT-07` — Hasil Speaking
+8. `STUDENT-08` — Kuis & LKPD
+9. `STUDENT-09` — Pengerjaan Kuis
+10. `STUDENT-10` — Hasil Kuis
+11. `STUDENT-11` — Budaya Mekongga
+12. `STUDENT-12` — Chatbot AI
+13. `STUDENT-13` — Progress Belajar
+14. `STUDENT-14` — Profil Saya
+
+---
+
+### Status Integrasi Fitur
+
+Fitur yang backend-nya sudah tersedia dari Fase 1–8 harus diintegrasikan dengan Laravel API dan tidak boleh memakai mock data permanen.
+
+Fitur yang sudah dapat diintegrasikan:
+
+* Login
+* Registrasi Guru
+* Registrasi Siswa
+* Pending approval
+* Approval akun
+* Sekolah
+* Kelas
+* Data Guru
+* Data Siswa
+* Assignment Guru
+* Membership Siswa
+* Media upload
+* Avatar
+* Kamus
+* Import CSV kamus
+* Import ZIP audio
+* Modul template
+* Lesson template
+* Modul kelas
+* Lesson kelas
+* Progress lesson
+* Progress module
+* Kuis template
+* Kuis kelas
+* Attempt kuis
+* Grading
+* Dashboard
+* Laporan progress
+* Laporan hasil kuis
+* Export CSV
+
+Fitur yang ditampilkan di Figma tetapi backend-nya belum aktif penuh harus dibuat sebagai placeholder, coming soon, disabled state, atau UI terbatas:
+
+* Speaking
+* Hasil Speaking
+* Basis Pengetahuan AI
+* Chatbot AI
+* Budaya Mekongga penuh
+* Offline sync
+* ESP32
+
+Frontend tidak boleh mengarang endpoint untuk fitur yang backend-nya belum tersedia.
 
 ### Definition of Done
 
-- Tampilan sesuai Figma
-- Responsive
-- Tidak menggunakan mock data pada fitur yang dinyatakan selesai
-- Loading, empty, success, dan error state tersedia
-- Semua role guard bekerja
+Fase 9 dianggap selesai jika:
 
----
+* Folder `Emi-Frontend` tersedia.
+* Next.js berjalan.
+* TypeScript aktif.
+* Tailwind CSS aktif.
+* API URL dikonfigurasi melalui environment.
+* Auth provider berjalan.
+* Query client tersedia.
+* Form validation tersedia.
+* Route guard berjalan untuk Admin, Guru, dan Siswa.
+* Layout Admin tersedia.
+* Layout Guru tersedia.
+* Layout Siswa tersedia.
+* Shared components tersedia.
+* Tampilan mengikuti Figma.
+* Responsive pada ukuran desktop dan tablet minimum.
+* Fitur Fase 1–8 yang sudah tersedia backend-nya terintegrasi dengan Laravel API.
+* Tidak ada mock data permanen pada fitur yang dinyatakan selesai.
+* Fitur future ditandai sebagai placeholder, coming soon, atau disabled.
+* Loading, empty, success, dan error state tersedia.
+* Semua role guard bekerja.
+* Backend tetap menjadi sumber kebenaran authorization.
+* Lint dan build frontend berhasil.
+* Dokumentasi cara menjalankan frontend tersedia.
+
 
 ## Fase 10 — Flutter Mobile
 
