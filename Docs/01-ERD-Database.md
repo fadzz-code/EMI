@@ -137,20 +137,27 @@ erDiagram
     DICTIONARY_CATEGORIES {
         uuid id PK
         varchar name
+        varchar slug UK
         text description
+        varchar status
+        uuid created_by FK
+        uuid updated_by FK
         timestamp created_at
         timestamp updated_at
+        timestamp deleted_at
     }
 
     DICTIONARY_ENTRIES {
         uuid id PK
         uuid category_id FK
-        varchar indonesia_word
-        varchar english_word
-        varchar mekongga_word
+        varchar indonesia
+        varchar english
+        varchar mekongga
+        varchar indonesia_normalized
+        varchar english_normalized
+        varchar mekongga_normalized
         text example_mekongga
         text example_indonesia
-        text pronunciation_note
         uuid audio_media_id FK
         varchar status
         uuid created_by FK
@@ -158,21 +165,37 @@ erDiagram
         uuid source_import_job_id FK
         timestamp created_at
         timestamp updated_at
+        timestamp deleted_at
     }
 
     DICTIONARY_IMPORT_JOBS {
         uuid id PK
         uuid uploaded_by FK
-        uuid csv_media_id FK
-        uuid zip_media_id FK
-        integer total_rows
-        integer success_rows
-        integer failed_rows
-        integer matched_audio
-        integer unmatched_audio
         varchar status
+        varchar duplicate_strategy
+        varchar csv_disk
+        varchar csv_path
+        varchar csv_original_name
+        bigint csv_size_bytes
+        varchar csv_checksum_sha256
+        varchar audio_zip_disk
+        varchar audio_zip_path
+        varchar audio_zip_original_name
+        bigint audio_zip_size_bytes
+        varchar audio_zip_checksum_sha256
+        integer total_rows
+        integer valid_rows
+        integer invalid_rows
+        integer inserted_rows
+        integer updated_rows
+        integer skipped_rows
+        integer warning_count
+        jsonb summary
         timestamp started_at
-        timestamp finished_at
+        timestamp completed_at
+        timestamp failed_at
+        varchar failure_code
+        text failure_message
         timestamp created_at
         timestamp updated_at
     }
@@ -181,8 +204,9 @@ erDiagram
         uuid id PK
         uuid import_job_id FK
         integer row_number
-        varchar error_code
-        text error_message
+        varchar field
+        varchar code
+        text message
         jsonb raw_data
         timestamp created_at
     }
@@ -729,6 +753,14 @@ Format CSV:
 indonesia,english,mekongga,kategori,contoh_mekongga,contoh_indonesia,audio_filename
 makan,eat,monga,verba,inoi monga kade,saya sedang makan nasi,monga.mp3
 ```
+
+Implementasi Fase 5 menambahkan aturan berikut:
+
+* `dictionary_categories` memakai `slug`, status `active|inactive`, SoftDeletes, audit `created_by` dan `updated_by`, serta unique case-insensitive untuk nama kategori yang belum terhapus.
+* `dictionary_entries` menyimpan nilai tampilan asli (`indonesia`, `english`, `mekongga`) dan nilai normalized untuk pencarian serta deteksi duplikat. Kombinasi normalized triple unik untuk record yang belum terhapus.
+* `dictionary_import_jobs` menyimpan source CSV dan ZIP pada storage private, checksum, status `previewing|preview_ready|queued|processing|completed|completed_with_errors|failed`, duplicate strategy `skip|update|reject`, counter hasil, dan ringkasan JSON.
+* `dictionary_import_errors` mencatat error atau warning per baris tanpa menyimpan binary audio, credential, atau path internal yang tidak diperlukan.
+* Audio kamus memakai `media_files` dengan `purpose=audio`, `visibility=public`, dan URL aman pada resource kamus.
 
 Alur pencocokan:
 

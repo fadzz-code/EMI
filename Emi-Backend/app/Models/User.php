@@ -108,6 +108,21 @@ class User extends Authenticatable
         return $this->hasOne(StudentClassMembership::class, 'student_id')->where('is_active', true);
     }
 
+    public function createdDictionaryCategories(): HasMany
+    {
+        return $this->hasMany(DictionaryCategory::class, 'created_by');
+    }
+
+    public function createdDictionaryEntries(): HasMany
+    {
+        return $this->hasMany(DictionaryEntry::class, 'created_by');
+    }
+
+    public function dictionaryImportJobs(): HasMany
+    {
+        return $this->hasMany(DictionaryImportJob::class, 'uploaded_by');
+    }
+
     public function avatarMedia(): BelongsTo
     {
         return $this->belongsTo(MediaFile::class, 'avatar_media_id');

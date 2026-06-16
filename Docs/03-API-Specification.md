@@ -638,67 +638,155 @@ Digunakan terutama untuk rekaman speaking siswa dan file privat.
 
 ---
 
-# 12. Dictionary Category API
+# 12. Dictionary API
+
+Endpoint pengguna terautentikasi:
 
 ```http
-GET    /dictionary-categories
-POST   /dictionary-categories
-PUT    /dictionary-categories/{id}
-DELETE /dictionary-categories/{id}
+GET /dictionary
+GET /dictionary/{id}
 ```
 
-- Semua user login dapat membaca kategori.
-- Hanya Admin dapat menambah, mengubah, dan menghapus.
+**Akses:** Admin, Guru approved, dan Siswa approved.
 
----
-
-# 13. Dictionary Entry API
-
-```http
-GET    /dictionary-entries
-POST   /dictionary-entries
-GET    /dictionary-entries/{id}
-PUT    /dictionary-entries/{id}
-DELETE /dictionary-entries/{id}
-```
+Endpoint ini hanya mengembalikan entri `active` dari kategori `active`.
 
 Filter:
 
 ```text
 search
+language
+category_id
+letter
+page
+per_page
+sort_by
+sort_direction
+```
+
+Nilai `language`: `all`, `indonesia`, `english`, `mekongga`.
+
+Whitelist `sort_by`: `indonesia`, `english`, `mekongga`, `created_at`.
+
+Resource audio hanya mengembalikan:
+
+```json
+{
+  "audio": {
+    "id": "uuid",
+    "url": "public-media-url",
+    "mime_type": "audio/mpeg"
+  }
+}
+```
+
+Resource tidak boleh mengembalikan `disk`, `path`, `stored_name`, `checksum`, atau konfigurasi storage.
+
+---
+
+# 13. Admin Dictionary API
+
+## 13.1 Kategori
+
+```http
+GET    /admin/dictionary/categories
+POST   /admin/dictionary/categories
+GET    /admin/dictionary/categories/{id}
+PUT    /admin/dictionary/categories/{id}
+DELETE /admin/dictionary/categories/{id}
+```
+
+**Akses:** Admin.
+
+Request tambah kategori:
+
+```json
+{
+  "name": "Verba",
+  "description": "Kata kerja",
+  "status": "active"
+}
+```
+
+Aturan:
+
+- nama wajib dan unik case-insensitive untuk kategori yang belum terhapus;
+- `slug` dibuat sistem;
+- kategori dengan entri aktif tidak dapat dinonaktifkan atau dihapus;
+- delete dilakukan dengan SoftDeletes;
+- audit log dibuat untuk create, update, deactivation, dan reactivation.
+
+## 13.2 Entri
+
+```http
+GET    /admin/dictionary/entries
+POST   /admin/dictionary/entries
+GET    /admin/dictionary/entries/{id}
+PUT    /admin/dictionary/entries/{id}
+DELETE /admin/dictionary/entries/{id}
+```
+
+**Akses:** Admin.
+
+Filter admin:
+
+```text
+search
+language
 category_id
 status
 has_audio
 page
 per_page
+sort_by
+sort_direction
 ```
 
-Request tambah kata:
+Request tambah entri:
 
 ```json
 {
   "category_id": "uuid",
-  "indonesia_word": "makan",
-  "english_word": "eat",
-  "mekongga_word": "monga",
+  "indonesia": "makan",
+  "english": "eat",
+  "mekongga": "monga",
   "example_mekongga": "Inoi monga kade",
   "example_indonesia": "Saya sedang makan nasi",
-  "pronunciation_note": null,
-  "audio_media_id": "uuid"
+  "audio_media_id": "uuid",
+  "status": "active"
 }
 ```
 
-- Semua user login dapat membaca.
-- Hanya Admin dapat mengelola.
+Aturan:
+
+- kategori harus aktif;
+- normalized fields dihitung backend dan tidak diterima dari frontend;
+- duplicate identity adalah `indonesia_normalized + english_normalized + mekongga_normalized`;
+- `audio_media_id` harus mengarah ke media aktif, `purpose=audio`, `visibility=public`, dan MIME audio yang diizinkan;
+- delete memakai SoftDeletes dan tidak menghapus audio otomatis.
 
 ---
 
 # 14. Dictionary Import API
 
-## 14.1 Validasi CSV dan ZIP Audio
+## 14.1 Unduh Template
 
 ```http
-POST /admin/dictionary-imports/validate
+GET /admin/dictionary/imports/template
+```
+
+**Akses:** Admin.
+
+Response mengunduh CSV UTF-8 dengan header canonical:
+
+```csv
+indonesia,english,mekongga,kategori,contoh_mekongga,contoh_indonesia,audio_filename
+```
+
+## 14.2 Preview CSV dan ZIP Audio
+
+```http
+POST /admin/dictionary/imports/preview
 ```
 
 **Akses:** Admin  
@@ -709,101 +797,99 @@ Field:
 ```text
 csv_file
 audio_zip
+duplicate_strategy
 ```
 
-`audio_zip` boleh kosong bila tidak ada audio.
+`audio_zip` optional. Default `duplicate_strategy` adalah `skip`.
 
-Header CSV:
-
-```text
-indonesia
-english
-mekongga
-kategori
-contoh_mekongga
-contoh_indonesia
-audio_filename
-```
-
-Proses:
-
-1. validasi encoding UTF-8;
-2. validasi nama header;
-3. validasi kolom wajib;
-4. validasi kategori;
-5. deteksi baris duplikat;
-6. ekstrak ZIP secara aman;
-7. cegah ZIP Slip/path traversal;
-8. validasi MP3;
-9. cocokkan `audio_filename` secara exact;
-10. buat `dictionary_import_jobs`;
-11. simpan preview dan error;
-12. belum menyimpan kosakata final.
-
-Response:
-
-```json
-{
-  "success": true,
-  "message": "Validasi import selesai.",
-  "data": {
-    "import_job_id": "uuid",
-    "status": "validated",
-    "summary": {
-      "total_rows": 100,
-      "valid_rows": 95,
-      "invalid_rows": 5,
-      "matched_audio": 90,
-      "unmatched_audio": 5
-    },
-    "preview": [],
-    "errors": []
-  }
-}
-```
-
-## 14.2 Konfirmasi Import
-
-```http
-POST /admin/dictionary-imports/{id}/confirm
-```
-
-Request:
-
-```json
-{
-  "duplicate_strategy": "skip"
-}
-```
-
-Nilai:
+Nilai duplicate strategy:
 
 ```text
 skip
 update
-fail
+reject
 ```
+
+Preview menyimpan source CSV/ZIP secara private, memvalidasi UTF-8 dan header, memeriksa kategori, duplicate database, duplicate CSV, dan exact filename mapping. Preview tidak membuat `dictionary_entries` dan tidak membuat `media_files` audio final.
+
+Response `201`:
+
+```json
+{
+  "success": true,
+  "message": "Preview import berhasil dibuat.",
+  "data": {
+    "id": "uuid-job",
+    "status": "preview_ready",
+    "duplicate_strategy": "skip",
+    "summary": {
+      "total_rows": 100,
+      "valid_rows": 95,
+      "invalid_rows": 5,
+      "new_rows": 80,
+      "duplicate_rows": 15,
+      "audio_referenced": 90,
+      "audio_missing": 5,
+      "unused_audio_files": 2
+    },
+    "sample_rows": [],
+    "sample_errors": []
+  }
+}
+```
+
+## 14.3 Konfirmasi Import
+
+```http
+POST /admin/dictionary/imports/{id}/confirm
+```
+
+Job harus berstatus `preview_ready` dan memiliki minimal satu valid row. Konfirmasi bersifat idempotent agar request kedua tidak mendispatch queue kedua.
 
 Response `202`:
 
 ```json
 {
   "success": true,
-  "message": "Import sedang diproses.",
+  "message": "Import kamus masuk antrean.",
   "data": {
-    "import_job_id": "uuid",
-    "status": "processing"
+    "id": "uuid",
+    "status": "queued"
   }
 }
 ```
 
-## 14.3 Endpoint Pendukung Import
+## 14.4 Riwayat Import
 
 ```http
-GET /admin/dictionary-imports
-GET /admin/dictionary-imports/{id}
-GET /admin/dictionary-imports/{id}/errors
+GET /admin/dictionary/imports
+GET /admin/dictionary/imports/{id}
+GET /admin/dictionary/imports/{id}/errors
 ```
+
+Filter riwayat:
+
+```text
+status
+duplicate_strategy
+uploaded_by
+date_from
+date_to
+page
+per_page
+```
+
+Filter error:
+
+```text
+row_number
+field
+code
+page
+per_page
+```
+
+Response riwayat tidak mengirim path, disk, checksum, credential, atau isi file source.
 
 ---
 

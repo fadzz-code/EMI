@@ -56,6 +56,11 @@ class MediaFile extends Model
         return $this->hasMany(User::class, 'avatar_media_id');
     }
 
+    public function dictionaryEntries(): HasMany
+    {
+        return $this->hasMany(DictionaryEntry::class, 'audio_media_id');
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->whereNull('deleted_at');
