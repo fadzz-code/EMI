@@ -71,6 +71,16 @@ class MediaFile extends Model
         return $this->hasMany(ClassLesson::class, 'media_id');
     }
 
+    public function quizTemplateQuestions(): HasMany
+    {
+        return $this->hasMany(QuizTemplateQuestion::class, 'image_media_id');
+    }
+
+    public function quizQuestions(): HasMany
+    {
+        return $this->hasMany(QuizQuestion::class, 'image_media_id');
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->whereNull('deleted_at');
