@@ -14,6 +14,7 @@ return [
     'purposes' => [
         'avatar',
         'question_image',
+        'lesson_image',
         'document',
         'audio',
         'speaking_recording',
@@ -31,6 +32,11 @@ return [
             'image/webp',
         ],
         'question_image' => [
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+        ],
+        'lesson_image' => [
             'image/jpeg',
             'image/png',
             'image/webp',

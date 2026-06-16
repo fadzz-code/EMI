@@ -123,6 +123,26 @@ class User extends Authenticatable
         return $this->hasMany(DictionaryImportJob::class, 'uploaded_by');
     }
 
+    public function createdModuleTemplates(): HasMany
+    {
+        return $this->hasMany(ModuleTemplate::class, 'created_by');
+    }
+
+    public function createdClassModules(): HasMany
+    {
+        return $this->hasMany(ClassModule::class, 'created_by');
+    }
+
+    public function lessonProgress(): HasMany
+    {
+        return $this->hasMany(LessonProgress::class, 'student_id');
+    }
+
+    public function moduleProgress(): HasMany
+    {
+        return $this->hasMany(ModuleProgress::class, 'student_id');
+    }
+
     public function avatarMedia(): BelongsTo
     {
         return $this->belongsTo(MediaFile::class, 'avatar_media_id');

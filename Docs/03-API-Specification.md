@@ -895,36 +895,60 @@ Response riwayat tidak mengirim path, disk, checksum, credential, atau isi file 
 
 # 15. Module Template API
 
+Endpoint Admin:
+
 ```http
-GET    /module-templates
-POST   /module-templates
-GET    /module-templates/{id}
-PUT    /module-templates/{id}
-DELETE /module-templates/{id}
+GET    /admin/module-templates
+POST   /admin/module-templates
+GET    /admin/module-templates/{id}
+PUT    /admin/module-templates/{id}
+DELETE /admin/module-templates/{id}
+POST   /admin/module-templates/{id}/publish
+POST   /admin/module-templates/{id}/archive
+POST   /admin/module-templates/{id}/apply
 ```
 
-- Admin: CRUD penuh;
-- Guru: hanya melihat template published.
+Filter list:
 
-Request modul default:
+```text
+search
+status
+created_by
+page
+per_page
+sort_by
+sort_direction
+```
+
+Request:
 
 ```json
 {
   "title": "Kosakata Dasar",
   "description": "Pengenalan kosakata Mekongga.",
-  "category": "learning_material",
-  "thumbnail_media_id": "uuid",
-  "order_number": 1,
   "status": "draft"
 }
 ```
 
-## 15.1 Materi Template
+Aturan:
+
+- hanya Admin dapat mengelola template;
+- template harus memiliki minimal satu lesson `published` sebelum publish;
+- template archived tidak dapat diterapkan ke kelas;
+- delete memakai SoftDeletes dan tidak menghapus salinan kelas;
+- perubahan template setelah apply tidak mengubah salinan kelas.
+
+## 15.1 Lesson Template
 
 ```http
-POST   /module-templates/{id}/lessons
-PUT    /lesson-templates/{id}
-DELETE /lesson-templates/{id}
+GET    /admin/module-templates/{module_template_id}/lessons
+POST   /admin/module-templates/{module_template_id}/lessons
+PATCH  /admin/module-templates/{id}/lessons/reorder
+GET    /admin/lesson-templates/{id}
+PUT    /admin/lesson-templates/{id}
+DELETE /admin/lesson-templates/{id}
+POST   /admin/lesson-templates/{id}/publish
+POST   /admin/lesson-templates/{id}/archive
 ```
 
 Nilai `content_type`:
@@ -933,15 +957,25 @@ Nilai `content_type`:
 text
 image
 audio
-video
 pdf
-external_link
+video
+link
 ```
 
-## 15.2 Terapkan Modul Default ke Kelas
+Mapping media:
+
+```text
+image -> media_files.purpose lesson_image
+audio -> media_files.purpose audio
+pdf   -> media_files.purpose document
+```
+
+`video` dan `link` memakai `external_url` HTTPS. Response lesson tidak mengirim `disk`, `path`, `stored_name`, atau `checksum`.
+
+## 15.2 Apply Template
 
 ```http
-POST /module-templates/{id}/apply
+POST /admin/module-templates/{id}/apply
 ```
 
 Request:
@@ -955,60 +989,81 @@ Request:
 }
 ```
 
-Sistem menyalin template ke `class_modules` dan `class_lessons` agar guru dapat mengubah salinan tanpa mengubah template global.
+Response memuat `applied`, `skipped`, dan `failed`. Hasil copy dibuat sebagai `class_modules.status = draft`, lesson published dari template disalin ke `class_lessons.status = published`, dan apply kedua pada class yang sama tidak membuat duplicate.
 
 ---
 
 # 16. Class Module API
 
+Endpoint Admin/Guru:
+
 ```http
-GET    /class-modules
-POST   /class-modules
+GET    /classes/{class_id}/modules
+POST   /classes/{class_id}/modules
+PATCH  /classes/{class_id}/modules/reorder
 GET    /class-modules/{id}
 PUT    /class-modules/{id}
 DELETE /class-modules/{id}
 POST   /class-modules/{id}/publish
+POST   /class-modules/{id}/archive
 ```
 
 Akses:
 
-- Admin: seluruh kelas;
-- Guru: kelas sendiri;
-- Siswa: modul published kelas sendiri.
+- Admin dapat mengelola seluruh kelas;
+- Guru hanya mengelola kelas assignment aktifnya;
+- Siswa tidak menggunakan endpoint mutasi ini.
 
-Materi kelas:
+Class module hanya dapat dipublish bila kelas dan sekolah aktif serta memiliki minimal satu class lesson `published`. Module yang sudah published atau memiliki progress tidak dihapus, tetapi diarsipkan.
+
+## 16.1 Class Lesson API
 
 ```http
-POST   /class-modules/{id}/lessons
+GET    /class-modules/{class_module_id}/lessons
+POST   /class-modules/{class_module_id}/lessons
+PATCH  /class-modules/{id}/lessons/reorder
+GET    /class-lessons/{id}
 PUT    /class-lessons/{id}
 DELETE /class-lessons/{id}
+POST   /class-lessons/{id}/publish
+POST   /class-lessons/{id}/archive
+GET    /class-lessons/{id}/content-url
 ```
+
+`GET /class-lessons/{id}/content-url`:
+
+- Admin: seluruh lesson;
+- Guru: lesson pada kelas aktifnya;
+- Siswa: lesson `published` pada module `published` di kelas membership aktifnya.
+
+Konten text mengembalikan `content_body`. Media public mengembalikan public URL. Media private mengembalikan temporary URL. External video/link mengembalikan URL HTTPS tervalidasi.
 
 ---
 
-# 17. Learning Progress API
+# 17. Student Module dan Progress API
+
+Endpoint siswa:
 
 ```http
-POST /class-lessons/{id}/progress/start
-POST /class-lessons/{id}/progress/complete
-GET  /progress/me
-GET  /classes/{id}/progress
-GET  /students/{id}/progress
-GET  /classes/{id}/progress/export
+GET   /student/modules
+GET   /student/modules/{id}
+POST  /student/modules/{id}/start
+PATCH /student/lessons/{id}/progress
+GET   /student/progress/modules
 ```
 
 Aturan:
 
-- Backend mengambil `student_id` dari token.
-- Siswa tidak boleh mengirim student ID bebas.
-- Menyelesaikan lesson harus memperbarui agregasi `module_progress`.
-- Guru hanya melihat kelas sendiri.
-
-Format export:
-
-```text
-format=csv|xlsx|pdf
-```
+- semua endpoint memakai `auth:sanctum` dan `role:student`;
+- siswa hanya melihat module `published` dari kelas membership aktifnya;
+- detail module hanya memuat lesson `published`;
+- `student_id` selalu berasal dari token;
+- `completed` otomatis bernilai progress 100;
+- `not_started` otomatis 0;
+- `in_progress` hanya 1 sampai 99;
+- module progress dihitung backend dari lesson `published` yang belum soft-deleted;
+- lesson draft atau archived tidak dihitung;
+- progress historis tetap ada ketika module atau lesson diarsipkan.
 
 ---
 
@@ -1578,6 +1633,7 @@ Field sorting harus memakai whitelist.
 |---|---|---|
 | Avatar | JPG, JPEG, PNG, WEBP | 2 MB |
 | Gambar soal/budaya | JPG, JPEG, PNG, WEBP | 5 MB |
+| Gambar lesson | JPG, JPEG, PNG, WEBP | 5 MB |
 | Audio kamus | MP3 | 10 MB |
 | Rekaman speaking | MP3, WAV, M4A, WEBM | 20 MB |
 | PDF modul | PDF | 25 MB |

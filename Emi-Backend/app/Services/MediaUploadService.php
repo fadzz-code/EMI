@@ -120,7 +120,7 @@ class MediaUploadService
     private function validateSize(string $purpose, int $sizeBytes): void
     {
         $maxKb = match ($purpose) {
-            'avatar', 'question_image' => (int) config('media.max_kb.image'),
+            'avatar', 'question_image', 'lesson_image' => (int) config('media.max_kb.image'),
             'document' => (int) config('media.max_kb.document'),
             'audio', 'speaking_recording' => (int) config('media.max_kb.audio'),
             default => 0,
