@@ -607,12 +607,18 @@ Menyediakan data ringkasan untuk UI.
 ### Output
 
 - API dashboard siap dipakai frontend
+- Implementasi backend Fase 8 menyediakan dashboard Admin/Guru/Siswa, laporan progress, laporan hasil kuis, dan CSV streaming.
+- Speaking report belum aktif dan diekspos sebagai capability `speaking_reports=false` sampai fase Voice/Speaking selesai.
+- Export Fase 8 dibatasi ke CSV; XLSX/PDF tetap ditunda setelah MVP stabil.
 
 ### Definition of Done
 
 - Query tidak lambat pada dataset uji
 - Data sesuai role
 - Tidak ada data lintas kelas bocor
+- Best final attempt digunakan untuk agregasi nilai kuis
+- Hidden result siswa mengikuti `class_quizzes.show_result`
+- CSV export mengikuti scope role dan sanitasi formula injection
 
 ---
 

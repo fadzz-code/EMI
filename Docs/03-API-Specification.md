@@ -1585,26 +1585,65 @@ User hanya dapat mengakses notifikasi sendiri.
 
 ---
 
-# 29. Report API
+# 29. Dashboard dan Report API
+
+Dashboard summary:
 
 ```http
-GET /reports/admin-dashboard
-GET /reports/teacher-dashboard
-GET /reports/student-dashboard
-GET /reports/system
+GET /admin/dashboard/summary
+GET /teacher/dashboard/summary
+GET /student/dashboard/summary
 ```
 
-Dashboard Admin:
+Progress reports:
 
-- jumlah sekolah;
-- jumlah kelas;
-- jumlah guru dan siswa;
-- akun pending;
-- modul dan kuis aktif;
-- progress sistem;
-- import terbaru.
+```http
+GET /admin/reports/progress/schools
+GET /admin/reports/progress/classes
+GET /admin/reports/progress/students
+GET /teacher/reports/progress/students
+GET /student/reports/progress
+```
 
-Dashboard Guru hanya memuat kelas sendiri. Dashboard Siswa hanya memuat data pribadi.
+Quiz result reports:
+
+```http
+GET /admin/reports/quiz-results
+GET /teacher/reports/quiz-results
+GET /student/reports/quiz-results
+```
+
+CSV export:
+
+```http
+GET /admin/reports/progress/schools/export
+GET /admin/reports/progress/classes/export
+GET /admin/reports/progress/students/export
+GET /admin/reports/quiz-results/export
+GET /teacher/reports/progress/students/export
+GET /teacher/reports/quiz-results/export
+```
+
+Semua endpoint memakai `auth:sanctum` dan role sesuai prefix. Filter periode memakai `date_from` dan `date_to` dengan format `YYYY-MM-DD`; default 30 hari terakhir dan batas maksimum mengikuti `DASHBOARD_MAX_PERIOD_DAYS`.
+
+Admin dapat memakai `school_id` dan `class_id`. Jika `class_id` tidak berada pada `school_id`, backend mengembalikan `SCHOOL_CLASS_MISMATCH`. Guru selalu dibatasi ke assignment aktifnya. Siswa selalu dibatasi ke membership aktifnya dan tidak boleh memakai `student_id`, `school_id`, atau `class_id` untuk membuka scope lain.
+
+Definisi progress siswa:
+
+```text
+overall_learning_progress_percent =
+rata-rata progress_percent seluruh class_module published di kelas aktif siswa
+```
+
+Module published tanpa row `module_progress` dihitung 0. Module draft, archived, dan soft-deleted tidak dihitung. Progress kelas adalah rata-rata seluruh siswa aktif di kelas, termasuk siswa yang belum mulai. Progress sekolah adalah rata-rata weighted berdasarkan seluruh siswa aktif di sekolah.
+
+Rows quiz result memakai satu baris representatif per `student + class_quiz`. Untuk agregasi skor, backend memakai best final attempt per siswa dan kuis, yaitu nilai tertinggi dari attempt berstatus `submitted` atau `expired`. Attempt `in_progress` dihitung untuk status/partisipasi, tetapi tidak masuk average score.
+
+Report siswa menghormati `class_quizzes.show_result`. Jika `show_result=false`, skor dan attempt terbaik disembunyikan dari siswa dan tidak masuk visible average. Admin dan Guru tetap melihat skor agregat sesuai scope.
+
+CSV export memakai streaming response UTF-8 dengan BOM, header Bahasa Indonesia, filename aman berisi tanggal, dan tanpa file permanen di storage. Cell yang diawali `=`, `+`, `-`, atau `@` disanitasi dengan prefix apostrophe untuk mencegah formula injection. Batas row mengikuti `REPORT_EXPORT_MAX_ROWS`.
+
+Speaking belum aktif pada fase ini. Semua dashboard mengembalikan `capabilities.speaking_reports=false` dan `speaking_summary=null`.
 
 ---
 
