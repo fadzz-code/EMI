@@ -215,29 +215,34 @@ erDiagram
         uuid id PK
         varchar title
         text description
-        varchar category
-        uuid thumbnail_media_id FK
-        integer order_number
         varchar status
-        integer version
         uuid created_by FK
+        uuid updated_by FK
         timestamp published_at
+        timestamp archived_at
         timestamp created_at
         timestamp updated_at
+        timestamp deleted_at
     }
 
     LESSON_TEMPLATES {
         uuid id PK
         uuid module_template_id FK
         varchar title
+        text description
         varchar content_type
         text content_body
         uuid media_id FK
         varchar external_url
-        integer order_number
+        integer sort_order
         varchar status
+        uuid created_by FK
+        uuid updated_by FK
+        timestamp published_at
+        timestamp archived_at
         timestamp created_at
         timestamp updated_at
+        timestamp deleted_at
     }
 
     CLASS_MODULES {
@@ -246,16 +251,15 @@ erDiagram
         uuid source_module_template_id FK
         varchar title
         text description
-        varchar category
-        uuid thumbnail_media_id FK
-        integer order_number
-        boolean is_customized
         varchar status
+        integer sort_order
         uuid created_by FK
         uuid updated_by FK
         timestamp published_at
+        timestamp archived_at
         timestamp created_at
         timestamp updated_at
+        timestamp deleted_at
     }
 
     CLASS_LESSONS {
@@ -263,14 +267,20 @@ erDiagram
         uuid class_module_id FK
         uuid source_lesson_template_id FK
         varchar title
+        text description
         varchar content_type
         text content_body
         uuid media_id FK
         varchar external_url
-        integer order_number
+        integer sort_order
         varchar status
+        uuid created_by FK
+        uuid updated_by FK
+        timestamp published_at
+        timestamp archived_at
         timestamp created_at
         timestamp updated_at
+        timestamp deleted_at
     }
 
     LESSON_PROGRESS {
@@ -278,9 +288,10 @@ erDiagram
         uuid student_id FK
         uuid class_lesson_id FK
         varchar status
+        integer progress_percent
         timestamp started_at
         timestamp completed_at
-        timestamp last_opened_at
+        timestamp last_accessed_at
         timestamp created_at
         timestamp updated_at
     }
@@ -291,9 +302,11 @@ erDiagram
         uuid class_module_id FK
         integer total_lessons
         integer completed_lessons
-        decimal progress_percent
+        integer progress_percent
         varchar status
-        timestamp last_activity_at
+        timestamp started_at
+        timestamp completed_at
+        timestamp last_calculated_at
         timestamp created_at
         timestamp updated_at
     }
@@ -812,6 +825,19 @@ not_started
 in_progress
 completed
 ```
+
+Implementasi Fase 6 menambahkan aturan berikut:
+
+* `module_templates` dan `lesson_templates` dikelola Admin dengan status `draft|published|archived`, SoftDeletes, dan audit `created_by`/`updated_by`.
+* `lesson_templates.content_type` dan `class_lessons.content_type` bernilai `text|image|audio|pdf|video|link`.
+* Konten `image` memakai `media_files.purpose = lesson_image`, `audio` memakai `purpose = audio`, dan `pdf` memakai `purpose = document`.
+* Konten `video` dan `link` memakai `external_url` HTTPS. Video upload tidak termasuk Fase 6.
+* Apply template membuat snapshot ke `class_modules` dan `class_lessons`; perubahan template setelah copy tidak mengubah salinan kelas, dan perubahan salinan kelas tidak mengubah template.
+* Hasil apply template ke kelas dibuat berstatus `draft`, sedangkan lesson published dari template disalin sebagai lesson kelas `published` agar Guru/Admin dapat meninjau modul sebelum publish.
+* `class_modules` memiliki partial unique index pada `class_id + source_module_template_id` untuk mencegah apply ganda pada record aktif.
+* `lesson_progress` unik per `student_id + class_lesson_id`.
+* `module_progress` unik per `student_id + class_module_id` dan dihitung backend dari lesson kelas yang berstatus `published`.
+* Progress historis tidak dihapus ketika lesson atau module diarsipkan.
 
 ---
 

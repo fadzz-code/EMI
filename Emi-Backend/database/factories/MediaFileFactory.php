@@ -58,6 +58,26 @@ class MediaFileFactory extends Factory
         ]);
     }
 
+    public function lessonImage(): static
+    {
+        return $this->public()->state(fn (): array => [
+            'purpose' => 'lesson_image',
+            'original_name' => 'lesson.jpg',
+            'mime_type' => 'image/jpeg',
+            'extension' => 'jpg',
+        ]);
+    }
+
+    public function audio(): static
+    {
+        return $this->public()->state(fn (): array => [
+            'purpose' => 'audio',
+            'original_name' => 'lesson.mp3',
+            'mime_type' => 'audio/mpeg',
+            'extension' => 'mp3',
+        ]);
+    }
+
     public function speakingRecording(): static
     {
         return $this->private()->state(fn (): array => [

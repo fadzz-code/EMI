@@ -60,4 +60,9 @@ class SchoolClass extends Model
     {
         return $this->hasMany(StudentClassMembership::class, 'class_id')->where('is_active', true);
     }
+
+    public function classModules(): HasMany
+    {
+        return $this->hasMany(ClassModule::class, 'class_id')->orderBy('sort_order');
+    }
 }
