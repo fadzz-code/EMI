@@ -1,0 +1,21 @@
+<?php
+
+return [
+    'import_disk' => env('DICTIONARY_IMPORT_DISK', 'local'),
+    'max_csv_kb' => (int) env('DICTIONARY_IMPORT_MAX_CSV_KB', 10240),
+    'max_zip_kb' => (int) env('DICTIONARY_IMPORT_MAX_ZIP_KB', 256000),
+    'max_rows' => (int) env('DICTIONARY_IMPORT_MAX_ROWS', 10000),
+    'max_audio_files' => (int) env('DICTIONARY_IMPORT_MAX_AUDIO_FILES', 10000),
+    'max_uncompressed_kb' => (int) env('DICTIONARY_IMPORT_MAX_UNCOMPRESSED_KB', 512000),
+    'chunk_size' => (int) env('DICTIONARY_IMPORT_CHUNK_SIZE', 500),
+    'sample_limit' => 20,
+    'csv_header' => [
+        'indonesia',
+        'english',
+        'mekongga',
+        'kategori',
+        'contoh_mekongga',
+        'contoh_indonesia',
+        'audio_filename',
+    ],
+];

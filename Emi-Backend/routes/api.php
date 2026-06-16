@@ -1,9 +1,13 @@
 <?php
 
+use App\Http\Controllers\Api\AdminDictionaryCategoryController;
+use App\Http\Controllers\Api\AdminDictionaryEntryController;
 use App\Http\Controllers\Api\AdminRegistrationRequestController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AvatarController;
 use App\Http\Controllers\Api\ClassAssignmentController;
+use App\Http\Controllers\Api\DictionaryController;
+use App\Http\Controllers\Api\DictionaryImportController;
 use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\PublicLookupController;
 use App\Http\Controllers\Api\SchoolClassController;
@@ -41,6 +45,22 @@ Route::prefix('v1')->group(function () {
         Route::get('registration-requests/{id}', [AdminRegistrationRequestController::class, 'show']);
         Route::post('registration-requests/{id}/approve', [AdminRegistrationRequestController::class, 'approve']);
         Route::post('registration-requests/{id}/reject', [AdminRegistrationRequestController::class, 'reject']);
+        Route::get('dictionary/categories', [AdminDictionaryCategoryController::class, 'index']);
+        Route::post('dictionary/categories', [AdminDictionaryCategoryController::class, 'store']);
+        Route::get('dictionary/categories/{id}', [AdminDictionaryCategoryController::class, 'show']);
+        Route::put('dictionary/categories/{id}', [AdminDictionaryCategoryController::class, 'update']);
+        Route::delete('dictionary/categories/{id}', [AdminDictionaryCategoryController::class, 'destroy']);
+        Route::get('dictionary/entries', [AdminDictionaryEntryController::class, 'index']);
+        Route::post('dictionary/entries', [AdminDictionaryEntryController::class, 'store']);
+        Route::get('dictionary/entries/{id}', [AdminDictionaryEntryController::class, 'show']);
+        Route::put('dictionary/entries/{id}', [AdminDictionaryEntryController::class, 'update']);
+        Route::delete('dictionary/entries/{id}', [AdminDictionaryEntryController::class, 'destroy']);
+        Route::get('dictionary/imports/template', [DictionaryImportController::class, 'template']);
+        Route::post('dictionary/imports/preview', [DictionaryImportController::class, 'preview']);
+        Route::get('dictionary/imports', [DictionaryImportController::class, 'index']);
+        Route::get('dictionary/imports/{id}', [DictionaryImportController::class, 'show']);
+        Route::get('dictionary/imports/{id}/errors', [DictionaryImportController::class, 'errors']);
+        Route::post('dictionary/imports/{id}/confirm', [DictionaryImportController::class, 'confirm']);
     });
 
     Route::middleware('auth:sanctum')->group(function () {
@@ -65,5 +85,7 @@ Route::prefix('v1')->group(function () {
         Route::get('media/{id}', [MediaController::class, 'show']);
         Route::post('media/{id}/temporary-url', [MediaController::class, 'temporaryUrl']);
         Route::delete('media/{id}', [MediaController::class, 'destroy']);
+        Route::get('dictionary', [DictionaryController::class, 'index']);
+        Route::get('dictionary/{id}', [DictionaryController::class, 'show']);
     });
 });
