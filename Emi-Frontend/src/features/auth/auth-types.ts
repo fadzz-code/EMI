@@ -6,10 +6,16 @@ export type AuthUser = {
   email: string;
   role: UserRole;
   status: "pending" | "approved" | "rejected" | "inactive" | string;
-  avatar_url?: string | null;
+  phone?: string | null;
+  avatar?: {
+    id: string;
+    url: string;
+  } | null;
   permissions?: string[];
-  school?: Record<string, unknown> | null;
-  class?: Record<string, unknown> | null;
+  active_school?: PublicSchool | null;
+  active_class?: PublicSchoolClass | null;
+  active_assignment?: Record<string, unknown> | null;
+  active_membership?: Record<string, unknown> | null;
 };
 
 export type LoginPayload = {
@@ -31,10 +37,25 @@ export type RegisterPayload = {
   password_confirmation: string;
   requested_role: "teacher" | "student";
   school_id: string;
-  class_id?: string;
+  class_id: string;
 };
 
 export type RegisterResult = {
   user_id: string;
   status: "pending" | string;
+};
+
+export type PublicSchool = {
+  id: string;
+  name: string;
+  address?: string | null;
+  phone?: string | null;
+};
+
+export type PublicSchoolClass = {
+  id: string;
+  school_id: string;
+  name: string;
+  grade_level?: string | number | null;
+  academic_year?: string | null;
 };

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import type { UserRole } from "@/lib/roles";
-import { getDashboardPath } from "@/lib/roles";
+import { getDashboardPath, isUserRole } from "@/lib/roles";
 import { LoadingState } from "@/components/ui/states";
 
 import { useAuth } from "./auth-provider";
@@ -19,15 +19,20 @@ export function ProtectedRoute({
   children,
 }: ProtectedRouteProps) {
   const router = useRouter();
-  const { isBootstrapping, user } = useAuth();
+  const { isBootstrapping, status, user } = useAuth();
 
   useEffect(() => {
     if (isBootstrapping) {
       return;
     }
 
-    if (!user) {
+    if (status === "unauthenticated" || !user) {
       router.replace("/login");
+      return;
+    }
+
+    if (!isUserRole(user.role) || user.status !== "approved") {
+      router.replace("/unauthorized");
       return;
     }
 
@@ -39,9 +44,15 @@ export function ProtectedRoute({
     if (window.location.pathname === "/") {
       router.replace(getDashboardPath(user.role));
     }
-  }, [allowedRoles, isBootstrapping, router, user]);
+  }, [allowedRoles, isBootstrapping, router, status, user]);
 
-  if (isBootstrapping || !user || !allowedRoles.includes(user.role)) {
+  if (
+    isBootstrapping ||
+    !user ||
+    !isUserRole(user.role) ||
+    user.status !== "approved" ||
+    !allowedRoles.includes(user.role)
+  ) {
     return <LoadingState title="Memeriksa akses" />;
   }
 

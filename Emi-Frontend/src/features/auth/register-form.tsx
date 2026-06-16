@@ -1,24 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
-import { ApiError } from "@/lib/api-client";
+import { ApiError, getFieldError, getFirstApiError } from "@/lib/api-client";
 import { registerSchema, type RegisterFormValues } from "@/lib/validators";
-import { Alert, Button, Card, CardContent, CardHeader, FormField, Input } from "@/components/ui";
+import {
+  Alert,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  FormField,
+  Input,
+  Select,
+} from "@/components/ui";
 
+import { authService } from "./auth-service";
 import { useAuth } from "./auth-provider";
+import type { PublicSchool, PublicSchoolClass } from "./auth-types";
 
 export function RegisterForm({ role }: { role: "teacher" | "student" }) {
   const router = useRouter();
-  const { register: registerAccount } = useAuth();
+  const { registerStudent, registerTeacher } = useAuth();
   const [formError, setFormError] = useState<string | null>(null);
+  const [schools, setSchools] = useState<PublicSchool[]>([]);
+  const [classes, setClasses] = useState<PublicSchoolClass[]>([]);
+  const [isLoadingSchools, setIsLoadingSchools] = useState(true);
+  const [isLoadingClasses, setIsLoadingClasses] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
   const {
     formState: { errors, isSubmitting },
+    control,
     handleSubmit,
     register,
     setError,
+    setValue,
   } = useForm<RegisterFormValues>({
     defaultValues: {
       full_name: "",
@@ -30,6 +48,96 @@ export function RegisterForm({ role }: { role: "teacher" | "student" }) {
       class_id: "",
     },
   });
+  const selectedSchoolId = useWatch({
+    control,
+    name: "school_id",
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+
+    authService
+      .listPublicSchools()
+      .then((items) => {
+        if (isMounted) {
+          setSchools(items);
+        }
+      })
+      .catch((error) => {
+        if (isMounted) {
+          setLookupError(getFirstApiError(error));
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoadingSchools(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedSchoolId) {
+      queueMicrotask(() => {
+        setClasses([]);
+        setValue("class_id", "");
+      });
+      return;
+    }
+
+    let isMounted = true;
+    queueMicrotask(() => {
+      if (isMounted) {
+        setIsLoadingClasses(true);
+        setValue("class_id", "");
+      }
+    });
+
+    authService
+      .listPublicClasses(selectedSchoolId)
+      .then((items) => {
+        if (isMounted) {
+          setClasses(items);
+        }
+      })
+      .catch((error) => {
+        if (isMounted) {
+          setLookupError(getFirstApiError(error));
+          setClasses([]);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoadingClasses(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedSchoolId, setValue]);
+
+  function applyBackendErrors(error: ApiError) {
+    const fields: Array<keyof RegisterFormValues> = [
+      "full_name",
+      "email",
+      "password",
+      "password_confirmation",
+      "school_id",
+      "class_id",
+      "requested_role",
+    ];
+
+    fields.forEach((field) => {
+      const message = getFieldError(error, field);
+      if (message) {
+        setError(field, { message });
+      }
+    });
+  }
 
   async function onSubmit(values: RegisterFormValues) {
     setFormError(null);
@@ -44,17 +152,28 @@ export function RegisterForm({ role }: { role: "teacher" | "student" }) {
     }
 
     try {
-      await registerAccount({
-        ...parsed.data,
-        class_id: parsed.data.class_id || undefined,
-      });
+      const payload = {
+        full_name: parsed.data.full_name,
+        email: parsed.data.email,
+        password: parsed.data.password,
+        password_confirmation: parsed.data.password_confirmation,
+        school_id: parsed.data.school_id,
+        class_id: parsed.data.class_id,
+      };
+
+      if (role === "teacher") {
+        await registerTeacher(payload);
+      } else {
+        await registerStudent(payload);
+      }
+
       router.replace("/pending-approval");
     } catch (error) {
-      setFormError(
-        error instanceof ApiError
-          ? error.message
-          : "Pendaftaran gagal. Periksa data lalu coba lagi.",
-      );
+      if (error instanceof ApiError) {
+        applyBackendErrors(error);
+      }
+
+      setFormError(getFirstApiError(error));
     }
   }
 
@@ -71,6 +190,7 @@ export function RegisterForm({ role }: { role: "teacher" | "student" }) {
       <CardContent>
         <form className="grid gap-4" onSubmit={handleSubmit(onSubmit)}>
           {formError ? <Alert tone="error">{formError}</Alert> : null}
+          {lookupError ? <Alert tone="warning">{lookupError}</Alert> : null}
           <FormField error={errors.full_name?.message} label="Nama lengkap">
             <Input autoComplete="name" {...register("full_name")} />
           </FormField>
@@ -90,11 +210,33 @@ export function RegisterForm({ role }: { role: "teacher" | "student" }) {
               {...register("password_confirmation")}
             />
           </FormField>
-          <FormField error={errors.school_id?.message} label="UUID sekolah">
-            <Input placeholder="Dari endpoint public/schools" {...register("school_id")} />
+          <FormField error={errors.school_id?.message} label="Sekolah">
+            <Select disabled={isLoadingSchools} {...register("school_id")}>
+              <option value="">
+                {isLoadingSchools ? "Memuat sekolah..." : "Pilih sekolah"}
+              </option>
+              {schools.map((school) => (
+                <option key={school.id} value={school.id}>
+                  {school.name}
+                </option>
+              ))}
+            </Select>
           </FormField>
-          <FormField error={errors.class_id?.message} label="UUID kelas">
-            <Input placeholder="Dari endpoint public/schools/{school_id}/classes" {...register("class_id")} />
+          <FormField error={errors.class_id?.message} label="Kelas">
+            <Select
+              disabled={!selectedSchoolId || isLoadingClasses}
+              {...register("class_id")}
+            >
+              <option value="">
+                {isLoadingClasses ? "Memuat kelas..." : "Pilih kelas"}
+              </option>
+              {classes.map((schoolClass) => (
+                <option key={schoolClass.id} value={schoolClass.id}>
+                  {schoolClass.name}
+                  {schoolClass.academic_year ? ` - ${schoolClass.academic_year}` : ""}
+                </option>
+              ))}
+            </Select>
           </FormField>
           <input type="hidden" {...register("requested_role")} />
           <Button disabled={isSubmitting} type="submit">

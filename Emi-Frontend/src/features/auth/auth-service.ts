@@ -1,57 +1,112 @@
-import { apiRequest } from "@/lib/api-client";
+import { ApiError, apiClient } from "@/lib/api-client";
+import { isUserRole } from "@/lib/roles";
 
 import type {
   AuthUser,
   LoginPayload,
   LoginResult,
+  PublicSchool,
+  PublicSchoolClass,
   RegisterPayload,
   RegisterResult,
 } from "./auth-types";
 
+function assertApprovedUser(user: AuthUser) {
+  if (!isUserRole(user.role)) {
+    throw new ApiError({
+      message: "Role akun tidak dikenali oleh frontend EMI.",
+      status: 403,
+      code: "INVALID_ROLE",
+    });
+  }
+
+  if (user.status !== "approved") {
+    throw new ApiError({
+      message: "Akun belum aktif. Silakan tunggu persetujuan Admin.",
+      status: 403,
+      code: "ACCOUNT_NOT_APPROVED",
+    });
+  }
+}
+
 export const authService = {
   async login(payload: LoginPayload) {
-    const response = await apiRequest<LoginResult>("/auth/login", {
-      method: "POST",
-      body: payload,
-    });
+    const response = await apiClient.post<LoginResult>("/auth/login", payload);
 
     if (!response.data) {
       throw new Error("Response login tidak memuat data pengguna.");
     }
 
+    assertApprovedUser(response.data.user);
+
     return response.data;
   },
 
   async logout(token: string) {
-    await apiRequest<null>("/auth/logout", {
-      method: "POST",
-      token,
-    });
+    await apiClient.post<null>("/auth/logout", undefined, { token });
   },
 
-  async me(token: string) {
-    const response = await apiRequest<AuthUser>("/auth/me", {
-      method: "GET",
-      token,
-    });
+  async getCurrentUser(token: string) {
+    const response = await apiClient.get<AuthUser>("/auth/me", { token });
 
     if (!response.data) {
       throw new Error("Response profil tidak memuat data pengguna.");
     }
 
+    assertApprovedUser(response.data);
+
     return response.data;
   },
 
-  async register(payload: RegisterPayload) {
-    const response = await apiRequest<RegisterResult>("/auth/register", {
-      method: "POST",
-      body: payload,
+  async registerTeacher(payload: Omit<RegisterPayload, "requested_role">) {
+    return this.register({
+      ...payload,
+      requested_role: "teacher",
     });
+  },
+
+  async registerStudent(payload: Omit<RegisterPayload, "requested_role">) {
+    return this.register({
+      ...payload,
+      requested_role: "student",
+    });
+  },
+
+  async register(payload: RegisterPayload) {
+    const response = await apiClient.post<RegisterResult>("/auth/register", payload);
 
     if (!response.data) {
       throw new Error("Response pendaftaran tidak memuat status akun.");
     }
 
     return response.data;
+  },
+
+  async listPublicSchools(query?: { search?: string; page?: number; per_page?: number }) {
+    const response = await apiClient.get<PublicSchool[]>("/public/schools", {
+      query: {
+        per_page: 100,
+        ...query,
+      },
+    });
+
+    return response.data ?? [];
+  },
+
+  async listPublicClasses(
+    schoolId: string,
+    query?: { search?: string; page?: number; per_page?: number },
+  ) {
+    const response = await apiClient.get<PublicSchoolClass[]>(
+      `/public/schools/${schoolId}/classes`,
+      {
+        query: {
+          per_page: 100,
+          ...query,
+        },
+      },
+    );
+
+    return response.data ?? [];
   },
 };

@@ -14,14 +14,22 @@ import type { AuthUser, LoginPayload, RegisterPayload } from "./auth-types";
 
 const TOKEN_KEY = "emi.auth.token";
 
+type AuthStatus = "loading" | "authenticated" | "unauthenticated";
+
 type AuthContextValue = {
   token: string | null;
   user: AuthUser | null;
+  status: AuthStatus;
   isBootstrapping: boolean;
   isAuthenticated: boolean;
   login: (payload: LoginPayload) => Promise<AuthUser>;
   logout: () => Promise<void>;
-  register: (payload: RegisterPayload) => Promise<void>;
+  registerTeacher: (
+    payload: Omit<RegisterPayload, "requested_role">,
+  ) => Promise<void>;
+  registerStudent: (
+    payload: Omit<RegisterPayload, "requested_role">,
+  ) => Promise<void>;
   refreshUser: () => Promise<AuthUser | null>;
 };
 
@@ -30,7 +38,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [status, setStatus] = useState<AuthStatus>("loading");
 
   const persistToken = useCallback((nextToken: string | null) => {
     setToken(nextToken);
@@ -45,11 +53,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshUser = useCallback(async () => {
     if (!token) {
       setUser(null);
+      setStatus("unauthenticated");
       return null;
     }
 
-    const currentUser = await authService.me(token);
+    const currentUser = await authService.getCurrentUser(token);
     setUser(currentUser);
+    setStatus("authenticated");
     return currentUser;
   }, [token]);
 
@@ -59,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (storedToken) {
         setToken(storedToken);
       } else {
-        setIsBootstrapping(false);
+        setStatus("unauthenticated");
       }
     });
   }, []);
@@ -72,21 +82,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let isMounted = true;
 
     authService
-      .me(token)
+      .getCurrentUser(token)
       .then((currentUser) => {
         if (isMounted) {
           setUser(currentUser);
+          setStatus("authenticated");
         }
       })
       .catch(() => {
         if (isMounted) {
           persistToken(null);
           setUser(null);
-        }
-      })
-      .finally(() => {
-        if (isMounted) {
-          setIsBootstrapping(false);
+          setStatus("unauthenticated");
         }
       });
 
@@ -100,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = await authService.login(payload);
       persistToken(result.token);
       setUser(result.user);
+      setStatus("authenticated");
       return result.user;
     },
     [persistToken],
@@ -109,28 +117,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const activeToken = token;
     persistToken(null);
     setUser(null);
+    setStatus("unauthenticated");
 
     if (activeToken) {
-      await authService.logout(activeToken);
+      try {
+        await authService.logout(activeToken);
+      } catch {
+        // Token lokal tetap dibersihkan meski server sudah menganggap sesi tidak valid.
+      }
     }
   }, [persistToken, token]);
 
-  const register = useCallback(async (payload: RegisterPayload) => {
-    await authService.register(payload);
-  }, []);
+  const registerTeacher = useCallback(
+    async (payload: Omit<RegisterPayload, "requested_role">) => {
+      await authService.registerTeacher(payload);
+    },
+    [],
+  );
+
+  const registerStudent = useCallback(
+    async (payload: Omit<RegisterPayload, "requested_role">) => {
+      await authService.registerStudent(payload);
+    },
+    [],
+  );
 
   const value = useMemo<AuthContextValue>(
     () => ({
       token,
       user,
-      isBootstrapping,
-      isAuthenticated: Boolean(token && user),
+      status,
+      isBootstrapping: status === "loading",
+      isAuthenticated: status === "authenticated" && Boolean(token && user),
       login,
       logout,
-      register,
+      registerTeacher,
+      registerStudent,
       refreshUser,
     }),
-    [isBootstrapping, login, logout, refreshUser, register, token, user],
+    [
+      login,
+      logout,
+      refreshUser,
+      registerStudent,
+      registerTeacher,
+      status,
+      token,
+      user,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

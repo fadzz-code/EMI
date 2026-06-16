@@ -9,11 +9,18 @@ export const loginSchema = z.object({
 export const registerSchema = z.object({
   full_name: z.string().min(3, "Nama minimal 3 karakter."),
   email: z.string().email("Email tidak valid."),
-  password: z.string().min(8, "Password minimal 8 karakter."),
+  password: z
+    .string()
+    .min(8, "Password minimal 8 karakter.")
+    .regex(/[A-Za-z]/, "Password harus memuat huruf.")
+    .regex(/[0-9]/, "Password harus memuat angka."),
   password_confirmation: z.string().min(8, "Konfirmasi password wajib diisi."),
   requested_role: z.enum(["teacher", "student"]),
   school_id: z.string().uuid("ID sekolah harus berupa UUID."),
-  class_id: z.string().uuid("ID kelas harus berupa UUID.").optional().or(z.literal("")),
+  class_id: z.string().uuid("Pilih kelas yang valid."),
+}).refine((value) => value.password === value.password_confirmation, {
+  message: "Konfirmasi password tidak sama.",
+  path: ["password_confirmation"],
 });
 
 export type LoginFormValues = z.infer<typeof loginSchema>;
