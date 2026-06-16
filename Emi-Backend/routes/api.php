@@ -4,21 +4,29 @@ use App\Http\Controllers\Api\AdminDictionaryCategoryController;
 use App\Http\Controllers\Api\AdminDictionaryEntryController;
 use App\Http\Controllers\Api\AdminLessonTemplateController;
 use App\Http\Controllers\Api\AdminModuleTemplateController;
+use App\Http\Controllers\Api\AdminQuizTemplateController;
+use App\Http\Controllers\Api\AdminQuizTemplateQuestionController;
 use App\Http\Controllers\Api\AdminRegistrationRequestController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AvatarController;
 use App\Http\Controllers\Api\ClassAssignmentController;
 use App\Http\Controllers\Api\ClassLessonController;
 use App\Http\Controllers\Api\ClassModuleController;
+use App\Http\Controllers\Api\ClassQuizController;
 use App\Http\Controllers\Api\DictionaryController;
 use App\Http\Controllers\Api\DictionaryImportController;
 use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\ModuleTemplateApplyController;
 use App\Http\Controllers\Api\PublicLookupController;
+use App\Http\Controllers\Api\QuizAttemptController;
+use App\Http\Controllers\Api\QuizQuestionController;
+use App\Http\Controllers\Api\QuizReportController;
+use App\Http\Controllers\Api\QuizTemplateApplyController;
 use App\Http\Controllers\Api\SchoolClassController;
 use App\Http\Controllers\Api\SchoolController;
 use App\Http\Controllers\Api\StudentModuleController;
 use App\Http\Controllers\Api\StudentProgressController;
+use App\Http\Controllers\Api\StudentQuizController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -84,6 +92,20 @@ Route::prefix('v1')->group(function () {
         Route::delete('lesson-templates/{id}', [AdminLessonTemplateController::class, 'destroy']);
         Route::post('lesson-templates/{id}/publish', [AdminLessonTemplateController::class, 'publish']);
         Route::post('lesson-templates/{id}/archive', [AdminLessonTemplateController::class, 'archive']);
+        Route::get('quiz-templates', [AdminQuizTemplateController::class, 'index']);
+        Route::post('quiz-templates', [AdminQuizTemplateController::class, 'store']);
+        Route::get('quiz-templates/{id}', [AdminQuizTemplateController::class, 'show']);
+        Route::put('quiz-templates/{id}', [AdminQuizTemplateController::class, 'update']);
+        Route::delete('quiz-templates/{id}', [AdminQuizTemplateController::class, 'destroy']);
+        Route::post('quiz-templates/{id}/publish', [AdminQuizTemplateController::class, 'publish']);
+        Route::post('quiz-templates/{id}/archive', [AdminQuizTemplateController::class, 'archive']);
+        Route::post('quiz-templates/{id}/apply', QuizTemplateApplyController::class);
+        Route::get('quiz-templates/{quiz_template_id}/questions', [AdminQuizTemplateQuestionController::class, 'index']);
+        Route::post('quiz-templates/{quiz_template_id}/questions', [AdminQuizTemplateQuestionController::class, 'store']);
+        Route::patch('quiz-templates/{id}/questions/reorder', [AdminQuizTemplateQuestionController::class, 'reorder']);
+        Route::get('quiz-template-questions/{id}', [AdminQuizTemplateQuestionController::class, 'show']);
+        Route::put('quiz-template-questions/{id}', [AdminQuizTemplateQuestionController::class, 'update']);
+        Route::delete('quiz-template-questions/{id}', [AdminQuizTemplateQuestionController::class, 'destroy']);
     });
 
     Route::middleware('auth:sanctum')->group(function () {
@@ -127,6 +149,25 @@ Route::prefix('v1')->group(function () {
         Route::post('class-lessons/{id}/publish', [ClassLessonController::class, 'publish']);
         Route::post('class-lessons/{id}/archive', [ClassLessonController::class, 'archive']);
         Route::get('class-lessons/{id}/content-url', [ClassLessonController::class, 'contentUrl']);
+        Route::get('class-quizzes', [ClassQuizController::class, 'index']);
+        Route::post('class-quizzes', [ClassQuizController::class, 'store']);
+        Route::get('class-quizzes/{id}', [ClassQuizController::class, 'show']);
+        Route::put('class-quizzes/{id}', [ClassQuizController::class, 'update']);
+        Route::delete('class-quizzes/{id}', [ClassQuizController::class, 'destroy']);
+        Route::post('class-quizzes/{id}/publish', [ClassQuizController::class, 'publish']);
+        Route::post('class-quizzes/{id}/archive', [ClassQuizController::class, 'archive']);
+        Route::get('class-quizzes/{class_quiz_id}/questions', [QuizQuestionController::class, 'index']);
+        Route::post('class-quizzes/{class_quiz_id}/questions', [QuizQuestionController::class, 'store']);
+        Route::patch('class-quizzes/{id}/questions/reorder', [QuizQuestionController::class, 'reorder']);
+        Route::get('quiz-questions/{id}', [QuizQuestionController::class, 'show']);
+        Route::put('quiz-questions/{id}', [QuizQuestionController::class, 'update']);
+        Route::delete('quiz-questions/{id}', [QuizQuestionController::class, 'destroy']);
+        Route::post('class-quizzes/{id}/attempts', [QuizAttemptController::class, 'start'])->middleware('role:student');
+        Route::get('class-quizzes/{id}/attempts', [QuizAttemptController::class, 'indexForQuiz']);
+        Route::get('class-quizzes/{id}/report', [QuizReportController::class, 'show']);
+        Route::get('quiz-attempts/{id}', [QuizAttemptController::class, 'show']);
+        Route::put('quiz-attempts/{id}/answers/{question_id}', [QuizAttemptController::class, 'saveAnswer'])->middleware('role:student');
+        Route::post('quiz-attempts/{id}/submit', [QuizAttemptController::class, 'submit'])->middleware('role:student');
     });
 
     Route::middleware(['auth:sanctum', 'role:student'])->prefix('student')->group(function () {
@@ -135,5 +176,7 @@ Route::prefix('v1')->group(function () {
         Route::post('modules/{id}/start', [StudentModuleController::class, 'start']);
         Route::patch('lessons/{id}/progress', [StudentProgressController::class, 'updateLesson']);
         Route::get('progress/modules', [StudentProgressController::class, 'modules']);
+        Route::get('quizzes', [StudentQuizController::class, 'index']);
+        Route::get('quizzes/{id}', [StudentQuizController::class, 'show']);
     });
 });

@@ -65,4 +65,9 @@ class SchoolClass extends Model
     {
         return $this->hasMany(ClassModule::class, 'class_id')->orderBy('sort_order');
     }
+
+    public function classQuizzes(): HasMany
+    {
+        return $this->hasMany(ClassQuiz::class, 'class_id');
+    }
 }

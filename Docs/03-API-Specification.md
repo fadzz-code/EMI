@@ -606,8 +606,8 @@ Nilai `purpose`:
 ```text
 avatar
 dictionary_audio
-module_media
-quiz_image
+lesson_image
+question_image
 culture_media
 speaking_recording
 knowledge_document
@@ -1070,20 +1070,35 @@ Aturan:
 # 18. Quiz Template API
 
 ```http
-GET    /quiz-templates
-POST   /quiz-templates
-GET    /quiz-templates/{id}
-PUT    /quiz-templates/{id}
-DELETE /quiz-templates/{id}
+GET    /admin/quiz-templates
+POST   /admin/quiz-templates
+GET    /admin/quiz-templates/{id}
+PUT    /admin/quiz-templates/{id}
+DELETE /admin/quiz-templates/{id}
+POST   /admin/quiz-templates/{id}/publish
+POST   /admin/quiz-templates/{id}/archive
+POST   /admin/quiz-templates/{id}/apply
 ```
 
 Soal template:
 
 ```http
-POST   /quiz-templates/{id}/questions
-PUT    /quiz-template-questions/{id}
-DELETE /quiz-template-questions/{id}
+GET    /admin/quiz-templates/{quiz_template_id}/questions
+POST   /admin/quiz-templates/{quiz_template_id}/questions
+PATCH  /admin/quiz-templates/{id}/questions/reorder
+GET    /admin/quiz-template-questions/{id}
+PUT    /admin/quiz-template-questions/{id}
+DELETE /admin/quiz-template-questions/{id}
 ```
+
+Aturan:
+
+- hanya Admin dapat mengelola template kuis;
+- template harus memiliki minimal satu soal valid sebelum publish;
+- template `published` terkunci dari perubahan konten soal;
+- `image_media_id` harus mengarah ke media aktif `purpose=question_image`;
+- apply membuat snapshot ke `class_quizzes`, `quiz_questions`, dan `quiz_options`;
+- apply kedua pada kelas yang sama tidak membuat duplikasi.
 
 Request pilihan ganda:
 
@@ -1126,7 +1141,18 @@ Request isian singkat:
 Terapkan ke kelas:
 
 ```http
-POST /quiz-templates/{id}/apply
+POST /admin/quiz-templates/{id}/apply
+```
+
+Request:
+
+```json
+{
+  "class_ids": [
+    "uuid-class-1",
+    "uuid-class-2"
+  ]
+}
 ```
 
 ---
@@ -1140,6 +1166,7 @@ GET    /class-quizzes/{id}
 PUT    /class-quizzes/{id}
 DELETE /class-quizzes/{id}
 POST   /class-quizzes/{id}/publish
+POST   /class-quizzes/{id}/archive
 ```
 
 Request:
@@ -1162,10 +1189,22 @@ Request:
 Soal kelas:
 
 ```http
-POST   /class-quizzes/{id}/questions
+GET    /class-quizzes/{class_quiz_id}/questions
+POST   /class-quizzes/{class_quiz_id}/questions
+PATCH  /class-quizzes/{id}/questions/reorder
+GET    /quiz-questions/{id}
 PUT    /quiz-questions/{id}
 DELETE /quiz-questions/{id}
 ```
+
+Aturan:
+
+- Admin dapat mengelola semua kuis kelas;
+- Guru hanya dapat mengelola kuis pada kelas assignment aktifnya;
+- kelas dan sekolah harus aktif saat membuat atau publish kuis;
+- jadwal harus memenuhi `open_at < close_at` bila keduanya diisi;
+- kuis harus memiliki minimal satu soal valid sebelum publish;
+- kuis published atau sudah memiliki attempt terkunci dari perubahan konten.
 
 Untuk siswa, response kuis tidak boleh memuat:
 
@@ -1177,6 +1216,24 @@ Untuk siswa, response kuis tidak boleh memuat:
 ---
 
 # 20. Quiz Attempt API
+
+Endpoint siswa:
+
+```http
+GET  /student/quizzes
+GET  /student/quizzes/{id}
+POST /class-quizzes/{id}/attempts
+GET  /quiz-attempts/{id}
+PUT  /quiz-attempts/{id}/answers/{question_id}
+POST /quiz-attempts/{id}/submit
+```
+
+Endpoint Admin/Guru:
+
+```http
+GET /class-quizzes/{id}/attempts
+GET /class-quizzes/{id}/report
+```
 
 ## 20.1 Mulai Percobaan
 
@@ -1191,6 +1248,8 @@ Validasi:
 - siswa berada di kelas kuis;
 - attempt belum melewati batas;
 - tidak ada attempt aktif lain.
+
+Jika attempt aktif sudah ada, endpoint mengembalikan attempt yang sama.
 
 ## 20.2 Simpan Draft Jawaban
 
@@ -1220,7 +1279,7 @@ Isian:
 POST /quiz-attempts/{id}/submit
 ```
 
-Gunakan `X-Idempotency-Key`.
+Gunakan header `Idempotency-Key` berisi string acak 16 sampai 128 karakter.
 
 Proses:
 
@@ -1229,8 +1288,10 @@ Proses:
 - nilai pilihan ganda;
 - hitung similarity isian bila aktif;
 - simpan skor;
-- ubah status;
+- ubah status menjadi `submitted` atau `expired`;
 - simpan waktu submit.
+
+Skor disimpan sebagai `score_points`, `max_points`, `score_percent`, `correct_count`, `incorrect_count`, dan `unanswered_count`. Idempotency key disimpan sebagai hash.
 
 ## 20.4 Hasil dan Daftar Attempt
 
@@ -1238,6 +1299,8 @@ Proses:
 GET /quiz-attempts/{id}
 GET /class-quizzes/{id}/attempts
 ```
+
+Jika `class_quizzes.show_result = false`, siswa tidak menerima skor dan detail benar/salah. Admin dan Guru kelas tetap dapat melihat hasil untuk monitoring.
 
 ---
 

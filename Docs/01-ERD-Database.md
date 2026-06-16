@@ -864,9 +864,12 @@ short_answer
 Untuk soal bergambar:
 
 ```text
+quiz_template_questions.image_media_id
 quiz_questions.image_media_id
 → media_files.id
 ```
+
+Media gambar soal harus memakai `media_files.purpose = question_image`.
 
 Untuk isian singkat:
 
@@ -877,6 +880,18 @@ fuzzy_threshold
 ```
 
 Contohnya, jawaban `mokongga` dapat dibandingkan dengan `mekongga` menggunakan skor kemiripan.
+
+Implementasi Fase 7 menambahkan aturan berikut:
+
+* `quiz_templates` dikelola Admin dengan status `draft|published|archived`, SoftDeletes, `show_result`, durasi, batas attempt, dan timestamp publish/archive.
+* `quiz_template_questions` dan `quiz_questions` mendukung `multiple_choice` dan `short_answer`, poin positif, urutan unik per kuis aktif, gambar soal optional, explanation, dan validasi opsi/kunci jawaban.
+* Soal pilihan ganda wajib memiliki minimal dua opsi dan tepat satu opsi benar.
+* `class_quizzes` adalah snapshot template atau kuis buatan Guru/Admin, memiliki jadwal `open_at` dan `close_at`, serta partial unique index `class_id + source_quiz_template_id` untuk mencegah apply template ganda pada record aktif.
+* `quiz_attempts` menyimpan `started_at`, `expires_at`, `submitted_at`, status `in_progress|submitted|expired`, skor poin, persen, counter benar/salah/kosong, dan hash idempotency submit.
+* Hanya satu attempt `in_progress` yang boleh aktif per siswa dan kuis.
+* `quiz_answers` unik per `quiz_attempt_id + quiz_question_id`, menyimpan jawaban pilihan ganda atau isian, normalized answer, similarity score, dan awarded points.
+* Template published terkunci dari perubahan konten. Kuis kelas yang published atau sudah memiliki attempt tidak boleh diubah kontennya.
+* Response siswa tidak mengirim `correct_answer_text`, `is_correct`, explanation, fuzzy threshold, atau skor bila `show_result=false`.
 
 ---
 
@@ -1097,13 +1112,21 @@ UNIQUE (student_id, class_module_id)
 ## Jawaban kuis tidak boleh ganda per soal dan percobaan
 
 ```sql
-UNIQUE (quiz_attempt_id, question_id)
+UNIQUE (quiz_attempt_id, quiz_question_id)
 ```
 
 Nomor percobaan:
 
 ```sql
 UNIQUE (class_quiz_id, student_id, attempt_number)
+```
+
+Attempt aktif:
+
+```sql
+CREATE UNIQUE INDEX unique_active_quiz_attempt
+ON quiz_attempts (class_quiz_id, student_id)
+WHERE status = 'in_progress';
 ```
 
 ---
@@ -1153,7 +1176,7 @@ completed
 ```text
 in_progress
 submitted
-graded
+expired
 ```
 
 ## Status import

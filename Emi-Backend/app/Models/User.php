@@ -143,6 +143,16 @@ class User extends Authenticatable
         return $this->hasMany(ModuleProgress::class, 'student_id');
     }
 
+    public function createdQuizTemplates(): HasMany
+    {
+        return $this->hasMany(QuizTemplate::class, 'created_by');
+    }
+
+    public function quizAttempts(): HasMany
+    {
+        return $this->hasMany(QuizAttempt::class, 'student_id');
+    }
+
     public function avatarMedia(): BelongsTo
     {
         return $this->belongsTo(MediaFile::class, 'avatar_media_id');
