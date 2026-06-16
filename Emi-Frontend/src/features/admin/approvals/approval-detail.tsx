@@ -6,14 +6,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   Alert,
-  Badge,
   Button,
   Card,
   CardContent,
-  CardHeader,
   ErrorState,
   LoadingState,
-  PageHeader,
 } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
@@ -21,22 +18,17 @@ import { getFirstApiError } from "@/lib/api-client";
 import { ApprovalActionDialog } from "./approval-action-dialog";
 import { approvalService } from "./approval-service";
 import {
-  formatDateTime,
-  roleLabel,
-  statusLabel,
-  statusTone,
-} from "./approval-utils";
+  ApprovalAvatar,
+  ApprovalHero,
+  ApprovalPageShell,
+  ApprovalRoleBadge,
+  ApprovalStatusBadge,
+  DetailCell,
+  getClassName,
+} from "./approval-visuals";
+import { formatDateTime } from "./approval-utils";
 
 type DetailAction = "approve" | "reject" | null;
-
-function DetailRow({ label, value }: { label: string; value?: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border-2 border-ink bg-white p-4">
-      <p className="text-xs font-black uppercase text-slate-500">{label}</p>
-      <div className="mt-2 text-sm font-bold text-ink">{value ?? "-"}</div>
-    </div>
-  );
-}
 
 export function ApprovalDetail({ requestId }: { requestId: string }) {
   const { token } = useAuth();
@@ -91,22 +83,35 @@ export function ApprovalDetail({ requestId }: { requestId: string }) {
   const isSubmitting = approveMutation.isPending || rejectMutation.isPending;
 
   return (
-    <div className="grid gap-6">
-      <PageHeader
-        badge="Admin"
+    <ApprovalPageShell>
+      <Link
+        className="inline-flex w-fit items-center gap-2 rounded-[8px] border-2 border-transparent px-1 py-2 text-sm font-black uppercase text-[#564338] hover:text-[#9a4600]"
+        href="/admin/approvals"
+      >
+        {"<-"} Kembali ke Daftar Persetujuan
+      </Link>
+
+      <ApprovalHero
         description="Periksa detail akun, sekolah, dan kelas sebelum menyetujui atau menolak pendaftaran."
         title="Detail Review Akun"
       />
 
-      <Link
-        className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100"
-        href="/admin/approvals"
-      >
-        Kembali ke Persetujuan
-      </Link>
-
-      {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
-      {actionError ? <Alert tone="error">{getFirstApiError(actionError)}</Alert> : null}
+      {successMessage ? (
+        <Alert
+          className="border-2 border-[#241914] font-bold shadow-[3px_3px_0_#241914]"
+          tone="success"
+        >
+          {successMessage}
+        </Alert>
+      ) : null}
+      {actionError ? (
+        <Alert
+          className="border-2 border-[#241914] font-bold shadow-[3px_3px_0_#241914]"
+          tone="error"
+        >
+          {getFirstApiError(actionError)}
+        </Alert>
+      ) : null}
 
       {detailQuery.isLoading ? <LoadingState title="Memuat detail" /> : null}
 
@@ -119,70 +124,114 @@ export function ApprovalDetail({ requestId }: { requestId: string }) {
       ) : null}
 
       {request ? (
-        <div className="grid gap-6">
-          <Card>
-            <CardHeader>
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h2 className="text-xl font-black text-ink">
-                    {request.user?.full_name ?? "Nama tidak tersedia"}
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-600">
-                    {request.user?.email ?? "-"}
-                  </p>
+        <div className="grid gap-6 xl:grid-cols-[0.82fr_1.8fr]">
+          <Card className="overflow-hidden rounded-[12px] border-2 border-[#241914] bg-[#feeae0] shadow-[6px_6px_0_#241914]">
+            <div className="h-24 border-b-2 border-[#241914] bg-[#fdd758]" />
+            <CardContent className="grid justify-items-center gap-5 px-6 pb-8 pt-0 text-center">
+              <div className="-mt-14">
+                <div className="grid size-32 place-items-center rounded-full border-4 border-[#241914] bg-[#fff8f6] p-2 shadow-[4px_4px_0_#241914]">
+                  <ApprovalAvatar
+                    name={request.user?.full_name}
+                    role={request.requested_role}
+                  />
                 </div>
-                <Badge tone={statusTone(request.status)}>
-                  {statusLabel(request.status)}
-                </Badge>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                <DetailRow label="Role Diminta" value={roleLabel(request.requested_role)} />
-                <DetailRow label="Status User" value={request.user?.status} />
-                <DetailRow label="Sekolah" value={request.school?.name} />
-                <DetailRow
-                  label="Kelas"
-                  value={
-                    request.school_class
-                      ? `${request.school_class.name}${
-                          request.school_class.academic_year
-                            ? ` - ${request.school_class.academic_year}`
-                            : ""
-                        }`
-                      : "-"
-                  }
-                />
-                <DetailRow label="Tanggal Daftar" value={formatDateTime(request.created_at)} />
-                <DetailRow label="Direview Pada" value={formatDateTime(request.reviewed_at)} />
-                <DetailRow label="Reviewer" value={request.reviewed_by?.full_name} />
-                <DetailRow label="Catatan Review" value={request.review_note} />
+              <div>
+                <h2 className="text-3xl font-black leading-tight text-[#241914]">
+                  {request.user?.full_name ?? "Nama tidak tersedia"}
+                </h2>
+                <div className="mt-3 flex justify-center">
+                  <ApprovalRoleBadge role={request.requested_role} />
+                </div>
+                <p className="mt-4 break-all text-sm font-semibold leading-6 text-[#564338]">
+                  {request.user?.email ?? "-"}
+                </p>
+              </div>
+              <div className="mt-8 w-full rounded-[8px] border-2 border-dashed border-[#241914] bg-[#fff8f6] p-5">
+                <p className="text-xs font-black uppercase text-[#564338]">
+                  Status Pendaftaran
+                </p>
+                <div className="mt-3 flex justify-center">
+                  <ApprovalStatusBadge status={request.status} />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <h2 className="text-lg font-black text-ink">Keputusan Admin</h2>
-            </CardHeader>
-            <CardContent>
-              {isPending ? (
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <Button onClick={() => setAction("approve")} variant="secondary">
-                    Approve
-                  </Button>
-                  <Button onClick={() => setAction("reject")} variant="danger">
-                    Reject
-                  </Button>
+          <div className="grid content-start gap-5">
+            <Card className="overflow-hidden rounded-[12px] border-2 border-[#241914] bg-[#fff8f6] shadow-[6px_6px_0_#241914]">
+              <header className="flex items-center justify-between border-b-2 border-[#241914] bg-[#fff1eb] px-5 py-4">
+                <h2 className="text-2xl font-black text-[#241914]">
+                  Data Institusi & Kelas
+                </h2>
+                <span className="text-xl font-black text-[#9a4600]">ID</span>
+              </header>
+              <CardContent className="grid p-0 sm:grid-cols-2">
+                <DetailCell label="Asal Sekolah" value={request.school?.name} />
+                <DetailCell label="Tingkat Kelas" value={getClassName(request)} />
+                <DetailCell
+                  label="Tanggal Pendaftaran"
+                  value={formatDateTime(request.created_at)}
+                />
+                <DetailCell label="Status User" value={request.user?.status} />
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-[12px] border-2 border-[#241914] bg-[#f3ded5] shadow-[6px_6px_0_#241914]">
+              <CardContent className="grid gap-3 p-6">
+                <h2 className="text-sm font-black uppercase text-[#241914]">
+                  Catatan Pendaftaran / Review
+                </h2>
+                <div className="min-h-28 rounded-[8px] border-2 border-dashed border-[#241914] bg-[#fff8f6] p-4 text-sm font-semibold leading-7 text-[#241914]">
+                  {request.review_note ??
+                    "Belum ada catatan review. Catatan approve bersifat opsional, catatan reject wajib diisi."}
                 </div>
-              ) : (
-                <Alert tone="info">
-                  Permintaan ini sudah diproses. Action approval tidak lagi
-                  tersedia untuk request non-pending.
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
+                <div className="grid gap-3 text-sm sm:grid-cols-2">
+                  <div>
+                    <p className="font-black uppercase text-[#564338]">Direview Pada</p>
+                    <p className="mt-1 font-bold text-[#241914]">
+                      {formatDateTime(request.reviewed_at)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-black uppercase text-[#564338]">Reviewer</p>
+                    <p className="mt-1 font-bold text-[#241914]">
+                      {request.reviewed_by?.full_name ?? "-"}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-[12px] border-2 border-[#241914] bg-[#f9e4db] shadow-[6px_6px_0_#241914]">
+              <CardContent className="grid gap-5 p-6 text-center">
+                <h2 className="text-2xl font-black text-[#241914]">Keputusan Review</h2>
+                {isPending ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Button
+                      className="min-h-14 rounded-[8px] border-2 border-[#241914] bg-[#ffdad6] text-sm font-black uppercase text-[#93000a] shadow-[4px_4px_0_#241914] hover:bg-[#ffe6e2]"
+                      onClick={() => setAction("reject")}
+                      variant="danger"
+                    >
+                      Tolak Akun
+                    </Button>
+                    <Button
+                      className="min-h-14 rounded-[8px] border-2 border-[#241914] bg-[#5bbe5d] text-sm font-black uppercase text-[#004910] shadow-[4px_4px_0_#241914] hover:bg-[#75d877]"
+                      onClick={() => setAction("approve")}
+                      variant="secondary"
+                    >
+                      Setujui Akun
+                    </Button>
+                  </div>
+                ) : (
+                  <Alert className="border-2 border-[#241914] font-bold shadow-[3px_3px_0_#241914]" tone="info">
+                    Permintaan ini sudah diproses. Action approval tidak lagi
+                    tersedia untuk request non-pending.
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       ) : null}
 
@@ -193,6 +242,6 @@ export function ApprovalDetail({ requestId }: { requestId: string }) {
         onConfirm={handleConfirm}
         open={Boolean(action)}
       />
-    </div>
+    </ApprovalPageShell>
   );
 }

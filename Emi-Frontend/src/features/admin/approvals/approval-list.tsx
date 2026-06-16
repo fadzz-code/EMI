@@ -6,7 +6,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   Alert,
-  Badge,
   Button,
   Card,
   CardContent,
@@ -15,7 +14,6 @@ import {
   FilterPanel,
   Input,
   LoadingState,
-  PageHeader,
   Pagination,
   Select,
   Table,
@@ -28,11 +26,14 @@ import { getFirstApiError } from "@/lib/api-client";
 import { ApprovalActionDialog } from "./approval-action-dialog";
 import { approvalService } from "./approval-service";
 import {
-  formatDateTime,
-  roleLabel,
-  statusLabel,
-  statusTone,
-} from "./approval-utils";
+  ApprovalAvatar,
+  ApprovalHero,
+  ApprovalInfoBox,
+  ApprovalPageShell,
+  ApprovalRoleBadge,
+  ApprovalStatusBadge,
+} from "./approval-visuals";
+import { formatDateTime } from "./approval-utils";
 import type {
   RegistrationRequest,
   RegistrationRequestFilters,
@@ -111,6 +112,11 @@ export function ApprovalList() {
     setSearch(searchInput.trim());
   }
 
+  function updateRole(value: RegistrationRequestedRole | "") {
+    setRequestedRole(value);
+    setPage(1);
+  }
+
   function handleAction(reviewNote: string) {
     if (!pendingAction) {
       return;
@@ -134,19 +140,50 @@ export function ApprovalList() {
   const meta = approvalsQuery.data?.meta;
   const isSubmitting = approveMutation.isPending || rejectMutation.isPending;
   const actionError = approveMutation.error ?? rejectMutation.error;
+  const pendingCount = meta?.total ?? rows.length;
 
   return (
-    <div className="grid gap-6">
-      <PageHeader
-        badge="Admin"
-        description="Review akun Guru dan Siswa yang baru mendaftar sebelum mereka dapat login."
+    <ApprovalPageShell>
+      <ApprovalHero
+        action={
+          <div className="rounded-[8px] border-2 border-[#241914] bg-[#9a4600] px-5 py-3 text-sm font-black text-white shadow-[4px_4px_0_#241914]">
+            {pendingCount} request menunggu
+          </div>
+        }
+        description="Periksa data pendaftaran dan setujui akun siswa maupun guru."
         title="Persetujuan Akun"
       />
 
-      <FilterPanel>
-        <label className="grid gap-2 text-sm font-bold text-ink">
+      <ApprovalInfoBox>
+        Siswa dan guru baru dapat masuk ke sistem setelah akun disetujui admin.
+      </ApprovalInfoBox>
+
+      <FilterPanel className="rounded-[12px] border-2 border-[#241914] bg-[#fff8f6] p-5 shadow-[4px_4px_0_#241914] md:grid-cols-3">
+        <div className="flex flex-wrap gap-2 md:col-span-3">
+          {[
+            { label: "Semua", value: "" },
+            { label: "Siswa", value: "student" },
+            { label: "Guru", value: "teacher" },
+          ].map((item) => (
+            <button
+              className={[
+                "rounded-full border-2 border-[#241914] px-4 py-2 text-xs font-black shadow-[2px_2px_0_#241914] transition hover:-translate-y-0.5",
+                requestedRole === item.value
+                  ? "bg-[#9a4600] text-white"
+                  : "bg-[#fff8f6] text-[#241914]",
+              ].join(" ")}
+              key={item.label}
+              onClick={() => updateRole(item.value as RegistrationRequestedRole | "")}
+              type="button"
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <label className="grid gap-2 text-sm font-bold text-[#241914]">
           <span>Cari nama atau email</span>
           <Input
+            className="min-h-12 rounded-[8px] border-2 border-[#241914] bg-[#fff8f6] shadow-[2px_2px_0_#241914] focus:ring-[#fdd758]"
             onChange={(event) => setSearchInput(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
@@ -157,13 +194,11 @@ export function ApprovalList() {
             value={searchInput}
           />
         </label>
-        <label className="grid gap-2 text-sm font-bold text-ink">
+        <label className="grid gap-2 text-sm font-bold text-[#241914]">
           <span>Role</span>
           <Select
-            onChange={(event) => {
-              setRequestedRole(event.target.value as RegistrationRequestedRole | "");
-              setPage(1);
-            }}
+            className="min-h-12 rounded-[8px] border-2 border-[#241914] bg-[#fff8f6] shadow-[2px_2px_0_#241914] focus:ring-[#fdd758]"
+            onChange={(event) => updateRole(event.target.value as RegistrationRequestedRole | "")}
             value={requestedRole}
           >
             <option value="">Semua role</option>
@@ -172,14 +207,32 @@ export function ApprovalList() {
           </Select>
         </label>
         <div className="flex items-end">
-          <Button className="w-full" onClick={applySearch} variant="secondary">
+          <Button
+            className="w-full border-2 border-[#241914] bg-[#fdd758] text-[#241914] shadow-[3px_3px_0_#241914] hover:bg-[#ffe078]"
+            onClick={applySearch}
+            variant="secondary"
+          >
             Terapkan Filter
           </Button>
         </div>
       </FilterPanel>
 
-      {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
-      {actionError ? <Alert tone="error">{getFirstApiError(actionError)}</Alert> : null}
+      {successMessage ? (
+        <Alert
+          className="border-2 border-[#241914] font-bold shadow-[3px_3px_0_#241914]"
+          tone="success"
+        >
+          {successMessage}
+        </Alert>
+      ) : null}
+      {actionError ? (
+        <Alert
+          className="border-2 border-[#241914] font-bold shadow-[3px_3px_0_#241914]"
+          tone="error"
+        >
+          {getFirstApiError(actionError)}
+        </Alert>
+      ) : null}
 
       {approvalsQuery.isLoading ? <LoadingState title="Memuat permintaan" /> : null}
 
@@ -198,14 +251,17 @@ export function ApprovalList() {
             title="Belum ada permintaan pending"
           />
         ) : (
-          <Card>
-            <CardContent>
+          <Card className="overflow-hidden rounded-[12px] border-2 border-[#241914] bg-[#fff8f6] shadow-[6px_6px_0_#241914]">
+            <div className="h-4 border-b-2 border-[#241914] bg-[#ff8a3d]" />
+            <CardContent className="p-0">
               <Table>
-                <TableHeader>
+                <TableHeader className="bg-[#feeae0]">
                   <tr>
-                    <th className="px-4 py-3">Nama</th>
+                    <th className="px-4 py-3">Nama Lengkap</th>
+                    <th className="px-4 py-3">Peran</th>
                     <th className="px-4 py-3">Email</th>
-                    <th className="px-4 py-3">Role</th>
+                    <th className="px-4 py-3">Asal Sekolah</th>
+                    <th className="px-4 py-3">Kelas</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3">Tanggal Daftar</th>
                     <th className="px-4 py-3">Aksi</th>
@@ -214,34 +270,48 @@ export function ApprovalList() {
                 <tbody>
                   {rows.map((request) => (
                     <tr key={request.id}>
-                      <TableCell className="font-black text-ink">
-                        {request.user?.full_name ?? "-"}
+                      <TableCell className="border-[#241914] font-black text-[#241914]">
+                        <div className="flex items-center gap-3">
+                          <ApprovalAvatar
+                            name={request.user?.full_name}
+                            role={request.requested_role}
+                          />
+                          <span>{request.user?.full_name ?? "-"}</span>
+                        </div>
                       </TableCell>
-                      <TableCell>{request.user?.email ?? "-"}</TableCell>
-                      <TableCell>{roleLabel(request.requested_role)}</TableCell>
                       <TableCell>
-                        <Badge tone={statusTone(request.status)}>
-                          {statusLabel(request.status)}
-                        </Badge>
+                        <ApprovalRoleBadge role={request.requested_role} />
+                      </TableCell>
+                      <TableCell className="text-[#564338]">
+                        {request.user?.email ?? "-"}
+                      </TableCell>
+                      <TableCell className="font-semibold text-[#241914]">
+                        {request.school?.name ?? "-"}
+                      </TableCell>
+                      <TableCell className="text-[#564338]">
+                        {request.school_class?.name ?? "-"}
+                      </TableCell>
+                      <TableCell>
+                        <ApprovalStatusBadge status={request.status} />
                       </TableCell>
                       <TableCell>{formatDateTime(request.created_at)}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-2">
                           <Link
-                            className="inline-flex min-h-10 items-center rounded-lg border-2 border-ink bg-white px-3 py-2 text-xs font-black text-ink hover:bg-yellow-100"
+                            className="inline-flex min-h-10 items-center rounded-[6px] border-2 border-[#241914] bg-[#fff8f6] px-3 py-2 text-xs font-black text-[#564338] shadow-[2px_2px_0_#241914] hover:bg-white"
                             href={`/admin/approvals/${request.id}`}
                           >
                             Detail
                           </Link>
                           <Button
-                            className="min-h-10 px-3 py-2 text-xs"
+                            className="min-h-10 rounded-[6px] border-2 border-[#241914] bg-[#94f990] px-3 py-2 text-xs text-[#004910] shadow-[2px_2px_0_#241914] hover:bg-[#b5ffb2]"
                             onClick={() => setPendingAction({ action: "approve", request })}
                             variant="secondary"
                           >
                             Approve
                           </Button>
                           <Button
-                            className="min-h-10 px-3 py-2 text-xs"
+                            className="min-h-10 rounded-[6px] border-2 border-[#241914] bg-[#ffdad6] px-3 py-2 text-xs text-[#93000a] shadow-[2px_2px_0_#241914] hover:bg-[#ffe6e2]"
                             onClick={() => setPendingAction({ action: "reject", request })}
                             variant="danger"
                           >
@@ -253,7 +323,7 @@ export function ApprovalList() {
                   ))}
                 </tbody>
               </Table>
-              <div className="mt-5">
+              <div className="border-t-2 border-[#241914] bg-[#fff1eb] p-4">
                 <Pagination
                   onPageChange={setPage}
                   page={meta?.current_page ?? page}
@@ -272,6 +342,6 @@ export function ApprovalList() {
         onConfirm={handleAction}
         open={Boolean(pendingAction)}
       />
-    </div>
+    </ApprovalPageShell>
   );
 }
