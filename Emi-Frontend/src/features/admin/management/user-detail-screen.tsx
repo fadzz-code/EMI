@@ -1,0 +1,381 @@
+"use client";
+
+import { type FormEvent, useState } from "react";
+import Link from "next/link";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  ErrorState,
+  FormField,
+  Input,
+  LoadingState,
+  Modal,
+  Select,
+  Textarea,
+} from "@/components/ui";
+import { useAuth } from "@/features/auth/auth-provider";
+import { getFirstApiError } from "@/lib/api-client";
+import type { UserRole } from "@/lib/roles";
+
+import { classService, userManagementService } from "./management-service";
+import {
+  activeClassLabel,
+  classLabel,
+  formatDateTime,
+  roleLabel,
+  statusTone,
+  userStatusLabel,
+} from "./management-utils";
+import type { ManagedUser, UserPayload, UserStatus } from "./types";
+
+type UserFormState = {
+  full_name: string;
+  email: string;
+  phone: string;
+};
+
+function toForm(user: ManagedUser): UserFormState {
+  return {
+    full_name: user.full_name,
+    email: user.email,
+    phone: user.phone ?? "",
+  };
+}
+
+function userPayload(form: UserFormState): UserPayload {
+  return {
+    full_name: form.full_name.trim(),
+    email: form.email.trim(),
+    phone: form.phone.trim() || null,
+  };
+}
+
+function DetailItem({ label, value }: { label: string; value?: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border-2 border-ink bg-white p-4">
+      <p className="text-xs font-black uppercase text-slate-500">{label}</p>
+      <div className="mt-2 text-sm font-bold text-ink">{value ?? "-"}</div>
+    </div>
+  );
+}
+
+export function UserDetailScreen({ userId }: { userId: string }) {
+  const { token } = useAuth();
+  const queryClient = useQueryClient();
+  const [editOpen, setEditOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [form, setForm] = useState<UserFormState | null>(null);
+  const [targetStatus, setTargetStatus] = useState<Extract<UserStatus, "approved" | "inactive">>("approved");
+  const [statusReason, setStatusReason] = useState("");
+  const [selectedClassId, setSelectedClassId] = useState("");
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const userQuery = useQuery({
+    queryKey: ["admin", "users", userId],
+    queryFn: () => userManagementService.detail(token ?? "", userId),
+    enabled: Boolean(token && userId),
+  });
+
+  const classesQuery = useQuery({
+    queryKey: ["admin", "classes", "active-options"],
+    queryFn: () =>
+      classService.list(token ?? "", {
+        status: "active",
+        per_page: 100,
+      }),
+    enabled: Boolean(token),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (payload: UserPayload) => userManagementService.update(token ?? "", userId, payload),
+    onSuccess: async (user) => {
+      setSuccessMessage(`Data ${user.full_name} berhasil diperbarui.`);
+      setEditOpen(false);
+      await queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: ({
+      status,
+      reason,
+    }: {
+      status: Extract<UserStatus, "approved" | "inactive">;
+      reason?: string;
+    }) => userManagementService.updateStatus(token ?? "", userId, status, reason),
+    onSuccess: async (user) => {
+      setSuccessMessage(`Status ${user.full_name} berhasil diperbarui.`);
+      setStatusOpen(false);
+      setStatusReason("");
+      await queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+  });
+
+  const assignMutation = useMutation<unknown, Error, { role: UserRole; classId: string }>({
+    mutationFn: ({ role, classId }: { role: UserRole; classId: string }) => {
+      if (role === "teacher") {
+        return classService.assignTeacher(token ?? "", classId, userId);
+      }
+
+      return classService.assignStudent(token ?? "", classId, userId);
+    },
+    onSuccess: async () => {
+      setSuccessMessage("Penempatan kelas berhasil diperbarui.");
+      setAssignOpen(false);
+      setSelectedClassId("");
+      await queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "classes"] });
+    },
+  });
+
+  const user = userQuery.data;
+  const classes = classesQuery.data?.items ?? [];
+  const actionError = updateMutation.error ?? statusMutation.error ?? assignMutation.error;
+  const canAssign = user?.role === "teacher" || user?.role === "student";
+
+  function openEdit() {
+    if (!user) {
+      return;
+    }
+
+    setForm(toForm(user));
+    setEditOpen(true);
+  }
+
+  function submitUser(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!form) {
+      return;
+    }
+
+    updateMutation.mutate(userPayload(form));
+  }
+
+  function submitStatus(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    statusMutation.mutate({
+      status: targetStatus,
+      reason: targetStatus === "inactive" ? statusReason.trim() : undefined,
+    });
+  }
+
+  return (
+    <div className="grid gap-6">
+      <Link
+        className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100"
+        href="/admin/users"
+      >
+        Kembali ke Data Guru & Siswa
+      </Link>
+
+      {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
+      {actionError ? <Alert tone="error">{getFirstApiError(actionError)}</Alert> : null}
+
+      {userQuery.isLoading ? <LoadingState title="Memuat detail pengguna" /> : null}
+      {userQuery.isError ? (
+        <ErrorState
+          description={getFirstApiError(userQuery.error)}
+          onRetry={() => void userQuery.refetch()}
+          title="Gagal memuat pengguna"
+        />
+      ) : null}
+
+      {user ? (
+        <>
+          <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <div className="flex flex-wrap gap-2">
+                <Badge tone="yellow">{roleLabel(user.role)}</Badge>
+                <Badge tone={statusTone(user.status)}>{userStatusLabel(user.status)}</Badge>
+              </div>
+              <h1 className="mt-2 text-3xl font-black text-ink">{user.full_name}</h1>
+              <p className="mt-2 text-sm text-slate-600">{user.email}</p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button onClick={openEdit} variant="secondary">
+                Edit Pengguna
+              </Button>
+              <Button onClick={() => setStatusOpen(true)} variant="danger">
+                Update Status
+              </Button>
+              {canAssign ? (
+                <Button onClick={() => setAssignOpen(true)}>
+                  {user.role === "teacher" ? "Assign Guru" : "Assign Siswa"}
+                </Button>
+              ) : null}
+            </div>
+          </header>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <DetailItem label="Nama" value={user.full_name} />
+            <DetailItem label="Email" value={user.email} />
+            <DetailItem label="Telepon" value={user.phone} />
+            <DetailItem label="Role" value={roleLabel(user.role)} />
+            <DetailItem label="Status" value={userStatusLabel(user.status)} />
+            <DetailItem label="Sekolah Aktif" value={user.active_school?.name} />
+            <DetailItem label="Kelas Aktif" value={activeClassLabel(user)} />
+            <DetailItem label="Dibuat" value={formatDateTime(user.created_at)} />
+            <DetailItem label="Approved At" value={formatDateTime(user.approved_at)} />
+            <DetailItem label="Terakhir Update" value={formatDateTime(user.updated_at)} />
+          </div>
+
+          <Card>
+            <CardHeader>
+              <h2 className="text-xl font-black text-ink">Konteks Kelas</h2>
+            </CardHeader>
+            <CardContent>
+              {user.role === "teacher" ? (
+                <div className="grid gap-3">
+                  <p className="text-sm text-slate-600">
+                    Guru memakai assignment aktif. Reassign dilakukan melalui endpoint kelas.
+                  </p>
+                  <DetailItem
+                    label="Assignment Aktif"
+                    value={user.active_assignment ? classLabel(user.active_class) : "-"}
+                  />
+                </div>
+              ) : user.role === "student" ? (
+                <div className="grid gap-3">
+                  <p className="text-sm text-slate-600">
+                    Siswa memakai membership aktif. Pindah kelas dilakukan melalui endpoint kelas.
+                  </p>
+                  <DetailItem
+                    label="Membership Aktif"
+                    value={user.active_membership ? classLabel(user.active_class) : "-"}
+                  />
+                </div>
+              ) : (
+                <Alert tone="info">
+                  Assignment kelas hanya tersedia untuk Guru dan Siswa.
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      ) : null}
+
+      <Modal onClose={() => setEditOpen(false)} open={editOpen} title="Edit Pengguna">
+        {form ? (
+          <form className="grid gap-4" onSubmit={submitUser}>
+            <FormField label="Nama lengkap">
+              <Input
+                onChange={(event) => setForm((current) => current && { ...current, full_name: event.target.value })}
+                required
+                value={form.full_name}
+              />
+            </FormField>
+            <FormField label="Email">
+              <Input
+                onChange={(event) => setForm((current) => current && { ...current, email: event.target.value })}
+                required
+                type="email"
+                value={form.email}
+              />
+            </FormField>
+            <FormField label="Telepon">
+              <Input
+                onChange={(event) => setForm((current) => current && { ...current, phone: event.target.value })}
+                value={form.phone}
+              />
+            </FormField>
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <Button onClick={() => setEditOpen(false)} variant="ghost">
+                Batal
+              </Button>
+              <Button disabled={updateMutation.isPending} type="submit" variant="secondary">
+                Simpan
+              </Button>
+            </div>
+          </form>
+        ) : null}
+      </Modal>
+
+      <Modal onClose={() => setStatusOpen(false)} open={statusOpen} title="Update Status Pengguna">
+        <form className="grid gap-4" onSubmit={submitStatus}>
+          <Alert tone="warning">
+            Endpoint status hanya menerima `approved` atau `inactive`. Alasan wajib
+            saat menonaktifkan akun.
+          </Alert>
+          <FormField label="Status baru">
+            <Select
+              onChange={(event) =>
+                setTargetStatus(event.target.value as Extract<UserStatus, "approved" | "inactive">)
+              }
+              value={targetStatus}
+            >
+              <option value="approved">Disetujui</option>
+              <option value="inactive">Nonaktif</option>
+            </Select>
+          </FormField>
+          {targetStatus === "inactive" ? (
+            <FormField label="Alasan nonaktif">
+              <Textarea
+                onChange={(event) => setStatusReason(event.target.value)}
+                required
+                value={statusReason}
+              />
+            </FormField>
+          ) : null}
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <Button onClick={() => setStatusOpen(false)} variant="ghost">
+              Batal
+            </Button>
+            <Button
+              disabled={statusMutation.isPending || (targetStatus === "inactive" && !statusReason.trim())}
+              type="submit"
+              variant="danger"
+            >
+              Update Status
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        onClose={() => setAssignOpen(false)}
+        open={assignOpen}
+        title={user?.role === "teacher" ? "Assign / Reassign Guru" : "Assign / Pindahkan Siswa"}
+      >
+        {user && canAssign ? (
+          <div className="grid gap-4">
+            <Alert tone="info">
+              Backend menjadi sumber kebenaran untuk aturan satu guru/siswa aktif per kelas.
+            </Alert>
+            <FormField label="Kelas aktif">
+              <Select
+                onChange={(event) => setSelectedClassId(event.target.value)}
+                value={selectedClassId}
+              >
+                <option value="">Pilih kelas</option>
+                {classes.map((schoolClass) => (
+                  <option key={schoolClass.id} value={schoolClass.id}>
+                    {schoolClass.school?.name ?? "-"} - {classLabel(schoolClass)}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <Button onClick={() => setAssignOpen(false)} variant="ghost">
+                Batal
+              </Button>
+              <Button
+                disabled={!selectedClassId || assignMutation.isPending}
+                onClick={() => assignMutation.mutate({ role: user.role, classId: selectedClassId })}
+              >
+                Simpan Assignment
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+    </div>
+  );
+}
