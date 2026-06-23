@@ -24,6 +24,7 @@ export const roleNavItems: Record<UserRole, NavItem[]> = {
     { label: "Guru & Siswa", href: "/admin/users", status: "ready" },
     { label: "Kamus", href: "/admin/dictionary", status: "ready" },
     { label: "Modul", href: "/admin/modules", status: "ready" },
+    { label: "Kuis", href: "/admin/quizzes", status: "ready" },
     { label: "Laporan", href: "/admin/reports/progress", status: "next" },
   ],
   teacher: [
