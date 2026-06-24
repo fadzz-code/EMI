@@ -8,7 +8,7 @@ export function normalizeNullable(value: string) {
 export function statusLabel(status: QuizTemplateStatus) {
   const labels: Record<QuizTemplateStatus, string> = {
     draft: "Draft",
-    published: "Published",
+    published: "Terbit",
     archived: "Diarsipkan",
   };
 

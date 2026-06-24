@@ -223,8 +223,8 @@ export function UserDetailScreen({ userId }: { userId: string }) {
             <DetailItem label="Sekolah Aktif" value={user.active_school?.name} />
             <DetailItem label="Kelas Aktif" value={activeClassLabel(user)} />
             <DetailItem label="Dibuat" value={formatDateTime(user.created_at)} />
-            <DetailItem label="Approved At" value={formatDateTime(user.approved_at)} />
-            <DetailItem label="Terakhir Update" value={formatDateTime(user.updated_at)} />
+            <DetailItem label="Disetujui Pada" value={formatDateTime(user.approved_at)} />
+            <DetailItem label="Terakhir Diubah" value={formatDateTime(user.updated_at)} />
           </div>
 
           <Card>

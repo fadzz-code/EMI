@@ -86,7 +86,7 @@ export const quizTemplateService = {
     );
 
     if (!response.data) {
-      throw new Error("Response publish kuis tidak tersedia.");
+      throw new Error("Respons terbit kuis tidak tersedia.");
     }
 
     return response.data;

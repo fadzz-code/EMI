@@ -129,7 +129,7 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
   const publishModuleMutation = useMutation({
     mutationFn: () => moduleTemplateService.publish(token ?? "", moduleId),
     onSuccess: async (module) => {
-      setSuccessMessage(`Modul ${module.title} berhasil dipublish.`);
+      setSuccessMessage(`Modul ${module.title} berhasil diterbitkan.`);
       await invalidateModule();
     },
   });
@@ -165,7 +165,7 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
   const publishLessonMutation = useMutation({
     mutationFn: (lessonId: string) => lessonTemplateService.publish(token ?? "", lessonId),
     onSuccess: async (lesson) => {
-      setSuccessMessage(`Materi ${lesson.title} berhasil dipublish.`);
+      setSuccessMessage(`Materi ${lesson.title} berhasil diterbitkan.`);
       await invalidateModule();
     },
   });
@@ -232,8 +232,8 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
             {moduleTemplate?.title ?? "Editor Modul Default"}
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Edit metadata dan materi template modul. Publish modul mengikuti validasi backend:
-            minimal satu materi harus published dan valid.
+            Edit metadata dan materi template modul. Penerbitan modul mengikuti validasi
+            backend: minimal satu materi harus terbit dan valid.
           </p>
         </div>
         <Link
@@ -285,7 +285,7 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
                   onClick={() => publishModuleMutation.mutate()}
                   variant="secondary"
                 >
-                  Publish Modul
+                  Terbitkan Modul
                 </Button>
                 <Button
                   disabled={
@@ -324,7 +324,7 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
               {!lessonsQuery.isLoading && !lessonsQuery.isError ? (
                 lessons.length === 0 ? (
                   <EmptyState
-                    description="Belum ada materi. Tambahkan minimal satu materi published sebelum publish modul."
+                    description="Belum ada materi. Tambahkan minimal satu materi terbit sebelum menerbitkan modul."
                     title="Materi kosong"
                   />
                 ) : (
@@ -389,7 +389,7 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
                                     onClick={() => publishLessonMutation.mutate(lesson.id)}
                                     variant="secondary"
                                   >
-                                    Publish
+                                    Terbitkan
                                   </Button>
                                 ) : null}
                                 {lesson.status !== "archived" ? (

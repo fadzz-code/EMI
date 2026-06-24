@@ -12,7 +12,7 @@ export function normalizeNullable(value: string) {
 export function statusLabel(status: ModuleTemplateStatus) {
   const labels: Record<ModuleTemplateStatus, string> = {
     draft: "Draft",
-    published: "Published",
+    published: "Terbit",
     archived: "Diarsipkan",
   };
 

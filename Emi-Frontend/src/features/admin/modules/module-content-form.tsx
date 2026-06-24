@@ -287,7 +287,7 @@ export function ModuleContentForm({
           value={form.status}
         >
           <option value="draft">Draft</option>
-          <option value="published">Published</option>
+          <option value="published">Terbit</option>
           <option value="archived">Diarsipkan</option>
         </Select>
       </FormField>

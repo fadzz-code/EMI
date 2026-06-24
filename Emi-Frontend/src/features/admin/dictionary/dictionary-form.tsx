@@ -133,7 +133,7 @@ export function DictionaryEntryForm({
             value={form.indonesia}
           />
         </FormField>
-        <FormField label="English">
+        <FormField label="Inggris">
           <Input
             onChange={(event) => setForm((current) => ({ ...current, english: event.target.value }))}
             required

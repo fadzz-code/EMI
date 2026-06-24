@@ -72,10 +72,6 @@ function appendQuery(url: URL, query?: ApiRequestOptions["query"]) {
 }
 
 function safeErrorMessage(status: number, fallback?: string) {
-  if (fallback) {
-    return fallback;
-  }
-
   if (status === 401) {
     return "Sesi Anda tidak valid. Silakan login kembali.";
   }
@@ -98,6 +94,10 @@ function safeErrorMessage(status: number, fallback?: string) {
 
   if (status >= 500) {
     return "Layanan sedang bermasalah. Coba lagi beberapa saat lagi.";
+  }
+
+  if (fallback) {
+    return fallback;
   }
 
   return "Permintaan API gagal.";

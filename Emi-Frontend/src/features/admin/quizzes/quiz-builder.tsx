@@ -64,7 +64,7 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
   const publishQuizMutation = useMutation({
     mutationFn: () => quizTemplateService.publish(token ?? "", quizId),
     onSuccess: async (quiz) => {
-      setSuccessMessage(`Kuis ${quiz.title} berhasil dipublish.`);
+      setSuccessMessage(`Kuis ${quiz.title} berhasil diterbitkan.`);
       await invalidateQuiz();
     },
   });
@@ -156,7 +156,7 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
             Bangun soal template kuis default. Backend mendukung pilihan ganda,
-            isian singkat, reorder, delete, dan gambar soal.
+            isian singkat, reorder, hapus, dan gambar soal.
           </p>
         </div>
         <Link
@@ -171,7 +171,8 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
       {actionError ? <Alert tone="error">{getFirstApiError(actionError)}</Alert> : null}
       {isPublished ? (
         <Alert tone="warning">
-          Kuis published dikunci oleh backend. Arsipkan atau buat kuis baru jika perlu
+          Kuis yang sudah terbit dikunci oleh backend. Arsipkan atau buat kuis baru jika
+          perlu.
           mengubah konten soal.
         </Alert>
       ) : null}
@@ -210,7 +211,7 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
                   onClick={() => publishQuizMutation.mutate()}
                   variant="secondary"
                 >
-                  Publish Kuis
+                  Terbitkan Kuis
                 </Button>
                 <Button
                   disabled={archiveQuizMutation.isPending || quiz.status === "archived"}
@@ -253,7 +254,7 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
                 {!questionsQuery.isLoading && !questionsQuery.isError ? (
                   questions.length === 0 ? (
                     <EmptyState
-                      description="Belum ada soal. Tambahkan minimal satu soal valid sebelum publish kuis."
+                      description="Belum ada soal. Tambahkan minimal satu soal valid sebelum menerbitkan kuis."
                       title="Soal kosong"
                     />
                   ) : (

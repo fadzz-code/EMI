@@ -90,7 +90,7 @@ export const moduleTemplateService = {
     );
 
     if (!response.data) {
-      throw new Error("Response publish modul tidak tersedia.");
+      throw new Error("Respons terbit modul tidak tersedia.");
     }
 
     return response.data;

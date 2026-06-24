@@ -71,7 +71,7 @@ export function ModuleList() {
   const publishMutation = useMutation({
     mutationFn: (moduleId: string) => moduleTemplateService.publish(token ?? "", moduleId),
     onSuccess: async (module) => {
-      setSuccessMessage(`Modul ${module.title} berhasil dipublish.`);
+      setSuccessMessage(`Modul ${module.title} berhasil diterbitkan.`);
       await queryClient.invalidateQueries({ queryKey: ["admin", "module-templates"] });
     },
   });
@@ -149,7 +149,7 @@ export function ModuleList() {
           >
             <option value="">Semua status</option>
             <option value="draft">Draft</option>
-            <option value="published">Published</option>
+            <option value="published">Terbit</option>
             <option value="archived">Diarsipkan</option>
           </Select>
         </label>
@@ -219,7 +219,7 @@ export function ModuleList() {
                                 onClick={() => publishMutation.mutate(module.id)}
                                 variant="secondary"
                               >
-                                Publish
+                                Terbitkan
                               </Button>
                             ) : null}
                             {module.status !== "archived" ? (

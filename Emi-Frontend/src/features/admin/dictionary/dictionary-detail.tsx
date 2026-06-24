@@ -117,7 +117,7 @@ export function DictionaryDetail({ entryId }: { entryId: string }) {
                 Edit Entri
               </Button>
               <Button onClick={() => setDeleteOpen(true)} variant="danger">
-                Delete
+                Hapus
               </Button>
             </div>
           </header>
@@ -125,12 +125,12 @@ export function DictionaryDetail({ entryId }: { entryId: string }) {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <DetailItem label="Mekongga" value={entry.mekongga} />
             <DetailItem label="Indonesia" value={entry.indonesia} />
-            <DetailItem label="English" value={entry.english} />
+            <DetailItem label="Inggris" value={entry.english} />
             <DetailItem label="Kategori" value={entry.category?.name} />
             <DetailItem label="Status" value={statusLabel(entry.status)} />
             <DetailItem label="Audio Media ID" value={entry.audio?.id} />
             <DetailItem label="Dibuat" value={formatDateTime(entry.created_at)} />
-            <DetailItem label="Terakhir Update" value={formatDateTime(entry.updated_at)} />
+            <DetailItem label="Terakhir Diubah" value={formatDateTime(entry.updated_at)} />
           </div>
 
           <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
@@ -169,12 +169,12 @@ export function DictionaryDetail({ entryId }: { entryId: string }) {
           </Modal>
 
           <ConfirmDialog
-            confirmLabel="Delete Entri"
+            confirmLabel="Hapus Entri"
             description="Aksi ini memakai endpoint DELETE admin dictionary. Lanjutkan hanya jika entri memang tidak dipakai."
             onCancel={() => setDeleteOpen(false)}
             onConfirm={() => deleteMutation.mutate()}
             open={deleteOpen}
-            title="Delete entri kamus?"
+            title="Hapus entri kamus?"
           />
         </>
       ) : null}

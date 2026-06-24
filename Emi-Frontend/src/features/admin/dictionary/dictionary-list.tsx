@@ -170,7 +170,7 @@ export function DictionaryList() {
                 applySearch();
               }
             }}
-            placeholder="Cari Indonesia, English, atau Mekongga"
+            placeholder="Cari Indonesia, Inggris, atau Mekongga"
             value={searchInput}
           />
         </label>
@@ -250,7 +250,7 @@ export function DictionaryList() {
                     <tr>
                       <th className="px-4 py-3">Mekongga</th>
                       <th className="px-4 py-3">Indonesia</th>
-                      <th className="px-4 py-3">English</th>
+                      <th className="px-4 py-3">Inggris</th>
                       <th className="px-4 py-3">Kategori</th>
                       <th className="px-4 py-3">Audio</th>
                       <th className="px-4 py-3">Status</th>
@@ -282,7 +282,7 @@ export function DictionaryList() {
                               onClick={() => deleteEntryMutation.mutate(entry.id)}
                               variant="danger"
                             >
-                              Delete
+                              Hapus
                             </Button>
                           </div>
                         </TableCell>

@@ -82,7 +82,7 @@ export function QuizList() {
   const publishMutation = useMutation({
     mutationFn: (quizId: string) => quizTemplateService.publish(token ?? "", quizId),
     onSuccess: async (quiz) => {
-      setSuccessMessage(`Kuis ${quiz.title} berhasil dipublish.`);
+      setSuccessMessage(`Kuis ${quiz.title} berhasil diterbitkan.`);
       await queryClient.invalidateQueries({ queryKey: ["admin", "quiz-templates"] });
     },
   });
@@ -161,7 +161,7 @@ export function QuizList() {
           >
             <option value="">Semua status</option>
             <option value="draft">Draft</option>
-            <option value="published">Published</option>
+            <option value="published">Terbit</option>
             <option value="archived">Diarsipkan</option>
           </Select>
         </label>
@@ -240,7 +240,7 @@ export function QuizList() {
                                 onClick={() => publishMutation.mutate(quiz.id)}
                                 variant="secondary"
                               >
-                                Publish
+                                Terbitkan
                               </Button>
                             ) : null}
                             {quiz.status !== "archived" ? (
