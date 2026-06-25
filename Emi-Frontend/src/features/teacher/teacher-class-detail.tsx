@@ -1,0 +1,208 @@
+"use client";
+
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+
+import { Alert, Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, StatsCard } from "@/components/ui";
+import { useAuth } from "@/features/auth/auth-provider";
+import { getFirstApiError } from "@/lib/api-client";
+
+import { teacherService } from "./teacher-service";
+import { formatCount, formatOptional, formatPercent, statusLabel } from "./teacher-utils";
+
+export function TeacherClassDetail({ classId }: { classId: string }) {
+  const { token } = useAuth();
+  const classQuery = useQuery({
+    queryKey: ["teacher", "classes", classId],
+    queryFn: () => teacherService.classDetail(token ?? "", classId),
+    enabled: Boolean(token && classId),
+  });
+  const studentsQuery = useQuery({
+    queryKey: ["teacher", "classes", classId, "students"],
+    queryFn: () => teacherService.classStudents(token ?? "", classId),
+    enabled: Boolean(token && classId),
+  });
+  const modulesQuery = useQuery({
+    queryKey: ["teacher", "classes", classId, "modules"],
+    queryFn: () => teacherService.classModules(token ?? "", classId),
+    enabled: Boolean(token && classId),
+  });
+  const quizzesQuery = useQuery({
+    queryKey: ["teacher", "classes", classId, "quizzes"],
+    queryFn: () => teacherService.classQuizzes(token ?? "", classId),
+    enabled: Boolean(token && classId),
+  });
+  const progressQuery = useQuery({
+    queryKey: ["teacher", "progress", "students"],
+    queryFn: () => teacherService.studentProgress(token ?? ""),
+    enabled: Boolean(token),
+  });
+
+  const teacherClass = classQuery.data;
+  const students = studentsQuery.data?.items ?? [];
+  const modules = modulesQuery.data?.items ?? [];
+  const quizzes = quizzesQuery.data?.items ?? [];
+  const progressRows = progressQuery.data?.items ?? [];
+
+  return (
+    <div className="grid gap-6">
+      <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href="/teacher/classes">
+        Kembali ke Kelas Saya
+      </Link>
+
+      {classQuery.isLoading ? <LoadingState title="Memuat detail kelas" /> : null}
+      {classQuery.isError ? (
+        <ErrorState
+          description={getFirstApiError(classQuery.error)}
+          onRetry={() => void classQuery.refetch()}
+          title="Gagal memuat detail kelas"
+        />
+      ) : null}
+
+      {teacherClass ? (
+        <>
+          <header className="grid gap-4 rounded-3xl border-2 border-ink bg-white p-5 shadow-brutal">
+            <div>
+              <Badge tone={teacherClass.status === "active" ? "blue" : "neutral"}>{statusLabel(teacherClass.status)}</Badge>
+              <h1 className="mt-2 text-3xl font-black text-ink">{teacherClass.name}</h1>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                {formatOptional(teacherClass.school?.name)} | Tahun ajaran {formatOptional(teacherClass.academic_year)}
+              </p>
+            </div>
+          </header>
+
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatsCard helper="Dari detail kelas" label="Sekolah" value={formatOptional(teacherClass.school?.name)} />
+            <StatsCard helper="Assignment aktif" label="Guru" value={formatOptional(teacherClass.active_teacher_assignment?.teacher?.full_name)} />
+            <StatsCard helper="Endpoint /classes/{id}/students" label="Siswa" value={formatCount(teacherClass.active_students_count ?? students.length)} />
+            <StatsCard helper="Endpoint /classes/{id}/modules" label="Modul" value={formatCount(modules.length)} />
+          </section>
+
+          <section className="grid gap-6 xl:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <h2 className="text-xl font-black text-ink">Siswa Kelas</h2>
+              </CardHeader>
+              <CardContent>
+                {studentsQuery.isLoading ? <LoadingState title="Memuat siswa" /> : null}
+                {studentsQuery.isError ? (
+                  <ErrorState description={getFirstApiError(studentsQuery.error)} onRetry={() => void studentsQuery.refetch()} title="Gagal memuat siswa" />
+                ) : null}
+                {!studentsQuery.isLoading && !studentsQuery.isError ? (
+                  students.length === 0 ? (
+                    <EmptyState description="Belum ada siswa aktif di kelas ini." title="Siswa kosong" />
+                  ) : (
+                    <div className="grid gap-3">
+                      {students.map((membership) => (
+                        <div className="rounded-xl border border-slate-200 bg-white p-3" key={membership.membership_id}>
+                          <p className="font-black text-ink">{membership.student.full_name}</p>
+                          <p className="text-sm text-slate-600">{membership.student.email}</p>
+                          <p className="mt-1 text-xs font-bold text-slate-500">{statusLabel(membership.student.status)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                ) : null}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <h2 className="text-xl font-black text-ink">Progress Belajar</h2>
+              </CardHeader>
+              <CardContent>
+                {progressQuery.isLoading ? <LoadingState title="Memuat progress" /> : null}
+                {progressQuery.isError ? (
+                  <ErrorState description={getFirstApiError(progressQuery.error)} onRetry={() => void progressQuery.refetch()} title="Gagal memuat progress" />
+                ) : null}
+                {!progressQuery.isLoading && !progressQuery.isError ? (
+                  progressRows.length === 0 ? (
+                    <EmptyState description="Belum ada laporan progress siswa dari backend." title="Progress belum tersedia" />
+                  ) : (
+                    <div className="grid gap-3">
+                      {progressRows.slice(0, 8).map((row, index) => (
+                        <div className="rounded-xl border border-slate-200 bg-white p-3" key={row.student_id ?? index}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-black text-ink">{formatOptional(row.student_name)}</p>
+                              <p className="text-sm text-slate-600">{formatOptional(row.student_email)}</p>
+                            </div>
+                            <Badge tone="blue">{formatPercent(row.overall_learning_progress_percent)}</Badge>
+                          </div>
+                          <p className="mt-2 text-xs text-slate-500">
+                            Modul: {formatCount(row.completed_modules)} / {formatCount(row.published_modules)} | Kuis selesai: {formatCount(row.quizzes_completed)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                ) : null}
+              </CardContent>
+            </Card>
+          </section>
+
+          <section className="grid gap-6 xl:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <h2 className="text-xl font-black text-ink">Modul Kelas</h2>
+              </CardHeader>
+              <CardContent>
+                {modulesQuery.isLoading ? <LoadingState title="Memuat modul" /> : null}
+                {modulesQuery.isError ? (
+                  <ErrorState description={getFirstApiError(modulesQuery.error)} onRetry={() => void modulesQuery.refetch()} title="Gagal memuat modul" />
+                ) : null}
+                {!modulesQuery.isLoading && !modulesQuery.isError ? (
+                  modules.length === 0 ? (
+                    <EmptyState description="Belum ada modul kelas dari backend." title="Modul belum tersedia" />
+                  ) : (
+                    <div className="grid gap-3">
+                      {modules.map((module) => (
+                        <div className="rounded-xl border border-slate-200 bg-white p-3" key={module.id}>
+                          <Badge tone={module.status === "published" ? "blue" : "neutral"}>{statusLabel(module.status)}</Badge>
+                          <p className="mt-2 font-black text-ink">{module.title}</p>
+                          <p className="text-sm text-slate-600">{formatOptional(module.description)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                ) : null}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <h2 className="text-xl font-black text-ink">Kuis Kelas</h2>
+              </CardHeader>
+              <CardContent>
+                {quizzesQuery.isLoading ? <LoadingState title="Memuat kuis" /> : null}
+                {quizzesQuery.isError ? (
+                  <ErrorState description={getFirstApiError(quizzesQuery.error)} onRetry={() => void quizzesQuery.refetch()} title="Gagal memuat kuis" />
+                ) : null}
+                {!quizzesQuery.isLoading && !quizzesQuery.isError ? (
+                  quizzes.length === 0 ? (
+                    <EmptyState description="Belum ada kuis kelas dari backend." title="Kuis belum tersedia" />
+                  ) : (
+                    <div className="grid gap-3">
+                      {quizzes.map((quiz) => (
+                        <div className="rounded-xl border border-slate-200 bg-white p-3" key={quiz.id}>
+                          <Badge tone={quiz.status === "published" ? "blue" : "neutral"}>{statusLabel(quiz.status)}</Badge>
+                          <p className="mt-2 font-black text-ink">{quiz.title}</p>
+                          <p className="text-sm text-slate-600">{formatOptional(quiz.description)}</p>
+                          <p className="mt-2 text-xs text-slate-500">Soal: {formatCount(quiz.questions_count)} | Attempt: {formatCount(quiz.attempts_count)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                ) : null}
+              </CardContent>
+            </Card>
+          </section>
+
+          <Alert tone="info">
+            Halaman ini read-only untuk demo awal. Aksi membuat modul, kuis, atau laporan detail tidak ditambahkan di cluster ini.
+          </Alert>
+        </>
+      ) : null}
+    </div>
+  );
+}
