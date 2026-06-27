@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 
 import { ApiError } from "@/lib/api-client";
-import { consumeSessionExpiredMessage } from "@/lib/auth-session";
 import { getDashboardPath } from "@/lib/roles";
 import { loginSchema, type LoginFormValues } from "@/lib/validators";
 import { Alert, Button, FormField, Input } from "@/components/ui";
@@ -17,7 +16,7 @@ import { AuthBrandMark } from "./auth-visuals";
 export function LoginForm() {
   const router = useRouter();
   const { login } = useAuth();
-  const [formError, setFormError] = useState<string | null>(() => consumeSessionExpiredMessage());
+  const [formError, setFormError] = useState<string | null>(null);
   const {
     formState: { errors, isSubmitting },
     handleSubmit,

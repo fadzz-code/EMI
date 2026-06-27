@@ -1,4 +1,3 @@
-import { recoverInvalidAuthSession } from "./auth-session";
 import { env } from "./env";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
@@ -165,10 +164,6 @@ export async function apiRequest<T>(
         } satisfies ApiResponse<T>);
 
     if (!response.ok || payload.success === false) {
-      if (response.status === 401 && options.token) {
-        recoverInvalidAuthSession();
-      }
-
       throw new ApiError({
         message: safeErrorMessage(response.status, payload.message),
         status: response.status,

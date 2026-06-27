@@ -9,10 +9,10 @@ import {
   useState,
 } from "react";
 
-import { AUTH_TOKEN_KEY, clearAuthSession, recoverInvalidAuthSession } from "@/lib/auth-session";
-
 import { authService } from "./auth-service";
 import type { AuthUser, LoginPayload, RegisterPayload } from "./auth-types";
+
+const TOKEN_KEY = "emi.auth.token";
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
@@ -44,9 +44,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(nextToken);
 
     if (nextToken) {
-      window.localStorage.setItem(AUTH_TOKEN_KEY, nextToken);
+      window.localStorage.setItem(TOKEN_KEY, nextToken);
     } else {
-      clearAuthSession();
+      window.localStorage.removeItem(TOKEN_KEY);
     }
   }, []);
 
@@ -57,23 +57,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return null;
     }
 
-    try {
-      const currentUser = await authService.getCurrentUser(token);
-      setUser(currentUser);
-      setStatus("authenticated");
-      return currentUser;
-    } catch (error) {
-      recoverInvalidAuthSession();
-      setToken(null);
-      setUser(null);
-      setStatus("unauthenticated");
-      throw error;
-    }
+    const currentUser = await authService.getCurrentUser(token);
+    setUser(currentUser);
+    setStatus("authenticated");
+    return currentUser;
   }, [token]);
 
   useEffect(() => {
     queueMicrotask(() => {
-      const storedToken = window.localStorage.getItem(AUTH_TOKEN_KEY);
+      const storedToken = window.localStorage.getItem(TOKEN_KEY);
       if (storedToken) {
         setToken(storedToken);
       } else {
@@ -98,10 +90,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       })
       .catch(() => {
-        recoverInvalidAuthSession();
-
         if (isMounted) {
-          setToken(null);
+          persistToken(null);
           setUser(null);
           setStatus("unauthenticated");
         }
@@ -110,7 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       isMounted = false;
     };
-  }, [token]);
+  }, [persistToken, token]);
 
   const login = useCallback(
     async (payload: LoginPayload) => {
@@ -125,8 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     const activeToken = token;
-    clearAuthSession();
-    setToken(null);
+    persistToken(null);
     setUser(null);
     setStatus("unauthenticated");
 
@@ -137,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Token lokal tetap dibersihkan meski server sudah menganggap sesi tidak valid.
       }
     }
-  }, [token]);
+  }, [persistToken, token]);
 
   const registerTeacher = useCallback(
     async (payload: Omit<RegisterPayload, "requested_role">) => {
