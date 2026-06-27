@@ -97,3 +97,9 @@ export type QuizQuestionPayload = {
     order_number: number;
   }>;
 };
+
+export type QuizTemplateApplyResult = {
+  applied: Array<{ class_id: string; class_quiz_id?: string }>;
+  skipped: Array<{ class_id: string; reason: string }>;
+  failed: Array<{ class_id: string; reason: string }>;
+};

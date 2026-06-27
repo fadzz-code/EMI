@@ -80,3 +80,9 @@ export type LessonTemplatePayload = {
   sort_order?: number;
   status?: ModuleTemplateStatus;
 };
+
+export type TemplateApplyResult = {
+  applied: Array<{ class_id: string; class_module_id?: string }>;
+  skipped: Array<{ class_id: string; reason: string }>;
+  failed: Array<{ class_id: string; reason: string }>;
+};

@@ -24,6 +24,7 @@ import {
   TableHeader,
 } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
+import { classService } from "@/features/admin/management/management-service";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { ModuleTemplateForm } from "./module-form";
@@ -39,6 +40,8 @@ export function ModuleList() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ModuleTemplateStatus | "">("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [applyTarget, setApplyTarget] = useState<ModuleTemplate | null>(null);
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<ModuleTemplate | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -55,6 +58,12 @@ export function ModuleList() {
   const modulesQuery = useQuery({
     queryKey: ["admin", "module-templates", filters],
     queryFn: () => moduleTemplateService.list(token ?? "", filters),
+    enabled: Boolean(token),
+  });
+
+  const classesQuery = useQuery({
+    queryKey: ["admin", "classes", "apply-targets"],
+    queryFn: () => classService.list(token ?? "", { status: "active", per_page: 100 }),
     enabled: Boolean(token),
   });
 
@@ -84,6 +93,18 @@ export function ModuleList() {
     },
   });
 
+  const applyMutation = useMutation({
+    mutationFn: ({ moduleId, classIds }: { moduleId: string; classIds: string[] }) =>
+      moduleTemplateService.applyToClasses(token ?? "", moduleId, classIds),
+    onSuccess: (result) => {
+      setSuccessMessage(
+        `Template modul diterapkan: ${result.applied.length} kelas, dilewati: ${result.skipped.length}, gagal: ${result.failed.length}. Modul kelas hasil apply masih perlu dipublish agar terlihat siswa.`,
+      );
+      setApplyTarget(null);
+      setSelectedClassIds([]);
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (moduleId: string) => moduleTemplateService.delete(token ?? "", moduleId),
     onSuccess: async () => {
@@ -97,14 +118,24 @@ export function ModuleList() {
     createMutation.error ??
     publishMutation.error ??
     archiveMutation.error ??
+    applyMutation.error ??
     deleteMutation.error;
 
   const modules = modulesQuery.data?.items ?? [];
   const meta = modulesQuery.data?.meta;
+  const classes = classesQuery.data?.items ?? [];
 
   function applySearch() {
     setPage(1);
     setSearch(searchInput.trim());
+  }
+
+  function toggleClass(classId: string) {
+    setSelectedClassIds((current) =>
+      current.includes(classId)
+        ? current.filter((id) => id !== classId)
+        : [...current, classId],
+    );
   }
 
   return (
@@ -222,6 +253,18 @@ export function ModuleList() {
                                 Terbitkan
                               </Button>
                             ) : null}
+                            {module.status === "published" ? (
+                              <Button
+                                className="min-h-9 px-3 py-1 text-xs"
+                                onClick={() => {
+                                  setApplyTarget(module);
+                                  setSelectedClassIds([]);
+                                }}
+                                variant="secondary"
+                              >
+                                Terapkan ke Kelas
+                              </Button>
+                            ) : null}
                             {module.status !== "archived" ? (
                               <Button
                                 className="min-h-9 px-3 py-1 text-xs"
@@ -267,6 +310,54 @@ export function ModuleList() {
           onCancel={() => setCreateModalOpen(false)}
           onSubmit={(payload) => createMutation.mutate(payload)}
         />
+      </Modal>
+
+      <Modal
+        onClose={() => setApplyTarget(null)}
+        open={Boolean(applyTarget)}
+        title="Terapkan Modul ke Kelas"
+      >
+        <div className="grid gap-4">
+          <Alert tone="info">
+            Publish template hanya membuat template siap dipakai. Tombol ini menyalin template menjadi modul kelas. Modul kelas hasil apply masih berstatus draft dan harus dipublish agar tampil di siswa.
+          </Alert>
+          {classesQuery.isLoading ? <LoadingState title="Memuat kelas" /> : null}
+          {classesQuery.isError ? <ErrorState description={getFirstApiError(classesQuery.error)} title="Gagal memuat kelas" /> : null}
+          {!classesQuery.isLoading && !classesQuery.isError ? (
+            classes.length === 0 ? (
+              <EmptyState description="Belum ada kelas aktif untuk menerima template modul." title="Kelas aktif kosong" />
+            ) : (
+              <div className="grid max-h-80 gap-2 overflow-auto rounded-xl border border-slate-200 p-3">
+                {classes.map((schoolClass) => (
+                  <label className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm font-bold text-ink" key={schoolClass.id}>
+                    <input
+                      checked={selectedClassIds.includes(schoolClass.id)}
+                      onChange={() => toggleClass(schoolClass.id)}
+                      type="checkbox"
+                    />
+                    <span>{schoolClass.name} · {schoolClass.academic_year}</span>
+                  </label>
+                ))}
+              </div>
+            )
+          ) : null}
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button onClick={() => setApplyTarget(null)} type="button" variant="ghost">
+              Batal
+            </Button>
+            <Button
+              disabled={!applyTarget || selectedClassIds.length === 0 || applyMutation.isPending}
+              onClick={() => {
+                if (applyTarget) {
+                  applyMutation.mutate({ moduleId: applyTarget.id, classIds: selectedClassIds });
+                }
+              }}
+              type="button"
+            >
+              {applyMutation.isPending ? "Menerapkan..." : "Terapkan"}
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       <ConfirmDialog

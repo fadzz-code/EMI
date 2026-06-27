@@ -24,6 +24,7 @@ import {
   TableHeader,
 } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
+import { classService } from "@/features/admin/management/management-service";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { QuizTemplateForm } from "./quiz-form";
@@ -40,6 +41,8 @@ export function QuizList() {
   const [status, setStatus] = useState<QuizTemplateStatus | "">("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editingQuiz, setEditingQuiz] = useState<QuizTemplate | null>(null);
+  const [applyTarget, setApplyTarget] = useState<QuizTemplate | null>(null);
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<QuizTemplate | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -56,6 +59,12 @@ export function QuizList() {
   const quizzesQuery = useQuery({
     queryKey: ["admin", "quiz-templates", filters],
     queryFn: () => quizTemplateService.list(token ?? "", filters),
+    enabled: Boolean(token),
+  });
+
+  const classesQuery = useQuery({
+    queryKey: ["admin", "classes", "quiz-apply-targets"],
+    queryFn: () => classService.list(token ?? "", { status: "active", per_page: 100 }),
     enabled: Boolean(token),
   });
 
@@ -95,6 +104,18 @@ export function QuizList() {
     },
   });
 
+  const applyMutation = useMutation({
+    mutationFn: ({ quizId, classIds }: { quizId: string; classIds: string[] }) =>
+      quizTemplateService.applyToClasses(token ?? "", quizId, classIds),
+    onSuccess: (result) => {
+      setSuccessMessage(
+        `Template kuis diterapkan: ${result.applied.length} kelas, dilewati: ${result.skipped.length}, gagal: ${result.failed.length}. Kuis kelas hasil apply masih perlu dipublish agar terlihat siswa.`,
+      );
+      setApplyTarget(null);
+      setSelectedClassIds([]);
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (quizId: string) => quizTemplateService.delete(token ?? "", quizId),
     onSuccess: async () => {
@@ -109,14 +130,24 @@ export function QuizList() {
     updateMutation.error ??
     publishMutation.error ??
     archiveMutation.error ??
+    applyMutation.error ??
     deleteMutation.error;
 
   const quizzes = quizzesQuery.data?.items ?? [];
   const meta = quizzesQuery.data?.meta;
+  const classes = classesQuery.data?.items ?? [];
 
   function applySearch() {
     setPage(1);
     setSearch(searchInput.trim());
+  }
+
+  function toggleClass(classId: string) {
+    setSelectedClassIds((current) =>
+      current.includes(classId)
+        ? current.filter((id) => id !== classId)
+        : [...current, classId],
+    );
   }
 
   return (
@@ -243,6 +274,18 @@ export function QuizList() {
                                 Terbitkan
                               </Button>
                             ) : null}
+                            {quiz.status === "published" ? (
+                              <Button
+                                className="min-h-9 px-3 py-1 text-xs"
+                                onClick={() => {
+                                  setApplyTarget(quiz);
+                                  setSelectedClassIds([]);
+                                }}
+                                variant="secondary"
+                              >
+                                Terapkan ke Kelas
+                              </Button>
+                            ) : null}
                             {quiz.status !== "archived" ? (
                               <Button
                                 className="min-h-9 px-3 py-1 text-xs"
@@ -305,6 +348,54 @@ export function QuizList() {
             quiz={editingQuiz}
           />
         ) : null}
+      </Modal>
+
+      <Modal
+        onClose={() => setApplyTarget(null)}
+        open={Boolean(applyTarget)}
+        title="Terapkan Kuis ke Kelas"
+      >
+        <div className="grid gap-4">
+          <Alert tone="info">
+            Publish template hanya membuat template kuis siap dipakai. Tombol ini menyalin template menjadi kuis kelas. Kuis kelas hasil apply masih berstatus draft dan harus dipublish agar tampil di siswa.
+          </Alert>
+          {classesQuery.isLoading ? <LoadingState title="Memuat kelas" /> : null}
+          {classesQuery.isError ? <ErrorState description={getFirstApiError(classesQuery.error)} title="Gagal memuat kelas" /> : null}
+          {!classesQuery.isLoading && !classesQuery.isError ? (
+            classes.length === 0 ? (
+              <EmptyState description="Belum ada kelas aktif untuk menerima template kuis." title="Kelas aktif kosong" />
+            ) : (
+              <div className="grid max-h-80 gap-2 overflow-auto rounded-xl border border-slate-200 p-3">
+                {classes.map((schoolClass) => (
+                  <label className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm font-bold text-ink" key={schoolClass.id}>
+                    <input
+                      checked={selectedClassIds.includes(schoolClass.id)}
+                      onChange={() => toggleClass(schoolClass.id)}
+                      type="checkbox"
+                    />
+                    <span>{schoolClass.name} · {schoolClass.academic_year}</span>
+                  </label>
+                ))}
+              </div>
+            )
+          ) : null}
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button onClick={() => setApplyTarget(null)} type="button" variant="ghost">
+              Batal
+            </Button>
+            <Button
+              disabled={!applyTarget || selectedClassIds.length === 0 || applyMutation.isPending}
+              onClick={() => {
+                if (applyTarget) {
+                  applyMutation.mutate({ quizId: applyTarget.id, classIds: selectedClassIds });
+                }
+              }}
+              type="button"
+            >
+              {applyMutation.isPending ? "Menerapkan..." : "Terapkan"}
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       <ConfirmDialog

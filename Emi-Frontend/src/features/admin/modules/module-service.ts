@@ -11,6 +11,7 @@ import type {
   ModuleTemplateFilters,
   ModuleTemplatePayload,
   PaginatedResult,
+  TemplateApplyResult,
 } from "./types";
 
 function paginated<T>(data: T[] | undefined, meta: unknown): PaginatedResult<T> {
@@ -105,6 +106,20 @@ export const moduleTemplateService = {
 
     if (!response.data) {
       throw new Error("Response archive modul tidak tersedia.");
+    }
+
+    return response.data;
+  },
+
+  async applyToClasses(token: string, moduleId: string, classIds: string[]) {
+    const response = await apiClient.post<TemplateApplyResult>(
+      `/admin/module-templates/${moduleId}/apply`,
+      { class_ids: classIds },
+      { token },
+    );
+
+    if (!response.data) {
+      throw new Error("Response penerapan modul tidak tersedia.");
     }
 
     return response.data;

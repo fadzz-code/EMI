@@ -5,6 +5,7 @@ import type {
   PaginatedResult,
   QuizQuestionPayload,
   QuizTemplate,
+  QuizTemplateApplyResult,
   QuizTemplateFilters,
   QuizTemplatePayload,
   QuizTemplateQuestion,
@@ -101,6 +102,20 @@ export const quizTemplateService = {
 
     if (!response.data) {
       throw new Error("Response archive kuis tidak tersedia.");
+    }
+
+    return response.data;
+  },
+
+  async applyToClasses(token: string, quizId: string, classIds: string[]) {
+    const response = await apiClient.post<QuizTemplateApplyResult>(
+      `/admin/quiz-templates/${quizId}/apply`,
+      { class_ids: classIds },
+      { token },
+    );
+
+    if (!response.data) {
+      throw new Error("Response penerapan kuis tidak tersedia.");
     }
 
     return response.data;
