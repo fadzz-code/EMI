@@ -82,7 +82,7 @@ export function StudentDashboard() {
                     <Link className={linkClass} href={`/student/modules/${nextModule.id}`}>Lanjut Belajar</Link>
                     <Link className={secondaryLinkClass} href="/student/modules">Modul Saya</Link>
                     <span className="inline-flex min-h-12 items-center justify-center rounded-xl border-2 border-slate-300 bg-slate-100 px-4 py-2 text-sm font-black text-slate-500">Progress belum tersedia</span>
-                    <span className="inline-flex min-h-12 items-center justify-center rounded-xl border-2 border-slate-300 bg-slate-100 px-4 py-2 text-sm font-black text-slate-500">Kamus belum tersedia</span>
+                    <Link className={secondaryLinkClass} href="/student/dictionary">Kamus Mekongga</Link>
                   </div>
                 </div>
               )}

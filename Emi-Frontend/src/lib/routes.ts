@@ -38,6 +38,7 @@ export const roleNavItems: Record<UserRole, NavItem[]> = {
   student: [
     { label: "Dashboard", href: "/student/dashboard", status: "ready" },
     { label: "Modul", href: "/student/modules", status: "ready" },
+    { label: "Kamus", href: "/student/dictionary", status: "ready" },
     { label: "Progress", href: "/student/progress", status: "next" },
   ],
 };

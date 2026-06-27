@@ -127,6 +127,43 @@ export type StudentProgressReport = {
   };
 };
 
+export type DictionaryCategory = {
+  id: string;
+  name: string;
+  slug?: string;
+  description?: string | null;
+  status?: string;
+};
+
+export type DictionaryAudio = {
+  id: string;
+  url: string;
+  mime_type: string;
+};
+
+export type DictionaryEntry = {
+  id: string;
+  category_id?: string | null;
+  category?: DictionaryCategory | null;
+  indonesia: string;
+  english: string;
+  mekongga: string;
+  example_mekongga?: string | null;
+  example_indonesia?: string | null;
+  audio?: DictionaryAudio | null;
+  status?: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type DictionaryEntryFilters = {
+  search?: string;
+  language?: "all" | "indonesia" | "english" | "mekongga";
+  category_id?: string;
+  page?: number;
+  per_page?: number;
+};
+
 export type PaginatedResult<T> = {
   items: T[];
   meta?: ApiPaginationMeta;

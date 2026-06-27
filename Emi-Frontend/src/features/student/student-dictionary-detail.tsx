@@ -1,0 +1,101 @@
+"use client";
+
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+
+import { AudioPlayer, Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState } from "@/components/ui";
+import { useAuth } from "@/features/auth/auth-provider";
+import { getFirstApiError } from "@/lib/api-client";
+
+import { studentDictionaryService } from "./student-dictionary-service";
+import { formatOptional } from "./student-utils";
+
+function DetailRow({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <p className="text-xs font-black uppercase text-slate-500">{label}</p>
+      <p className="mt-2 text-lg font-black text-ink">{formatOptional(value)}</p>
+    </div>
+  );
+}
+
+export function StudentDictionaryDetail({ entryId }: { entryId: string }) {
+  const { token } = useAuth();
+  const entryQuery = useQuery({
+    queryKey: ["student", "dictionary", "entries", entryId],
+    queryFn: () => studentDictionaryService.detail(token ?? "", entryId),
+    enabled: Boolean(token && entryId),
+  });
+
+  const entry = entryQuery.data;
+
+  return (
+    <div className="grid gap-6">
+      <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href="/student/dictionary">
+        Kembali ke Kamus
+      </Link>
+
+      {entryQuery.isLoading ? <LoadingState title="Memuat detail kamus" /> : null}
+      {entryQuery.isError ? (
+        <ErrorState
+          description={getFirstApiError(entryQuery.error)}
+          onRetry={() => void entryQuery.refetch()}
+          title="Kata kamus tidak dapat dibuka"
+        />
+      ) : null}
+
+      {entry ? (
+        <>
+          <header className="grid gap-4 rounded-3xl border-2 border-ink bg-white p-5 shadow-brutal">
+            <div className="flex flex-wrap gap-2">
+              <Badge tone="blue">{entry.category?.name ?? "Tanpa kategori"}</Badge>
+              <Badge tone={entry.audio ? "yellow" : "neutral"}>{entry.audio ? "Audio tersedia" : "Audio belum tersedia"}</Badge>
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase text-slate-500">Bahasa Mekongga</p>
+              <h1 className="mt-2 text-4xl font-black text-ink">{entry.mekongga}</h1>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Detail kosakata dari endpoint kamus backend EMI.
+              </p>
+            </div>
+          </header>
+
+          <section className="grid gap-4 md:grid-cols-3">
+            <DetailRow label="Bahasa Indonesia" value={entry.indonesia} />
+            <DetailRow label="Bahasa Inggris" value={entry.english} />
+            <DetailRow label="Bahasa Mekongga" value={entry.mekongga} />
+          </section>
+
+          <Card>
+            <CardHeader>
+              <h2 className="text-xl font-black text-ink">Contoh Kalimat</h2>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2">
+                <DetailRow label="Contoh Kalimat Mekongga" value={entry.example_mekongga} />
+                <DetailRow label="Arti Contoh Kalimat Indonesia" value={entry.example_indonesia} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <h2 className="text-xl font-black text-ink">Audio Mekongga</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Audio memakai URL publik yang dikembalikan resource kamus backend jika tersedia.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <AudioPlayer src={entry.audio?.url} title="Mekongga" />
+              {entry.audio ? (
+                <p className="mt-3 text-xs font-bold text-slate-500">MIME: {entry.audio.mime_type}</p>
+              ) : null}
+            </CardContent>
+          </Card>
+        </>
+      ) : !entryQuery.isLoading && !entryQuery.isError ? (
+        <EmptyState description="Data kata tidak dikembalikan oleh backend." title="Kata tidak ditemukan" />
+      ) : null}
+    </div>
+  );
+}
