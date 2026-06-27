@@ -164,6 +164,81 @@ export type DictionaryEntryFilters = {
   per_page?: number;
 };
 
+export type QuizOption = {
+  id: string;
+  quiz_question_id?: string;
+  option_text: string;
+  is_correct?: boolean;
+  order_number?: number;
+};
+
+export type QuizQuestion = {
+  id: string;
+  class_quiz_id?: string;
+  question_type: "multiple_choice" | "short_answer";
+  question_text: string;
+  image_media_id?: string | null;
+  correct_answer_text?: string | null;
+  use_fuzzy_matching?: boolean;
+  fuzzy_threshold?: number;
+  points?: number;
+  order_number?: number;
+  explanation?: string | null;
+  options?: QuizOption[];
+  image_media?: {
+    id: string;
+    url?: string | null;
+  } | null;
+};
+
+export type StudentQuiz = {
+  id: string;
+  class_id?: string;
+  title: string;
+  description?: string | null;
+  instructions?: string | null;
+  duration_minutes?: number | null;
+  max_attempts?: number | null;
+  show_result?: boolean;
+  open_at?: string | null;
+  close_at?: string | null;
+  questions_count?: number;
+  attempts_count?: number;
+  questions?: QuizQuestion[];
+};
+
+export type QuizAnswer = {
+  id: string;
+  quiz_attempt_id?: string;
+  quiz_question_id?: string;
+  selected_option_id?: string | null;
+  answer_text?: string | null;
+  is_correct?: boolean | null;
+  similarity_score?: number | null;
+  awarded_points?: number | null;
+  max_points?: number | null;
+  answered_at?: string | null;
+};
+
+export type QuizAttempt = {
+  id: string;
+  class_quiz_id?: string;
+  student_id?: string;
+  attempt_number?: number;
+  status: "pending" | "in_progress" | "submitted" | "expired";
+  started_at?: string | null;
+  expires_at?: string | null;
+  submitted_at?: string | null;
+  score_points?: number | null;
+  max_points?: number | null;
+  score_percent?: number | null;
+  correct_count?: number | null;
+  incorrect_count?: number | null;
+  unanswered_count?: number | null;
+  class_quiz?: StudentQuiz | null;
+  answers?: QuizAnswer[];
+};
+
 export type PaginatedResult<T> = {
   items: T[];
   meta?: ApiPaginationMeta;
