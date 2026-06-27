@@ -16,6 +16,16 @@ export const publicRoutes = {
   unauthorized: "/unauthorized",
 } as const;
 
+export const teacherRoutes = {
+  dashboard: "/teacher/dashboard",
+  classes: "/teacher/classes",
+  profile: "/teacher/profile",
+  classDetail: (classId: string) => `/teacher/classes/${classId}`,
+  classStudents: (classId: string) => `/teacher/classes/${classId}/students`,
+  classModules: (classId: string) => `/teacher/classes/${classId}/modules`,
+  classQuizzes: (classId: string) => `/teacher/classes/${classId}/quizzes`,
+} as const;
+
 export const roleNavItems: Record<UserRole, NavItem[]> = {
   admin: [
     { label: "Dashboard", href: "/admin/dashboard", status: "ready" },
@@ -30,9 +40,9 @@ export const roleNavItems: Record<UserRole, NavItem[]> = {
     { label: "Pengaturan", href: "/admin/settings", status: "ready" },
   ],
   teacher: [
-    { label: "Dashboard", href: "/teacher/dashboard", status: "ready" },
-    { label: "Kelas", href: "/teacher/classes", status: "ready" },
-    { label: "Profil", href: "/teacher/profile", status: "ready" },
+    { label: "Dashboard", href: teacherRoutes.dashboard, status: "ready" },
+    { label: "Kelas", href: teacherRoutes.classes, status: "ready" },
+    { label: "Profil", href: teacherRoutes.profile, status: "ready" },
   ],
   student: [
     { label: "Dashboard", href: "/student/dashboard", status: "ready" },

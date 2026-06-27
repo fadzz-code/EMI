@@ -6,7 +6,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, PageHeader, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
+import { teacherRoutes } from "@/lib/routes";
 
+import { TeacherClassNav } from "./teacher-class-nav";
 import { teacherService } from "./teacher-service";
 import { formatCount, formatDate, formatOptional, statusLabel } from "./teacher-utils";
 
@@ -23,10 +25,12 @@ export function TeacherClassModules({ classId }: { classId: string }) {
 
   return (
     <div className="grid gap-6">
-      <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href={`/teacher/classes/${classId}`}>
-        Kembali ke Detail Kelas
+      <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href={teacherRoutes.classes}>
+        Kembali ke Daftar Kelas
       </Link>
       <PageHeader badge="Guru" description="Modul yang ditampilkan adalah class_modules dari backend, bukan template admin." title="Modul Kelas" />
+
+      <TeacherClassNav classId={classId} />
 
       {modulesQuery.isLoading ? <LoadingState title="Memuat modul kelas" /> : null}
       {modulesQuery.isError ? <ErrorState description={getFirstApiError(modulesQuery.error)} onRetry={() => void modulesQuery.refetch()} title="Gagal memuat modul" /> : null}

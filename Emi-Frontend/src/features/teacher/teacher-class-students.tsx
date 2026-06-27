@@ -6,7 +6,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, PageHeader, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
+import { teacherRoutes } from "@/lib/routes";
 
+import { TeacherClassNav } from "./teacher-class-nav";
 import { teacherService } from "./teacher-service";
 import { formatCount, formatDate, formatPercent, statusLabel } from "./teacher-utils";
 
@@ -28,10 +30,12 @@ export function TeacherClassStudents({ classId }: { classId: string }) {
 
   return (
     <div className="grid gap-6">
-      <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href={`/teacher/classes/${classId}`}>
-        Kembali ke Detail Kelas
+      <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href={teacherRoutes.classes}>
+        Kembali ke Daftar Kelas
       </Link>
       <PageHeader badge="Guru" description="Daftar siswa aktif berasal dari endpoint kelas dan tetap mengikuti scope assignment guru." title="Siswa Kelas" />
+
+      <TeacherClassNav classId={classId} />
 
       {studentsQuery.isLoading ? <LoadingState title="Memuat siswa kelas" /> : null}
       {studentsQuery.isError ? <ErrorState description={getFirstApiError(studentsQuery.error)} onRetry={() => void studentsQuery.refetch()} title="Gagal memuat siswa" /> : null}

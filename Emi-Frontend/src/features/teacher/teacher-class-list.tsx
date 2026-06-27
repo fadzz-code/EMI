@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, PageHeader, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
+import { teacherRoutes } from "@/lib/routes";
 
 import { teacherService } from "./teacher-service";
 import { formatCount, formatOptional, statusLabel } from "./teacher-utils";
@@ -65,7 +66,7 @@ export function TeacherClassList() {
                         <h2 className="mt-2 text-xl font-black text-ink">{teacherClass.name}</h2>
                         <p className="mt-1 text-sm text-slate-600">{formatOptional(teacherClass.school?.name)}</p>
                       </div>
-                      <Link className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-brutal hover:bg-blue-700" href={`/teacher/classes/${teacherClass.id}`}>
+                      <Link className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-brutal hover:bg-blue-700" href={teacherRoutes.classDetail(teacherClass.id)}>
                         Detail
                       </Link>
                     </div>

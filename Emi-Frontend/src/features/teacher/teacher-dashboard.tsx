@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, PageHeader, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
+import { teacherRoutes } from "@/lib/routes";
 
 import { teacherService } from "./teacher-service";
 import { activityLabel, formatCount, formatDate, formatOptional, formatPercent } from "./teacher-utils";
@@ -71,10 +72,10 @@ export function TeacherDashboard() {
                       <StatsCard helper="Kuis published" label="Kuis" value={formatCount(summary.quizzes.published_quizzes)} />
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row">
-                      <Link className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-brutal hover:bg-blue-700" href="/teacher/classes">
+                      <Link className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-brutal hover:bg-blue-700" href={teacherRoutes.classes}>
                         Lihat Kelas
                       </Link>
-                      <Link className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-yellow-300 px-4 py-2 text-sm font-bold text-ink shadow-brutal hover:bg-yellow-200" href={`/teacher/classes/${teacherClass.id}`}>
+                      <Link className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-yellow-300 px-4 py-2 text-sm font-bold text-ink shadow-brutal hover:bg-yellow-200" href={teacherRoutes.classDetail(teacherClass.id)}>
                         Detail Kelas
                       </Link>
                     </div>
