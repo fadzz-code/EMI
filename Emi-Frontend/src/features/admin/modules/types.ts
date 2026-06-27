@@ -86,3 +86,13 @@ export type TemplateApplyResult = {
   skipped: Array<{ class_id: string; reason: string }>;
   failed: Array<{ class_id: string; reason: string }>;
 };
+
+export type ClassModule = {
+  id: string;
+  class_id: string;
+  source_module_template_id?: string | null;
+  title: string;
+  description?: string | null;
+  status: ModuleTemplateStatus;
+  published_at?: string | null;
+};

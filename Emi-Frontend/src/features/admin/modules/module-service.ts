@@ -2,6 +2,7 @@ import { apiClient, apiRequest } from "@/lib/api-client";
 
 import { mediaPurposeForContentType } from "./module-utils";
 import type {
+  ClassModule,
   LessonContentType,
   LessonTemplate,
   LessonTemplatePayload,
@@ -120,6 +121,20 @@ export const moduleTemplateService = {
 
     if (!response.data) {
       throw new Error("Response penerapan modul tidak tersedia.");
+    }
+
+    return response.data;
+  },
+
+  async publishClassModule(token: string, classModuleId: string) {
+    const response = await apiClient.post<ClassModule>(
+      `/class-modules/${classModuleId}/publish`,
+      {},
+      { token },
+    );
+
+    if (!response.data) {
+      throw new Error("Response publish modul kelas tidak tersedia.");
     }
 
     return response.data;

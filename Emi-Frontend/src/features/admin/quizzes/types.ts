@@ -103,3 +103,13 @@ export type QuizTemplateApplyResult = {
   skipped: Array<{ class_id: string; reason: string }>;
   failed: Array<{ class_id: string; reason: string }>;
 };
+
+export type ClassQuiz = {
+  id: string;
+  class_id: string;
+  source_quiz_template_id?: string | null;
+  title: string;
+  description?: string | null;
+  status: QuizTemplateStatus;
+  published_at?: string | null;
+};

@@ -1,6 +1,7 @@
 import { apiClient, apiRequest } from "@/lib/api-client";
 
 import type {
+  ClassQuiz,
   MediaFile,
   PaginatedResult,
   QuizQuestionPayload,
@@ -116,6 +117,20 @@ export const quizTemplateService = {
 
     if (!response.data) {
       throw new Error("Response penerapan kuis tidak tersedia.");
+    }
+
+    return response.data;
+  },
+
+  async publishClassQuiz(token: string, classQuizId: string) {
+    const response = await apiClient.post<ClassQuiz>(
+      `/class-quizzes/${classQuizId}/publish`,
+      {},
+      { token },
+    );
+
+    if (!response.data) {
+      throw new Error("Response publish kuis kelas tidak tersedia.");
     }
 
     return response.data;

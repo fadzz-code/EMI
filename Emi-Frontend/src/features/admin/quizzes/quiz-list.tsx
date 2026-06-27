@@ -43,6 +43,7 @@ export function QuizList() {
   const [editingQuiz, setEditingQuiz] = useState<QuizTemplate | null>(null);
   const [applyTarget, setApplyTarget] = useState<QuizTemplate | null>(null);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
+  const [publishAfterApply, setPublishAfterApply] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<QuizTemplate | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -105,14 +106,40 @@ export function QuizList() {
   });
 
   const applyMutation = useMutation({
-    mutationFn: ({ quizId, classIds }: { quizId: string; classIds: string[] }) =>
-      quizTemplateService.applyToClasses(token ?? "", quizId, classIds),
-    onSuccess: (result) => {
+    mutationFn: async ({
+      quizId,
+      classIds,
+      publishClassContent,
+    }: {
+      quizId: string;
+      classIds: string[];
+      publishClassContent: boolean;
+    }) => {
+      const result = await quizTemplateService.applyToClasses(token ?? "", quizId, classIds);
+      let publishedCount = 0;
+
+      if (publishClassContent) {
+        const classQuizIds = result.applied
+          .map((item) => item.class_quiz_id)
+          .filter((id): id is string => Boolean(id));
+
+        for (const classQuizId of classQuizIds) {
+          await quizTemplateService.publishClassQuiz(token ?? "", classQuizId);
+          publishedCount += 1;
+        }
+      }
+
+      return { result, publishedCount };
+    },
+    onSuccess: ({ result, publishedCount }) => {
       setSuccessMessage(
-        `Template kuis diterapkan: ${result.applied.length} kelas, dilewati: ${result.skipped.length}, gagal: ${result.failed.length}. Kuis kelas hasil apply masih perlu dipublish agar terlihat siswa.`,
+        publishedCount > 0
+          ? `Template kuis diterapkan ke ${result.applied.length} kelas dan ${publishedCount} kuis kelas langsung dipublish. Kuis terlihat untuk siswa yang terdaftar pada kelas tersebut.`
+          : `Template kuis diterapkan: ${result.applied.length} kelas, dilewati: ${result.skipped.length}, gagal: ${result.failed.length}. Kuis kelas masih draft dan perlu dipublish agar terlihat siswa.`,
       );
       setApplyTarget(null);
       setSelectedClassIds([]);
+      setPublishAfterApply(true);
     },
   });
 
@@ -164,6 +191,9 @@ export function QuizList() {
         <Button onClick={() => setCreateModalOpen(true)}>Tambah Kuis</Button>
       </header>
 
+      <Alert tone="info">
+        Alur visibilitas: 1) Publish Template, 2) Terapkan ke Kelas, 3) Publish Konten Kelas, 4) Guru dan siswa pada kelas tersebut dapat melihat kuis. Publish template saja belum membuat kuis terlihat.
+      </Alert>
       {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
       {actionError ? <Alert tone="error">{getFirstApiError(actionError)}</Alert> : null}
 
@@ -280,6 +310,7 @@ export function QuizList() {
                                 onClick={() => {
                                   setApplyTarget(quiz);
                                   setSelectedClassIds([]);
+                                  setPublishAfterApply(true);
                                 }}
                                 variant="secondary"
                               >
@@ -357,7 +388,7 @@ export function QuizList() {
       >
         <div className="grid gap-4">
           <Alert tone="info">
-            Publish template hanya membuat template kuis siap dipakai. Tombol ini menyalin template menjadi kuis kelas. Kuis kelas hasil apply masih berstatus draft dan harus dipublish agar tampil di siswa.
+            Publish template hanya membuat template kuis siap dipakai. Apply akan membuat kuis kelas berstatus draft. Aktifkan opsi publish di bawah agar kuis kelas langsung terlihat oleh guru dan siswa yang terhubung ke kelas.
           </Alert>
           {classesQuery.isLoading ? <LoadingState title="Memuat kelas" /> : null}
           {classesQuery.isError ? <ErrorState description={getFirstApiError(classesQuery.error)} title="Gagal memuat kelas" /> : null}
@@ -379,6 +410,15 @@ export function QuizList() {
               </div>
             )
           ) : null}
+          <label className="flex items-start gap-3 rounded-xl border-2 border-ink bg-yellow-50 p-3 text-sm font-bold text-ink">
+            <input
+              checked={publishAfterApply}
+              className="mt-1"
+              onChange={(event) => setPublishAfterApply(event.target.checked)}
+              type="checkbox"
+            />
+            <span>Setelah apply, langsung publish kuis kelas agar terlihat oleh guru dan siswa.</span>
+          </label>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button onClick={() => setApplyTarget(null)} type="button" variant="ghost">
               Batal
@@ -387,7 +427,7 @@ export function QuizList() {
               disabled={!applyTarget || selectedClassIds.length === 0 || applyMutation.isPending}
               onClick={() => {
                 if (applyTarget) {
-                  applyMutation.mutate({ quizId: applyTarget.id, classIds: selectedClassIds });
+                  applyMutation.mutate({ quizId: applyTarget.id, classIds: selectedClassIds, publishClassContent: publishAfterApply });
                 }
               }}
               type="button"

@@ -42,6 +42,7 @@ export function ModuleList() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [applyTarget, setApplyTarget] = useState<ModuleTemplate | null>(null);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
+  const [publishAfterApply, setPublishAfterApply] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<ModuleTemplate | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -94,14 +95,40 @@ export function ModuleList() {
   });
 
   const applyMutation = useMutation({
-    mutationFn: ({ moduleId, classIds }: { moduleId: string; classIds: string[] }) =>
-      moduleTemplateService.applyToClasses(token ?? "", moduleId, classIds),
-    onSuccess: (result) => {
+    mutationFn: async ({
+      moduleId,
+      classIds,
+      publishClassContent,
+    }: {
+      moduleId: string;
+      classIds: string[];
+      publishClassContent: boolean;
+    }) => {
+      const result = await moduleTemplateService.applyToClasses(token ?? "", moduleId, classIds);
+      let publishedCount = 0;
+
+      if (publishClassContent) {
+        const classModuleIds = result.applied
+          .map((item) => item.class_module_id)
+          .filter((id): id is string => Boolean(id));
+
+        for (const classModuleId of classModuleIds) {
+          await moduleTemplateService.publishClassModule(token ?? "", classModuleId);
+          publishedCount += 1;
+        }
+      }
+
+      return { result, publishedCount };
+    },
+    onSuccess: ({ result, publishedCount }) => {
       setSuccessMessage(
-        `Template modul diterapkan: ${result.applied.length} kelas, dilewati: ${result.skipped.length}, gagal: ${result.failed.length}. Modul kelas hasil apply masih perlu dipublish agar terlihat siswa.`,
+        publishedCount > 0
+          ? `Template modul diterapkan ke ${result.applied.length} kelas dan ${publishedCount} modul kelas langsung dipublish. Modul terlihat untuk siswa yang terdaftar pada kelas tersebut.`
+          : `Template modul diterapkan: ${result.applied.length} kelas, dilewati: ${result.skipped.length}, gagal: ${result.failed.length}. Modul kelas masih draft dan perlu dipublish agar terlihat siswa.`,
       );
       setApplyTarget(null);
       setSelectedClassIds([]);
+      setPublishAfterApply(true);
     },
   });
 
@@ -152,6 +179,9 @@ export function ModuleList() {
         <Button onClick={() => setCreateModalOpen(true)}>Tambah Modul</Button>
       </header>
 
+      <Alert tone="info">
+        Alur visibilitas: 1) Publish Template, 2) Terapkan ke Kelas, 3) Publish Konten Kelas, 4) Guru dan siswa pada kelas tersebut dapat melihat konten. Publish template saja belum membuat konten terlihat.
+      </Alert>
       {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
       {actionError ? <Alert tone="error">{getFirstApiError(actionError)}</Alert> : null}
 
@@ -259,6 +289,7 @@ export function ModuleList() {
                                 onClick={() => {
                                   setApplyTarget(module);
                                   setSelectedClassIds([]);
+                                  setPublishAfterApply(true);
                                 }}
                                 variant="secondary"
                               >
@@ -319,7 +350,7 @@ export function ModuleList() {
       >
         <div className="grid gap-4">
           <Alert tone="info">
-            Publish template hanya membuat template siap dipakai. Tombol ini menyalin template menjadi modul kelas. Modul kelas hasil apply masih berstatus draft dan harus dipublish agar tampil di siswa.
+            Publish template hanya membuat template siap dipakai. Apply akan membuat modul kelas berstatus draft. Aktifkan opsi publish di bawah agar modul kelas langsung terlihat oleh guru dan siswa yang terhubung ke kelas.
           </Alert>
           {classesQuery.isLoading ? <LoadingState title="Memuat kelas" /> : null}
           {classesQuery.isError ? <ErrorState description={getFirstApiError(classesQuery.error)} title="Gagal memuat kelas" /> : null}
@@ -341,6 +372,15 @@ export function ModuleList() {
               </div>
             )
           ) : null}
+          <label className="flex items-start gap-3 rounded-xl border-2 border-ink bg-yellow-50 p-3 text-sm font-bold text-ink">
+            <input
+              checked={publishAfterApply}
+              className="mt-1"
+              onChange={(event) => setPublishAfterApply(event.target.checked)}
+              type="checkbox"
+            />
+            <span>Setelah apply, langsung publish modul kelas agar terlihat oleh guru dan siswa.</span>
+          </label>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button onClick={() => setApplyTarget(null)} type="button" variant="ghost">
               Batal
@@ -349,7 +389,7 @@ export function ModuleList() {
               disabled={!applyTarget || selectedClassIds.length === 0 || applyMutation.isPending}
               onClick={() => {
                 if (applyTarget) {
-                  applyMutation.mutate({ moduleId: applyTarget.id, classIds: selectedClassIds });
+                  applyMutation.mutate({ moduleId: applyTarget.id, classIds: selectedClassIds, publishClassContent: publishAfterApply });
                 }
               }}
               type="button"
