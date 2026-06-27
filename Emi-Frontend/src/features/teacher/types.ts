@@ -53,6 +53,11 @@ export type TeacherClassLesson = {
   content_type?: string | null;
   content_body?: string | null;
   external_url?: string | null;
+  media?: {
+    id: string;
+    mime_type: string;
+    visibility: string;
+  } | null;
   sort_order?: number | null;
   status: EntityStatus | "draft" | "published" | "archived" | string;
   published_at?: string | null;

@@ -3,6 +3,7 @@ import { apiClient } from "@/lib/api-client";
 import type {
   PaginatedResult,
   TeacherClass,
+  TeacherClassLesson,
   TeacherClassModule,
   TeacherClassQuiz,
   TeacherClassStudent,
@@ -91,6 +92,56 @@ export const teacherService = {
     return response.data;
   },
 
+  async updateClassModule(token: string, moduleId: string, payload: Partial<TeacherClassModule>) {
+    const response = await apiClient.put<TeacherClassModule>(`/class-modules/${moduleId}`, payload, { token });
+
+    if (!response.data) {
+      throw new Error("Gagal memperbarui modul.");
+    }
+
+    return response.data;
+  },
+
+  async publishClassModule(token: string, moduleId: string) {
+    const response = await apiClient.post<TeacherClassModule>(`/class-modules/${moduleId}/publish`, {}, { token });
+
+    if (!response.data) {
+      throw new Error("Gagal mempublikasikan modul.");
+    }
+
+    return response.data;
+  },
+
+  async classLessonDetail(token: string, lessonId: string) {
+    const response = await apiClient.get<TeacherClassLesson>(`/class-lessons/${lessonId}`, { token });
+
+    if (!response.data) {
+      throw new Error("Detail materi tidak tersedia.");
+    }
+
+    return response.data;
+  },
+
+  async updateClassLesson(token: string, lessonId: string, payload: Partial<TeacherClassLesson>) {
+    const response = await apiClient.put<TeacherClassLesson>(`/class-lessons/${lessonId}`, payload, { token });
+
+    if (!response.data) {
+      throw new Error("Gagal memperbarui materi.");
+    }
+
+    return response.data;
+  },
+
+  async publishClassLesson(token: string, lessonId: string) {
+    const response = await apiClient.post<TeacherClassLesson>(`/class-lessons/${lessonId}/publish`, {}, { token });
+
+    if (!response.data) {
+      throw new Error("Gagal mempublikasikan materi.");
+    }
+
+    return response.data;
+  },
+
   async classQuizzes(token: string, classId: string) {
     const response = await apiClient.get<TeacherClassQuiz[]>("/class-quizzes", {
       token,
@@ -158,6 +209,25 @@ export const teacherService = {
     }
 
     return student;
+  },
+
+  async uploadMedia(token: string, file: File, purpose: string) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("purpose", purpose);
+    formData.append("visibility", "private");
+
+    const response = await apiClient.post<{ id: string; url: string; mime_type: string }>(
+      "/media",
+      formData,
+      { token }
+    );
+
+    if (!response.data) {
+      throw new Error("Gagal mengunggah media.");
+    }
+
+    return response.data;
   },
 
   async profile(token: string) {

@@ -8,15 +8,16 @@ import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 import { teacherRoutes } from "@/lib/routes";
 
-import { TeacherClassNav } from "./teacher-class-nav";
 import { teacherService } from "./teacher-service";
 import { formatCount, formatDate, formatOptional, statusLabel } from "./teacher-utils";
 
-export function TeacherClassModules({ classId }: { classId: string }) {
-  const { token } = useAuth();
+export function TeacherModuleList() {
+  const { token, user } = useAuth();
+  const classId = user?.active_class?.id;
+
   const modulesQuery = useQuery({
     queryKey: ["teacher", "classes", classId, "modules", "page"],
-    queryFn: () => teacherService.classModules(token ?? "", classId),
+    queryFn: () => teacherService.classModules(token ?? "", classId!),
     enabled: Boolean(token && classId),
   });
 
@@ -25,25 +26,24 @@ export function TeacherClassModules({ classId }: { classId: string }) {
 
   return (
     <div className="grid gap-6">
-      <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href={teacherRoutes.classes}>
-        Kembali ke Daftar Kelas
-      </Link>
-      <PageHeader badge="Guru" description="Modul yang ditampilkan adalah class_modules dari backend, bukan template admin." title="Modul Kelas" />
+      <PageHeader badge="Guru" description="Kelola modul pembelajaran kelas Anda dari materi template admin yang telah disalin ke kelas." title="Modul Kelas" />
 
-      <TeacherClassNav classId={classId} />
+      {!classId ? (
+        <Alert tone="warning">Anda belum memiliki kelas aktif. Minta Admin untuk menetapkan Anda ke sebuah kelas.</Alert>
+      ) : null}
 
       {modulesQuery.isLoading ? <LoadingState title="Memuat modul kelas" /> : null}
       {modulesQuery.isError ? <ErrorState description={getFirstApiError(modulesQuery.error)} onRetry={() => void modulesQuery.refetch()} title="Gagal memuat modul" /> : null}
 
-      {!modulesQuery.isLoading && !modulesQuery.isError ? (
+      {!modulesQuery.isLoading && !modulesQuery.isError && classId ? (
         modules.length === 0 ? (
           <Card><CardContent><EmptyState description="Belum ada modul kelas dari backend." title="Modul belum tersedia" /></CardContent></Card>
         ) : (
           <div className="grid gap-4">
             <section className="grid gap-4 sm:grid-cols-3">
-              <StatsCard helper="Semua status" label="Total modul" value={formatCount(modules.length)} />
+              <StatsCard helper={user?.active_class?.name ?? "Kelas aktif"} label="Total modul" value={formatCount(modules.length)} />
               <StatsCard helper="Status published" label="Modul terbit" value={formatCount(publishedCount)} />
-              <StatsCard helper="Dari detail modul jika dibuka" label="Lesson detail" value="Read-only" />
+              <StatsCard helper="Dari detail modul" label="Aksi" value="Kelola / Edit" />
             </section>
             <div className="grid gap-4 md:grid-cols-2">
               {modules.map((module) => (
@@ -51,8 +51,11 @@ export function TeacherClassModules({ classId }: { classId: string }) {
                   <CardHeader>
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <Badge tone={module.status === "published" ? "blue" : "neutral"}>{statusLabel(module.status)}</Badge>
-                        <h2 className="mt-2 text-xl font-black text-ink">{module.title}</h2>
+                        <h2 className="text-xl font-black text-ink">{module.title}</h2>
+                        <div className="mt-2 flex items-center gap-2">
+                          <Badge tone={module.status === "published" ? "blue" : "neutral"}>{statusLabel(module.status)}</Badge>
+                          <span className="rounded-lg border border-slate-200 px-2 py-0.5 text-xs font-black text-slate-500">Urutan: {formatOptional(module.sort_order)}</span>
+                        </div>
                       </div>
                       <Link className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-yellow-300 px-4 py-2 text-sm font-bold text-ink shadow-brutal hover:bg-yellow-200" href={teacherRoutes.moduleEdit(module.id)}>
                         Edit Modul
@@ -60,7 +63,7 @@ export function TeacherClassModules({ classId }: { classId: string }) {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm leading-6 text-slate-600">{formatOptional(module.description)}</p>
+                    <p className="text-sm leading-6 text-slate-600 line-clamp-2">{formatOptional(module.description)}</p>
                     <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                       <div className="rounded-xl bg-slate-50 p-3">
                         <dt className="font-black uppercase text-slate-500">Terbit</dt>
@@ -68,10 +71,11 @@ export function TeacherClassModules({ classId }: { classId: string }) {
                       </div>
                       <div className="rounded-xl bg-slate-50 p-3">
                         <dt className="font-black uppercase text-slate-500">Lesson</dt>
-                        <dd className="mt-1 font-bold text-ink">{formatCount(module.lessons?.length)}</dd>
+                        <dd className="mt-1 font-bold text-ink">
+                          {module.lessons ? formatCount(module.lessons.length) : "Lihat di edit"}
+                        </dd>
                       </div>
                     </dl>
-                    <ModuleLessons token={token ?? ""} moduleId={module.id} />
                   </CardContent>
                 </Card>
               ))}
@@ -83,35 +87,12 @@ export function TeacherClassModules({ classId }: { classId: string }) {
   );
 }
 
-function ModuleLessons({ token, moduleId }: { token: string; moduleId: string }) {
-  const detailQuery = useQuery({
-    queryKey: ["teacher", "class-modules", moduleId],
-    queryFn: () => teacherService.classModuleDetail(token, moduleId),
-    enabled: Boolean(token && moduleId),
-  });
-  const lessons = detailQuery.data?.lessons ?? [];
-
-  if (detailQuery.isLoading) {
-    return <p className="mt-4 text-sm font-bold text-slate-500">Memuat lesson...</p>;
-  }
-
-  if (detailQuery.isError) {
-    return <p className="mt-4 text-sm font-bold text-orange-600">Lesson tidak dapat dimuat: {getFirstApiError(detailQuery.error)}</p>;
-  }
-
-  if (lessons.length === 0) {
-    return <p className="mt-4 text-sm font-bold text-slate-500">Lesson belum tersedia dari backend.</p>;
-  }
-
-  return (
-    <div className="mt-4 grid gap-2">
-      {lessons.map((lesson) => (
-        <details className="rounded-xl border border-slate-200 bg-white p-3" key={lesson.id}>
-          <summary className="cursor-pointer font-black text-ink">{lesson.title}</summary>
-          <p className="mt-2 text-sm text-slate-600">{formatOptional(lesson.description)}</p>
-          {lesson.content_body ? <p className="mt-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">{lesson.content_body}</p> : null}
-        </details>
-      ))}
-    </div>
-  );
+function Alert({ children, tone = "info" }: { children: React.ReactNode; tone?: "info" | "warning" | "error" | "success" }) {
+  const tones = {
+    info: "border-blue-900 bg-blue-50 text-blue-950",
+    warning: "border-yellow-900 bg-yellow-100 text-yellow-950",
+    error: "border-orange-900 bg-orange-100 text-orange-950",
+    success: "border-emerald-900 bg-emerald-50 text-emerald-950",
+  };
+  return <div className={`rounded-lg border-2 px-4 py-3 text-sm font-medium ${tones[tone]}`}>{children}</div>;
 }
