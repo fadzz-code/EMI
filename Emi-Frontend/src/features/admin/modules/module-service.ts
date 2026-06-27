@@ -126,6 +126,17 @@ export const moduleTemplateService = {
     return response.data;
   },
 
+  async listClassModules(token: string, classId: string) {
+    const response = await apiClient.get<ClassModule[]>(`/classes/${classId}/modules`, {
+      token,
+      query: {
+        per_page: 100,
+      },
+    });
+
+    return response.data ?? [];
+  },
+
   async publishClassModule(token: string, classModuleId: string) {
     const response = await apiClient.post<ClassModule>(
       `/class-modules/${classModuleId}/publish`,

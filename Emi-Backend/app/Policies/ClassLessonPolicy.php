@@ -16,7 +16,13 @@ class ClassLessonPolicy
 
     public function view(User $user, ClassLesson $lesson): bool
     {
-        return app(LearningAccessService::class)->canManageLesson($user, $lesson);
+        $accessService = app(LearningAccessService::class);
+
+        if ($user->role === 'student') {
+            return $accessService->studentCanAccessLesson($user, $lesson);
+        }
+
+        return $accessService->canManageLesson($user, $lesson);
     }
 
     public function update(User $user, ClassLesson $lesson): bool

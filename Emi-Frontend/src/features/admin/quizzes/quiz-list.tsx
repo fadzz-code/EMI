@@ -119,9 +119,18 @@ export function QuizList() {
       let publishedCount = 0;
 
       if (publishClassContent) {
-        const classQuizIds = result.applied
-          .map((item) => item.class_quiz_id)
-          .filter((id): id is string => Boolean(id));
+        const classQuizzes = await Promise.all(
+          classIds.map((classId) => quizTemplateService.listClassQuizzes(token ?? "", classId)),
+        );
+        const classQuizIds = new Set([
+          ...result.applied
+            .map((item) => item.class_quiz_id)
+            .filter((id): id is string => Boolean(id)),
+          ...classQuizzes
+            .flat()
+            .filter((classQuiz) => classQuiz.source_quiz_template_id === quizId && classQuiz.status !== "published")
+            .map((classQuiz) => classQuiz.id),
+        ]);
 
         for (const classQuizId of classQuizIds) {
           await quizTemplateService.publishClassQuiz(token ?? "", classQuizId);

@@ -108,9 +108,18 @@ export function ModuleList() {
       let publishedCount = 0;
 
       if (publishClassContent) {
-        const classModuleIds = result.applied
-          .map((item) => item.class_module_id)
-          .filter((id): id is string => Boolean(id));
+        const classModules = await Promise.all(
+          classIds.map((classId) => moduleTemplateService.listClassModules(token ?? "", classId)),
+        );
+        const classModuleIds = new Set([
+          ...result.applied
+            .map((item) => item.class_module_id)
+            .filter((id): id is string => Boolean(id)),
+          ...classModules
+            .flat()
+            .filter((classModule) => classModule.source_module_template_id === moduleId && classModule.status !== "published")
+            .map((classModule) => classModule.id),
+        ]);
 
         for (const classModuleId of classModuleIds) {
           await moduleTemplateService.publishClassModule(token ?? "", classModuleId);
