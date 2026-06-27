@@ -45,11 +45,11 @@ export function TeacherStudentDetail({ studentId }: { studentId: string }) {
           <PageHeader
             badge="Profil Siswa"
             description={`Kelas aktif: ${user?.active_class?.name ?? "Tidak diketahui"}`}
-            title={formatOptional(student.student_name)}
+            title={formatOptional(student.full_name)}
           />
 
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatsCard helper="Email pengguna" label="Email" value={formatOptional(student.student_email)} />
+            <StatsCard helper="Kelas terdaftar" label="Kelas" value={formatOptional(student.class?.name)} />
             <StatsCard helper="Progress modul keseluruhan" label="Progress Belajar" value={formatPercent(student.overall_learning_progress_percent)} />
             <StatsCard helper="Modul yang diselesaikan" label="Modul Selesai" value={`${formatCount(student.completed_modules)} dari ${formatCount(student.published_modules)}`} />
             <StatsCard helper="Kuis yang dikerjakan" label="Kuis Selesai" value={`${formatCount(student.quizzes_completed)} dari ${formatCount(student.published_quizzes)}`} />

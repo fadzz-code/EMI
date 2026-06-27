@@ -131,7 +131,7 @@ export const teacherService = {
         token,
         query: {
           per_page: 100,
-          sort_by: "student_name",
+          sort_by: "full_name",
           sort_direction: "asc",
         },
       },

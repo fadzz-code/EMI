@@ -52,7 +52,7 @@ export function TeacherClassStudents({ classId }: { classId: string }) {
             </section>
             <div className="grid gap-4 md:grid-cols-2">
               {students.map((membership) => {
-                const progress = progressRows.find((row) => row.student_id === membership.student.id || row.student_email === membership.student.email);
+                const progress = progressRows.find((row) => row.student_id === membership.student.id || row.full_name === membership.student.full_name);
 
                 return (
                   <Card key={membership.membership_id}>

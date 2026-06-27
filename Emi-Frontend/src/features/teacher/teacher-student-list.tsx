@@ -68,8 +68,8 @@ export function TeacherStudentList() {
                   <CardHeader>
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <h2 className="text-xl font-black text-ink">{formatOptional(student.student_name)}</h2>
-                        <p className="mt-1 text-sm text-slate-600">{formatOptional(student.student_email)}</p>
+                        <h2 className="text-xl font-black text-ink">{formatOptional(student.full_name)}</h2>
+                        <p className="mt-1 text-sm text-slate-600">{formatOptional(student.class?.name)}</p>
                       </div>
                       <Link
                         className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-brutal hover:bg-blue-700"

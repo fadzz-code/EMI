@@ -127,8 +127,15 @@ export type TeacherUserProfile = {
 
 export type TeacherProgressStudentRow = {
   student_id?: string;
-  student_name?: string;
-  student_email?: string;
+  full_name?: string;
+  school?: {
+    id?: string;
+    name?: string;
+  };
+  class?: {
+    id?: string;
+    name?: string;
+  };
   published_modules?: number;
   started_modules?: number;
   completed_modules?: number;

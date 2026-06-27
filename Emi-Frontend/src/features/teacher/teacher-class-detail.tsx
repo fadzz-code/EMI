@@ -128,8 +128,8 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
                         <div className="rounded-xl border border-slate-200 bg-white p-3" key={row.student_id ?? index}>
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <p className="font-black text-ink">{formatOptional(row.student_name)}</p>
-                              <p className="text-sm text-slate-600">{formatOptional(row.student_email)}</p>
+                              <p className="font-black text-ink">{formatOptional(row.full_name)}</p>
+                              <p className="text-sm text-slate-600">{formatOptional(row.class?.name)}</p>
                             </div>
                             <Badge tone="blue">{formatPercent(row.overall_learning_progress_percent)}</Badge>
                           </div>

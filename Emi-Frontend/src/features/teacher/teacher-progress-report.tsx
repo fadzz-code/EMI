@@ -65,8 +65,8 @@ export function TeacherProgressReport() {
                   {students.map((row) => (
                     <tr className="hover:bg-yellow-50" key={row.student_id}>
                       <td className="px-4 py-3">
-                        <div className="font-bold text-ink">{formatOptional(row.student_name)}</div>
-                        <div className="text-xs text-slate-500">{formatOptional(row.student_email)}</div>
+                        <div className="font-bold text-ink">{formatOptional(row.full_name)}</div>
+                        <div className="text-xs text-slate-500">{formatOptional(row.class?.name)}</div>
                       </td>
                       <td className="px-4 py-3">
                         <Badge tone={row.overall_learning_progress_percent === 100 ? "blue" : "neutral"}>
