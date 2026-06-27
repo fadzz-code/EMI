@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
+import { clearAuthSession } from "@/lib/auth-session";
 import type { UserRole } from "@/lib/roles";
 import { getDashboardPath, isUserRole } from "@/lib/roles";
 import { LoadingState } from "@/components/ui/states";
@@ -27,6 +28,7 @@ export function ProtectedRoute({
     }
 
     if (status === "unauthenticated" || !user) {
+      clearAuthSession();
       router.replace("/login");
       return;
     }
