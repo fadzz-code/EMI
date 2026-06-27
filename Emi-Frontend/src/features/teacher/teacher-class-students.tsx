@@ -1,0 +1,86 @@
+"use client";
+
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+
+import { Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, PageHeader, StatsCard } from "@/components/ui";
+import { useAuth } from "@/features/auth/auth-provider";
+import { getFirstApiError } from "@/lib/api-client";
+
+import { teacherService } from "./teacher-service";
+import { formatCount, formatDate, formatPercent, statusLabel } from "./teacher-utils";
+
+export function TeacherClassStudents({ classId }: { classId: string }) {
+  const { token } = useAuth();
+  const studentsQuery = useQuery({
+    queryKey: ["teacher", "classes", classId, "students", "page"],
+    queryFn: () => teacherService.classStudents(token ?? "", classId),
+    enabled: Boolean(token && classId),
+  });
+  const progressQuery = useQuery({
+    queryKey: ["teacher", "progress", "students"],
+    queryFn: () => teacherService.studentProgress(token ?? ""),
+    enabled: Boolean(token),
+  });
+
+  const students = studentsQuery.data?.items ?? [];
+  const progressRows = progressQuery.data?.items ?? [];
+
+  return (
+    <div className="grid gap-6">
+      <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href={`/teacher/classes/${classId}`}>
+        Kembali ke Detail Kelas
+      </Link>
+      <PageHeader badge="Guru" description="Daftar siswa aktif berasal dari endpoint kelas dan tetap mengikuti scope assignment guru." title="Siswa Kelas" />
+
+      {studentsQuery.isLoading ? <LoadingState title="Memuat siswa kelas" /> : null}
+      {studentsQuery.isError ? <ErrorState description={getFirstApiError(studentsQuery.error)} onRetry={() => void studentsQuery.refetch()} title="Gagal memuat siswa" /> : null}
+
+      {!studentsQuery.isLoading && !studentsQuery.isError ? (
+        students.length === 0 ? (
+          <Card><CardContent><EmptyState description="Belum ada siswa aktif pada kelas ini." title="Siswa kosong" /></CardContent></Card>
+        ) : (
+          <div className="grid gap-4">
+            <section className="grid gap-4 sm:grid-cols-3">
+              <StatsCard helper="Endpoint /classes/{id}/students" label="Total siswa" value={formatCount(students.length)} />
+              <StatsCard helper="Jika laporan progress tersedia" label="Progress tersedia" value={formatCount(progressRows.length)} />
+              <StatsCard helper="Data kosong bukan dibuat-buat" label="Catatan" value={progressRows.length > 0 ? "Real" : "Belum tersedia"} />
+            </section>
+            <div className="grid gap-4 md:grid-cols-2">
+              {students.map((membership) => {
+                const progress = progressRows.find((row) => row.student_id === membership.student.id || row.student_email === membership.student.email);
+
+                return (
+                  <Card key={membership.membership_id}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h2 className="text-xl font-black text-ink">{membership.student.full_name}</h2>
+                          <p className="text-sm text-slate-600">{membership.student.email}</p>
+                        </div>
+                        <Badge tone={membership.student.status === "approved" ? "blue" : "neutral"}>{statusLabel(membership.student.status)}</Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                        <div className="rounded-xl bg-slate-50 p-3">
+                          <dt className="font-black uppercase text-slate-500">Bergabung</dt>
+                          <dd className="mt-1 font-bold text-ink">{formatDate(membership.joined_at)}</dd>
+                        </div>
+                        <div className="rounded-xl bg-slate-50 p-3">
+                          <dt className="font-black uppercase text-slate-500">Progress</dt>
+                          <dd className="mt-1 font-bold text-ink">{progress ? formatPercent(progress.overall_learning_progress_percent) : "Belum tersedia"}</dd>
+                        </div>
+                      </dl>
+                      {!progress ? <p className="mt-3 text-sm font-bold text-slate-500">Progress belum tersedia dari backend untuk siswa ini.</p> : null}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        )
+      ) : null}
+    </div>
+  );
+}

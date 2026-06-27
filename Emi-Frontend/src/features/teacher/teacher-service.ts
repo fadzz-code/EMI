@@ -8,6 +8,8 @@ import type {
   TeacherClassStudent,
   TeacherDashboardSummary,
   TeacherProgressStudentRow,
+  TeacherQuizAttempt,
+  TeacherUserProfile,
 } from "./types";
 
 function paginated<T>(data: T[] | undefined, meta: unknown): PaginatedResult<T> {
@@ -71,10 +73,22 @@ export const teacherService = {
       token,
       query: {
         per_page: 100,
+        sort_by: "sort_order",
+        sort_direction: "asc",
       },
     });
 
     return paginated(response.data, response.meta);
+  },
+
+  async classModuleDetail(token: string, moduleId: string) {
+    const response = await apiClient.get<TeacherClassModule>(`/class-modules/${moduleId}`, { token });
+
+    if (!response.data) {
+      throw new Error("Detail modul kelas tidak tersedia.");
+    }
+
+    return response.data;
   },
 
   async classQuizzes(token: string, classId: string) {
@@ -82,6 +96,27 @@ export const teacherService = {
       token,
       query: {
         class_id: classId,
+        per_page: 100,
+      },
+    });
+
+    return paginated(response.data, response.meta);
+  },
+
+  async quizDetail(token: string, quizId: string) {
+    const response = await apiClient.get<TeacherClassQuiz>(`/class-quizzes/${quizId}`, { token });
+
+    if (!response.data) {
+      throw new Error("Detail kuis kelas tidak tersedia.");
+    }
+
+    return response.data;
+  },
+
+  async quizAttempts(token: string, quizId: string) {
+    const response = await apiClient.get<TeacherQuizAttempt[]>(`/class-quizzes/${quizId}/attempts`, {
+      token,
+      query: {
         per_page: 100,
       },
     });
@@ -101,5 +136,25 @@ export const teacherService = {
     );
 
     return paginated(response.data, response.meta);
+  },
+
+  async profile(token: string) {
+    const response = await apiClient.get<TeacherUserProfile>("/auth/me", { token });
+
+    if (!response.data) {
+      throw new Error("Profil guru tidak tersedia.");
+    }
+
+    return response.data;
+  },
+
+  async updateProfile(token: string, payload: { full_name: string; phone?: string | null }) {
+    const response = await apiClient.patch<TeacherUserProfile>("/auth/me", payload, { token });
+
+    if (!response.data) {
+      throw new Error("Profil guru tidak tersedia.");
+    }
+
+    return response.data;
   },
 };

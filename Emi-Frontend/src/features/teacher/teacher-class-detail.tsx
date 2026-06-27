@@ -78,6 +78,18 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
             <StatsCard helper="Endpoint /classes/{id}/modules" label="Modul" value={formatCount(modules.length)} />
           </section>
 
+          <section className="grid gap-3 sm:grid-cols-3">
+            <Link className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-brutal hover:bg-blue-700" href={`/teacher/classes/${classId}/students`}>
+              Lihat Siswa
+            </Link>
+            <Link className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-yellow-300 px-4 py-2 text-sm font-bold text-ink shadow-brutal hover:bg-yellow-200" href={`/teacher/classes/${classId}/modules`}>
+              Lihat Modul
+            </Link>
+            <Link className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-white px-4 py-2 text-sm font-bold text-ink shadow-brutal hover:bg-slate-100" href={`/teacher/classes/${classId}/quizzes`}>
+              Lihat Kuis
+            </Link>
+          </section>
+
           <section className="grid gap-6 xl:grid-cols-2">
             <Card>
               <CardHeader>

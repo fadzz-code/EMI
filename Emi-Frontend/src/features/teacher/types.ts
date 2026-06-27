@@ -45,6 +45,20 @@ export type TeacherRecentActivity = {
 export type TeacherClass = SchoolClass;
 export type TeacherClassStudent = ClassStudent;
 
+export type TeacherClassLesson = {
+  id: string;
+  class_module_id: string;
+  title: string;
+  description?: string | null;
+  content_type?: string | null;
+  content_body?: string | null;
+  external_url?: string | null;
+  sort_order?: number | null;
+  status: EntityStatus | "draft" | "published" | "archived" | string;
+  published_at?: string | null;
+  created_at?: string | null;
+};
+
 export type TeacherClassModule = {
   id: string;
   class_id: string;
@@ -54,6 +68,16 @@ export type TeacherClassModule = {
   sort_order?: number | null;
   published_at?: string | null;
   archived_at?: string | null;
+  created_at?: string | null;
+  lessons?: TeacherClassLesson[];
+};
+
+export type TeacherQuizQuestion = {
+  id: string;
+  question_type: string;
+  question_text: string;
+  points?: number | null;
+  order_number?: number | null;
 };
 
 export type TeacherClassQuiz = {
@@ -61,6 +85,7 @@ export type TeacherClassQuiz = {
   class_id: string;
   title: string;
   description?: string | null;
+  instructions?: string | null;
   duration_minutes?: number | null;
   max_attempts?: number | null;
   show_result?: boolean;
@@ -70,6 +95,34 @@ export type TeacherClassQuiz = {
   questions_count?: number;
   attempts_count?: number;
   published_at?: string | null;
+  questions?: TeacherQuizQuestion[];
+};
+
+export type TeacherQuizAttempt = {
+  id: string;
+  status: string;
+  score_percent?: number | null;
+  started_at?: string | null;
+  submitted_at?: string | null;
+  student?: {
+    id: string;
+    full_name: string;
+    email: string;
+  } | null;
+};
+
+export type TeacherUserProfile = {
+  id: string;
+  full_name: string;
+  email: string;
+  role: string;
+  status: string;
+  phone?: string | null;
+  avatar?: {
+    id: string;
+    url?: string | null;
+  } | null;
+  updated_at?: string | null;
 };
 
 export type TeacherProgressStudentRow = {
