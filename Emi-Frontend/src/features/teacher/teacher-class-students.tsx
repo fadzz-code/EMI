@@ -57,12 +57,18 @@ export function TeacherClassStudents({ classId }: { classId: string }) {
                 return (
                   <Card key={membership.membership_id}>
                     <CardHeader>
-                      <div className="flex items-start justify-between gap-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <h2 className="text-xl font-black text-ink">{membership.student.full_name}</h2>
-                          <p className="text-sm text-slate-600">{membership.student.email}</p>
+                          <p className="mt-1 text-sm text-slate-600">{membership.student.email}</p>
+                          <div className="mt-2"><Badge tone={membership.student.status === "approved" ? "blue" : "neutral"}>{statusLabel(membership.student.status)}</Badge></div>
                         </div>
-                        <Badge tone={membership.student.status === "approved" ? "blue" : "neutral"}>{statusLabel(membership.student.status)}</Badge>
+                        <Link
+                          className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-brutal hover:bg-blue-700"
+                          href={teacherRoutes.studentDetail(membership.student.id)}
+                        >
+                          Lihat Detail
+                        </Link>
                       </div>
                     </CardHeader>
                     <CardContent>

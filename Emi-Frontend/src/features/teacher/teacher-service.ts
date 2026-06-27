@@ -131,11 +131,33 @@ export const teacherService = {
         token,
         query: {
           per_page: 100,
+          sort_by: "student_name",
+          sort_direction: "asc",
         },
       },
     );
 
     return paginated(response.data, response.meta);
+  },
+
+  async studentDetail(token: string, studentId: string) {
+    const response = await apiClient.get<TeacherProgressStudentRow[]>(
+      "/teacher/reports/progress/students",
+      {
+        token,
+        query: {
+          per_page: 1,
+          student_id: studentId,
+        },
+      },
+    );
+
+    const student = response.data?.[0];
+    if (!student) {
+      throw new Error("Detail siswa tidak tersedia atau bukan berada di kelas Anda.");
+    }
+
+    return student;
   },
 
   async profile(token: string) {

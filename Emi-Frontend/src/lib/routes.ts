@@ -19,6 +19,9 @@ export const publicRoutes = {
 export const teacherRoutes = {
   dashboard: "/teacher/dashboard",
   classes: "/teacher/classes",
+  students: "/teacher/students",
+  studentDetail: (studentId: string) => `/teacher/students/${studentId}`,
+  progressReport: "/teacher/reports/progress",
   profile: "/teacher/profile",
   classDetail: (classId: string) => `/teacher/classes/${classId}`,
   classStudents: (classId: string) => `/teacher/classes/${classId}/students`,
@@ -42,6 +45,8 @@ export const roleNavItems: Record<UserRole, NavItem[]> = {
   teacher: [
     { label: "Dashboard", href: teacherRoutes.dashboard, status: "ready" },
     { label: "Kelas", href: teacherRoutes.classes, status: "ready" },
+    { label: "Siswa", href: teacherRoutes.students, status: "ready" },
+    { label: "Progress", href: teacherRoutes.progressReport, status: "ready" },
     { label: "Profil", href: teacherRoutes.profile, status: "ready" },
   ],
   student: [
