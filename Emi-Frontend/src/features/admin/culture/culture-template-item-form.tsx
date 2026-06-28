@@ -57,7 +57,7 @@ export function CultureTemplateItemForm({ editingItem, onCancel, onSaved, templa
 
   return (
     <Card>
-      <CardHeader><h2 className="text-xl font-black text-ink">{editingItem ? "Edit Item" : "Tambah Item"}</h2></CardHeader>
+      <CardHeader><h2 className="text-xl font-black text-ink">{editingItem ? "Edit Konten Template" : "Tambah Konten Template"}</h2></CardHeader>
       <CardContent>
         <form className="grid gap-4" onSubmit={submit}>
           {saveMutation.error ? <Alert tone="error">{getFirstApiError(saveMutation.error)}</Alert> : null}
@@ -76,11 +76,11 @@ export function CultureTemplateItemForm({ editingItem, onCancel, onSaved, templa
               <h3 className="font-black text-ink">Upload Media</h3>
               {uploadError ? <Alert tone="error">{uploadError}</Alert> : null}
               {uploadSuccess ? <Alert tone="success">{uploadSuccess}</Alert> : null}
+              <UploadComponent accept=".jpg,.jpeg,.png,.webp,.pdf,.mp3,.wav,.m4a,.ogg,.webm,image/jpeg,image/png,image/webp,application/pdf,audio/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
               <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
-                <FormField label="Media ID"><Input onChange={(e) => setMediaId(e.target.value)} placeholder="Otomatis terisi setelah upload" required value={mediaId} /></FormField>
+                <FormField label="Media"><Input onChange={(e) => setMediaId(e.target.value)} placeholder="Otomatis terisi setelah upload" required value={mediaId} /></FormField>
                 <div className="flex gap-2"><Button disabled={!file || isUploading} onClick={uploadMedia} type="button" variant="secondary">{isUploading ? "Upload..." : "Upload"}</Button></div>
               </div>
-              <UploadComponent accept=".jpg,.jpeg,.png,.webp,.pdf,.mp3,.wav,.m4a,.ogg,.webm,image/jpeg,image/png,image/webp,application/pdf,audio/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
               {file ? <FilePreview name={file.name} size={`${Math.ceil(file.size / 1024)} KB`} type={file.type || "File"} /> : null}
             </div>
           ) : null}

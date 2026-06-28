@@ -1,4 +1,4 @@
-import { AdminCultureTemplateEdit } from "@/features/admin/culture/culture-template-edit";
+import { redirect } from "next/navigation";
 
 export default async function AdminCultureTemplateEditPage({
   params,
@@ -7,5 +7,5 @@ export default async function AdminCultureTemplateEditPage({
 }) {
   const { cultureTemplateId } = await params;
 
-  return <AdminCultureTemplateEdit templateId={cultureTemplateId} />;
+  redirect(`/admin/culture/templates?template_id=${cultureTemplateId}`);
 }
