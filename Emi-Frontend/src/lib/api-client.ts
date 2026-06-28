@@ -71,13 +71,13 @@ function appendQuery(url: URL, query?: ApiRequestOptions["query"]) {
   });
 }
 
-function safeErrorMessage(status: number, fallback?: string) {
+function safeErrorMessage(status: number, fallback?: string, code?: string) {
   if (status === 401) {
     return "Sesi Anda tidak valid. Silakan login kembali.";
   }
 
   if (status === 403) {
-    return "Anda tidak memiliki izin untuk membuka data ini.";
+    return fallback || "Anda tidak memiliki izin untuk membuka data ini.";
   }
 
   if (status === 404) {
@@ -85,7 +85,7 @@ function safeErrorMessage(status: number, fallback?: string) {
   }
 
   if (status === 422) {
-    return "Data yang diberikan belum valid.";
+    return fallback || "Data yang diberikan belum valid.";
   }
 
   if (status === 429) {
@@ -93,6 +93,10 @@ function safeErrorMessage(status: number, fallback?: string) {
   }
 
   if (status >= 500) {
+    // Show fallback message from backend if it looks like a known validation or domain exception
+    if (fallback && code && code !== "SERVER_ERROR") {
+      return fallback;
+    }
     return "Layanan sedang bermasalah. Coba lagi beberapa saat lagi.";
   }
 
@@ -165,7 +169,7 @@ export async function apiRequest<T>(
 
     if (!response.ok || payload.success === false) {
       throw new ApiError({
-        message: safeErrorMessage(response.status, payload.message),
+        message: safeErrorMessage(response.status, payload.message, payload.code),
         status: response.status,
         code: payload.code,
         errors: payload.errors,
