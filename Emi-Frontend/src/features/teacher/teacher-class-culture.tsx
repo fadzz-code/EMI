@@ -28,9 +28,9 @@ export function TeacherClassCulture({ classId }: { classId: string }) {
 
   return (
     <div className="grid gap-6">
-      <PageHeader badge="Guru" description="Kelola Budaya Mekongga khusus kelas ini." title="Budaya Mekongga Kelas" />
+      <PageHeader badge="Guru" description="Kelola konten budaya kelas yang merupakan salinan class-scoped dari template admin." title="Konten Budaya Kelas" />
       <TeacherClassNav classId={classId} />
-      <CultureForm classId={classId} item={editing} onDone={() => { setEditing(null); void invalidate(); }} />
+      <CultureForm classId={classId} item={editing} key={editing?.id ?? "new"} onDone={() => { setEditing(null); void invalidate(); }} />
       {query.isLoading ? <LoadingState title="Memuat Budaya Mekongga" /> : null}
       {query.isError ? <ErrorState description={getFirstApiError(query.error)} onRetry={() => void query.refetch()} title="Gagal memuat Budaya Mekongga" /> : null}
       {!query.isLoading && !query.isError ? items.length === 0 ? <Card><CardContent><EmptyState description="Belum ada konten budaya untuk kelas ini." title="Budaya Mekongga kosong" /></CardContent></Card> : (
@@ -40,6 +40,7 @@ export function TeacherClassCulture({ classId }: { classId: string }) {
               <CardHeader><div className="flex flex-wrap gap-2"><Badge tone={item.status === "published" ? "blue" : item.status === "archived" ? "neutral" : "yellow"}>{statusLabel(item.status)}</Badge><Badge tone="neutral">{item.content_type}</Badge></div><h2 className="mt-2 text-xl font-black text-ink">{item.title}</h2></CardHeader>
               <CardContent>
                 <p className="text-sm text-slate-600">{item.description ?? "Tanpa deskripsi"}</p>
+                {item.source_template_item_id ? <p className="mt-2 text-xs font-black uppercase text-slate-500">Salinan dari template admin</p> : <p className="mt-2 text-xs font-black uppercase text-slate-500">Dibuat guru untuk kelas ini</p>}
                 <CultureLink item={item} />
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Button type="button" variant="secondary" onClick={() => setEditing(item)}>Edit</Button>
@@ -76,7 +77,7 @@ function CultureForm({ classId, item, onDone }: { classId: string; item: Teacher
     mutation.mutate(event);
   }
 
-  return <Card><CardHeader><h2 className="text-xl font-black text-ink">{item ? "Edit Item" : "Tambah Item"}</h2></CardHeader><CardContent><form className="grid gap-4" onSubmit={submit}>{mutation.error ? <Alert tone="error">{getFirstApiError(mutation.error)}</Alert> : null}{mutation.isSuccess ? <Alert tone="success">Tersimpan.</Alert> : null}<FormField label="Judul"><Input name="title" defaultValue={item?.title ?? ""} required /></FormField><FormField label="Deskripsi"><Textarea name="description" defaultValue={item?.description ?? ""} /></FormField><FormField label="Tipe konten"><Select name="content_type" value={type} onChange={(event) => setType(event.target.value as TeacherCultureContentType)}>{contentTypes.map((contentType) => <option key={contentType} value={contentType}>{contentType}</option>)}</Select></FormField>{fileTypes.includes(type) ? <FormField label="File"><UploadComponent onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></FormField> : <FormField label="URL"><Input name="external_url" type="url" defaultValue={item?.external_url ?? ""} required /></FormField>}<div className="grid gap-4 md:grid-cols-2"><FormField label="Urutan"><Input name="display_order" type="number" min="1" defaultValue={item?.display_order ?? 1} /></FormField><FormField label="Status"><Select name="status" defaultValue={item?.status ?? "draft"}><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Archived</option></Select></FormField></div><div className="flex gap-2"><Button disabled={mutation.isPending} type="submit">{mutation.isPending ? "Menyimpan..." : "Simpan"}</Button></div></form></CardContent></Card>;
+  return <Card><CardHeader><h2 className="text-xl font-black text-ink">{item ? "Edit Konten Budaya" : "Tambah Konten Budaya"}</h2></CardHeader><CardContent><form className="grid gap-4" onSubmit={submit}>{mutation.error ? <Alert tone="error">{getFirstApiError(mutation.error)}</Alert> : null}{mutation.isSuccess ? <Alert tone="success">Tersimpan.</Alert> : null}<FormField label="Judul"><Input name="title" defaultValue={item?.title ?? ""} required /></FormField><FormField label="Deskripsi"><Textarea name="description" defaultValue={item?.description ?? ""} /></FormField><FormField label="Tipe konten"><Select name="content_type" value={type} onChange={(event) => setType(event.target.value as TeacherCultureContentType)}>{contentTypes.map((contentType) => <option key={contentType} value={contentType}>{contentType}</option>)}</Select></FormField>{fileTypes.includes(type) ? <FormField label="File"><UploadComponent onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></FormField> : <FormField label="URL"><Input name="external_url" type="url" defaultValue={item?.external_url ?? ""} required /></FormField>}<div className="grid gap-4 md:grid-cols-2"><FormField label="Urutan"><Input name="display_order" type="number" min="1" defaultValue={item?.display_order ?? 1} /></FormField><FormField label="Status"><Select name="status" defaultValue={item?.status ?? "draft"}><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Archived</option></Select></FormField></div><div className="flex gap-2"><Button disabled={mutation.isPending} type="submit">{mutation.isPending ? "Menyimpan..." : "Simpan"}</Button></div></form></CardContent></Card>;
 }
 
 function CultureLink({ item }: { item: TeacherCultureItem }) {

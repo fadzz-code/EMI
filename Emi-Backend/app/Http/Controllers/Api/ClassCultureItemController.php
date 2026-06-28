@@ -24,8 +24,8 @@ class ClassCultureItemController extends Controller
         Gate::authorize('createForClass', [ClassCultureItem::class, $class]);
 
         $perPage = (int) ($request->query('per_page') ?? 15);
-        $sortBy = $request->query('sort_by') ?? 'display_order';
-        $sortDirection = $request->query('sort_direction') ?? 'asc';
+        $sortBy = in_array($request->query('sort_by'), ['display_order', 'title', 'status', 'created_at', 'updated_at'], true) ? $request->query('sort_by') : 'display_order';
+        $sortDirection = $request->query('sort_direction') === 'desc' ? 'desc' : 'asc';
 
         $items = ClassCultureItem::query()
             ->where('class_id', $classId)

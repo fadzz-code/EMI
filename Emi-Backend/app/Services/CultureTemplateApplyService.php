@@ -57,8 +57,8 @@ class CultureTemplateApplyService
                                 'external_url' => $item->external_url,
                                 'thumbnail_media_id' => $item->thumbnail_media_id,
                                 'display_order' => $item->display_order,
-                                'status' => 'published',
-                                'published_at' => now(),
+                                'status' => $item->status,
+                                'published_at' => $item->status === 'published' ? now() : null,
                                 'created_by' => $actor->id,
                             ]);
                             $appliedCount++;
