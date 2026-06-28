@@ -269,16 +269,16 @@ export const teacherService = {
     return student;
   },
 
-  async uploadMedia(token: string, file: File, purpose: string) {
+  async uploadMedia(token: string, file: File, purpose: string, visibility: "public" | "private" = "private") {
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", file, file.name);
     formData.append("purpose", purpose);
-    formData.append("visibility", "private");
+    formData.append("visibility", visibility);
 
-    const response = await apiClient.post<{ id: string; url: string; mime_type: string }>(
+    const response = await apiClient.post<{ id: string; original_name?: string; url?: string; mime_type: string }>(
       "/media",
       formData,
-      { token }
+      { token, timeoutMs: 60_000 }
     );
 
     if (!response.data) {
@@ -286,6 +286,10 @@ export const teacherService = {
     }
 
     return response.data;
+  },
+
+  async uploadQuestionImage(token: string, file: File) {
+    return this.uploadMedia(token, file, "question_image", "public");
   },
 
   async profile(token: string) {

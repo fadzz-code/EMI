@@ -115,7 +115,11 @@ export function TeacherQuizBuilder({ classQuizId }: { classQuizId: string }) {
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-3" key={question.id}>
                       <div className="flex items-start justify-between gap-3"><div><p className="font-black text-ink">{question.order_number}. {question.question_text}</p><p className="text-xs font-bold text-slate-500">{question.question_type} | {question.points ?? 0} poin</p></div><Badge>{question.options?.length ?? 0} opsi</Badge></div>
                       {question.options?.length ? <ol className="mt-2 grid gap-1 text-sm text-slate-600">{question.options.map((option) => <li key={`${question.id}-${option.order_number}`}>{option.order_number}. {option.option_text}{option.is_correct ? " (benar)" : ""}</li>)}</ol> : null}
-                      <div className="mt-3 flex gap-2"><Button onClick={() => setEditingQuestion(question)} type="button" variant="secondary">Edit</Button><Button disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate(question.id)} type="button" variant="secondary">Hapus</Button></div>
+                      {question.image_media?.url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img alt="Gambar soal" className="mt-3 max-h-48 w-fit rounded-lg border-2 border-ink bg-white object-contain" src={question.image_media.url} />
+                      ) : question.image_media_id ? <p className="mt-3 rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-600">Gambar terhubung: {question.image_media_id}</p> : null}
+                      <div className="mt-3 flex gap-2"><Button onClick={() => setEditingQuestion(question)} type="button" variant="secondary">Edit</Button><Button disabled={deleteMutation.isPending} onClick={() => { if (confirm("Hapus soal ini?")) { deleteMutation.mutate(question.id); } }} type="button" variant="danger">Hapus</Button></div>
                     </div>
                   ))}
                 </div>
@@ -123,7 +127,7 @@ export function TeacherQuizBuilder({ classQuizId }: { classQuizId: string }) {
             </CardContent>
           </Card>
 
-          <TeacherQuizQuestionForm classQuizId={classQuizId} editingQuestion={editingQuestion} onCancelEdit={() => setEditingQuestion(null)} onSaved={() => { setSuccessMsg(editingQuestion ? "Soal berhasil diperbarui." : "Soal berhasil ditambahkan."); setEditingQuestion(null); queryClient.invalidateQueries({ queryKey: ["teacher", "class-quizzes", classQuizId] }); }} token={token ?? ""} />
+          <TeacherQuizQuestionForm classQuizId={classQuizId} defaultOrder={questions.length + 1} editingQuestion={editingQuestion} key={editingQuestion?.id ?? `new-${questions.length + 1}`} onCancelEdit={() => setEditingQuestion(null)} onSaved={() => { setSuccessMsg(editingQuestion ? "Soal berhasil diperbarui." : "Soal berhasil ditambahkan."); setEditingQuestion(null); queryClient.invalidateQueries({ queryKey: ["teacher", "class-quizzes", classQuizId] }); queryClient.invalidateQueries({ queryKey: ["teacher", "quizzes"] }); }} token={token ?? ""} />
         </div>
       ) : null}
     </div>

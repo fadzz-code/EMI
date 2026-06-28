@@ -84,12 +84,21 @@ export type TeacherQuizOption = {
   order_number: number;
 };
 
+export type TeacherMediaFile = {
+  id: string;
+  original_name?: string | null;
+  url?: string | null;
+  mime_type?: string | null;
+  visibility?: string | null;
+};
+
 export type TeacherQuizQuestion = {
   id: string;
   class_quiz_id?: string;
   question_type: "multiple_choice" | "short_answer" | string;
   question_text: string;
   image_media_id?: string | null;
+  image_media?: TeacherMediaFile | null;
   correct_answer_text?: string | null;
   use_fuzzy_matching?: boolean | null;
   fuzzy_threshold?: number | null;
