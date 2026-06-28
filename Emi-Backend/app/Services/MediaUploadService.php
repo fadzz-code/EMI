@@ -121,7 +121,7 @@ class MediaUploadService
     {
         $maxKb = match ($purpose) {
             'avatar', 'question_image', 'lesson_image' => (int) config('media.max_kb.image'),
-            'document' => (int) config('media.max_kb.document'),
+            'document', 'culture_media' => (int) config('media.max_kb.document'),
             'audio', 'speaking_recording' => (int) config('media.max_kb.audio'),
             default => 0,
         };

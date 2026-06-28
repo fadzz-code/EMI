@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\AdminDashboardController;
+use App\Http\Controllers\Api\AdminCultureTemplateController;
+use App\Http\Controllers\Api\AdminCultureTemplateItemController;
+use App\Http\Controllers\Api\CultureTemplateApplyController;
 use App\Http\Controllers\Api\AdminDictionaryCategoryController;
 use App\Http\Controllers\Api\AdminDictionaryEntryController;
 use App\Http\Controllers\Api\AdminLessonTemplateController;
@@ -125,6 +128,17 @@ Route::prefix('v1')->group(function () {
         Route::get('quiz-template-questions/{id}', [AdminQuizTemplateQuestionController::class, 'show']);
         Route::put('quiz-template-questions/{id}', [AdminQuizTemplateQuestionController::class, 'update']);
         Route::delete('quiz-template-questions/{id}', [AdminQuizTemplateQuestionController::class, 'destroy']);
+        Route::get('culture-templates', [AdminCultureTemplateController::class, 'index']);
+        Route::post('culture-templates', [AdminCultureTemplateController::class, 'store']);
+        Route::get('culture-templates/{id}', [AdminCultureTemplateController::class, 'show']);
+        Route::put('culture-templates/{id}', [AdminCultureTemplateController::class, 'update']);
+        Route::delete('culture-templates/{id}', [AdminCultureTemplateController::class, 'destroy']);
+        Route::post('culture-templates/{id}/publish', [AdminCultureTemplateController::class, 'publish']);
+        Route::post('culture-templates/{id}/apply', CultureTemplateApplyController::class);
+        Route::post('culture-templates/{culture_template_id}/items', [AdminCultureTemplateItemController::class, 'store']);
+        Route::get('culture-template-items/{id}', [AdminCultureTemplateItemController::class, 'show']);
+        Route::put('culture-template-items/{id}', [AdminCultureTemplateItemController::class, 'update']);
+        Route::delete('culture-template-items/{id}', [AdminCultureTemplateItemController::class, 'destroy']);
     });
 
     Route::middleware('auth:sanctum')->group(function () {

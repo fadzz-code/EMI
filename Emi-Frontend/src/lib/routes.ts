@@ -47,6 +47,7 @@ export const roleNavItems: Record<UserRole, NavItem[]> = {
     { label: "Basis AI", href: "/admin/knowledge-base", status: "next" },
     { label: "Modul", href: "/admin/modules", status: "ready" },
     { label: "Kuis", href: "/admin/quizzes", status: "ready" },
+    { label: "Budaya Mekongga", href: "/admin/culture/templates", status: "ready" },
     { label: "Progress", href: "/admin/progress", status: "ready" },
     { label: "Pengaturan", href: "/admin/settings", status: "ready" },
   ],
