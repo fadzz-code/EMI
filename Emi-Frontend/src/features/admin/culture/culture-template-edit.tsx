@@ -7,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState, PageHeader } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
-import { adminSchoolService } from "@/features/admin/management/school-service";
+import { classService } from "@/features/admin/management/management-service";
 
 import { adminCultureService } from "./culture-service";
 import { CultureTemplateItemForm } from "./culture-template-item-form";
@@ -35,7 +35,7 @@ export function AdminCultureTemplateEdit({ templateId }: { templateId: string })
 
   const classesQuery = useQuery({
     queryKey: ["admin", "classes"],
-    queryFn: () => adminSchoolService.getClasses(token ?? "", { per_page: 100 }),
+    queryFn: () => classService.list(token ?? "", { per_page: 100 }),
     enabled: Boolean(token),
   });
 
