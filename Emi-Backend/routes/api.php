@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\AdminDashboardController;
+use App\Http\Controllers\Api\ClassCultureItemController;
+use App\Http\Controllers\Api\StudentCultureItemController;
 use App\Http\Controllers\Api\AdminCultureTemplateController;
 use App\Http\Controllers\Api\AdminCultureTemplateItemController;
 use App\Http\Controllers\Api\CultureTemplateApplyController;
@@ -182,6 +184,13 @@ Route::prefix('v1')->group(function () {
         Route::post('class-lessons/{id}/publish', [ClassLessonController::class, 'publish']);
         Route::post('class-lessons/{id}/archive', [ClassLessonController::class, 'archive']);
         Route::get('class-lessons/{id}/content-url', [ClassLessonController::class, 'contentUrl']);
+        Route::get('classes/{class_id}/culture', [ClassCultureItemController::class, 'index']);
+        Route::post('classes/{class_id}/culture', [ClassCultureItemController::class, 'store']);
+        Route::get('class-culture-items/{id}', [ClassCultureItemController::class, 'show']);
+        Route::put('class-culture-items/{id}', [ClassCultureItemController::class, 'update']);
+        Route::delete('class-culture-items/{id}', [ClassCultureItemController::class, 'destroy']);
+        Route::post('class-culture-items/{id}/publish', [ClassCultureItemController::class, 'publish']);
+        Route::post('class-culture-items/{id}/archive', [ClassCultureItemController::class, 'archive']);
         Route::get('class-quizzes', [ClassQuizController::class, 'index']);
         Route::post('class-quizzes', [ClassQuizController::class, 'store']);
         Route::get('class-quizzes/{id}', [ClassQuizController::class, 'show']);
@@ -212,6 +221,7 @@ Route::prefix('v1')->group(function () {
         Route::post('modules/{id}/start', [StudentModuleController::class, 'start']);
         Route::patch('lessons/{id}/progress', [StudentProgressController::class, 'updateLesson']);
         Route::get('progress/modules', [StudentProgressController::class, 'modules']);
+        Route::get('culture', [StudentCultureItemController::class, 'index']);
         Route::get('quizzes', [StudentQuizController::class, 'index']);
         Route::get('quizzes/{id}', [StudentQuizController::class, 'show']);
     });

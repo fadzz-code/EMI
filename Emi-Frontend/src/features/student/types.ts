@@ -109,6 +109,24 @@ export type LessonProgress = {
   last_accessed_at?: string | null;
 };
 
+export type StudentCultureContentType = "image" | "audio" | "pdf" | "video" | "youtube" | "article" | "link";
+
+export type StudentCultureItem = {
+  id: string;
+  class_id: string;
+  title: string;
+  description?: string | null;
+  content_type: StudentCultureContentType;
+  media_id?: string | null;
+  media?: { id: string; url?: string | null; mime_type?: string | null; visibility?: string | null } | null;
+  external_url?: string | null;
+  display_order?: number | null;
+  status: string;
+  school_class?: { id?: string; name?: string; school?: { id?: string; name?: string } | null } | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
 export type StudentProgressReport = {
   summary?: {
     published_modules?: number;

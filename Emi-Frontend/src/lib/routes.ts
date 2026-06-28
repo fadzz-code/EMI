@@ -24,6 +24,7 @@ export const teacherRoutes = {
   progressReport: "/teacher/reports/progress",
   modules: "/teacher/modules",
   quizzes: "/teacher/quizzes",
+  culture: "/teacher/culture",
   speakingResults: "/teacher/speaking/results",
   media: "/teacher/media",
   quizBuilder: (classQuizId: string) => `/teacher/quizzes/${classQuizId}/builder`,
@@ -35,6 +36,7 @@ export const teacherRoutes = {
   classStudents: (classId: string) => `/teacher/classes/${classId}/students`,
   classModules: (classId: string) => `/teacher/classes/${classId}/modules`,
   classQuizzes: (classId: string) => `/teacher/classes/${classId}/quizzes`,
+  classCulture: (classId: string) => `/teacher/classes/${classId}/culture`,
 } as const;
 
 export const roleNavItems: Record<UserRole, NavItem[]> = {
@@ -58,8 +60,8 @@ export const roleNavItems: Record<UserRole, NavItem[]> = {
     { label: "Progress", href: teacherRoutes.progressReport, status: "ready" },
     { label: "Modul", href: teacherRoutes.modules, status: "ready" },
     { label: "Kuis", href: teacherRoutes.quizzes, status: "ready" },
+    { label: "Budaya Mekongga", href: teacherRoutes.culture, status: "ready" },
     { label: "Hasil Speaking", href: teacherRoutes.speakingResults, status: "next" },
-    { label: "Media", href: teacherRoutes.media, status: "ready" },
     { label: "Profil", href: teacherRoutes.profile, status: "ready" },
   ],
   student: [
@@ -67,6 +69,7 @@ export const roleNavItems: Record<UserRole, NavItem[]> = {
     { label: "Modul", href: "/student/modules", status: "ready" },
     { label: "Kuis", href: "/student/quizzes", status: "ready" },
     { label: "Kamus", href: "/student/dictionary", status: "ready" },
+    { label: "Budaya Mekongga", href: "/student/culture", status: "ready" },
     { label: "Progress", href: "/student/progress", status: "next" },
   ],
 };

@@ -7,6 +7,7 @@ import type {
   StudentDashboardSummary,
   StudentLesson,
   StudentModule,
+  StudentCultureItem,
   StudentProgressReport,
 } from "./types";
 
@@ -100,6 +101,15 @@ export const studentService = {
     }
 
     return response.data;
+  },
+
+  async culture(token: string, classId?: string) {
+    const response = await apiClient.get<StudentCultureItem[]>("/student/culture", {
+      token,
+      query: { class_id: classId, per_page: 100 },
+    });
+
+    return paginated(response.data, response.meta);
   },
 
   async progressReport(token: string) {

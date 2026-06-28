@@ -6,6 +6,8 @@ import type {
   TeacherClassLesson,
   TeacherClassModule,
   TeacherClassQuiz,
+  TeacherCultureItem,
+  TeacherCulturePayload,
   TeacherClassStudent,
   TeacherDashboardSummary,
   TeacherProgressStudentRow,
@@ -155,6 +157,47 @@ export const teacherService = {
     });
 
     return paginated(response.data, response.meta);
+  },
+
+  async classCulture(token: string, classId: string) {
+    const response = await apiClient.get<TeacherCultureItem[]>(`/classes/${classId}/culture`, {
+      token,
+      query: { per_page: 100, sort_by: "display_order", sort_direction: "asc" },
+    });
+
+    return paginated(response.data, response.meta);
+  },
+
+  async createClassCulture(token: string, classId: string, payload: TeacherCulturePayload) {
+    const response = await apiClient.post<TeacherCultureItem>(`/classes/${classId}/culture`, payload, { token });
+    if (!response.data) throw new Error("Gagal membuat Budaya Mekongga.");
+    return response.data;
+  },
+
+  async updateClassCulture(token: string, itemId: string, payload: TeacherCulturePayload) {
+    const response = await apiClient.put<TeacherCultureItem>(`/class-culture-items/${itemId}`, payload, { token });
+    if (!response.data) throw new Error("Gagal memperbarui Budaya Mekongga.");
+    return response.data;
+  },
+
+  async deleteClassCulture(token: string, itemId: string) {
+    await apiClient.delete(`/class-culture-items/${itemId}`, { token });
+  },
+
+  async publishClassCulture(token: string, itemId: string) {
+    const response = await apiClient.post<TeacherCultureItem>(`/class-culture-items/${itemId}/publish`, {}, { token });
+    if (!response.data) throw new Error("Gagal mempublikasikan Budaya Mekongga.");
+    return response.data;
+  },
+
+  async archiveClassCulture(token: string, itemId: string) {
+    const response = await apiClient.post<TeacherCultureItem>(`/class-culture-items/${itemId}/archive`, {}, { token });
+    if (!response.data) throw new Error("Gagal mengarsipkan Budaya Mekongga.");
+    return response.data;
+  },
+
+  async uploadCultureMedia(token: string, file: File) {
+    return this.uploadMedia(token, file, "culture_media", "public");
   },
 
   async quizzes(token: string) {

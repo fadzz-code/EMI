@@ -112,6 +112,43 @@ export type TeacherQuizQuestion = {
   options?: TeacherQuizOption[];
 };
 
+export type TeacherCultureContentType = "image" | "audio" | "pdf" | "video" | "youtube" | "article" | "link";
+
+export type TeacherCultureItem = {
+  id: string;
+  class_id: string;
+  source_template_id?: string | null;
+  source_template_item_id?: string | null;
+  title: string;
+  description?: string | null;
+  content_type: TeacherCultureContentType;
+  media_id?: string | null;
+  media?: TeacherMediaFile | null;
+  external_url?: string | null;
+  thumbnail_media_id?: string | null;
+  display_order?: number | null;
+  status: EntityStatus | "draft" | "published" | "archived" | string;
+  created_by?: string | null;
+  updated_by?: string | null;
+  school_class?: {
+    id?: string;
+    name?: string;
+    school?: { id?: string; name?: string } | null;
+  } | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type TeacherCulturePayload = {
+  title: string;
+  description?: string | null;
+  content_type: TeacherCultureContentType;
+  media_id?: string | null;
+  external_url?: string | null;
+  display_order?: number | null;
+  status?: string;
+};
+
 export type TeacherClassQuiz = {
   id: string;
   class_id: string;

@@ -11,13 +11,14 @@ const items = [
   { label: "Siswa", href: teacherRoutes.classStudents },
   { label: "Modul", href: teacherRoutes.classModules },
   { label: "Kuis", href: teacherRoutes.classQuizzes },
+  { label: "Budaya Mekongga", href: teacherRoutes.classCulture },
 ];
 
 export function TeacherClassNav({ classId }: { classId: string }) {
   const pathname = usePathname();
 
   return (
-    <nav className="grid gap-2 sm:grid-cols-4">
+    <nav className="grid gap-2 sm:grid-cols-5">
       {items.map((item) => {
         const href = item.href(classId);
         const isActive = pathname === href;

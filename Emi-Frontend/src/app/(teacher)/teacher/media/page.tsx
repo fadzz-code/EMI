@@ -1,5 +1,7 @@
-import { TeacherMediaPage } from "@/features/teacher/teacher-media-page";
+import { redirect } from "next/navigation";
+
+import { teacherRoutes } from "@/lib/routes";
 
 export default function TeacherMediaRoutePage() {
-  return <TeacherMediaPage />;
+  redirect(teacherRoutes.culture);
 }
