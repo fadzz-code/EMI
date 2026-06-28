@@ -77,12 +77,26 @@ export type TeacherClassModule = {
   lessons?: TeacherClassLesson[];
 };
 
+export type TeacherQuizOption = {
+  id?: string;
+  option_text: string;
+  is_correct?: boolean;
+  order_number: number;
+};
+
 export type TeacherQuizQuestion = {
   id: string;
-  question_type: string;
+  class_quiz_id?: string;
+  question_type: "multiple_choice" | "short_answer" | string;
   question_text: string;
+  image_media_id?: string | null;
+  correct_answer_text?: string | null;
+  use_fuzzy_matching?: boolean | null;
+  fuzzy_threshold?: number | null;
   points?: number | null;
   order_number?: number | null;
+  explanation?: string | null;
+  options?: TeacherQuizOption[];
 };
 
 export type TeacherClassQuiz = {
@@ -97,6 +111,11 @@ export type TeacherClassQuiz = {
   open_at?: string | null;
   close_at?: string | null;
   status: EntityStatus | "draft" | "published" | "archived" | string;
+  class?: {
+    id?: string;
+    name?: string;
+    school?: { id?: string; name?: string } | null;
+  } | null;
   questions_count?: number;
   attempts_count?: number;
   published_at?: string | null;

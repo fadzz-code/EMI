@@ -10,6 +10,7 @@ import type {
   TeacherDashboardSummary,
   TeacherProgressStudentRow,
   TeacherQuizAttempt,
+  TeacherQuizQuestion,
   TeacherUserProfile,
 } from "./types";
 
@@ -154,6 +155,19 @@ export const teacherService = {
     return paginated(response.data, response.meta);
   },
 
+  async quizzes(token: string) {
+    const response = await apiClient.get<TeacherClassQuiz[]>("/class-quizzes", {
+      token,
+      query: {
+        per_page: 100,
+        sort_by: "created_at",
+        sort_direction: "desc",
+      },
+    });
+
+    return paginated(response.data, response.meta);
+  },
+
   async quizDetail(token: string, quizId: string) {
     const response = await apiClient.get<TeacherClassQuiz>(`/class-quizzes/${quizId}`, { token });
 
@@ -162,6 +176,50 @@ export const teacherService = {
     }
 
     return response.data;
+  },
+
+  async updateQuiz(token: string, quizId: string, payload: Partial<TeacherClassQuiz>) {
+    const response = await apiClient.put<TeacherClassQuiz>(`/class-quizzes/${quizId}`, payload, { token });
+
+    if (!response.data) {
+      throw new Error("Gagal memperbarui kuis.");
+    }
+
+    return response.data;
+  },
+
+  async publishQuiz(token: string, quizId: string) {
+    const response = await apiClient.post<TeacherClassQuiz>(`/class-quizzes/${quizId}/publish`, {}, { token });
+
+    if (!response.data) {
+      throw new Error("Gagal mempublikasikan kuis.");
+    }
+
+    return response.data;
+  },
+
+  async createQuizQuestion(token: string, quizId: string, payload: Partial<TeacherQuizQuestion>) {
+    const response = await apiClient.post<TeacherQuizQuestion>(`/class-quizzes/${quizId}/questions`, payload, { token });
+
+    if (!response.data) {
+      throw new Error("Gagal menambah soal.");
+    }
+
+    return response.data;
+  },
+
+  async updateQuizQuestion(token: string, questionId: string, payload: Partial<TeacherQuizQuestion>) {
+    const response = await apiClient.put<TeacherQuizQuestion>(`/quiz-questions/${questionId}`, payload, { token });
+
+    if (!response.data) {
+      throw new Error("Gagal memperbarui soal.");
+    }
+
+    return response.data;
+  },
+
+  async deleteQuizQuestion(token: string, questionId: string) {
+    await apiClient.delete(`/quiz-questions/${questionId}`, { token });
   },
 
   async quizAttempts(token: string, quizId: string) {

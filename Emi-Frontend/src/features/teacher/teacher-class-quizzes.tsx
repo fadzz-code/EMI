@@ -10,7 +10,7 @@ import { teacherRoutes } from "@/lib/routes";
 
 import { TeacherClassNav } from "./teacher-class-nav";
 import { teacherService } from "./teacher-service";
-import { formatCount, formatDate, formatOptional, formatPercent, statusLabel } from "./teacher-utils";
+import { formatCount, formatDate, formatOptional, statusLabel } from "./teacher-utils";
 
 export function TeacherClassQuizzes({ classId }: { classId: string }) {
   const { token } = useAuth();
@@ -77,7 +77,9 @@ export function TeacherClassQuizzes({ classId }: { classId: string }) {
                         <dd className="mt-1 font-bold text-ink">{formatDate(quiz.close_at)}</dd>
                       </div>
                     </dl>
-                    <QuizDetails token={token ?? ""} quizId={quiz.id} />
+                    <Link className="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-yellow-300 px-4 py-2 text-sm font-bold text-ink shadow-brutal hover:bg-yellow-200" href={teacherRoutes.quizBuilder(quiz.id)}>
+                      Buka Builder
+                    </Link>
                   </CardContent>
                 </Card>
               ))}
@@ -85,55 +87,6 @@ export function TeacherClassQuizzes({ classId }: { classId: string }) {
           </div>
         )
       ) : null}
-    </div>
-  );
-}
-
-function QuizDetails({ token, quizId }: { token: string; quizId: string }) {
-  const detailQuery = useQuery({
-    queryKey: ["teacher", "class-quizzes", quizId],
-    queryFn: () => teacherService.quizDetail(token, quizId),
-    enabled: Boolean(token && quizId),
-  });
-  const attemptsQuery = useQuery({
-    queryKey: ["teacher", "class-quizzes", quizId, "attempts"],
-    queryFn: () => teacherService.quizAttempts(token, quizId),
-    enabled: Boolean(token && quizId),
-  });
-  const questions = detailQuery.data?.questions ?? [];
-  const attempts = attemptsQuery.data?.items ?? [];
-
-  return (
-    <div className="mt-4 grid gap-4">
-      <div>
-        <h3 className="font-black text-ink">Soal</h3>
-        {detailQuery.isLoading ? <p className="text-sm font-bold text-slate-500">Memuat soal...</p> : null}
-        {detailQuery.isError ? <p className="text-sm font-bold text-orange-600">Soal tidak dapat dimuat: {getFirstApiError(detailQuery.error)}</p> : null}
-        {!detailQuery.isLoading && !detailQuery.isError ? (
-          questions.length === 0 ? <p className="text-sm font-bold text-slate-500">Soal belum tersedia.</p> : (
-            <ol className="mt-2 grid gap-2">
-              {questions.map((question) => <li className="rounded-xl border border-slate-200 bg-white p-3 text-sm" key={question.id}>{question.order_number}. {question.question_text}</li>)}
-            </ol>
-          )
-        ) : null}
-      </div>
-      <div>
-        <h3 className="font-black text-ink">Attempt Siswa</h3>
-        {attemptsQuery.isLoading ? <p className="text-sm font-bold text-slate-500">Memuat attempt...</p> : null}
-        {attemptsQuery.isError ? <p className="text-sm font-bold text-orange-600">Attempt tidak dapat dimuat: {getFirstApiError(attemptsQuery.error)}</p> : null}
-        {!attemptsQuery.isLoading && !attemptsQuery.isError ? (
-          attempts.length === 0 ? <p className="text-sm font-bold text-slate-500">Belum ada attempt/result siswa dari backend.</p> : (
-            <div className="mt-2 grid gap-2">
-              {attempts.map((attempt) => (
-                <div className="rounded-xl border border-slate-200 bg-white p-3" key={attempt.id}>
-                  <p className="font-black text-ink">{formatOptional(attempt.student?.full_name)}</p>
-                  <p className="text-sm text-slate-600">Status: {statusLabel(attempt.status)} | Skor: {formatPercent(attempt.score_percent)}</p>
-                </div>
-              ))}
-            </div>
-          )
-        ) : null}
-      </div>
     </div>
   );
 }

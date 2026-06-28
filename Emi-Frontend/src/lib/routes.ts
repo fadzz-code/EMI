@@ -23,6 +23,8 @@ export const teacherRoutes = {
   studentDetail: (studentId: string) => `/teacher/students/${studentId}`,
   progressReport: "/teacher/reports/progress",
   modules: "/teacher/modules",
+  quizzes: "/teacher/quizzes",
+  quizBuilder: (classQuizId: string) => `/teacher/quizzes/${classQuizId}/builder`,
   moduleEdit: (moduleId: string) => `/teacher/modules/${moduleId}/edit`,
   lessonEdit: (moduleId: string, lessonId: string) => `/teacher/modules/${moduleId}/lessons/${lessonId}/edit`,
   profile: "/teacher/profile",
@@ -51,6 +53,7 @@ export const roleNavItems: Record<UserRole, NavItem[]> = {
     { label: "Siswa", href: teacherRoutes.students, status: "ready" },
     { label: "Progress", href: teacherRoutes.progressReport, status: "ready" },
     { label: "Modul", href: teacherRoutes.modules, status: "ready" },
+    { label: "Kuis", href: teacherRoutes.quizzes, status: "ready" },
     { label: "Profil", href: teacherRoutes.profile, status: "ready" },
   ],
   student: [
