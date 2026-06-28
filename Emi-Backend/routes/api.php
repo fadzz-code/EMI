@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\ClassCultureItemController;
 use App\Http\Controllers\Api\StudentCultureItemController;
+use App\Http\Controllers\Api\AdminCultureItemController;
 use App\Http\Controllers\Api\AdminCultureTemplateController;
 use App\Http\Controllers\Api\AdminCultureTemplateItemController;
 use App\Http\Controllers\Api\CultureTemplateApplyController;
@@ -130,6 +131,13 @@ Route::prefix('v1')->group(function () {
         Route::get('quiz-template-questions/{id}', [AdminQuizTemplateQuestionController::class, 'show']);
         Route::put('quiz-template-questions/{id}', [AdminQuizTemplateQuestionController::class, 'update']);
         Route::delete('quiz-template-questions/{id}', [AdminQuizTemplateQuestionController::class, 'destroy']);
+        Route::get('culture/items', [AdminCultureItemController::class, 'index']);
+        Route::post('culture/items', [AdminCultureItemController::class, 'store']);
+        Route::get('culture/items/{group_id}', [AdminCultureItemController::class, 'show']);
+        Route::put('culture/items/{group_id}', [AdminCultureItemController::class, 'update']);
+        Route::delete('culture/items/{group_id}', [AdminCultureItemController::class, 'destroy']);
+        Route::post('culture/items/{group_id}/publish', [AdminCultureItemController::class, 'publish']);
+        Route::post('culture/items/{group_id}/archive', [AdminCultureItemController::class, 'archive']);
         Route::get('culture-templates', [AdminCultureTemplateController::class, 'index']);
         Route::post('culture-templates', [AdminCultureTemplateController::class, 'store']);
         Route::get('culture-templates/{id}', [AdminCultureTemplateController::class, 'show']);

@@ -16,6 +16,8 @@ class ClassCultureItemResource extends JsonResource
             'source_template_item_id' => $this->source_culture_template_item_id,
             'source_culture_template_id' => $this->source_culture_template_id,
             'source_culture_template_item_id' => $this->source_culture_template_item_id,
+            'admin_group_id' => $this->admin_group_id,
+            'created_scope' => $this->created_scope,
             'title' => $this->title,
             'description' => $this->description,
             'content_type' => $this->content_type,

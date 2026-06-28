@@ -1,8 +1,41 @@
 import { apiClient, type ApiPaginationMeta } from "@/lib/api-client";
-import type { AdminCultureTemplate, AdminCultureTemplateItem } from "./types";
+import type { AdminCultureTemplate, AdminCultureTemplateItem, AdminGlobalCultureItem } from "./types";
 import type { MediaFile } from "@/features/admin/quizzes/types";
 
 export const adminCultureService = {
+  async globalItems(token: string) {
+    const response = await apiClient.get<AdminGlobalCultureItem[]>("/admin/culture/items", { token });
+    return response.data ?? [];
+  },
+
+  async createGlobalItem(token: string, payload: Partial<AdminGlobalCultureItem>) {
+    const response = await apiClient.post<AdminGlobalCultureItem>("/admin/culture/items", payload, { token });
+    if (!response.data) throw new Error("Gagal membuat konten budaya");
+    return response.data;
+  },
+
+  async updateGlobalItem(token: string, itemId: string, payload: Partial<AdminGlobalCultureItem>) {
+    const response = await apiClient.put<AdminGlobalCultureItem>(`/admin/culture/items/${itemId}`, payload, { token });
+    if (!response.data) throw new Error("Gagal menyimpan konten budaya");
+    return response.data;
+  },
+
+  async deleteGlobalItem(token: string, itemId: string) {
+    await apiClient.delete(`/admin/culture/items/${itemId}`, { token });
+  },
+
+  async publishGlobalItem(token: string, itemId: string) {
+    const response = await apiClient.post<AdminGlobalCultureItem>(`/admin/culture/items/${itemId}/publish`, {}, { token });
+    if (!response.data) throw new Error("Gagal mempublikasikan konten budaya");
+    return response.data;
+  },
+
+  async archiveGlobalItem(token: string, itemId: string) {
+    const response = await apiClient.post<AdminGlobalCultureItem>(`/admin/culture/items/${itemId}/archive`, {}, { token });
+    if (!response.data) throw new Error("Gagal mengarsipkan konten budaya");
+    return response.data;
+  },
+
   async getTemplates(token: string, search?: string) {
     const response = await apiClient.get<AdminCultureTemplate[]>("/admin/culture-templates", {
       token,

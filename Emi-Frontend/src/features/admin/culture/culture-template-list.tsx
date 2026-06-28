@@ -1,17 +1,18 @@
 "use client";
 
-import { type FormEvent, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { type FormEvent, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, FormField, Input, LoadingState, PageHeader, Select, Textarea } from "@/components/ui";
+import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, FilePreview, FormField, Input, LoadingState, PageHeader, Select, Textarea, UploadComponent } from "@/components/ui";
 import { classService } from "@/features/admin/management/management-service";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { adminCultureService } from "./culture-service";
-import { CultureTemplateItemForm } from "./culture-template-item-form";
-import type { AdminCultureTemplateItem } from "./types";
+import type { AdminGlobalCultureItem } from "./types";
+
+const fileTypes = ["image", "audio", "pdf", "video"];
+const contentTypes = ["image", "audio", "pdf", "video", "youtube", "article", "link"];
 
 function statusLabel(status: string | null | undefined) {
   if (status === "draft") return "Draft";
@@ -23,223 +24,143 @@ function statusLabel(status: string | null | undefined) {
 export function AdminCultureTemplateList() {
   const { token } = useAuth();
   const queryClient = useQueryClient();
-  const searchParams = useSearchParams();
-  const requestedTemplateId = searchParams.get("template_id");
-  const [search, setSearch] = useState("");
-  const [selectedTemplateOverride, setSelectedTemplateOverride] = useState("");
-  const [showCreate, setShowCreate] = useState(false);
-  const [showItemBuilder, setShowItemBuilder] = useState(false);
-  const [showApplyPanel, setShowApplyPanel] = useState(false);
-  const [editingItem, setEditingItem] = useState<AdminCultureTemplateItem | null>(null);
+  const [showBuilder, setShowBuilder] = useState(false);
+  const [editingItem, setEditingItem] = useState<AdminGlobalCultureItem | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const templatesQuery = useQuery({
-    queryKey: ["admin", "culture-templates", search],
-    queryFn: () => adminCultureService.getTemplates(token ?? "", search),
-    enabled: Boolean(token),
-  });
-  const templates = useMemo(() => templatesQuery.data?.items ?? [], [templatesQuery.data?.items]);
-  const requestedTemplateExists = requestedTemplateId ? templates.some((template) => template.id === requestedTemplateId) : false;
-  const selectedTemplateId = selectedTemplateOverride || (requestedTemplateExists ? requestedTemplateId ?? "" : templates[0]?.id ?? "");
-  const templateQuery = useQuery({
-    queryKey: ["admin", "culture-templates", selectedTemplateId],
-    queryFn: () => adminCultureService.getTemplate(token ?? "", selectedTemplateId),
-    enabled: Boolean(token && selectedTemplateId),
-  });
-  const classesQuery = useQuery({
-    queryKey: ["admin", "classes"],
-    queryFn: () => classService.list(token ?? "", { per_page: 100 }),
-    enabled: Boolean(token),
-  });
+  const itemsQuery = useQuery({ queryKey: ["admin", "culture", "global-items"], queryFn: () => adminCultureService.globalItems(token ?? ""), enabled: Boolean(token) });
+  const classesQuery = useQuery({ queryKey: ["admin", "classes"], queryFn: () => classService.list(token ?? "", { per_page: 100 }), enabled: Boolean(token) });
+  const items = itemsQuery.data ?? [];
+  const publishedCount = items.filter((item) => item.status === "published").length;
+  const classCount = classesQuery.data?.items.length ?? 0;
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["admin", "culture", "global-items"] });
 
-  const template = templateQuery.data;
-  const items = template?.items ?? [];
-  const publishedItems = items.filter((item) => item.status === "published").length;
-
-  const createMutation = useMutation({
-    mutationFn: (payload: { title: string; description: string }) => adminCultureService.createTemplate(token ?? "", payload),
-    onSuccess: (created) => {
-      setSuccessMsg("Template berhasil dibuat. Tambahkan konten, publish, lalu terapkan ke kelas.");
-      setSelectedTemplateOverride(created.id);
-      setShowCreate(false);
-      queryClient.invalidateQueries({ queryKey: ["admin", "culture-templates"] });
-    },
-  });
-  const updateMutation = useMutation({
-    mutationFn: (payload: { title: string; description: string }) => adminCultureService.updateTemplate(token ?? "", selectedTemplateId, payload),
+  const deleteMutation = useMutation({
+    mutationFn: (itemId: string) => adminCultureService.deleteGlobalItem(token ?? "", itemId),
     onSuccess: () => {
-      setSuccessMsg("Template berhasil disimpan.");
-      invalidateTemplate();
+      setSuccessMsg("Konten budaya berhasil dihapus dari semua kelas.");
+      invalidate();
     },
   });
   const publishMutation = useMutation({
-    mutationFn: () => adminCultureService.publishTemplate(token ?? "", selectedTemplateId),
+    mutationFn: (itemId: string) => adminCultureService.publishGlobalItem(token ?? "", itemId),
     onSuccess: () => {
-      setSuccessMsg("Template berhasil dipublish. Template belum tampil untuk guru/siswa sampai diterapkan ke kelas.");
-      setShowApplyPanel(true);
-      invalidateTemplate();
+      setSuccessMsg("Konten budaya berhasil dipublish untuk semua kelas.");
+      invalidate();
     },
   });
-  const applyMutation = useMutation({
-    mutationFn: (classIds: string[]) => adminCultureService.applyTemplate(token ?? "", selectedTemplateId, classIds),
-    onSuccess: (res) => setSuccessMsg(`Berhasil diterapkan ke ${res.applied.length} kelas. Dilewati: ${res.skipped.length}, Gagal: ${res.failed.length}.`),
-  });
-  const deleteItemMutation = useMutation({
-    mutationFn: (itemId: string) => adminCultureService.deleteItem(token ?? "", itemId),
+  const archiveMutation = useMutation({
+    mutationFn: (itemId: string) => adminCultureService.archiveGlobalItem(token ?? "", itemId),
     onSuccess: () => {
-      setSuccessMsg("Konten template berhasil dihapus.");
-      invalidateTemplate();
+      setSuccessMsg("Konten budaya berhasil diarsipkan dari semua kelas.");
+      invalidate();
     },
   });
 
-  function invalidateTemplate() {
-    queryClient.invalidateQueries({ queryKey: ["admin", "culture-templates", selectedTemplateId] });
-    queryClient.invalidateQueries({ queryKey: ["admin", "culture-templates"] });
-  }
-
-  function openItemBuilder(item: AdminCultureTemplateItem | null = null) {
+  function openBuilder(item: AdminGlobalCultureItem | null = null) {
     setEditingItem(item);
-    setShowItemBuilder(true);
-  }
-
-  function createTemplate(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    createMutation.mutate({ title: String(formData.get("title") ?? ""), description: String(formData.get("description") ?? "") });
-  }
-
-  function updateTemplate(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSuccessMsg(null);
-    const formData = new FormData(event.currentTarget);
-    updateMutation.mutate({ title: String(formData.get("title") ?? ""), description: String(formData.get("description") ?? "") });
-  }
-
-  function applyTemplate(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSuccessMsg(null);
-    const formData = new FormData(event.currentTarget);
-    const classIds = formData.get("apply_all") === "on" ? (classesQuery.data?.items ?? []).map((classItem) => classItem.id) : formData.getAll("class_ids").map(String);
-    if (classIds.length === 0) {
-      alert("Pilih minimal satu kelas.");
-      return;
-    }
-    applyMutation.mutate(classIds);
+    setShowBuilder(true);
   }
 
   return (
     <div className="grid gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <PageHeader badge="Admin" description="Template Budaya Mekongga" title="Budaya Mekongga" />
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={() => setShowCreate((value) => !value)} type="button">Buat Template</Button>
-          <Button disabled={!selectedTemplateId} onClick={() => openItemBuilder()} type="button" variant="secondary">Kelola Konten Template</Button>
-          <Button disabled={!selectedTemplateId} onClick={() => setShowApplyPanel((value) => !value)} type="button" variant="secondary">Terapkan ke Kelas</Button>
-        </div>
+        <PageHeader badge="Admin" description="Konten Budaya Kelas" title="Budaya Mekongga" />
+        <Button onClick={() => openBuilder()} type="button">Tambah Konten Budaya</Button>
       </div>
-      <p className="text-sm leading-6 text-slate-600">Kelola template Budaya Mekongga yang bisa diterapkan ke kelas.</p>
+      <p className="text-sm leading-6 text-slate-600">Kelola konten budaya untuk semua kelas. Konten yang disimpan oleh admin akan ditambahkan ke semua kelas.</p>
       {successMsg ? <Alert tone="success">{successMsg}</Alert> : null}
 
-      {showCreate ? (
-        <Card>
-          <CardHeader><h2 className="text-xl font-black text-ink">Buat Template Budaya</h2></CardHeader>
-          <CardContent>
-            <form className="grid gap-4 sm:max-w-xl" onSubmit={createTemplate}>
-              {createMutation.error ? <Alert tone="error">{getFirstApiError(createMutation.error)}</Alert> : null}
-              <FormField label="Judul"><Input name="title" required /></FormField>
-              <FormField label="Deskripsi"><Textarea name="description" /></FormField>
-              <Button disabled={createMutation.isPending} type="submit">{createMutation.isPending ? "Menyimpan..." : "Simpan Template"}</Button>
-            </form>
-          </CardContent>
-        </Card>
-      ) : null}
+      {itemsQuery.isLoading || classesQuery.isLoading ? <LoadingState title="Memuat Budaya Mekongga" /> : null}
+      {itemsQuery.isError ? <ErrorState description={getFirstApiError(itemsQuery.error)} onRetry={() => void itemsQuery.refetch()} title="Gagal memuat konten budaya" /> : null}
+      {classesQuery.isError ? <ErrorState description={getFirstApiError(classesQuery.error)} onRetry={() => void classesQuery.refetch()} title="Gagal memuat kelas" /> : null}
 
-      <Card>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-[1fr_1fr]">
-            <FormField label="Cari template"><Input onChange={(event) => setSearch(event.target.value)} placeholder="Cari template..." value={search} /></FormField>
-            {templates.length > 1 ? <FormField label="Pilih template"><Select value={selectedTemplateId} onChange={(event) => { setSelectedTemplateOverride(event.target.value); setShowItemBuilder(false); setShowApplyPanel(false); setEditingItem(null); }}>{templates.map((templateItem) => <option key={templateItem.id} value={templateItem.id}>{templateItem.title}</option>)}</Select></FormField> : null}
-          </div>
-        </CardContent>
-      </Card>
-
-      {templatesQuery.isLoading || templateQuery.isLoading ? <LoadingState title="Memuat template budaya" /> : null}
-      {templatesQuery.isError ? <ErrorState description={getFirstApiError(templatesQuery.error)} onRetry={() => void templatesQuery.refetch()} title="Gagal memuat template" /> : null}
-      {templateQuery.isError ? <ErrorState description={getFirstApiError(templateQuery.error)} onRetry={() => void templateQuery.refetch()} title="Gagal memuat detail template" /> : null}
-      {!templatesQuery.isLoading && !templatesQuery.isError && templates.length === 0 ? <Card><CardContent><EmptyState description="Belum ada template budaya. Klik Buat Template untuk memulai." title="Template kosong" /></CardContent></Card> : null}
-
-      {template ? (
+      {!itemsQuery.isLoading && !itemsQuery.isError ? (
         <div className="grid gap-6">
           <Card>
             <CardContent>
-              <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <div className="flex flex-wrap gap-2"><Badge tone={template.status === "published" ? "blue" : "neutral"}>{statusLabel(template.status)}</Badge><Badge tone="neutral">Template admin</Badge></div>
-                  <h2 className="mt-3 text-2xl font-black text-ink">{template.title}</h2>
-                  <p className="mt-2 text-sm text-slate-600">{template.description ?? "Tanpa deskripsi"}</p>
-                  <p className="mt-3 text-sm font-bold text-slate-500">{items.length} konten · {publishedItems} konten terbit</p>
+                  <h2 className="text-2xl font-black text-ink">Semua Kelas</h2>
+                  <p className="mt-2 text-sm font-bold text-slate-500">{items.length} konten · {publishedCount} konten terbit · {classCount} kelas</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button disabled={publishMutation.isPending || template.status === "published"} onClick={() => publishMutation.mutate()} type="button">{publishMutation.isPending ? "Publishing..." : "Publish Template"}</Button>
-                  <Button onClick={() => setShowApplyPanel(true)} type="button" variant="secondary">Terapkan ke Kelas</Button>
-                </div>
+                <Badge tone="neutral">Dibuat admin untuk semua kelas</Badge>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader><h2 className="text-xl font-black text-ink">Informasi Template</h2></CardHeader>
-            <CardContent>
-              <form className="grid gap-4" onSubmit={updateTemplate}>
-                {updateMutation.error ? <Alert tone="error">{getFirstApiError(updateMutation.error)}</Alert> : null}
-                {publishMutation.error ? <Alert tone="error">{getFirstApiError(publishMutation.error)}</Alert> : null}
-                <FormField label="Judul"><Input defaultValue={template.title} key={`${template.id}-title`} name="title" required /></FormField>
-                <FormField label="Deskripsi"><Textarea defaultValue={template.description ?? ""} key={`${template.id}-description`} name="description" /></FormField>
-                <Button disabled={updateMutation.isPending} type="submit">{updateMutation.isPending ? "Menyimpan..." : "Simpan Template"}</Button>
-              </form>
-            </CardContent>
-          </Card>
+          {showBuilder ? <AdminGlobalCultureForm item={editingItem} key={editingItem?.id ?? "new"} onDone={() => { setSuccessMsg(editingItem ? "Konten budaya berhasil diperbarui untuk semua kelas." : "Konten budaya berhasil dibuat untuk semua kelas."); setEditingItem(null); setShowBuilder(false); void invalidate(); }} token={token ?? ""} /> : null}
 
-          {showItemBuilder ? <CultureTemplateItemForm editingItem={editingItem} key={editingItem?.id ?? `new-${template.id}`} onCancel={() => { setShowItemBuilder(false); setEditingItem(null); }} onSaved={() => { setSuccessMsg("Konten template berhasil disimpan."); setShowItemBuilder(false); setEditingItem(null); invalidateTemplate(); }} templateId={template.id} token={token ?? ""} /> : null}
-
-          <Card>
-            <CardHeader><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-black text-ink">Konten Template</h2><Button onClick={() => openItemBuilder()} type="button" variant="secondary">Tambah Konten Template</Button></div></CardHeader>
-            <CardContent>
-              {deleteItemMutation.error ? <Alert tone="error">{getFirstApiError(deleteItemMutation.error)}</Alert> : null}
-              {items.length === 0 ? <EmptyState description="Belum ada konten template." title="Konten kosong" /> : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {items.map((item) => <TemplateItemCard item={item} key={item.id} onDelete={() => { if (confirm("Hapus konten template ini?")) deleteItemMutation.mutate(item.id); }} onEdit={() => openItemBuilder(item)} />)}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {showApplyPanel ? (
-            <Card>
-              <CardHeader><h2 className="text-xl font-black text-ink">Terapkan ke Kelas</h2></CardHeader>
-              <CardContent>
-                <p className="mb-4 text-sm text-slate-600">Template yang dipublish belum tampil untuk guru/siswa sampai diterapkan ke kelas. Saat diterapkan, sistem membuat konten budaya kelas sebagai salinan class-scoped.</p>
-                {template.status !== "published" ? <Alert className="mb-4" tone="warning">Publish template terlebih dahulu untuk membuka aksi Terapkan ke Kelas.</Alert> : <Alert className="mb-4" tone="info">Template siap diterapkan ke kelas.</Alert>}
-                {applyMutation.error ? <Alert className="mb-4" tone="error">{getFirstApiError(applyMutation.error)}</Alert> : null}
-                <form onSubmit={applyTemplate}>
-                  <label className="mb-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm font-black text-ink"><input name="apply_all" type="checkbox" /> Terapkan ke Semua Kelas</label>
-                  <div className="mb-4 max-h-48 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2">
-                    {classesQuery.isLoading ? <p className="p-2 text-sm text-slate-500">Memuat kelas...</p> : null}
-                    {classesQuery.data?.items.map((classItem) => <label className="flex items-center gap-2 p-2 text-sm font-bold text-ink hover:bg-white" key={classItem.id}><input name="class_ids" type="checkbox" value={classItem.id} /> {classItem.name} {classItem.school ? `(${classItem.school.name})` : ""}</label>)}
-                  </div>
-                  <Button disabled={applyMutation.isPending || template.status !== "published" || classesQuery.isLoading} type="submit" variant="secondary">{applyMutation.isPending ? "Menerapkan..." : "Terapkan ke Kelas"}</Button>
-                </form>
-              </CardContent>
-            </Card>
-          ) : null}
+          {items.length === 0 ? <Card><CardContent><EmptyState description="Belum ada konten budaya. Klik Tambah Konten Budaya untuk menambah konten ke semua kelas." title="Konten budaya kosong" /></CardContent></Card> : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {items.map((item) => (
+                <Card key={item.id}>
+                  <CardHeader><div className="flex flex-wrap gap-2"><Badge tone={item.status === "published" ? "blue" : item.status === "archived" ? "neutral" : "yellow"}>{statusLabel(item.status)}</Badge><Badge tone="neutral">{item.content_type}</Badge></div><h2 className="mt-2 text-xl font-black text-ink">{item.title}</h2></CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-slate-600">{item.description ?? "Tanpa deskripsi"}</p>
+                    <p className="mt-2 text-xs font-black uppercase text-slate-500">Dibuat admin untuk semua kelas</p>
+                    <p className="mt-2 text-sm font-bold text-slate-500">{item.classes_count ?? 0} kelas · {item.published_classes_count ?? 0} kelas terbit</p>
+                    <CultureLink item={item} />
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Button type="button" variant="secondary" onClick={() => openBuilder(item)}>Edit</Button>
+                      {item.status !== "published" ? <Button type="button" onClick={() => publishMutation.mutate(item.id)}>Publish</Button> : null}
+                      {item.status !== "archived" ? <Button type="button" variant="secondary" onClick={() => archiveMutation.mutate(item.id)}>Archive</Button> : null}
+                      <Button type="button" variant="danger" onClick={() => { if (confirm("Hapus konten budaya ini dari semua kelas?")) deleteMutation.mutate(item.id); }}>Hapus</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       ) : null}
     </div>
   );
 }
 
-function TemplateItemCard({ item, onDelete, onEdit }: { item: AdminCultureTemplateItem; onDelete: () => void; onEdit: () => void }) {
-  const url = item.media?.url ?? item.external_url;
+function AdminGlobalCultureForm({ item, onDone, token }: { item: AdminGlobalCultureItem | null; onDone: () => void; token: string }) {
+  const [type, setType] = useState(String(item?.content_type ?? "image"));
+  const [file, setFile] = useState<File | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const mutation = useMutation({
+    mutationFn: (payload: Partial<AdminGlobalCultureItem>) => item ? adminCultureService.updateGlobalItem(token, item.id, payload) : adminCultureService.createGlobalItem(token, payload),
+    onSuccess: onDone,
+  });
+  const isFileBased = fileTypes.includes(type);
 
-  return <Card><CardHeader><div className="flex flex-wrap gap-2"><Badge tone={item.status === "published" ? "blue" : item.status === "archived" ? "neutral" : "yellow"}>{statusLabel(item.status)}</Badge><Badge tone="neutral">{item.content_type}</Badge></div><h3 className="mt-2 text-xl font-black text-ink">{item.title}</h3></CardHeader><CardContent><p className="text-sm text-slate-600">{item.description ?? "Tanpa deskripsi"}</p><p className="mt-2 text-xs font-black uppercase text-slate-500">Template admin</p>{url ? <a className="mt-3 inline-flex font-black text-blue-700 underline" href={url} rel="noreferrer" target="_blank">Buka konten</a> : <p className="mt-3 text-sm font-bold text-slate-500">Konten belum memiliki URL publik.</p>}<div className="mt-4 flex flex-wrap gap-2"><Button onClick={onEdit} type="button" variant="secondary">Edit</Button><Button onClick={onDelete} type="button" variant="danger">Hapus</Button></div></CardContent></Card>;
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError(null);
+    const formData = new FormData(event.currentTarget);
+    let mediaId = item?.media_id ?? null;
+
+    try {
+      if (isFileBased && file) {
+        mediaId = (await adminCultureService.uploadMedia(token, file)).id;
+      }
+
+      mutation.mutate({
+        title: String(formData.get("title") ?? ""),
+        description: String(formData.get("description") ?? ""),
+        content_type: type,
+        media_id: isFileBased ? mediaId : null,
+        external_url: isFileBased ? null : String(formData.get("external_url") ?? ""),
+        display_order: Number(formData.get("display_order") ?? 1),
+        status: String(formData.get("status") ?? "draft"),
+      });
+    } catch (error) {
+      setFormError(getFirstApiError(error));
+    }
+  }
+
+  return <Card><CardHeader><h2 className="text-xl font-black text-ink">{item ? "Edit Konten Budaya" : "Tambah Konten Budaya"}</h2></CardHeader><CardContent><form className="grid gap-4" onSubmit={submit}>{formError ? <Alert tone="error">{formError}</Alert> : null}{mutation.error ? <Alert tone="error">{getFirstApiError(mutation.error)}</Alert> : null}<FormField label="Judul"><Input name="title" defaultValue={item?.title ?? ""} required /></FormField><FormField label="Deskripsi"><Textarea name="description" defaultValue={item?.description ?? ""} /></FormField><FormField label="Tipe konten"><Select name="content_type" value={type} onChange={(event) => setType(event.target.value)}>{contentTypes.map((contentType) => <option key={contentType} value={contentType}>{contentType}</option>)}</Select></FormField>{isFileBased ? <div className="grid gap-3"><FormField label="File"><UploadComponent onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></FormField>{file ? <FilePreview name={file.name} size={`${Math.ceil(file.size / 1024)} KB`} type={file.type || "File"} /> : null}{item?.media_id && !file ? <p className="text-sm font-bold text-slate-500">Media saat ini tetap dipakai jika tidak upload file baru.</p> : null}</div> : <FormField label="URL"><Input name="external_url" type="url" defaultValue={item?.external_url ?? ""} required /></FormField>}<div className="grid gap-4 md:grid-cols-2"><FormField label="Urutan"><Input name="display_order" type="number" min="1" defaultValue={item?.display_order ?? 1} /></FormField><FormField label="Status"><Select name="status" defaultValue={item?.status ?? "draft"}><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Archived</option></Select></FormField></div><Button disabled={mutation.isPending} type="submit">{mutation.isPending ? "Menyimpan..." : "Simpan"}</Button></form></CardContent></Card>;
+}
+
+function CultureLink({ item }: { item: AdminGlobalCultureItem }) {
+  const url = item.media?.url ?? item.external_url;
+  if (!url) return <p className="mt-3 text-sm font-bold text-slate-500">Konten belum memiliki URL publik.</p>;
+  if (item.content_type === "image") return <img alt={item.title} className="mt-3 max-h-64 rounded-xl border-2 border-ink object-cover" src={url} />;
+  if (item.content_type === "audio") return <audio className="mt-3 w-full" controls src={url} />;
+  if (item.content_type === "video") return <video className="mt-3 w-full rounded-xl border-2 border-ink" controls src={url} />;
+  return <a className="mt-3 inline-flex font-black text-blue-700 underline" href={url} rel="noreferrer" target="_blank">Buka konten</a>;
 }

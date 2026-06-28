@@ -11,7 +11,7 @@ class ClassCultureItem extends Model
 {
     use HasUuids, SoftDeletes;
 
-    protected $fillable = ['class_id', 'source_culture_template_id', 'source_culture_template_item_id', 'title', 'description', 'content_type', 'media_id', 'external_url', 'thumbnail_media_id', 'display_order', 'status', 'created_by', 'updated_by', 'published_at', 'archived_at'];
+    protected $fillable = ['class_id', 'source_culture_template_id', 'source_culture_template_item_id', 'admin_group_id', 'created_scope', 'title', 'description', 'content_type', 'media_id', 'external_url', 'thumbnail_media_id', 'display_order', 'status', 'created_by', 'updated_by', 'published_at', 'archived_at'];
 
     protected function casts(): array
     {
