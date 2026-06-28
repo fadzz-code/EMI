@@ -11,6 +11,11 @@ import { teacherRoutes } from "@/lib/routes";
 import { TeacherClassNav } from "./teacher-class-nav";
 import { teacherService } from "./teacher-service";
 import { formatCount, formatDate, formatOptional, statusLabel } from "./teacher-utils";
+import type { TeacherClassQuiz } from "./types";
+
+function isQuizLocked(quiz: TeacherClassQuiz) {
+  return quiz.status !== "draft" || (quiz.attempts_count ?? 0) > 0;
+}
 
 export function TeacherClassQuizzes({ classId }: { classId: string }) {
   const { token } = useAuth();
@@ -46,43 +51,34 @@ export function TeacherClassQuizzes({ classId }: { classId: string }) {
               <StatsCard helper="Dari withCount attempts" label="Attempt" value={formatCount(quizzes.reduce((sum, quiz) => sum + (quiz.attempts_count ?? 0), 0))} />
             </section>
             <div className="grid gap-4 md:grid-cols-2">
-              {quizzes.map((quiz) => (
-                <Card key={quiz.id}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <Badge tone={quiz.status === "published" ? "blue" : "neutral"}>{statusLabel(quiz.status)}</Badge>
-                        <h2 className="mt-2 text-xl font-black text-ink">{quiz.title}</h2>
+              {quizzes.map((quiz) => {
+                const locked = isQuizLocked(quiz);
+                return (
+                  <Card key={quiz.id}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex flex-wrap gap-2"><Badge tone={quiz.status === "published" ? "blue" : "neutral"}>{statusLabel(quiz.status)}</Badge>{locked ? <Badge tone="yellow">Terkunci</Badge> : <Badge tone="blue">Draft bisa diedit</Badge>}</div>
+                          <h2 className="mt-2 text-xl font-black text-ink">{quiz.title}</h2>
+                        </div>
+                        <span className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-black text-slate-500">{formatCount(quiz.duration_minutes)} menit</span>
                       </div>
-                      <span className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-black text-slate-500">{formatCount(quiz.duration_minutes)} menit</span>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm leading-6 text-slate-600">{formatOptional(quiz.description)}</p>
-                    <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                      <div className="rounded-xl bg-slate-50 p-3">
-                        <dt className="font-black uppercase text-slate-500">Soal</dt>
-                        <dd className="mt-1 font-bold text-ink">{formatCount(quiz.questions_count)}</dd>
-                      </div>
-                      <div className="rounded-xl bg-slate-50 p-3">
-                        <dt className="font-black uppercase text-slate-500">Attempt</dt>
-                        <dd className="mt-1 font-bold text-ink">{formatCount(quiz.attempts_count)}</dd>
-                      </div>
-                      <div className="rounded-xl bg-slate-50 p-3">
-                        <dt className="font-black uppercase text-slate-500">Buka</dt>
-                        <dd className="mt-1 font-bold text-ink">{formatDate(quiz.open_at)}</dd>
-                      </div>
-                      <div className="rounded-xl bg-slate-50 p-3">
-                        <dt className="font-black uppercase text-slate-500">Tutup</dt>
-                        <dd className="mt-1 font-bold text-ink">{formatDate(quiz.close_at)}</dd>
-                      </div>
-                    </dl>
-                    <Link className="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-yellow-300 px-4 py-2 text-sm font-bold text-ink shadow-brutal hover:bg-yellow-200" href={teacherRoutes.quizBuilder(quiz.id)}>
-                      Buka Builder
-                    </Link>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm leading-6 text-slate-600">{formatOptional(quiz.description)}</p>
+                      <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                        <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Soal</dt><dd className="mt-1 font-bold text-ink">{formatCount(quiz.questions_count)}</dd></div>
+                        <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Attempt</dt><dd className="mt-1 font-bold text-ink">{formatCount(quiz.attempts_count)}</dd></div>
+                        <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Buka</dt><dd className="mt-1 font-bold text-ink">{formatDate(quiz.open_at)}</dd></div>
+                        <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Tutup</dt><dd className="mt-1 font-bold text-ink">{formatDate(quiz.close_at)}</dd></div>
+                      </dl>
+                      <Link className={`mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink px-4 py-2 text-sm font-bold text-ink shadow-brutal ${locked ? "bg-white hover:bg-slate-50" : "bg-yellow-300 hover:bg-yellow-200"}`} href={teacherRoutes.quizBuilder(quiz.id)}>
+                        {locked ? "Lihat Detail" : "Buka Builder"}
+                      </Link>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         )

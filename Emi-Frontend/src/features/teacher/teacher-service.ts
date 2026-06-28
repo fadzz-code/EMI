@@ -178,6 +178,16 @@ export const teacherService = {
     return response.data;
   },
 
+  async createQuiz(token: string, payload: Partial<TeacherClassQuiz>) {
+    const response = await apiClient.post<TeacherClassQuiz>("/class-quizzes", payload, { token });
+
+    if (!response.data) {
+      throw new Error("Gagal membuat kuis.");
+    }
+
+    return response.data;
+  },
+
   async updateQuiz(token: string, quizId: string, payload: Partial<TeacherClassQuiz>) {
     const response = await apiClient.put<TeacherClassQuiz>(`/class-quizzes/${quizId}`, payload, { token });
 
