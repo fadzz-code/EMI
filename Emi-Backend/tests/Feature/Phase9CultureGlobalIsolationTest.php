@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AdminCultureItem;
 use App\Models\ClassCultureItem;
 use App\Models\School;
 use App\Models\SchoolClass;
@@ -32,6 +33,12 @@ class Phase9CultureGlobalIsolationTest extends TestCase
             'status' => 'published',
         ])->assertCreated()->json('data.admin_group_id');
 
+        $this->assertDatabaseHas('admin_culture_items', [
+            'admin_group_id' => $groupId,
+            'title' => 'Sejarah Mekongga',
+            'status' => 'published',
+        ]);
+
         $copies = ClassCultureItem::query()->where('admin_group_id', $groupId)->orderBy('class_id')->get();
         $this->assertCount(2, $copies);
         $copyA = $copies->firstWhere('class_id', $classA->id);
@@ -60,6 +67,14 @@ class Phase9CultureGlobalIsolationTest extends TestCase
             'admin_group_id' => $groupId,
             'created_scope' => 'admin',
         ]);
+        $this->assertDatabaseHas('admin_culture_items', [
+            'admin_group_id' => $groupId,
+            'title' => 'Sejarah Mekongga',
+        ]);
+        $this->withToken($this->tokenFor($admin))->getJson('/api/v1/admin/culture/items')
+            ->assertOk()
+            ->assertJsonPath('data.0.admin_group_id', $groupId)
+            ->assertJsonPath('data.0.title', 'Sejarah Mekongga');
 
         $this->withToken($this->tokenFor($teacherA))->deleteJson("/api/v1/class-culture-items/{$copyA->id}")
             ->assertOk();

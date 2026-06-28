@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Exceptions\ApiException;
+use App\Http\Resources\MediaFileResource;
+use App\Models\AdminCultureItem;
 use App\Models\ClassCultureItem;
 use App\Models\MediaFile;
 use App\Models\SchoolClass;
@@ -17,24 +19,19 @@ class AdminCultureItemService
 
     public function list(): array
     {
-        return ClassCultureItem::withTrashed()
-            ->where('created_scope', 'admin')
-            ->whereNotNull('admin_group_id')
+        return AdminCultureItem::query()
             ->with('media')
             ->orderBy('display_order')
             ->orderBy('created_at')
             ->get()
-            ->groupBy('admin_group_id')
-            ->map(fn ($items, $groupId) => $this->groupPayload((string) $groupId, $items))
+            ->map(fn (AdminCultureItem $item) => $this->masterPayload($item))
             ->values()
             ->all();
     }
 
     public function show(string $groupId): array
     {
-        $items = $this->groupItems($groupId);
-
-        return $this->groupPayload($groupId, $items);
+        return $this->masterPayload($this->masterItem($groupId));
     }
 
     public function create(array $data, User $actor, Request $request): array
@@ -48,32 +45,37 @@ class AdminCultureItemService
 
         $groupId = (string) Str::uuid();
 
-        DB::transaction(function () use ($classes, $data, $actor, $request, $groupId) {
+        $master = DB::transaction(function () use ($classes, $data, $actor, $request, $groupId) {
+            $master = AdminCultureItem::query()->create($this->masterAttributes($groupId, $data, $actor));
+
             foreach ($classes as $class) {
                 ClassCultureItem::query()->create($this->attributesForClass($class->id, $groupId, $data, $actor));
             }
 
-            $this->auditLogService->record('admin_culture_item.created', ClassCultureItem::query()->where('admin_group_id', $groupId)->first(), $actor, null, ['admin_group_id' => $groupId], [], $request);
+            $this->auditLogService->record('admin_culture_item.created', $master, $actor, null, ['admin_group_id' => $groupId], [], $request);
+
+            return $master;
         });
 
-        return $this->show($groupId);
+        return $this->masterPayload($master->refresh()->load('media'));
     }
 
     public function update(string $groupId, array $data, User $actor, Request $request): array
     {
-        $items = $this->groupItems($groupId);
-        $merged = array_merge($items->first()->toArray(), $data);
+        $master = $this->masterItem($groupId);
+        $merged = array_merge($master->toArray(), $data);
         $this->validateContent($merged);
 
-        DB::transaction(function () use ($items, $data, $actor, $request, $groupId) {
-            foreach ($items as $item) {
-                $item->fill(collect($data)->only(['title', 'description', 'content_type', 'media_id', 'external_url', 'display_order', 'status'])->all());
-                $item->updated_by = $actor->id;
-                $this->applyStatusTimestamps($item);
+        DB::transaction(function () use ($master, $data, $actor, $request, $groupId) {
+            $this->fillCultureItem($master, $data, $actor);
+            $master->save();
+
+            foreach ($this->attachedClassItems($groupId) as $item) {
+                $this->fillCultureItem($item, $data, $actor);
                 $item->save();
             }
 
-            $this->auditLogService->record('admin_culture_item.updated', $items->first(), $actor, null, ['admin_group_id' => $groupId], [], $request);
+            $this->auditLogService->record('admin_culture_item.updated', $master, $actor, null, ['admin_group_id' => $groupId], [], $request);
         });
 
         return $this->show($groupId);
@@ -91,35 +93,58 @@ class AdminCultureItemService
 
     public function delete(string $groupId, User $actor, Request $request): void
     {
-        $items = $this->groupItems($groupId);
+        $master = $this->masterItem($groupId);
 
-        DB::transaction(function () use ($items, $actor, $request, $groupId) {
-            foreach ($items as $item) {
+        DB::transaction(function () use ($master, $actor, $request, $groupId) {
+            foreach ($this->attachedClassItems($groupId) as $item) {
                 $item->admin_group_id = null;
                 $item->save();
                 $item->delete();
             }
 
-            $this->auditLogService->record('admin_culture_item.deleted', $items->first(), $actor, null, ['admin_group_id' => $groupId], [], $request);
+            $master->delete();
+            $this->auditLogService->record('admin_culture_item.deleted', $master, $actor, null, ['admin_group_id' => $groupId], [], $request);
         });
     }
 
     private function setStatus(string $groupId, string $status, User $actor, Request $request, string $event): array
     {
-        $items = $this->groupItems($groupId);
+        $master = $this->masterItem($groupId);
 
-        DB::transaction(function () use ($items, $status, $actor, $request, $groupId, $event) {
-            foreach ($items as $item) {
+        DB::transaction(function () use ($master, $status, $actor, $request, $groupId, $event) {
+            $master->status = $status;
+            $master->updated_by = $actor->id;
+            $this->applyStatusTimestamps($master);
+            $master->save();
+
+            foreach ($this->attachedClassItems($groupId) as $item) {
                 $item->status = $status;
                 $item->updated_by = $actor->id;
                 $this->applyStatusTimestamps($item);
                 $item->save();
             }
 
-            $this->auditLogService->record($event, $items->first(), $actor, null, ['admin_group_id' => $groupId, 'status' => $status], [], $request);
+            $this->auditLogService->record($event, $master, $actor, null, ['admin_group_id' => $groupId, 'status' => $status], [], $request);
         });
 
         return $this->show($groupId);
+    }
+
+    private function masterAttributes(string $groupId, array $data, User $actor): array
+    {
+        return [
+            'admin_group_id' => $groupId,
+            'title' => $data['title'],
+            'description' => $data['description'] ?? null,
+            'content_type' => $data['content_type'],
+            'media_id' => $data['media_id'] ?? null,
+            'external_url' => $data['external_url'] ?? null,
+            'display_order' => $data['display_order'] ?? 1,
+            'status' => $data['status'] ?? 'draft',
+            'created_by' => $actor->id,
+            'published_at' => ($data['status'] ?? 'draft') === 'published' ? now() : null,
+            'archived_at' => ($data['status'] ?? 'draft') === 'archived' ? now() : null,
+        ];
     }
 
     private function attributesForClass(string $classId, string $groupId, array $data, User $actor): array
@@ -141,42 +166,53 @@ class AdminCultureItemService
         ];
     }
 
-    private function groupPayload(string $groupId, $items): array
+    private function fillCultureItem(AdminCultureItem|ClassCultureItem $item, array $data, User $actor): void
     {
-        $first = $items->firstWhere('deleted_at', null) ?? $items->first();
+        $item->fill(collect($data)->only(['title', 'description', 'content_type', 'media_id', 'external_url', 'display_order', 'status'])->all());
+        $item->updated_by = $actor->id;
+        $this->applyStatusTimestamps($item);
+    }
+
+    private function masterPayload(AdminCultureItem $item): array
+    {
+        $attachedItems = $this->attachedClassItems($item->admin_group_id);
 
         return [
-            'id' => $groupId,
-            'admin_group_id' => $groupId,
-            'title' => $first->title,
-            'description' => $first->description,
-            'content_type' => $first->content_type,
-            'media_id' => $first->media_id,
-            'media' => $first->relationLoaded('media') && $first->media ? new \App\Http\Resources\MediaFileResource($first->media) : null,
-            'external_url' => $first->external_url,
-            'display_order' => $first->display_order,
-            'status' => $first->status,
+            'id' => $item->admin_group_id,
+            'admin_group_id' => $item->admin_group_id,
+            'title' => $item->title,
+            'description' => $item->description,
+            'content_type' => $item->content_type,
+            'media_id' => $item->media_id,
+            'media' => $item->relationLoaded('media') && $item->media ? new MediaFileResource($item->media) : null,
+            'external_url' => $item->external_url,
+            'display_order' => $item->display_order,
+            'status' => $item->status,
             'created_scope' => 'admin',
-            'classes_count' => $items->where('deleted_at', null)->count(),
-            'published_classes_count' => $items->where('deleted_at', null)->where('status', 'published')->count(),
-            'created_at' => $first->created_at?->toISOString(),
-            'updated_at' => $items->max('updated_at')?->toISOString(),
+            'classes_count' => $attachedItems->count(),
+            'published_classes_count' => $attachedItems->where('status', 'published')->count(),
+            'created_at' => $item->created_at?->toISOString(),
+            'updated_at' => $item->updated_at?->toISOString(),
         ];
     }
 
-    private function groupItems(string $groupId)
+    private function masterItem(string $groupId): AdminCultureItem
     {
-        $items = ClassCultureItem::withTrashed()
-            ->where('created_scope', 'admin')
-            ->where('admin_group_id', $groupId)
-            ->with('media')
-            ->get();
+        $item = AdminCultureItem::query()->where('admin_group_id', $groupId)->with('media')->first();
 
-        if ($items->isEmpty()) {
+        if (! $item) {
             throw new ApiException('Konten budaya admin tidak ditemukan.', 'ADMIN_CULTURE_ITEM_NOT_FOUND', 404);
         }
 
-        return $items;
+        return $item;
+    }
+
+    private function attachedClassItems(string $groupId)
+    {
+        return ClassCultureItem::query()
+            ->where('created_scope', 'admin')
+            ->where('admin_group_id', $groupId)
+            ->get();
     }
 
     private function activeClasses()
@@ -204,7 +240,7 @@ class AdminCultureItemService
         }
     }
 
-    private function applyStatusTimestamps(ClassCultureItem $item): void
+    private function applyStatusTimestamps(AdminCultureItem|ClassCultureItem $item): void
     {
         if ($item->status === 'published' && $item->published_at === null) {
             $item->published_at = now();
