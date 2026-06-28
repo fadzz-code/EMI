@@ -42,7 +42,7 @@ export function AdminCultureTemplateEdit({ templateId }: { templateId: string })
   const updateMutation = useMutation({
     mutationFn: (payload: { title: string; description: string }) => adminCultureService.updateTemplate(token ?? "", templateId, payload),
     onSuccess: () => {
-      setSuccessMsg("Metadata template disimpan.");
+      setSuccessMsg("Template berhasil disimpan. Publish template saat siap, lalu terapkan ke kelas agar tampil untuk guru dan siswa.");
       queryClient.invalidateQueries({ queryKey: ["admin", "culture-templates", templateId] });
       queryClient.invalidateQueries({ queryKey: ["admin", "culture-templates"] });
     },
@@ -51,7 +51,7 @@ export function AdminCultureTemplateEdit({ templateId }: { templateId: string })
   const publishMutation = useMutation({
     mutationFn: () => adminCultureService.publishTemplate(token ?? "", templateId),
     onSuccess: () => {
-      setSuccessMsg("Template berhasil dipublish.");
+      setSuccessMsg("Template berhasil dipublish. Template belum tampil untuk guru/siswa sampai diterapkan ke kelas.");
       queryClient.invalidateQueries({ queryKey: ["admin", "culture-templates", templateId] });
       queryClient.invalidateQueries({ queryKey: ["admin", "culture-templates"] });
     },
@@ -75,7 +75,7 @@ export function AdminCultureTemplateEdit({ templateId }: { templateId: string })
   return (
     <div className="grid gap-6">
       <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href="/admin/culture/templates">Kembali ke Daftar Template</Link>
-      <PageHeader badge="Admin" description="Edit metadata template dan tambahkan item Budaya Mekongga." title="Edit Template Budaya" />
+      <PageHeader badge="Admin" description="Simpan perubahan template, publish saat siap, lalu terapkan ke kelas agar tampil untuk guru dan siswa." title="Edit Template Budaya" />
 
       {query.isLoading ? <LoadingState title="Memuat template" /> : null}
       {query.isError ? <ErrorState description={getFirstApiError(query.error)} onRetry={() => void query.refetch()} title="Gagal memuat template" /> : null}
@@ -84,7 +84,7 @@ export function AdminCultureTemplateEdit({ templateId }: { templateId: string })
         <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
           <div className="grid gap-6">
             <Card>
-              <CardHeader><div className="flex items-center justify-between"><h2 className="text-xl font-black text-ink">Metadata Template</h2><Badge tone={template.status === "published" ? "blue" : "neutral"}>{statusLabel(template.status)}</Badge></div></CardHeader>
+              <CardHeader><div className="flex items-center justify-between"><h2 className="text-xl font-black text-ink">Informasi Template</h2><Badge tone={template.status === "published" ? "blue" : "neutral"}>{statusLabel(template.status)}</Badge></div></CardHeader>
               <CardContent>
                 <form className="grid gap-4" onSubmit={(e) => {
                   e.preventDefault();
@@ -98,7 +98,7 @@ export function AdminCultureTemplateEdit({ templateId }: { templateId: string })
                   <label className="grid gap-2 text-sm font-black text-ink">Judul<Input defaultValue={template.title} name="title" required /></label>
                   <label className="grid gap-2 text-sm font-black text-ink">Deskripsi<Input defaultValue={template.description ?? ""} name="description" /></label>
                   <div className="flex flex-wrap gap-2">
-                    <Button disabled={updateMutation.isPending || publishMutation.isPending} type="submit">{updateMutation.isPending ? "Menyimpan..." : "Simpan Metadata"}</Button>
+                    <Button disabled={updateMutation.isPending || publishMutation.isPending} type="submit">{updateMutation.isPending ? "Menyimpan..." : "Simpan Template"}</Button>
                     {template.status !== "published" ? <Button disabled={publishMutation.isPending || updateMutation.isPending} onClick={() => publishMutation.mutate()} type="button" variant="secondary">{publishMutation.isPending ? "Publishing..." : "Publish Template"}</Button> : null}
                   </div>
                 </form>
@@ -108,7 +108,8 @@ export function AdminCultureTemplateEdit({ templateId }: { templateId: string })
             <Card>
               <CardHeader><h2 className="text-xl font-black text-ink">Terapkan ke Kelas</h2></CardHeader>
               <CardContent>
-                <p className="mb-4 text-sm text-slate-600">Pilih kelas untuk menerapkan template ini. Hanya template published yang akan disalin.</p>
+                <p className="mb-4 text-sm text-slate-600">Template yang dipublish belum tampil untuk guru/siswa sampai diterapkan ke kelas. Saat diterapkan, sistem membuat konten budaya kelas yang bisa dikelola guru.</p>
+                {template.status !== "published" ? <Alert className="mb-4" tone="warning">Publish template terlebih dahulu untuk membuka aksi Terapkan ke Kelas.</Alert> : <Alert className="mb-4" tone="info">Template siap diterapkan ke kelas.</Alert>}
                 {applyMutation.error ? <Alert className="mb-4" tone="error">{getFirstApiError(applyMutation.error)}</Alert> : null}
                 <form onSubmit={(e) => {
                   e.preventDefault();

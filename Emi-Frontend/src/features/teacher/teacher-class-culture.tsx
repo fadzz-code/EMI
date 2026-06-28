@@ -61,23 +61,40 @@ function CultureForm({ classId, item, onDone }: { classId: string; item: Teacher
   const { token } = useAuth();
   const [type, setType] = useState<TeacherCultureContentType>(item?.content_type ?? "image");
   const [file, setFile] = useState<File | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const mutation = useMutation({
-    mutationFn: async (event: FormEvent<HTMLFormElement>) => {
-      const formData = new FormData(event.currentTarget);
-      let mediaId = item?.media_id ?? null;
-      if (fileTypes.includes(type) && file) mediaId = (await teacherService.uploadCultureMedia(token ?? "", file)).id;
-      const payload: TeacherCulturePayload = { title: String(formData.get("title") ?? ""), description: String(formData.get("description") ?? ""), content_type: type, media_id: fileTypes.includes(type) ? mediaId : null, external_url: fileTypes.includes(type) ? null : String(formData.get("external_url") ?? ""), display_order: Number(formData.get("display_order") ?? 1), status: String(formData.get("status") ?? "draft") };
+    mutationFn: async (payload: TeacherCulturePayload) => {
       return item ? teacherService.updateClassCulture(token ?? "", item.id, payload) : teacherService.createClassCulture(token ?? "", classId, payload);
     },
     onSuccess: onDone,
   });
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    mutation.mutate(event);
+    setFormError(null);
+    const formData = new FormData(event.currentTarget);
+    let mediaId = item?.media_id ?? null;
+
+    try {
+      if (fileTypes.includes(type) && file) {
+        mediaId = (await teacherService.uploadCultureMedia(token ?? "", file)).id;
+      }
+
+      mutation.mutate({
+        title: String(formData.get("title") ?? ""),
+        description: String(formData.get("description") ?? ""),
+        content_type: type,
+        media_id: fileTypes.includes(type) ? mediaId : null,
+        external_url: fileTypes.includes(type) ? null : String(formData.get("external_url") ?? ""),
+        display_order: Number(formData.get("display_order") ?? 1),
+        status: String(formData.get("status") ?? "draft"),
+      });
+    } catch (error) {
+      setFormError(getFirstApiError(error));
+    }
   }
 
-  return <Card><CardHeader><h2 className="text-xl font-black text-ink">{item ? "Edit Konten Budaya" : "Tambah Konten Budaya"}</h2></CardHeader><CardContent><form className="grid gap-4" onSubmit={submit}>{mutation.error ? <Alert tone="error">{getFirstApiError(mutation.error)}</Alert> : null}{mutation.isSuccess ? <Alert tone="success">Tersimpan.</Alert> : null}<FormField label="Judul"><Input name="title" defaultValue={item?.title ?? ""} required /></FormField><FormField label="Deskripsi"><Textarea name="description" defaultValue={item?.description ?? ""} /></FormField><FormField label="Tipe konten"><Select name="content_type" value={type} onChange={(event) => setType(event.target.value as TeacherCultureContentType)}>{contentTypes.map((contentType) => <option key={contentType} value={contentType}>{contentType}</option>)}</Select></FormField>{fileTypes.includes(type) ? <FormField label="File"><UploadComponent onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></FormField> : <FormField label="URL"><Input name="external_url" type="url" defaultValue={item?.external_url ?? ""} required /></FormField>}<div className="grid gap-4 md:grid-cols-2"><FormField label="Urutan"><Input name="display_order" type="number" min="1" defaultValue={item?.display_order ?? 1} /></FormField><FormField label="Status"><Select name="status" defaultValue={item?.status ?? "draft"}><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Archived</option></Select></FormField></div><div className="flex gap-2"><Button disabled={mutation.isPending} type="submit">{mutation.isPending ? "Menyimpan..." : "Simpan"}</Button></div></form></CardContent></Card>;
+  return <Card><CardHeader><h2 className="text-xl font-black text-ink">{item ? "Edit Konten Budaya" : "Tambah Konten Budaya"}</h2></CardHeader><CardContent><form className="grid gap-4" onSubmit={submit}>{formError ? <Alert tone="error">{formError}</Alert> : null}{mutation.error ? <Alert tone="error">{getFirstApiError(mutation.error)}</Alert> : null}{mutation.isSuccess ? <Alert tone="success">Tersimpan.</Alert> : null}<FormField label="Judul"><Input name="title" defaultValue={item?.title ?? ""} required /></FormField><FormField label="Deskripsi"><Textarea name="description" defaultValue={item?.description ?? ""} /></FormField><FormField label="Tipe konten"><Select name="content_type" value={type} onChange={(event) => setType(event.target.value as TeacherCultureContentType)}>{contentTypes.map((contentType) => <option key={contentType} value={contentType}>{contentType}</option>)}</Select></FormField>{fileTypes.includes(type) ? <FormField label="File"><UploadComponent onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></FormField> : <FormField label="URL"><Input name="external_url" type="url" defaultValue={item?.external_url ?? ""} required /></FormField>}<div className="grid gap-4 md:grid-cols-2"><FormField label="Urutan"><Input name="display_order" type="number" min="1" defaultValue={item?.display_order ?? 1} /></FormField><FormField label="Status"><Select name="status" defaultValue={item?.status ?? "draft"}><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Archived</option></Select></FormField></div><div className="flex gap-2"><Button disabled={mutation.isPending} type="submit">{mutation.isPending ? "Menyimpan..." : "Simpan"}</Button></div></form></CardContent></Card>;
 }
 
 function CultureLink({ item }: { item: TeacherCultureItem }) {

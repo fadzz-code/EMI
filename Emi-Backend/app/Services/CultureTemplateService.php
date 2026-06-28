@@ -58,16 +58,25 @@ class CultureTemplateService
 
     public function publish(CultureTemplate $template, User $actor, Request $request): CultureTemplate
     {
-        $template->forceFill([
-            'status' => 'published',
-            'published_at' => $template->published_at ?? now(),
-            'archived_at' => null,
-            'updated_by' => $actor->id,
-        ])->save();
+        return DB::transaction(function () use ($template, $actor, $request) {
+            $template->forceFill([
+                'status' => 'published',
+                'published_at' => $template->published_at ?? now(),
+                'archived_at' => null,
+                'updated_by' => $actor->id,
+            ])->save();
 
-        $this->auditLogService->record('culture_template.published', $template, $actor, null, ['status' => 'published'], [], $request);
+            $template->items()->where('status', 'draft')->update([
+                'status' => 'published',
+                'published_at' => now(),
+                'archived_at' => null,
+                'updated_by' => $actor->id,
+            ]);
 
-        return $template->refresh();
+            $this->auditLogService->record('culture_template.published', $template, $actor, null, ['status' => 'published'], [], $request);
+
+            return $template->refresh()->load('items.media');
+        });
     }
 
     public function delete(CultureTemplate $template, User $actor, Request $request): void
