@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, FilePreview, FormField, Input, LoadingState, PageHeader, Select, Textarea, UploadComponent } from "@/components/ui";
 import { classService } from "@/features/admin/management/management-service";
 import { useAuth } from "@/features/auth/auth-provider";
+import { CultureMediaPreview } from "@/features/culture/culture-media-preview";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { adminCultureService } from "./culture-service";
@@ -100,7 +101,7 @@ export function AdminCultureTemplateList() {
                     <p className="text-sm text-slate-600">{item.description ?? "Tanpa deskripsi"}</p>
                     <p className="mt-2 text-xs font-black uppercase text-slate-500">Dibuat admin untuk semua kelas</p>
                     <p className="mt-2 text-sm font-bold text-slate-500">{item.classes_count ?? 0} kelas · {item.published_classes_count ?? 0} kelas terbit</p>
-                    <CultureLink item={item} />
+                    <CultureMediaPreview item={item} />
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Button type="button" variant="secondary" onClick={() => openBuilder(item)}>Edit</Button>
                       {item.status !== "published" ? <Button type="button" onClick={() => publishMutation.mutate(item.id)}>Publish</Button> : null}
@@ -154,13 +155,4 @@ function AdminGlobalCultureForm({ item, onDone, token }: { item: AdminGlobalCult
   }
 
   return <Card><CardHeader><h2 className="text-xl font-black text-ink">{item ? "Edit Konten Budaya" : "Tambah Konten Budaya"}</h2></CardHeader><CardContent><form className="grid gap-4" onSubmit={submit}>{formError ? <Alert tone="error">{formError}</Alert> : null}{mutation.error ? <Alert tone="error">{getFirstApiError(mutation.error)}</Alert> : null}<FormField label="Judul"><Input name="title" defaultValue={item?.title ?? ""} required /></FormField><FormField label="Deskripsi"><Textarea name="description" defaultValue={item?.description ?? ""} /></FormField><FormField label="Tipe konten"><Select name="content_type" value={type} onChange={(event) => setType(event.target.value)}>{contentTypes.map((contentType) => <option key={contentType} value={contentType}>{contentType}</option>)}</Select></FormField>{isFileBased ? <div className="grid gap-3"><FormField label="File"><UploadComponent onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></FormField>{file ? <FilePreview name={file.name} size={`${Math.ceil(file.size / 1024)} KB`} type={file.type || "File"} /> : null}{item?.media_id && !file ? <p className="text-sm font-bold text-slate-500">Media saat ini tetap dipakai jika tidak upload file baru.</p> : null}</div> : <FormField label="URL"><Input name="external_url" type="url" defaultValue={item?.external_url ?? ""} required /></FormField>}<div className="grid gap-4 md:grid-cols-2"><FormField label="Urutan"><Input name="display_order" type="number" min="1" defaultValue={item?.display_order ?? 1} /></FormField><FormField label="Status"><Select name="status" defaultValue={item?.status ?? "draft"}><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Archived</option></Select></FormField></div><Button disabled={mutation.isPending} type="submit">{mutation.isPending ? "Menyimpan..." : "Simpan"}</Button></form></CardContent></Card>;
-}
-
-function CultureLink({ item }: { item: AdminGlobalCultureItem }) {
-  const url = item.media?.url ?? item.external_url;
-  if (!url) return <p className="mt-3 text-sm font-bold text-slate-500">Konten belum memiliki URL publik.</p>;
-  if (item.content_type === "image") return <img alt={item.title} className="mt-3 max-h-64 rounded-xl border-2 border-ink object-cover" src={url} />;
-  if (item.content_type === "audio") return <audio className="mt-3 w-full" controls src={url} />;
-  if (item.content_type === "video") return <video className="mt-3 w-full rounded-xl border-2 border-ink" controls src={url} />;
-  return <a className="mt-3 inline-flex font-black text-blue-700 underline" href={url} rel="noreferrer" target="_blank">Buka konten</a>;
 }

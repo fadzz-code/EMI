@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, FormField, Input, LoadingState, PageHeader, Select, Textarea, UploadComponent } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
+import { CultureMediaPreview } from "@/features/culture/culture-media-preview";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { teacherService } from "./teacher-service";
@@ -46,10 +47,7 @@ export function TeacherCultureList() {
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <PageHeader badge="Guru" description="Konten Budaya Kelas" title="Budaya Mekongga" />
-        <Button disabled={!selectedClassId} onClick={() => openBuilder()} type="button">Kelola Media</Button>
-      </div>
+      <PageHeader badge="Guru" description="Konten Budaya Kelas" title="Budaya Mekongga" />
       <p className="text-sm leading-6 text-slate-600">Kelola konten budaya kelas yang merupakan salinan class-scoped dari template admin.</p>
 
       {isLoading ? <LoadingState title="Memuat Budaya Mekongga" /> : null}
@@ -87,7 +85,7 @@ export function TeacherCultureList() {
                   <CardContent>
                     <p className="text-sm text-slate-600">{item.description ?? "Tanpa deskripsi"}</p>
                     {item.created_scope === "admin" || item.admin_group_id ? <p className="mt-2 text-xs font-black uppercase text-slate-500">Salinan konten admin untuk kelas ini</p> : item.source_template_item_id ? <p className="mt-2 text-xs font-black uppercase text-slate-500">Salinan dari template admin</p> : <p className="mt-2 text-xs font-black uppercase text-slate-500">Dibuat guru untuk kelas ini</p>}
-                    <CultureLink item={item} />
+                    <CultureMediaPreview item={item} />
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Button type="button" variant="secondary" onClick={() => openBuilder(item)}>Edit</Button>
                       {item.status !== "published" ? <Button type="button" onClick={() => publishMutation.mutate(item.id)}>Publish</Button> : null}
@@ -141,13 +139,4 @@ function CultureForm({ classId, item, onDone }: { classId: string; item: Teacher
   }
 
   return <Card><CardHeader><h2 className="text-xl font-black text-ink">{item ? "Edit Konten Budaya" : "Tambah Konten Budaya"}</h2></CardHeader><CardContent><form className="grid gap-4" onSubmit={submit}>{formError ? <Alert tone="error">{formError}</Alert> : null}{mutation.error ? <Alert tone="error">{getFirstApiError(mutation.error)}</Alert> : null}{mutation.isSuccess ? <Alert tone="success">Tersimpan.</Alert> : null}<FormField label="Judul"><Input name="title" defaultValue={item?.title ?? ""} required /></FormField><FormField label="Deskripsi"><Textarea name="description" defaultValue={item?.description ?? ""} /></FormField><FormField label="Tipe konten"><Select name="content_type" value={type} onChange={(event) => setType(event.target.value as TeacherCultureContentType)}>{contentTypes.map((contentType) => <option key={contentType} value={contentType}>{contentType}</option>)}</Select></FormField>{fileTypes.includes(type) ? <FormField label="File"><UploadComponent onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></FormField> : <FormField label="URL"><Input name="external_url" type="url" defaultValue={item?.external_url ?? ""} required /></FormField>}<div className="grid gap-4 md:grid-cols-2"><FormField label="Urutan"><Input name="display_order" type="number" min="1" defaultValue={item?.display_order ?? 1} /></FormField><FormField label="Status"><Select name="status" defaultValue={item?.status ?? "draft"}><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Archived</option></Select></FormField></div><div className="flex gap-2"><Button disabled={mutation.isPending} type="submit">{mutation.isPending ? "Menyimpan..." : "Simpan"}</Button></div></form></CardContent></Card>;
-}
-
-function CultureLink({ item }: { item: TeacherCultureItem }) {
-  const url = item.media?.url ?? item.external_url;
-  if (!url) return <p className="mt-3 text-sm font-bold text-slate-500">Konten belum memiliki URL publik.</p>;
-  if (item.content_type === "image") return <img alt={item.title} className="mt-3 max-h-64 rounded-xl border-2 border-ink object-cover" src={url} />;
-  if (item.content_type === "audio") return <audio className="mt-3 w-full" controls src={url} />;
-  if (item.content_type === "video") return <video className="mt-3 w-full rounded-xl border-2 border-ink" controls src={url} />;
-  return <a className="mt-3 inline-flex font-black text-blue-700 underline" href={url} rel="noreferrer" target="_blank">Buka konten</a>;
 }
