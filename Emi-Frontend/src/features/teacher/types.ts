@@ -119,6 +119,8 @@ export type TeacherCultureItem = {
   class_id: string;
   source_template_id?: string | null;
   source_template_item_id?: string | null;
+  admin_group_id?: string | null;
+  created_scope?: string | null;
   title: string;
   description?: string | null;
   content_type: TeacherCultureContentType;

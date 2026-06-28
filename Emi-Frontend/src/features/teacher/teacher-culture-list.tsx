@@ -86,13 +86,13 @@ export function TeacherCultureList() {
                   <CardHeader><div className="flex flex-wrap gap-2"><Badge tone={item.status === "published" ? "blue" : item.status === "archived" ? "neutral" : "yellow"}>{statusLabel(item.status)}</Badge><Badge tone="neutral">{item.content_type}</Badge></div><h2 className="mt-2 text-xl font-black text-ink">{item.title}</h2></CardHeader>
                   <CardContent>
                     <p className="text-sm text-slate-600">{item.description ?? "Tanpa deskripsi"}</p>
-                    {item.source_template_item_id ? <p className="mt-2 text-xs font-black uppercase text-slate-500">Salinan dari template admin</p> : <p className="mt-2 text-xs font-black uppercase text-slate-500">Dibuat guru untuk kelas ini</p>}
+                    {item.created_scope === "admin" || item.admin_group_id ? <p className="mt-2 text-xs font-black uppercase text-slate-500">Salinan konten admin untuk kelas ini</p> : item.source_template_item_id ? <p className="mt-2 text-xs font-black uppercase text-slate-500">Salinan dari template admin</p> : <p className="mt-2 text-xs font-black uppercase text-slate-500">Dibuat guru untuk kelas ini</p>}
                     <CultureLink item={item} />
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Button type="button" variant="secondary" onClick={() => openBuilder(item)}>Edit</Button>
                       {item.status !== "published" ? <Button type="button" onClick={() => publishMutation.mutate(item.id)}>Publish</Button> : null}
                       {item.status !== "archived" ? <Button type="button" variant="secondary" onClick={() => archiveMutation.mutate(item.id)}>Archive</Button> : null}
-                      <Button type="button" variant="danger" onClick={() => deleteMutation.mutate(item.id)}>Hapus</Button>
+                      <Button type="button" variant="danger" onClick={() => deleteMutation.mutate(item.id)}>Hapus dari Kelas Ini</Button>
                     </div>
                   </CardContent>
                 </Card>

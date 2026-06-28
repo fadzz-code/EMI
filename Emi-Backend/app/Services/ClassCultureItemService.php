@@ -46,6 +46,7 @@ class ClassCultureItemService
 
         return DB::transaction(function () use ($item, $data, $actor, $request) {
             $old = $item->only(['title', 'content_type', 'status']);
+            $this->detachAdminGroupForTeacherAction($item, $actor);
             $item->fill(collect($data)->only(['title', 'description', 'content_type', 'media_id', 'external_url', 'display_order', 'status'])->all());
             $item->updated_by = $actor->id;
 
@@ -68,6 +69,8 @@ class ClassCultureItemService
 
     public function publish(ClassCultureItem $item, User $actor, Request $request): ClassCultureItem
     {
+        $this->detachAdminGroupForTeacherAction($item, $actor);
+
         $item->forceFill([
             'status' => 'published',
             'published_at' => $item->published_at ?? now(),
@@ -82,6 +85,8 @@ class ClassCultureItemService
 
     public function archive(ClassCultureItem $item, User $actor, Request $request): ClassCultureItem
     {
+        $this->detachAdminGroupForTeacherAction($item, $actor);
+
         $item->forceFill([
             'status' => 'archived',
             'archived_at' => now(),
@@ -97,6 +102,14 @@ class ClassCultureItemService
     {
         $item->delete();
         $this->auditLogService->record('class_culture_item.deleted', $item, $actor, null, ['deleted_at' => now()->toISOString()], [], $request);
+    }
+
+    private function detachAdminGroupForTeacherAction(ClassCultureItem $item, User $actor): void
+    {
+        if ($actor->role === 'teacher' && $item->created_scope === 'admin' && $item->admin_group_id !== null) {
+            $item->admin_group_id = null;
+            $item->created_scope = 'teacher';
+        }
     }
 
     private function validateContent(array $data): void

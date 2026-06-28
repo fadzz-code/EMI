@@ -17,7 +17,7 @@ class AdminCultureItemService
 
     public function list(): array
     {
-        return ClassCultureItem::query()
+        return ClassCultureItem::withTrashed()
             ->where('created_scope', 'admin')
             ->whereNotNull('admin_group_id')
             ->with('media')
@@ -95,6 +95,8 @@ class AdminCultureItemService
 
         DB::transaction(function () use ($items, $actor, $request, $groupId) {
             foreach ($items as $item) {
+                $item->admin_group_id = null;
+                $item->save();
                 $item->delete();
             }
 
@@ -141,7 +143,7 @@ class AdminCultureItemService
 
     private function groupPayload(string $groupId, $items): array
     {
-        $first = $items->first();
+        $first = $items->firstWhere('deleted_at', null) ?? $items->first();
 
         return [
             'id' => $groupId,
@@ -150,13 +152,13 @@ class AdminCultureItemService
             'description' => $first->description,
             'content_type' => $first->content_type,
             'media_id' => $first->media_id,
-            'media' => $first->relationLoaded('media') ? new \App\Http\Resources\MediaFileResource($first->media) : null,
+            'media' => $first->relationLoaded('media') && $first->media ? new \App\Http\Resources\MediaFileResource($first->media) : null,
             'external_url' => $first->external_url,
             'display_order' => $first->display_order,
             'status' => $first->status,
             'created_scope' => 'admin',
-            'classes_count' => $items->count(),
-            'published_classes_count' => $items->where('status', 'published')->count(),
+            'classes_count' => $items->where('deleted_at', null)->count(),
+            'published_classes_count' => $items->where('deleted_at', null)->where('status', 'published')->count(),
             'created_at' => $first->created_at?->toISOString(),
             'updated_at' => $items->max('updated_at')?->toISOString(),
         ];
@@ -164,7 +166,7 @@ class AdminCultureItemService
 
     private function groupItems(string $groupId)
     {
-        $items = ClassCultureItem::query()
+        $items = ClassCultureItem::withTrashed()
             ->where('created_scope', 'admin')
             ->where('admin_group_id', $groupId)
             ->with('media')
