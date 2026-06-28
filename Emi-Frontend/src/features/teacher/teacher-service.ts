@@ -11,6 +11,7 @@ import type {
   TeacherProgressStudentRow,
   TeacherQuizAttempt,
   TeacherQuizQuestion,
+  TeacherQuizReport,
   TeacherUserProfile,
 } from "./types";
 
@@ -232,15 +233,37 @@ export const teacherService = {
     await apiClient.delete(`/quiz-questions/${questionId}`, { token });
   },
 
-  async quizAttempts(token: string, quizId: string) {
+  async quizAttempts(token: string, quizId: string, query?: { status?: string; page?: number; per_page?: number }) {
     const response = await apiClient.get<TeacherQuizAttempt[]>(`/class-quizzes/${quizId}/attempts`, {
       token,
       query: {
-        per_page: 100,
+        per_page: query?.per_page ?? 100,
+        page: query?.page,
+        status: query?.status,
       },
     });
 
     return paginated(response.data, response.meta);
+  },
+
+  async quizAttemptDetail(token: string, attemptId: string) {
+    const response = await apiClient.get<TeacherQuizAttempt>(`/quiz-attempts/${attemptId}`, { token });
+
+    if (!response.data) {
+      throw new Error("Detail attempt tidak tersedia.");
+    }
+
+    return response.data;
+  },
+
+  async quizReport(token: string, quizId: string) {
+    const response = await apiClient.get<TeacherQuizReport>(`/class-quizzes/${quizId}/report`, { token });
+
+    if (!response.data) {
+      throw new Error("Laporan kuis tidak tersedia.");
+    }
+
+    return response.data;
   },
 
   async studentProgress(token: string) {

@@ -72,9 +72,7 @@ export function TeacherClassQuizzes({ classId }: { classId: string }) {
                         <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Buka</dt><dd className="mt-1 font-bold text-ink">{formatDate(quiz.open_at)}</dd></div>
                         <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Tutup</dt><dd className="mt-1 font-bold text-ink">{formatDate(quiz.close_at)}</dd></div>
                       </dl>
-                      <Link className={`mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink px-4 py-2 text-sm font-bold text-ink shadow-brutal ${locked ? "bg-white hover:bg-slate-50" : "bg-yellow-300 hover:bg-yellow-200"}`} href={teacherRoutes.quizBuilder(quiz.id)}>
-                        {locked ? "Lihat Detail" : "Buka Builder"}
-                      </Link>
+                      <div className="mt-4 flex flex-wrap gap-2"><Link className={`inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink px-4 py-2 text-sm font-bold text-ink shadow-brutal ${locked ? "bg-white hover:bg-slate-50" : "bg-yellow-300 hover:bg-yellow-200"}`} href={teacherRoutes.quizBuilder(quiz.id)}>{locked ? "Lihat Detail" : "Buka Builder"}</Link><Link className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-white px-4 py-2 text-sm font-bold text-ink shadow-brutal hover:bg-slate-50" href={teacherRoutes.quizResults(quiz.id)}>Hasil</Link></div>
                     </CardContent>
                   </Card>
                 );

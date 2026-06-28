@@ -117,7 +117,7 @@ export function TeacherQuizList() {
                           <h2 className="mt-2 text-xl font-black text-ink">{quiz.title}</h2>
                           <p className="mt-1 text-sm font-bold text-slate-500">{quiz.class?.name ?? user?.active_class?.name ?? "Kelas aktif"}</p>
                         </div>
-                        <Link className={`inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink px-4 py-2 text-sm font-bold text-ink shadow-brutal ${locked ? "bg-white hover:bg-slate-50" : "bg-yellow-300 hover:bg-yellow-200"}`} href={teacherRoutes.quizBuilder(quiz.id)}>{locked ? "Lihat Detail" : "Builder"}</Link>
+                        <div className="flex flex-col gap-2"><Link className={`inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink px-4 py-2 text-sm font-bold text-ink shadow-brutal ${locked ? "bg-white hover:bg-slate-50" : "bg-yellow-300 hover:bg-yellow-200"}`} href={teacherRoutes.quizBuilder(quiz.id)}>{locked ? "Lihat Detail" : "Builder"}</Link><Link className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-white px-4 py-2 text-sm font-bold text-ink shadow-brutal hover:bg-slate-50" href={teacherRoutes.quizResults(quiz.id)}>Hasil</Link></div>
                       </div>
                     </CardHeader>
                     <CardContent>

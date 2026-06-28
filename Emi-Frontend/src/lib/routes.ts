@@ -25,6 +25,7 @@ export const teacherRoutes = {
   modules: "/teacher/modules",
   quizzes: "/teacher/quizzes",
   quizBuilder: (classQuizId: string) => `/teacher/quizzes/${classQuizId}/builder`,
+  quizResults: (classQuizId: string) => `/teacher/quizzes/${classQuizId}/results`,
   moduleEdit: (moduleId: string) => `/teacher/modules/${moduleId}/edit`,
   lessonEdit: (moduleId: string, lessonId: string) => `/teacher/modules/${moduleId}/lessons/${lessonId}/edit`,
   profile: "/teacher/profile",

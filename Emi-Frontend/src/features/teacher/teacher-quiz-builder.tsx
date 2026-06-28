@@ -64,7 +64,7 @@ export function TeacherQuizBuilder({ classQuizId }: { classQuizId: string }) {
 
   return (
     <div className="grid gap-6">
-      <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href={teacherRoutes.quizzes}>Kembali ke Daftar Kuis</Link>
+      <div className="flex flex-wrap gap-3"><Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href={teacherRoutes.quizzes}>Kembali ke Daftar Kuis</Link><Link className="w-fit rounded-lg border-2 border-ink bg-yellow-300 px-3 py-2 text-sm font-black text-ink shadow-brutal hover:bg-yellow-200" href={teacherRoutes.quizResults(classQuizId)}>Lihat Hasil</Link></div>
       <PageHeader badge="Guru" description="Ubah metadata dan soal kuis kelas memakai endpoint class_quizzes dan quiz_questions." title="Quiz Builder" />
 
       {quizQuery.isLoading ? <LoadingState title="Memuat detail kuis" /> : null}

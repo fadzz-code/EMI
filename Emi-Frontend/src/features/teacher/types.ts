@@ -131,17 +131,62 @@ export type TeacherClassQuiz = {
   questions?: TeacherQuizQuestion[];
 };
 
+export type TeacherQuizAnswer = {
+  id: string;
+  quiz_attempt_id: string;
+  quiz_question_id: string;
+  selected_option_id?: string | null;
+  answer_text?: string | null;
+  is_correct?: boolean | null;
+  similarity_score?: number | null;
+  awarded_points?: number | null;
+  max_points?: number | null;
+  answered_at?: string | null;
+};
+
 export type TeacherQuizAttempt = {
   id: string;
+  class_quiz_id?: string;
+  student_id?: string;
+  attempt_number?: number | null;
   status: string;
+  score_points?: number | null;
+  max_points?: number | null;
   score_percent?: number | null;
+  correct_count?: number | null;
+  incorrect_count?: number | null;
+  unanswered_count?: number | null;
   started_at?: string | null;
+  expires_at?: string | null;
   submitted_at?: string | null;
+  answers?: TeacherQuizAnswer[];
   student?: {
     id: string;
-    full_name: string;
-    email: string;
+    full_name?: string;
+    name?: string;
+    email?: string;
   } | null;
+};
+
+export type TeacherQuizReport = {
+  class_quiz_id: string;
+  student_count?: number | null;
+  attempts_count?: number | null;
+  submitted_count?: number | null;
+  in_progress_count?: number | null;
+  average_score_percent?: number | null;
+  highest_score_percent?: number | null;
+  lowest_score_percent?: number | null;
+  questions?: Array<{
+    id: string;
+    question_type?: string;
+    order_number?: number | null;
+    points?: number | null;
+    answered_count?: number | null;
+    correct_count?: number | null;
+    incorrect_count?: number | null;
+    average_awarded_points?: number | null;
+  }>;
 };
 
 export type TeacherUserProfile = {
