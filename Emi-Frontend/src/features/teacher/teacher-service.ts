@@ -9,6 +9,7 @@ import type {
   TeacherClassStudent,
   TeacherDashboardSummary,
   TeacherProgressStudentRow,
+  TeacherMediaFile,
   TeacherQuizAttempt,
   TeacherQuizQuestion,
   TeacherQuizReport,
@@ -308,7 +309,7 @@ export const teacherService = {
     formData.append("purpose", purpose);
     formData.append("visibility", visibility);
 
-    const response = await apiClient.post<{ id: string; original_name?: string; url?: string; mime_type: string }>(
+    const response = await apiClient.post<TeacherMediaFile>(
       "/media",
       formData,
       { token, timeoutMs: 60_000 }
@@ -323,6 +324,16 @@ export const teacherService = {
 
   async uploadQuestionImage(token: string, file: File) {
     return this.uploadMedia(token, file, "question_image", "public");
+  },
+
+  async mediaDetail(token: string, mediaId: string) {
+    const response = await apiClient.get<TeacherMediaFile>(`/media/${mediaId}`, { token });
+
+    if (!response.data) {
+      throw new Error("Detail media tidak tersedia.");
+    }
+
+    return response.data;
   },
 
   async profile(token: string) {

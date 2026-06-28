@@ -24,6 +24,8 @@ export const teacherRoutes = {
   progressReport: "/teacher/reports/progress",
   modules: "/teacher/modules",
   quizzes: "/teacher/quizzes",
+  speakingResults: "/teacher/speaking/results",
+  media: "/teacher/media",
   quizBuilder: (classQuizId: string) => `/teacher/quizzes/${classQuizId}/builder`,
   quizResults: (classQuizId: string) => `/teacher/quizzes/${classQuizId}/results`,
   moduleEdit: (moduleId: string) => `/teacher/modules/${moduleId}/edit`,
@@ -55,6 +57,8 @@ export const roleNavItems: Record<UserRole, NavItem[]> = {
     { label: "Progress", href: teacherRoutes.progressReport, status: "ready" },
     { label: "Modul", href: teacherRoutes.modules, status: "ready" },
     { label: "Kuis", href: teacherRoutes.quizzes, status: "ready" },
+    { label: "Hasil Speaking", href: teacherRoutes.speakingResults, status: "next" },
+    { label: "Media", href: teacherRoutes.media, status: "ready" },
     { label: "Profil", href: teacherRoutes.profile, status: "ready" },
   ],
   student: [

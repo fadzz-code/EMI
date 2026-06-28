@@ -86,10 +86,14 @@ export type TeacherQuizOption = {
 
 export type TeacherMediaFile = {
   id: string;
+  purpose?: string | null;
   original_name?: string | null;
   url?: string | null;
   mime_type?: string | null;
+  extension?: string | null;
+  size_bytes?: number | null;
   visibility?: string | null;
+  created_at?: string | null;
 };
 
 export type TeacherQuizQuestion = {
