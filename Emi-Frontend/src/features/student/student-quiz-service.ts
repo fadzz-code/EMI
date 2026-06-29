@@ -1,6 +1,6 @@
 import { apiClient } from "@/lib/api-client";
 
-import type { PaginatedResult, QuizAttempt, StudentQuiz } from "./types";
+import type { PaginatedResult, QuizAttempt, StudentQuiz, StudentQuizResultsReport } from "./types";
 
 function paginated<T>(data: T[] | undefined, meta: unknown): PaginatedResult<T> {
   return {
@@ -52,6 +52,19 @@ export const studentQuizService = {
     if (!response.data) {
       throw new Error("Detail attempt tidak tersedia.");
     }
+
+    return response.data;
+  },
+
+  async getStudentQuizResultsReport(token: string, filters: { quiz_id?: string; page?: number; per_page?: number } = {}) {
+    const response = await apiClient.get<StudentQuizResultsReport>("/student/reports/quiz-results", {
+      token,
+      query: {
+        quiz_id: filters.quiz_id,
+        page: filters.page ?? 1,
+        per_page: filters.per_page ?? 12,
+      },
+    });
 
     return response.data;
   },

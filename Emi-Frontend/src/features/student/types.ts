@@ -127,22 +127,78 @@ export type StudentCultureItem = {
   updated_at?: string | null;
 };
 
+export type StudentProgressSummary = {
+  student_id?: string;
+  full_name?: string;
+  school?: { id?: string; name?: string } | null;
+  class?: { id?: string; name?: string } | null;
+  published_modules?: number;
+  started_modules?: number;
+  completed_modules?: number;
+  in_progress_modules?: number;
+  not_started_modules?: number;
+  overall_learning_progress_percent?: number | null;
+  completed_lessons?: number;
+  total_published_lessons?: number;
+  published_quizzes?: number;
+  quizzes_attempted?: number;
+  quizzes_completed?: number;
+  average_best_quiz_score_percent?: number | null;
+  last_learning_activity_at?: string | null;
+  last_quiz_activity_at?: string | null;
+};
+
+export type StudentProgressModuleRow = {
+  id?: string;
+  class_module_id?: string;
+  title?: string;
+  sort_order?: number | null;
+  status?: LearningStatus;
+  progress_percent?: number | null;
+  completed_lessons?: number | null;
+  total_lessons?: number | null;
+  last_calculated_at?: string | null;
+};
+
 export type StudentProgressReport = {
-  summary?: {
-    published_modules?: number;
-    completed_modules?: number;
-    overall_learning_progress_percent?: number | null;
-    total_published_lessons?: number;
-    completed_lessons?: number;
-  };
+  summary?: StudentProgressSummary | null;
   modules?: {
-    data?: Array<{
-      class_module_id?: string;
-      title?: string;
-      status?: LearningStatus;
-      progress_percent?: number | null;
-    }>;
+    data?: StudentProgressModuleRow[];
+    meta?: ApiPaginationMeta;
   };
+};
+
+export type StudentQuizResultReportSummary = {
+  eligible_students?: number;
+  participating_students?: number;
+  finalized_students?: number;
+  not_attempted_students?: number;
+  participation_rate_percent?: number;
+  completion_rate_percent?: number;
+  average_best_score_percent?: number | null;
+  highest_best_score_percent?: number | null;
+  lowest_best_score_percent?: number | null;
+  submitted_attempts?: number;
+  expired_attempts?: number;
+  in_progress_attempts?: number;
+};
+
+export type StudentQuizResultReportRow = {
+  quiz?: { id?: string; title?: string; show_result?: boolean } | null;
+  student?: { id?: string; full_name?: string } | null;
+  school?: { id?: string; name?: string } | null;
+  class?: { id?: string; name?: string } | null;
+  best_attempt_number?: number | null;
+  attempt_count?: number;
+  final_attempt_count?: number;
+  best_score_percent?: number | null;
+  latest_status?: string | null;
+  latest_submitted_at?: string | null;
+};
+
+export type StudentQuizResultsReport = {
+  summary?: StudentQuizResultReportSummary;
+  rows?: StudentQuizResultReportRow[];
 };
 
 export type DictionaryCategory = {

@@ -7,5 +7,5 @@ export default async function StudentQuizResultPage({
 }) {
   const { quizId } = await params;
 
-  return <StudentQuizResult />;
+  return <StudentQuizResult quizId={quizId} />;
 }

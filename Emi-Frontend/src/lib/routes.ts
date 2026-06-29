@@ -70,6 +70,6 @@ export const roleNavItems: Record<UserRole, NavItem[]> = {
     { label: "Kuis", href: "/student/quizzes", status: "ready" },
     { label: "Kamus", href: "/student/dictionary", status: "ready" },
     { label: "Budaya Mekongga", href: "/student/culture", status: "ready" },
-    { label: "Progress", href: "/student/progress", status: "next" },
+    { label: "Progress", href: "/student/progress", status: "ready" },
   ],
 };

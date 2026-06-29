@@ -9,25 +9,27 @@ import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { studentQuizService } from "./student-quiz-service";
-import { formatCount, formatDate, formatPercent } from "./student-utils";
+import { formatCount, formatDate, formatPercent, statusLabel } from "./student-utils";
 
-export function StudentQuizResult() {
+export function StudentQuizResult({ quizId }: { quizId: string }) {
   const { token } = useAuth();
   const searchParams = useSearchParams();
-  const attemptId = searchParams.get("attemptId");
+  const attemptId = searchParams.get("attemptId") ?? searchParams.get("attempt_id");
 
   const attemptQuery = useQuery({
     queryKey: ["student", "quiz-attempts", attemptId],
     queryFn: () => studentQuizService.attemptDetail(token ?? "", attemptId ?? ""),
     enabled: Boolean(token && attemptId),
   });
-
-  if (!attemptId) {
-    return <ErrorState description="ID Attempt tidak ditemukan di URL." title="Data tidak lengkap" />;
-  }
+  const reportQuery = useQuery({
+    queryKey: ["student", "quiz-results-report", quizId],
+    queryFn: () => studentQuizService.getStudentQuizResultsReport(token ?? "", { quiz_id: quizId, per_page: 1 }),
+    enabled: Boolean(token && quizId && !attemptId),
+  });
 
   const attempt = attemptQuery.data;
   const quiz = attempt?.class_quiz;
+  const reportRow = reportQuery.data?.rows?.[0];
 
   return (
     <div className="grid gap-6">
@@ -35,7 +37,8 @@ export function StudentQuizResult() {
         Kembali ke Daftar Kuis
       </Link>
 
-      {attemptQuery.isLoading ? <LoadingState title="Memuat hasil kuis" /> : null}
+      {attemptId && attemptQuery.isLoading ? <LoadingState title="Memuat hasil kuis" /> : null}
+      {!attemptId && reportQuery.isLoading ? <LoadingState title="Memuat laporan hasil kuis" /> : null}
       {attemptQuery.isError ? (
         <ErrorState
           description={getFirstApiError(attemptQuery.error)}
@@ -43,8 +46,15 @@ export function StudentQuizResult() {
           title="Gagal memuat hasil"
         />
       ) : null}
+      {reportQuery.isError ? (
+        <ErrorState
+          description={getFirstApiError(reportQuery.error)}
+          onRetry={() => void reportQuery.refetch()}
+          title="Gagal memuat laporan hasil"
+        />
+      ) : null}
 
-      {!attemptQuery.isLoading && !attemptQuery.isError && attempt ? (
+      {attemptId && !attemptQuery.isLoading && !attemptQuery.isError && attempt ? (
         <>
           <header className="grid gap-4 rounded-3xl border-2 border-ink bg-white p-5 shadow-brutal">
             <div>
@@ -76,8 +86,49 @@ export function StudentQuizResult() {
             </CardContent>
           </Card>
         </>
-      ) : !attemptQuery.isLoading && !attemptQuery.isError ? (
+      ) : null}
+
+      {!attemptId && !reportQuery.isLoading && !reportQuery.isError && reportRow ? (
+        <>
+          <header className="grid gap-4 rounded-3xl border-2 border-ink bg-white p-5 shadow-brutal">
+            <div>
+              <h1 className="text-3xl font-black text-ink">{reportRow.quiz?.title ?? "Hasil Kuis"}</h1>
+              <p className="mt-2 text-sm text-slate-600">Aktivitas terakhir: {formatDate(reportRow.latest_submitted_at)}</p>
+            </div>
+          </header>
+
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatsCard label="Nilai Terbaik" value={reportRow.best_score_percent !== null ? formatPercent(reportRow.best_score_percent) : "Belum tersedia"} />
+            <StatsCard label="Attempt" value={formatCount(reportRow.attempt_count)} />
+            <StatsCard label="Attempt Final" value={formatCount(reportRow.final_attempt_count)} />
+            <StatsCard label="Status Terakhir" value={statusLabel(reportRow.latest_status)} />
+          </section>
+
+          <Card>
+            <CardHeader>
+              <h2 className="text-xl font-black text-ink">Laporan Hasil Kuis</h2>
+            </CardHeader>
+            <CardContent>
+              {reportRow.quiz?.show_result === false ? (
+                <EmptyState description="Nilai kuis ini disembunyikan oleh pengaturan backend." title="Nilai belum ditampilkan" />
+              ) : reportRow.final_attempt_count ? (
+                <div className="text-sm leading-6 text-slate-700">
+                  <p>Attempt terbaik: {formatCount(reportRow.best_attempt_number)}</p>
+                  <p>Dikumpulkan terakhir: {formatDate(reportRow.latest_submitted_at)}</p>
+                </div>
+              ) : (
+                <EmptyState description="Belum ada attempt kuis yang selesai untuk ditampilkan." title="Hasil belum tersedia" />
+              )}
+            </CardContent>
+          </Card>
+        </>
+      ) : null}
+
+      {attemptId && !attemptQuery.isLoading && !attemptQuery.isError && !attempt ? (
         <EmptyState description="Data hasil kuis tidak ditemukan." title="Hasil tidak tersedia" />
+      ) : null}
+      {!attemptId && !reportQuery.isLoading && !reportQuery.isError && !reportRow ? (
+        <EmptyState description="Laporan hasil kuis belum tersedia untuk kuis ini." title="Hasil tidak tersedia" />
       ) : null}
     </div>
   );

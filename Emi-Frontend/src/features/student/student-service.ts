@@ -112,11 +112,15 @@ export const studentService = {
     return paginated(response.data, response.meta);
   },
 
-  async progressReport(token: string) {
+  async getStudentProgressReport(token: string) {
     const response = await apiClient.get<StudentProgressReport>("/student/reports/progress", {
       token,
     });
 
     return response.data;
+  },
+
+  async progressReport(token: string) {
+    return this.getStudentProgressReport(token);
   },
 };
