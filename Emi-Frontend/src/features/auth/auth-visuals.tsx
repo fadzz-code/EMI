@@ -6,11 +6,9 @@ import { cn } from "@/lib/utils";
 
 const ink = "#1b1b1b";
 export const LOGIN_HERO_CONFIG = {
-  title: "Belajar Bahasa Mekongga Jadi Lebih Mudah",
-  subtitle: "Akses modul, ikuti kuis, cari kosakata di kamus, dan kenali Budaya Mekongga dalam satu platform.",
   infoTitle: "Informasi Penting",
   infoDescription: "Akun siswa dan guru perlu disetujui admin sebelum dapat digunakan.",
-  imageUrl: null as string | null,
+  imageUrl: "/images/login-hero-emi.png", // Image path for future admin override
 };
 
 export function LoginLearningPanel() {
@@ -24,40 +22,27 @@ export function LoginLearningPanel() {
 
       <div className="relative z-10 flex h-full flex-col items-center justify-between gap-10">
 
-        {/* Main CSS Illustration Area */}
-        <div className="relative mt-8 w-full max-w-[360px] rounded-[16px] border-4 border-ink bg-white p-6 shadow-[8px_8px_0_var(--color-ink)]">
-          {LOGIN_HERO_CONFIG.imageUrl ? (
-            <div className="mb-4 aspect-video w-full rounded-[8px] border-4 border-ink bg-cover bg-center" style={{ backgroundImage: `url(${LOGIN_HERO_CONFIG.imageUrl})` }} />
-          ) : (
-            <div className="mb-4 flex justify-center">
-              <div className="relative size-32 rounded-full border-4 border-ink bg-[#fcf9f8] shadow-[4px_4px_0_var(--color-ink)]">
-                <div className="absolute inset-x-4 bottom-4 top-8 rounded-[8px] border-4 border-ink bg-[#00c291]" />
-                <div className="absolute right-4 top-4 size-8 rounded-full border-4 border-ink bg-[#ffdf9b]" />
+        {/* Main Hero Image Area */}
+        <div className="relative mt-8 flex w-full max-w-[400px] flex-1 flex-col justify-center">
+          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[16px] border-4 border-ink bg-[#fcf9f8] shadow-[8px_8px_0_var(--color-ink)]">
+            {LOGIN_HERO_CONFIG.imageUrl ? (
+              <img
+                alt="EMI E-Learning Hero"
+                className="absolute inset-0 h-full w-full object-cover text-sm text-slate-500"
+                src={LOGIN_HERO_CONFIG.imageUrl}
+                /* Alt text acts as a native fallback message if image fails to load */
+              />
+            ) : (
+              <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center">
+                <span className="mb-2 text-3xl">🖼️</span>
+                <span className="text-sm font-bold text-slate-500">Gambar Hero Belum Dikonfigurasi</span>
               </div>
-            </div>
-          )}
-
-          <div className="flex flex-col items-center gap-4 text-center">
-            <h2 className="text-2xl font-black leading-tight text-ink">{LOGIN_HERO_CONFIG.title}</h2>
-            <p className="text-sm font-bold text-slate-600 hidden">{LOGIN_HERO_CONFIG.subtitle}</p>
-
-            <div className="mt-2 flex flex-wrap justify-center gap-2">
-              {[
-                { id: "modul", label: "Modul", color: "bg-[#ffd167]" },
-                { id: "kuis", label: "Kuis", color: "bg-[#ff8c42]" },
-                { id: "kamus", label: "Kamus", color: "bg-[#fcf9f8]" },
-                { id: "budaya", label: "Budaya", color: "bg-[#00c291]" },
-              ].map((badge) => (
-                <span className={cn("rounded-full border-2 border-ink px-3 py-1 text-xs font-black text-ink shadow-[2px_2px_0_var(--color-ink)]", badge.color)} key={badge.id}>
-                  {badge.label}
-                </span>
-              ))}
-            </div>
+            )}
           </div>
         </div>
 
         {/* Bottom Information Card */}
-        <div className="w-full max-w-[360px] rounded-[12px] border-4 border-ink bg-white p-5 shadow-[4px_4px_0_var(--color-ink)]">
+        <div className="w-full max-w-[400px] rounded-[12px] border-4 border-ink bg-white p-5 shadow-[4px_4px_0_var(--color-ink)]">
           <p className="text-sm font-black uppercase tracking-wider text-[#9b4500]">{LOGIN_HERO_CONFIG.infoTitle}</p>
           <p className="mt-2 text-sm font-bold leading-6 text-slate-700">
             {LOGIN_HERO_CONFIG.infoDescription}
