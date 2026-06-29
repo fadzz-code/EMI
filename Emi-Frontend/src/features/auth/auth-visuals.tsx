@@ -5,8 +5,40 @@ import { env } from "@/lib/env";
 import { cn } from "@/lib/utils";
 
 const ink = "#1b1b1b";
-const LOGIN_HERO_IMAGE_URL: string | null = null;
+export const LOGIN_HERO_CONFIG = {
+  imageUrl: null as string | null,
+};
 
+export function LoginLearningPanel() {
+  return (
+    <section className="relative hidden min-h-[420px] flex-col border-l-4 border-ink bg-[#00c291] p-8 lg:flex lg:min-h-[640px] lg:p-12">
+      {LOGIN_HERO_CONFIG.imageUrl ? (
+        <div aria-hidden="true" className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${LOGIN_HERO_CONFIG.imageUrl})` }} />
+      ) : (
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.2),transparent_28%),radial-gradient(circle_at_80%_80%,rgba(0,0,0,0.05),transparent_30%)]" />
+      )}
+      <div className="relative flex h-full flex-col justify-center gap-10 text-[#003c2f]">
+        <div className="max-w-md">
+          <h2 className="text-4xl font-black leading-tight tracking-tight lg:text-5xl">Belajar Bahasa Mekongga Jadi Lebih Mudah</h2>
+          <p className="mt-5 text-base font-bold leading-7 text-[#004d3e]">Akses modul, ikuti kuis, cari kosakata di kamus, dan kenali Budaya Mekongga dalam satu platform.</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          {[
+            { id: "modul", label: "Modul", color: "bg-[#ffd167]", text: "text-[#765900]" },
+            { id: "kuis", label: "Kuis", color: "bg-[#ff8c42]", text: "text-[#6a2d00]" },
+            { id: "kamus", label: "Kamus", color: "bg-white", text: "text-ink" },
+            { id: "budaya", label: "Budaya", color: "bg-[#ffdf9b]", text: "text-[#9b4500]" },
+          ].map((badge) => (
+            <div className={cn("rounded-[12px] border-4 border-ink p-4 shadow-[4px_4px_0_var(--color-ink)]", badge.color)} key={badge.id}>
+              <p className={cn("text-lg font-black", badge.text)}>{badge.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 export function AuthBrandMark({ className }: { className?: string }) {
   return (
     <Link className={cn("inline-flex items-center gap-3 font-black text-[#1b1b1b]", className)} href="/">
@@ -51,37 +83,6 @@ export function AuthScreen({ children, className }: { children: ReactNode; class
       />
       <div className="relative">{children}</div>
     </div>
-  );
-}
-
-export function LoginLearningPanel() {
-  return (
-    <section className="relative min-h-[420px] overflow-hidden bg-gradient-to-br from-emerald-700 via-sky-700 to-amber-500 p-8 text-white lg:min-h-[640px] lg:p-12">
-      {LOGIN_HERO_IMAGE_URL ? (
-        <div aria-hidden="true" className="absolute inset-0 bg-cover bg-center opacity-80" style={{ backgroundImage: `url(${LOGIN_HERO_IMAGE_URL})` }} />
-      ) : null}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.28),transparent_28%),radial-gradient(circle_at_80%_0%,rgba(250,204,21,0.24),transparent_24%),radial-gradient(circle_at_80%_80%,rgba(16,185,129,0.28),transparent_30%)]" />
-      <div className="relative flex h-full min-h-[360px] flex-col justify-between gap-10 lg:min-h-[544px]">
-        <div className="max-w-md">
-          <p className="text-sm font-black uppercase tracking-[0.28em] text-amber-100">Belajar Bahasa Mekongga</p>
-          <h2 className="mt-4 text-4xl font-black leading-tight tracking-tight lg:text-5xl">Ruang belajar digital untuk budaya, bahasa, dan generasi muda.</h2>
-          <p className="mt-5 text-base leading-7 text-white/85">Masuk untuk melanjutkan modul, kamus, kuis, progress belajar, dan konten Budaya Mekongga dari kelas Anda.</p>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-3">
-          {[
-            ["Modul", "Materi kelas"],
-            ["Kamus", "Kosakata"],
-            ["Kuis", "Latihan"],
-          ].map(([title, subtitle]) => (
-            <div className="rounded-3xl border border-white/25 bg-white/15 p-4 shadow-xl shadow-slate-900/10 backdrop-blur" key={title}>
-              <p className="text-lg font-black">{title}</p>
-              <p className="mt-1 text-sm text-white/75">{subtitle}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
   );
 }
 

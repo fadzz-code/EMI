@@ -58,7 +58,9 @@ export function LoginForm() {
       <div className="mx-auto grid w-full max-w-md gap-8">
         <div className="grid gap-5">
           <div className="flex items-center gap-3">
-            <div className="grid size-14 place-items-center rounded-2xl bg-emerald-600 text-xl font-black text-white shadow-lg shadow-emerald-100">EMI</div>
+            <div className="grid size-14 place-items-center rounded-[12px] border-4 border-ink bg-[#ffdf9b] text-xl font-black text-[#9b4500] shadow-[4px_4px_0_var(--color-ink)]">
+              EMI
+            </div>
             <div>
               <p className="text-lg font-black text-ink">EMI</p>
               <p className="text-sm font-semibold text-slate-500">EMI — Elearning Mekongga Indonesia</p>
@@ -71,11 +73,15 @@ export function LoginForm() {
         </div>
 
         <form className="grid gap-5" onSubmit={handleSubmit(onSubmit)}>
-          {formError ? <Alert tone="error">{formError}</Alert> : null}
+          {formError ? (
+            <Alert className="border-4 font-bold shadow-[3px_3px_0_var(--color-ink)]" tone="error">
+              {formError}
+            </Alert>
+          ) : null}
           <FormField error={errors.email?.message} label="Email">
             <Input
               autoComplete="email"
-              className="min-h-12 rounded-2xl border-slate-200 bg-slate-50 text-base focus:ring-emerald-100"
+              className="min-h-12 rounded-[12px] border-4 border-ink bg-[#fcf9f8] text-base focus:ring-[#ffd167]"
               placeholder="guru@emi.test"
               type="email"
               {...register("email")}
@@ -84,7 +90,7 @@ export function LoginForm() {
           <FormField error={errors.password?.message} label="Password">
             <Input
               autoComplete="current-password"
-              className="min-h-12 rounded-2xl border-slate-200 bg-slate-50 text-base focus:ring-emerald-100"
+              className="min-h-12 rounded-[12px] border-4 border-ink bg-[#fcf9f8] text-base focus:ring-[#ffd167]"
               placeholder="•••••••••••"
               type="password"
               {...register("password")}
@@ -92,7 +98,7 @@ export function LoginForm() {
           </FormField>
           <input type="hidden" {...register("device_name")} />
           <Button
-            className="min-h-12 rounded-2xl border-0 bg-emerald-600 text-base font-black text-white shadow-lg shadow-emerald-100 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-100"
+            className="min-h-12 rounded-[12px] border-4 border-ink bg-[#ff8c42] text-lg font-black text-[#6a2d00] shadow-[4px_4px_0_var(--color-ink)] hover:bg-[#ffa45f] focus:ring-4 focus:ring-[#ffd167]"
             disabled={isSubmitting}
             type="submit"
           >
@@ -102,7 +108,7 @@ export function LoginForm() {
 
         <p className="text-center text-sm font-medium text-slate-600">
           Belum punya akun?{" "}
-          <Link className="font-black text-emerald-700 hover:text-emerald-800" href="/register">
+          <Link className="font-black text-[#9b4500] hover:text-[#7a3600] hover:underline" href="/register">
             Daftar sekarang
           </Link>
         </p>
