@@ -19,6 +19,8 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
 
   const [idempotencyKey] = useState(() => crypto.randomUUID());
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+  const [shortAnswers, setShortAnswers] = useState<Record<string, string>>({});
 
   const quizQuery = useQuery({
     queryKey: ["student", "quizzes", quizId],
@@ -45,8 +47,8 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
 
   const submitMutation = useMutation({
     mutationFn: () => studentQuizService.submitAttempt(token ?? "", attemptId ?? "", idempotencyKey),
-    onSuccess: () => {
-      router.replace(`/student/quizzes/${quizId}/result?attemptId=${attemptId}`);
+    onSuccess: (attempt) => {
+      router.replace(`/student/quizzes/${quizId}/result?attemptId=${attempt.id}`);
     },
   });
 
@@ -62,17 +64,19 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
   const attempt = attemptQuery.data;
   const questions = quiz?.questions ?? [];
   const currentQuestion = questions[currentQuestionIndex];
-  
-  // existing answer for current question
-  const existingAnswer = attempt?.answers?.find((a) => a.quiz_question_id === currentQuestion?.id);
+  const existingAnswer = attempt?.answers?.find((answer) => answer.quiz_question_id === currentQuestion?.id);
+  const selectedOptionId = currentQuestion ? selectedOptions[currentQuestion.id] ?? existingAnswer?.selected_option_id : undefined;
+  const shortAnswer = currentQuestion ? shortAnswers[currentQuestion.id] ?? existingAnswer?.answer_text ?? "" : "";
 
   function handleOptionSelect(optionId: string) {
-    if (!currentQuestion) return;
+    if (!currentQuestion || attempt?.status !== "in_progress") return;
+    setSelectedOptions((current) => ({ ...current, [currentQuestion.id]: optionId }));
     saveAnswerMutation.mutate({ questionId: currentQuestion.id, optionId });
   }
 
   function handleShortAnswerBlur(text: string) {
-    if (!currentQuestion) return;
+    if (!currentQuestion || attempt?.status !== "in_progress") return;
+    setShortAnswers((current) => ({ ...current, [currentQuestion.id]: text }));
     saveAnswerMutation.mutate({ questionId: currentQuestion.id, answerText: text });
   }
 
@@ -93,7 +97,15 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
       {isLoading ? <LoadingState title="Memuat soal kuis" /> : null}
       {isError ? <ErrorState description={getFirstApiError(error)} onRetry={() => { quizQuery.refetch(); attemptQuery.refetch(); }} title="Gagal memuat soal" /> : null}
 
-      {!isLoading && !isError && quiz && attempt && currentQuestion ? (
+      {!isLoading && !isError && attempt && attempt.status !== "in_progress" ? (
+        <ErrorState
+          description="Attempt ini sudah selesai atau kedaluwarsa. Buka halaman hasil untuk melihat status terbaru."
+          onRetry={() => router.replace(`/student/quizzes/${quizId}/result?attemptId=${attempt.id}`)}
+          title="Attempt tidak aktif"
+        />
+      ) : null}
+
+      {!isLoading && !isError && quiz && attempt?.status === "in_progress" && currentQuestion ? (
         <>
           <header className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border-2 border-ink bg-white p-5 shadow-brutal">
             <div>
@@ -128,7 +140,7 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
               {currentQuestion.question_type === "multiple_choice" ? (
                 <div className="grid gap-3">
                   {currentQuestion.options?.map((option) => {
-                    const isSelected = existingAnswer?.selected_option_id === option.id;
+                    const isSelected = selectedOptionId === option.id;
                     return (
                       <button
                         className={`flex min-h-12 w-full items-center rounded-xl border-2 px-4 py-2 text-left font-bold transition-colors ${
@@ -147,7 +159,7 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
                 <div className="grid gap-2">
                   <label className="text-sm font-bold text-ink">Jawaban Singkat</label>
                   <Input
-                    defaultValue={existingAnswer?.answer_text ?? ""}
+                    defaultValue={shortAnswer}
                     onBlur={(e) => handleShortAnswerBlur(e.target.value)}
                     placeholder="Ketik jawaban Anda lalu klik di luar kotak untuk menyimpan"
                   />
@@ -165,7 +177,7 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
             </Button>
           </div>
         </>
-      ) : !isLoading && !isError ? (
+      ) : !isLoading && !isError && (!attempt || attempt.status === "in_progress") ? (
         <EmptyState description="Soal tidak ditemukan untuk kuis ini." title="Data kuis tidak lengkap" />
       ) : null}
     </div>

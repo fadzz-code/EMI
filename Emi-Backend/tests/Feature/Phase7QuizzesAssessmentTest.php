@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\ClassQuiz;
 use App\Models\MediaFile;
 use App\Models\QuizAttempt;
+use App\Models\QuizOption;
 use App\Models\QuizQuestion;
 use App\Models\QuizTemplate;
 use App\Models\School;
@@ -220,6 +221,55 @@ class Phase7QuizzesAssessmentTest extends TestCase
         $this->withToken($this->tokenFor($studentA))->putJson("/api/v1/quiz-attempts/{$attemptId}/answers/{$mcId}", [
             'selected_option_id' => $correctOption->id,
         ])->assertConflict()->assertJsonPath('code', 'ATTEMPT_ALREADY_SUBMITTED');
+    }
+
+    public function test_student_can_complete_multiple_choice_quiz_attempt_flow(): void
+    {
+        $admin = User::factory()->admin()->create();
+        [$class] = $this->classes($admin, 1);
+        $student = $this->studentFor($class, $admin);
+        $quiz = ClassQuiz::factory()->published()->create([
+            'class_id' => $class->id,
+            'created_by' => $admin->id,
+            'duration_minutes' => 30,
+            'max_attempts' => 1,
+            'open_at' => '2020-01-01 00:00:00',
+            'close_at' => null,
+            'show_result' => true,
+        ]);
+        $question = QuizQuestion::factory()->multipleChoice()->create([
+            'class_quiz_id' => $quiz->id,
+            'created_by' => $admin->id,
+            'points' => 10,
+        ]);
+        $correctOption = QuizOption::factory()->create(['quiz_question_id' => $question->id, 'is_correct' => true]);
+        QuizOption::factory()->create(['quiz_question_id' => $question->id, 'is_correct' => false, 'order_number' => 2]);
+
+        $attempt = $this->withToken($this->tokenFor($student))->postJson("/api/v1/class-quizzes/{$quiz->id}/attempts")
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'in_progress');
+        $attemptId = $attempt->json('data.id');
+
+        $this->withToken($this->tokenFor($student))->putJson("/api/v1/quiz-attempts/{$attemptId}/answers/{$question->id}", [
+            'selected_option_id' => $correctOption->id,
+        ])->assertOk();
+
+        $result = $this->withToken($this->tokenFor($student))->withHeader('Idempotency-Key', 'durationless-key-0001')->postJson("/api/v1/quiz-attempts/{$attemptId}/submit")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'submitted')
+            ->assertJsonPath('data.score_percent', 100);
+        $this->assertSame(1, $result->json('data.correct_count'));
+
+        $this->withToken($this->tokenFor($student))->putJson("/api/v1/quiz-attempts/{$attemptId}/answers/{$question->id}", [
+            'selected_option_id' => $correctOption->id,
+        ])->assertConflict()->assertJsonPath('code', 'ATTEMPT_ALREADY_SUBMITTED');
+
+        $this->withToken($this->tokenFor($student))->getJson('/api/v1/student/reports/quiz-results')
+            ->assertOk()
+            ->assertJsonPath('data.summary.average_best_score_percent', 100);
+        $this->withToken($this->tokenFor($student))->getJson('/api/v1/student/reports/progress')
+            ->assertOk()
+            ->assertJsonPath('data.summary.average_best_quiz_score_percent', 100);
     }
 
     public function test_student_schedule_max_attempt_and_expired_attempt_rules(): void

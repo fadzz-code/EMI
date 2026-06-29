@@ -24,7 +24,12 @@ export function StudentQuizDetail({ quizId }: { quizId: string }) {
   const startMutation = useMutation({
     mutationFn: () => studentQuizService.startAttempt(token ?? "", quizId),
     onSuccess: (attempt) => {
-      router.push(`/student/quizzes/${quizId}/attempt?attemptId=${attempt.id}`);
+      if (attempt.status === "in_progress") {
+        router.push(`/student/quizzes/${quizId}/attempt?attemptId=${attempt.id}`);
+        return;
+      }
+
+      router.push(`/student/quizzes/${quizId}/result?attemptId=${attempt.id}`);
     },
   });
 

@@ -31,7 +31,7 @@ class QuizAttemptService
                 ->first();
 
             if ($active) {
-                if (now()->gt($active->expires_at)) {
+                if ($active->expires_at && now()->gt($active->expires_at)) {
                     $this->gradingService->finalize($active, 'expired');
                 } else {
                     return $active->load('classQuiz.questions.options', 'answers');
@@ -49,8 +49,8 @@ class QuizAttemptService
             }
 
             $startedAt = now();
-            $expiresAt = $startedAt->copy()->addMinutes($quiz->duration_minutes);
-            if ($quiz->close_at && $quiz->close_at->lt($expiresAt)) {
+            $expiresAt = $quiz->duration_minutes > 0 ? $startedAt->copy()->addMinutes($quiz->duration_minutes) : null;
+            if ($quiz->close_at && (! $expiresAt || $quiz->close_at->lt($expiresAt))) {
                 $expiresAt = $quiz->close_at->copy();
             }
 
@@ -125,7 +125,7 @@ class QuizAttemptService
                 throw new ApiException('Attempt sudah selesai.', 'ATTEMPT_ALREADY_SUBMITTED', 409);
             }
 
-            $status = now()->gt($attempt->expires_at) ? 'expired' : 'submitted';
+            $status = $attempt->expires_at && now()->gt($attempt->expires_at) ? 'expired' : 'submitted';
             $attempt->submit_idempotency_key_hash = $hash;
             $attempt->save();
             $attempt = $this->gradingService->finalize($attempt, $status);
@@ -160,7 +160,7 @@ class QuizAttemptService
         if ($attempt->status !== 'in_progress') {
             throw new ApiException('Attempt sudah selesai.', 'ATTEMPT_ALREADY_SUBMITTED', 409);
         }
-        if (now()->gt($attempt->expires_at)) {
+        if ($attempt->expires_at && now()->gt($attempt->expires_at)) {
             $this->gradingService->finalize($attempt, 'expired');
             throw new ApiException('Attempt sudah kedaluwarsa.', 'ATTEMPT_EXPIRED', 409);
         }

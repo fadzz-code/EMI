@@ -16,6 +16,8 @@ class QuizAttempt extends Model
 
     protected $fillable = ['class_quiz_id', 'student_id', 'attempt_number', 'status', 'started_at', 'expires_at', 'submitted_at', 'score_points', 'max_points', 'score_percent', 'correct_count', 'incorrect_count', 'unanswered_count', 'submit_idempotency_key_hash'];
 
+    protected $dateFormat = 'Y-m-d H:i:sP';
+
     protected function casts(): array
     {
         return [
