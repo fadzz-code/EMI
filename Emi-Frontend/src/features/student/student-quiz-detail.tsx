@@ -9,7 +9,7 @@ import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { studentQuizService } from "./student-quiz-service";
-import { formatCount, formatDate, formatOptional } from "./student-utils";
+import { formatCount, formatDate, formatOptional, formatScoreOutOf100 } from "./student-utils";
 
 export function StudentQuizDetail({ quizId }: { quizId: string }) {
   const { token } = useAuth();
@@ -34,6 +34,8 @@ export function StudentQuizDetail({ quizId }: { quizId: string }) {
   });
 
   const quiz = quizQuery.data;
+  const usedAttempts = quiz?.used_attempts ?? quiz?.attempts_count ?? 0;
+  const hasSubmittedScore = typeof quiz?.latest_score_normalized === "number";
 
   return (
     <div className="grid gap-6">
@@ -53,6 +55,7 @@ export function StudentQuizDetail({ quizId }: { quizId: string }) {
       {quiz ? (
         <>
           {startMutation.error ? <Alert tone="error">{getFirstApiError(startMutation.error)}</Alert> : null}
+          {quiz.attempt_limit_reached ? <Alert tone="warning">Batas percobaan tercapai.</Alert> : null}
 
           <header className="grid gap-4 rounded-3xl border-2 border-ink bg-white p-5 shadow-brutal">
             <div className="flex flex-wrap gap-2 text-sm font-bold text-slate-500">
@@ -64,16 +67,17 @@ export function StudentQuizDetail({ quizId }: { quizId: string }) {
               <p className="mt-2 text-sm leading-6 text-slate-600 whitespace-pre-wrap">{formatOptional(quiz.description)}</p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row mt-2">
-              <Button disabled={startMutation.isPending} onClick={() => startMutation.mutate()}>
-                Mulai Kerjakan
+              <Button disabled={startMutation.isPending || quiz.attempt_limit_reached} onClick={() => startMutation.mutate()}>
+                {quiz.attempt_limit_reached ? "Batas Percobaan Tercapai" : "Mulai Kerjakan"}
               </Button>
             </div>
           </header>
 
-          <section className="grid gap-4 sm:grid-cols-3">
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatsCard helper="Total soal yang harus dijawab" label="Jumlah Soal" value={formatCount(quiz.questions_count)} />
             <StatsCard helper="Batas waktu pengerjaan" label="Durasi" value={quiz.duration_minutes ? `${quiz.duration_minutes} menit` : "Tidak dibatasi"} />
-            <StatsCard helper="Maksimal percobaan" label="Batas Percobaan" value={quiz.max_attempts ? `${quiz.attempts_count ?? 0} / ${quiz.max_attempts}` : "Tidak dibatasi"} />
+            <StatsCard helper="Percobaan terpakai" label="Percobaan" value={quiz.max_attempts ? `${usedAttempts} / ${quiz.max_attempts}` : formatCount(usedAttempts)} />
+            <StatsCard helper={hasSubmittedScore ? `Terakhir dikumpulkan: ${formatDate(quiz.latest_submitted_at)}` : "Belum ada attempt submitted"} label="Nilai Terakhir" value={hasSubmittedScore ? formatScoreOutOf100(quiz.latest_score_normalized) : "Belum dikerjakan"} />
           </section>
 
           <Card>

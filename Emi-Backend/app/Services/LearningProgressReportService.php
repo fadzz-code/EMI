@@ -120,8 +120,9 @@ class LearningProgressReportService
             ->selectRaw('(select max(greatest(coalesce(mp.updated_at, mp.created_at), coalesce(mp.last_calculated_at, mp.created_at))) from module_progress mp join class_modules cm on cm.id = mp.class_module_id where mp.student_id = u.id and cm.class_id = c.id) as last_learning_activity_at')
             ->selectRaw("(select count(*) from class_quizzes cq where cq.class_id = c.id and cq.status = 'published' and cq.deleted_at is null)::int as published_quizzes")
             ->selectRaw("(select count(distinct qa.class_quiz_id) from quiz_attempts qa join class_quizzes cq on cq.id = qa.class_quiz_id and cq.status = 'published' and cq.deleted_at is null where qa.student_id = u.id and cq.class_id = c.id)::int as quizzes_attempted")
-            ->selectRaw("(select count(distinct qa.class_quiz_id) from quiz_attempts qa join class_quizzes cq on cq.id = qa.class_quiz_id and cq.status = 'published' and cq.deleted_at is null where qa.student_id = u.id and cq.class_id = c.id and qa.status in ('submitted', 'expired'))::int as quizzes_completed")
-            ->selectRaw("(select round(avg(best_score)::numeric, 2) from (select max(qa.score_percent) as best_score from quiz_attempts qa join class_quizzes cq on cq.id = qa.class_quiz_id and cq.status = 'published' and cq.deleted_at is null where qa.student_id = u.id and cq.class_id = c.id and qa.status in ('submitted', 'expired') group by qa.class_quiz_id) best_scores) as average_best_quiz_score_percent")
+            ->selectRaw("(select count(distinct qa.class_quiz_id) from quiz_attempts qa join class_quizzes cq on cq.id = qa.class_quiz_id and cq.status = 'published' and cq.deleted_at is null where qa.student_id = u.id and cq.class_id = c.id and qa.status = 'submitted')::int as quizzes_completed")
+            ->selectRaw("(select count(*) from (select max(qa.score_percent) as best_score from quiz_attempts qa join class_quizzes cq on cq.id = qa.class_quiz_id and cq.status = 'published' and cq.deleted_at is null where qa.student_id = u.id and cq.class_id = c.id and qa.status = 'submitted' group by qa.class_quiz_id) best_scores where best_score is not null)::int as submitted_quiz_count")
+            ->selectRaw("(select round(avg(best_score)::numeric, 2) from (select max(qa.score_percent) as best_score from quiz_attempts qa join class_quizzes cq on cq.id = qa.class_quiz_id and cq.status = 'published' and cq.deleted_at is null where qa.student_id = u.id and cq.class_id = c.id and qa.status = 'submitted' group by qa.class_quiz_id) best_scores) as average_best_quiz_score_percent")
             ->selectRaw('(select max(coalesce(qa.submitted_at, qa.updated_at)) from quiz_attempts qa join class_quizzes cq on cq.id = qa.class_quiz_id where qa.student_id = u.id and cq.class_id = c.id) as last_quiz_activity_at');
     }
 
@@ -148,7 +149,9 @@ class LearningProgressReportService
             'published_quizzes' => (int) $row->published_quizzes,
             'quizzes_attempted' => (int) $row->quizzes_attempted,
             'quizzes_completed' => (int) $row->quizzes_completed,
+            'submitted_quiz_count' => (int) $row->submitted_quiz_count,
             'average_best_quiz_score_percent' => $row->average_best_quiz_score_percent !== null ? (float) $row->average_best_quiz_score_percent : null,
+            'average_quiz_score_out_of_100' => $row->average_best_quiz_score_percent !== null ? (float) $row->average_best_quiz_score_percent : null,
             'last_learning_activity_at' => $row->last_learning_activity_at,
             'last_quiz_activity_at' => $row->last_quiz_activity_at,
         ];

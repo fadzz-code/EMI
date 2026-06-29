@@ -143,7 +143,9 @@ export type StudentProgressSummary = {
   published_quizzes?: number;
   quizzes_attempted?: number;
   quizzes_completed?: number;
+  submitted_quiz_count?: number;
   average_best_quiz_score_percent?: number | null;
+  average_quiz_score_out_of_100?: number | null;
   last_learning_activity_at?: string | null;
   last_quiz_activity_at?: string | null;
 };
@@ -278,6 +280,17 @@ export type StudentQuiz = {
   close_at?: string | null;
   questions_count?: number;
   attempts_count?: number;
+  used_attempts?: number;
+  submitted_attempts_count?: number;
+  remaining_attempts?: number | null;
+  attempt_limit_reached?: boolean;
+  can_start?: boolean;
+  latest_score_points?: number | null;
+  latest_max_points?: number | null;
+  latest_score_normalized?: number | null;
+  latest_score_percent?: number | null;
+  best_score_percent?: number | null;
+  latest_submitted_at?: string | null;
   questions?: QuizQuestion[];
 };
 

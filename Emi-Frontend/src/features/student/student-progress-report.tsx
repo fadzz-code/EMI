@@ -8,7 +8,7 @@ import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { studentService } from "./student-service";
-import { badgeToneForProgress, formatCount, formatDate, formatPercent, statusLabel } from "./student-utils";
+import { badgeToneForProgress, formatCount, formatDate, formatPercent, formatScoreOutOf100, statusLabel } from "./student-utils";
 
 export function StudentProgressReportPage() {
   const { token } = useAuth();
@@ -55,10 +55,14 @@ export function StudentProgressReportPage() {
                 <h2 className="text-xl font-black text-ink">Ringkasan Kuis</h2>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <StatsCard helper="Kuis yang pernah dicoba" label="Dicoba" value={formatCount(summary.quizzes_attempted)} />
-                  <StatsCard helper="Nilai terbaik rata-rata" label="Rata-rata Nilai" value={formatPercent(summary.average_best_quiz_score_percent)} />
-                </div>
+                {(summary.submitted_quiz_count ?? summary.quizzes_completed ?? 0) === 0 ? (
+                  <EmptyState description="Belum ada kuis submitted, sehingga rata-rata nilai belum tersedia." title="Nilai kuis belum ada" />
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <StatsCard helper="Kuis yang sudah submitted" label="Submitted" value={formatCount(summary.submitted_quiz_count ?? summary.quizzes_completed)} />
+                    <StatsCard helper="Rata-rata skor terbaik per kuis submitted" label="Rata-rata Nilai Kuis" value={formatScoreOutOf100(summary.average_quiz_score_out_of_100 ?? summary.average_best_quiz_score_percent)} />
+                  </div>
+                )}
               </CardContent>
             </Card>
 

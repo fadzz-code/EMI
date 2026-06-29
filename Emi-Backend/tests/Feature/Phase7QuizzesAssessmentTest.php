@@ -264,12 +264,54 @@ class Phase7QuizzesAssessmentTest extends TestCase
             'selected_option_id' => $correctOption->id,
         ])->assertConflict()->assertJsonPath('code', 'ATTEMPT_ALREADY_SUBMITTED');
 
+        $this->withToken($this->tokenFor($student))->getJson('/api/v1/student/quizzes')
+            ->assertOk()
+            ->assertJsonPath('data.0.used_attempts', 1)
+            ->assertJsonPath('data.0.submitted_attempts_count', 1)
+            ->assertJsonPath('data.0.attempt_limit_reached', true)
+            ->assertJsonPath('data.0.latest_score_normalized', 100);
+        $this->withToken($this->tokenFor($student))->getJson("/api/v1/student/quizzes/{$quiz->id}")
+            ->assertOk()
+            ->assertJsonPath('data.used_attempts', 1)
+            ->assertJsonPath('data.latest_score_normalized', 100)
+            ->assertJsonPath('data.can_start', false);
+        $this->withToken($this->tokenFor($student))->postJson("/api/v1/class-quizzes/{$quiz->id}/attempts")
+            ->assertConflict()
+            ->assertJsonPath('code', 'QUIZ_MAX_ATTEMPTS_REACHED');
+
         $this->withToken($this->tokenFor($student))->getJson('/api/v1/student/reports/quiz-results')
             ->assertOk()
             ->assertJsonPath('data.summary.average_best_score_percent', 100);
         $this->withToken($this->tokenFor($student))->getJson('/api/v1/student/reports/progress')
             ->assertOk()
             ->assertJsonPath('data.summary.average_best_quiz_score_percent', 100);
+    }
+
+    public function test_student_progress_averages_one_best_score_per_submitted_quiz(): void
+    {
+        $admin = User::factory()->admin()->create();
+        [$class] = $this->classes($admin, 1);
+        $student = $this->studentFor($class, $admin);
+
+        foreach ([70, 80, 100] as $score) {
+            $quiz = ClassQuiz::factory()->published()->create([
+                'class_id' => $class->id,
+                'created_by' => $admin->id,
+                'show_result' => true,
+            ]);
+            QuizAttempt::factory()->create([
+                'class_quiz_id' => $quiz->id,
+                'student_id' => $student->id,
+                'status' => 'submitted',
+                'score_percent' => $score,
+                'submitted_at' => '2026-06-15 12:00:00',
+            ]);
+        }
+
+        $this->withToken($this->tokenFor($student))->getJson('/api/v1/student/reports/progress')
+            ->assertOk()
+            ->assertJsonPath('data.summary.submitted_quiz_count', 3)
+            ->assertJsonPath('data.summary.average_quiz_score_out_of_100', 83.33);
     }
 
     public function test_student_schedule_max_attempt_and_expired_attempt_rules(): void
