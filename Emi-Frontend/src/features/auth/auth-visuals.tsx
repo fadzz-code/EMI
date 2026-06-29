@@ -6,34 +6,62 @@ import { cn } from "@/lib/utils";
 
 const ink = "#1b1b1b";
 export const LOGIN_HERO_CONFIG = {
+  title: "Belajar Bahasa Mekongga Jadi Lebih Mudah",
+  subtitle: "Akses modul, ikuti kuis, cari kosakata di kamus, dan kenali Budaya Mekongga dalam satu platform.",
+  infoTitle: "Informasi Penting",
+  infoDescription: "Akun siswa dan guru perlu disetujui admin sebelum dapat digunakan.",
   imageUrl: null as string | null,
 };
 
 export function LoginLearningPanel() {
   return (
-    <section className="relative hidden min-h-[420px] flex-col border-l-4 border-ink bg-[#00c291] p-8 lg:flex lg:min-h-[640px] lg:p-12">
-      {LOGIN_HERO_CONFIG.imageUrl ? (
-        <div aria-hidden="true" className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${LOGIN_HERO_CONFIG.imageUrl})` }} />
-      ) : (
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.2),transparent_28%),radial-gradient(circle_at_80%_80%,rgba(0,0,0,0.05),transparent_30%)]" />
-      )}
-      <div className="relative flex h-full flex-col justify-center gap-10 text-[#003c2f]">
-        <div className="max-w-md">
-          <h2 className="text-4xl font-black leading-tight tracking-tight lg:text-5xl">Belajar Bahasa Mekongga Jadi Lebih Mudah</h2>
-          <p className="mt-5 text-base font-bold leading-7 text-[#004d3e]">Akses modul, ikuti kuis, cari kosakata di kamus, dan kenali Budaya Mekongga dalam satu platform.</p>
+    <section className="relative hidden min-h-[500px] flex-col border-l-4 border-ink bg-[#ffd167] p-8 lg:flex lg:p-12">
+      {/* Decorative Accent: Top Right Orange Quarter Circle */}
+      <div className="absolute right-0 top-0 size-32 rounded-bl-full border-b-4 border-l-4 border-ink bg-[#ff8c42]" />
+
+      {/* Decorative Accent: Bottom Left Green Shape */}
+      <div className="absolute bottom-16 left-0 size-24 rounded-r-full border-y-4 border-r-4 border-ink bg-[#00c291]" />
+
+      <div className="relative z-10 flex h-full flex-col items-center justify-between gap-10">
+
+        {/* Main CSS Illustration Area */}
+        <div className="relative mt-8 w-full max-w-[360px] rounded-[16px] border-4 border-ink bg-white p-6 shadow-[8px_8px_0_var(--color-ink)]">
+          {LOGIN_HERO_CONFIG.imageUrl ? (
+            <div className="mb-4 aspect-video w-full rounded-[8px] border-4 border-ink bg-cover bg-center" style={{ backgroundImage: `url(${LOGIN_HERO_CONFIG.imageUrl})` }} />
+          ) : (
+            <div className="mb-4 flex justify-center">
+              <div className="relative size-32 rounded-full border-4 border-ink bg-[#fcf9f8] shadow-[4px_4px_0_var(--color-ink)]">
+                <div className="absolute inset-x-4 bottom-4 top-8 rounded-[8px] border-4 border-ink bg-[#00c291]" />
+                <div className="absolute right-4 top-4 size-8 rounded-full border-4 border-ink bg-[#ffdf9b]" />
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-col items-center gap-4 text-center">
+            <h2 className="text-2xl font-black leading-tight text-ink">{LOGIN_HERO_CONFIG.title}</h2>
+            <p className="text-sm font-bold text-slate-600 hidden">{LOGIN_HERO_CONFIG.subtitle}</p>
+
+            <div className="mt-2 flex flex-wrap justify-center gap-2">
+              {[
+                { id: "modul", label: "Modul", color: "bg-[#ffd167]" },
+                { id: "kuis", label: "Kuis", color: "bg-[#ff8c42]" },
+                { id: "kamus", label: "Kamus", color: "bg-[#fcf9f8]" },
+                { id: "budaya", label: "Budaya", color: "bg-[#00c291]" },
+              ].map((badge) => (
+                <span className={cn("rounded-full border-2 border-ink px-3 py-1 text-xs font-black text-ink shadow-[2px_2px_0_var(--color-ink)]", badge.color)} key={badge.id}>
+                  {badge.label}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          {[
-            { id: "modul", label: "Modul", color: "bg-[#ffd167]", text: "text-[#765900]" },
-            { id: "kuis", label: "Kuis", color: "bg-[#ff8c42]", text: "text-[#6a2d00]" },
-            { id: "kamus", label: "Kamus", color: "bg-white", text: "text-ink" },
-            { id: "budaya", label: "Budaya", color: "bg-[#ffdf9b]", text: "text-[#9b4500]" },
-          ].map((badge) => (
-            <div className={cn("rounded-[12px] border-4 border-ink p-4 shadow-[4px_4px_0_var(--color-ink)]", badge.color)} key={badge.id}>
-              <p className={cn("text-lg font-black", badge.text)}>{badge.label}</p>
-            </div>
-          ))}
+        {/* Bottom Information Card */}
+        <div className="w-full max-w-[360px] rounded-[12px] border-4 border-ink bg-white p-5 shadow-[4px_4px_0_var(--color-ink)]">
+          <p className="text-sm font-black uppercase tracking-wider text-[#9b4500]">{LOGIN_HERO_CONFIG.infoTitle}</p>
+          <p className="mt-2 text-sm font-bold leading-6 text-slate-700">
+            {LOGIN_HERO_CONFIG.infoDescription}
+          </p>
         </div>
       </div>
     </section>

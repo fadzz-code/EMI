@@ -54,21 +54,18 @@ export function LoginForm() {
   }
 
   return (
-    <section className="flex min-h-[640px] flex-col justify-center bg-white px-6 py-10 sm:px-10 lg:px-14">
-      <div className="mx-auto grid w-full max-w-md gap-8">
-        <div className="grid gap-5">
+    <section className="flex flex-col justify-center bg-white px-6 py-10 sm:px-10 lg:px-12">
+      <div className="mx-auto grid w-full max-w-sm gap-8">
+        <div className="grid gap-4">
           <div className="flex items-center gap-3">
-            <div className="grid size-14 place-items-center rounded-[12px] border-4 border-ink bg-[#ffdf9b] text-xl font-black text-[#9b4500] shadow-[4px_4px_0_var(--color-ink)]">
+            <div className="grid size-12 place-items-center rounded-[8px] border-4 border-ink bg-[#ffdf9b] text-lg font-black text-[#9b4500] shadow-[4px_4px_0_var(--color-ink)]">
               EMI
             </div>
-            <div>
-              <p className="text-lg font-black text-ink">EMI</p>
-              <p className="text-sm font-semibold text-slate-500">EMI — Elearning Mekongga Indonesia</p>
-            </div>
+            <p className="text-xl font-black text-ink">EMI</p>
           </div>
           <div>
-            <h1 className="text-3xl font-black tracking-tight text-ink sm:text-4xl">Selamat Datang di EMI</h1>
-            <p className="mt-3 text-base font-medium text-slate-600">Platform E-Learning Mekongga Indonesia</p>
+            <h1 className="text-3xl font-black tracking-tight text-ink">Selamat Datang di EMI</h1>
+            <p className="mt-2 text-sm font-bold text-slate-500">Platform E-Learning Mekongga Indonesia</p>
           </div>
         </div>
 
@@ -81,24 +78,29 @@ export function LoginForm() {
           <FormField error={errors.email?.message} label="Email">
             <Input
               autoComplete="email"
-              className="min-h-12 rounded-[12px] border-4 border-ink bg-[#fcf9f8] text-base focus:ring-[#ffd167]"
+              className="min-h-12 rounded-[8px] border-4 border-ink bg-[#fcf9f8] text-base focus:ring-[#ffd167]"
               placeholder="guru@emi.test"
               type="email"
               {...register("email")}
             />
           </FormField>
-          <FormField error={errors.password?.message} label="Password">
+          <FormField error={errors.password?.message} label="Kata Sandi">
             <Input
               autoComplete="current-password"
-              className="min-h-12 rounded-[12px] border-4 border-ink bg-[#fcf9f8] text-base focus:ring-[#ffd167]"
+              className="min-h-12 rounded-[8px] border-4 border-ink bg-[#fcf9f8] text-base focus:ring-[#ffd167]"
               placeholder="•••••••••••"
               type="password"
               {...register("password")}
             />
           </FormField>
           <input type="hidden" {...register("device_name")} />
+
+          <div className="flex justify-end">
+            <button className="text-sm font-bold text-slate-500 hover:text-ink hover:underline" type="button">Lupa kata sandi?</button>
+          </div>
+
           <Button
-            className="min-h-12 rounded-[12px] border-4 border-ink bg-[#ff8c42] text-lg font-black text-[#6a2d00] shadow-[4px_4px_0_var(--color-ink)] hover:bg-[#ffa45f] focus:ring-4 focus:ring-[#ffd167]"
+            className="min-h-12 rounded-[8px] border-4 border-ink bg-[#ff8c42] text-lg font-black text-[#6a2d00] shadow-[4px_4px_0_var(--color-ink)] hover:translate-x-[2px] hover:translate-y-[2px] hover:bg-[#ffa45f] hover:shadow-[2px_2px_0_var(--color-ink)] focus:ring-4 focus:ring-[#ffd167] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
             disabled={isSubmitting}
             type="submit"
           >
@@ -106,9 +108,11 @@ export function LoginForm() {
           </Button>
         </form>
 
-        <p className="text-center text-sm font-medium text-slate-600">
+        <div className="h-1 rounded-full bg-slate-200" />
+
+        <p className="text-center text-sm font-bold text-slate-600">
           Belum punya akun?{" "}
-          <Link className="font-black text-[#9b4500] hover:text-[#7a3600] hover:underline" href="/register">
+          <Link className="font-black text-[#ff8c42] hover:text-[#e07530] hover:underline" href="/register">
             Daftar sekarang
           </Link>
         </p>
