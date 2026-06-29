@@ -5,6 +5,7 @@ import { env } from "@/lib/env";
 import { cn } from "@/lib/utils";
 
 const ink = "#1b1b1b";
+const LOGIN_HERO_IMAGE_URL: string | null = null;
 
 export function AuthBrandMark({ className }: { className?: string }) {
   return (
@@ -55,37 +56,29 @@ export function AuthScreen({ children, className }: { children: ReactNode; class
 
 export function LoginLearningPanel() {
   return (
-    <section className="hidden lg:block">
-      <div className="relative mx-auto max-w-[520px]">
-        <div className="rounded-[12px] border-4 border-[#1b1b1b] bg-[#ffd167] p-8 shadow-[8px_8px_0_#1b1b1b]">
-          <div className="rounded-[10px] border-4 border-[#1b1b1b] bg-white p-6 shadow-[4px_4px_0_#1b1b1b]">
-            <div className="grid min-h-[300px] place-items-center rounded-[8px] bg-[#fcf9f8] p-6">
-              <div className="w-full max-w-[320px] rounded-[10px] border-4 border-[#1b1b1b] bg-white p-5 shadow-[6px_6px_0_#1b1b1b]">
-                <div className="mb-4 h-5 w-24 rounded-full border-2 border-[#1b1b1b] bg-[#00c291]" />
-                <div className="space-y-3">
-                  <div className="h-4 rounded-full bg-[#1b1b1b]" />
-                  <div className="h-4 w-5/6 rounded-full bg-[#ff8c42]" />
-                  <div className="h-4 w-2/3 rounded-full bg-[#ffd167]" />
-                </div>
-                <div className="mt-6 grid grid-cols-3 gap-3">
-                  {["A", "B", "C"].map((item) => (
-                    <div
-                      className="grid aspect-square place-items-center rounded-[8px] border-4 border-[#1b1b1b] bg-[#ffdf9b] text-lg font-black text-[#9b4500]"
-                      key={item}
-                    >
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+    <section className="relative min-h-[420px] overflow-hidden bg-gradient-to-br from-emerald-700 via-sky-700 to-amber-500 p-8 text-white lg:min-h-[640px] lg:p-12">
+      {LOGIN_HERO_IMAGE_URL ? (
+        <div aria-hidden="true" className="absolute inset-0 bg-cover bg-center opacity-80" style={{ backgroundImage: `url(${LOGIN_HERO_IMAGE_URL})` }} />
+      ) : null}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.28),transparent_28%),radial-gradient(circle_at_80%_0%,rgba(250,204,21,0.24),transparent_24%),radial-gradient(circle_at_80%_80%,rgba(16,185,129,0.28),transparent_30%)]" />
+      <div className="relative flex h-full min-h-[360px] flex-col justify-between gap-10 lg:min-h-[544px]">
+        <div className="max-w-md">
+          <p className="text-sm font-black uppercase tracking-[0.28em] text-amber-100">Belajar Bahasa Mekongga</p>
+          <h2 className="mt-4 text-4xl font-black leading-tight tracking-tight lg:text-5xl">Ruang belajar digital untuk budaya, bahasa, dan generasi muda.</h2>
+          <p className="mt-5 text-base leading-7 text-white/85">Masuk untuk melanjutkan modul, kamus, kuis, progress belajar, dan konten Budaya Mekongga dari kelas Anda.</p>
         </div>
-        <div className="mx-auto mt-6 max-w-[430px] rounded-[12px] border-4 border-[#1b1b1b] bg-white p-5 shadow-[6px_6px_0_#1b1b1b]">
-          <p className="text-sm font-black uppercase text-[#9b4500]">Informasi Penting</p>
-          <p className="mt-2 text-sm leading-6 text-[#564338]">
-            Akun guru dan siswa dapat masuk setelah data sekolah dan kelas disetujui Admin EMI.
-          </p>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[
+            ["Modul", "Materi kelas"],
+            ["Kamus", "Kosakata"],
+            ["Kuis", "Latihan"],
+          ].map(([title, subtitle]) => (
+            <div className="rounded-3xl border border-white/25 bg-white/15 p-4 shadow-xl shadow-slate-900/10 backdrop-blur" key={title}>
+              <p className="text-lg font-black">{title}</p>
+              <p className="mt-1 text-sm text-white/75">{subtitle}</p>
+            </div>
+          ))}
         </div>
       </div>
     </section>

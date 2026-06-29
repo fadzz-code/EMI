@@ -11,7 +11,6 @@ import { loginSchema, type LoginFormValues } from "@/lib/validators";
 import { Alert, Button, FormField, Input } from "@/components/ui";
 
 import { useAuth } from "./auth-provider";
-import { AuthBrandMark } from "./auth-visuals";
 
 export function LoginForm() {
   const router = useRouter();
@@ -55,32 +54,29 @@ export function LoginForm() {
   }
 
   return (
-    <section className="overflow-hidden rounded-[12px] border-4 border-[#1b1b1b] bg-white shadow-[8px_8px_0_#1b1b1b]">
-      <div className="h-4 border-b-4 border-[#1b1b1b] bg-[#00c291]" />
-      <div className="grid gap-6 px-6 py-8 sm:px-10">
-        <div className="grid justify-items-center gap-4 text-center">
-          <AuthBrandMark className="justify-center" />
+    <section className="flex min-h-[640px] flex-col justify-center bg-white px-6 py-10 sm:px-10 lg:px-14">
+      <div className="mx-auto grid w-full max-w-md gap-8">
+        <div className="grid gap-5">
+          <div className="flex items-center gap-3">
+            <div className="grid size-14 place-items-center rounded-2xl bg-emerald-600 text-xl font-black text-white shadow-lg shadow-emerald-100">EMI</div>
+            <div>
+              <p className="text-lg font-black text-ink">EMI</p>
+              <p className="text-sm font-semibold text-slate-500">EMI — Elearning Mekongga Indonesia</p>
+            </div>
+          </div>
           <div>
-            <h1 className="text-3xl font-black leading-tight text-[#1b1b1b] sm:text-4xl">
-              Selamat Datang di EMI
-            </h1>
-            <p className="mt-2 text-base font-medium text-[#564338]">
-              Platform E-Learning Mekongga Indonesia
-            </p>
+            <h1 className="text-3xl font-black tracking-tight text-ink sm:text-4xl">Selamat Datang di EMI</h1>
+            <p className="mt-3 text-base font-medium text-slate-600">Platform E-Learning Mekongga Indonesia</p>
           </div>
         </div>
 
-        <form className="grid gap-4" onSubmit={handleSubmit(onSubmit)}>
-          {formError ? (
-            <Alert className="border-4 font-bold shadow-[3px_3px_0_#1b1b1b]" tone="error">
-              {formError}
-            </Alert>
-          ) : null}
+        <form className="grid gap-5" onSubmit={handleSubmit(onSubmit)}>
+          {formError ? <Alert tone="error">{formError}</Alert> : null}
           <FormField error={errors.email?.message} label="Email">
             <Input
               autoComplete="email"
-              className="min-h-[60px] rounded-[8px] border-4 border-[#1b1b1b] bg-[#fcf9f8] text-base focus:ring-[#ffd167]"
-              placeholder="nama@email.com"
+              className="min-h-12 rounded-2xl border-slate-200 bg-slate-50 text-base focus:ring-emerald-100"
+              placeholder="guru@emi.test"
               type="email"
               {...register("email")}
             />
@@ -88,31 +84,28 @@ export function LoginForm() {
           <FormField error={errors.password?.message} label="Password">
             <Input
               autoComplete="current-password"
-              className="min-h-[60px] rounded-[8px] border-4 border-[#1b1b1b] bg-[#fcf9f8] text-base focus:ring-[#ffd167]"
-              placeholder="Masukkan password"
+              className="min-h-12 rounded-2xl border-slate-200 bg-slate-50 text-base focus:ring-emerald-100"
+              placeholder="•••••••••••"
               type="password"
               {...register("password")}
             />
           </FormField>
           <input type="hidden" {...register("device_name")} />
           <Button
-            className="mt-2 min-h-[60px] rounded-[8px] border-4 border-[#1b1b1b] bg-[#ff8c42] text-lg font-black text-[#6a2d00] shadow-[6px_6px_0_#1b1b1b] hover:bg-[#ffa45f] focus:ring-4 focus:ring-[#ffd167]"
+            className="min-h-12 rounded-2xl border-0 bg-emerald-600 text-base font-black text-white shadow-lg shadow-emerald-100 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-100"
             disabled={isSubmitting}
             type="submit"
           >
-            {isSubmitting ? "Memproses..." : "Masuk ->"}
+            {isSubmitting ? "Memproses..." : "Masuk →"}
           </Button>
         </form>
 
-        <div className="grid gap-4 text-center">
-          <div className="h-1 rounded-full bg-[#1b1b1b]" />
-          <p className="text-sm font-medium text-[#564338]">
-            Belum punya akun?{" "}
-            <Link className="font-black text-[#9b4500] underline" href="/register">
-              Daftar sekarang
-            </Link>
-          </p>
-        </div>
+        <p className="text-center text-sm font-medium text-slate-600">
+          Belum punya akun?{" "}
+          <Link className="font-black text-emerald-700 hover:text-emerald-800" href="/register">
+            Daftar sekarang
+          </Link>
+        </p>
       </div>
     </section>
   );
