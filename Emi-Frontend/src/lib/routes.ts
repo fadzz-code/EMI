@@ -65,11 +65,12 @@ export const roleNavItems: Record<UserRole, NavItem[]> = {
     { label: "Profil", href: teacherRoutes.profile, status: "ready" },
   ],
   student: [
-    { label: "Dashboard", href: "/student/dashboard", status: "ready" },
-    { label: "Modul", href: "/student/modules", status: "ready" },
-    { label: "Kuis", href: "/student/quizzes", status: "ready" },
+    { label: "Beranda", href: "/student/dashboard", status: "ready" },
+    { label: "Modul Belajar", href: "/student/modules", status: "ready" },
     { label: "Kamus", href: "/student/dictionary", status: "ready" },
+    { label: "Kuis", href: "/student/quizzes", status: "ready" },
     { label: "Budaya Mekongga", href: "/student/culture", status: "ready" },
-    { label: "Progress", href: "/student/progress", status: "ready" },
+    { label: "Progres Belajar", href: "/student/progress", status: "ready" },
+    { label: "Profil", href: "/student/profile", status: "ready" },
   ],
 };
