@@ -14,8 +14,13 @@ const suggestedQuestions = [
   "Apa itu Bahasa Mekongga?",
   "Apa saja budaya Mekongga?",
   "Bagaimana cara belajar kosakata Mekongga?",
-  "Apa materi yang tersedia?",
+  "Apa arti nama Mekongga?",
+  "Apa cerita rakyat Mekongga?",
 ];
+
+const answerPrefix = "Berdasarkan Basis AI EMI, berikut informasi yang ditemukan:";
+
+const fallbackAnswer = "Saya belum menemukan jawaban dari Basis AI yang tersedia.";
 
 type ChatMessage = {
   id: string;
@@ -27,14 +32,6 @@ type ChatMessage = {
   provider?: string;
   confidence?: number;
 };
-
-function modeLabel(mode?: string, provider?: string) {
-  if (mode === "default_extractive" && provider === "default") {
-    return "Mode: Basis AI default";
-  }
-
-  return "Mode: Basis AI";
-}
 
 function sourceTypeLabel(sourceType?: string) {
   if (sourceType === "pdf") {
@@ -49,17 +46,22 @@ function sourceTypeLabel(sourceType?: string) {
 }
 
 function sourceLinkLabel(sourceType?: string) {
-  return sourceType === "pdf" ? "Buka PDF Sumber" : "Buka Sumber";
+  return sourceType === "pdf" ? "Buka PDF sumber" : "Buka sumber";
 }
 
 function createMessageId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+function displayAnswer(content: string) {
+  return content.startsWith(answerPrefix) ? content.slice(answerPrefix.length).trim() : content;
+}
+
 export function StudentChatbot() {
   const { token } = useAuth();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [expandedReferences, setExpandedReferences] = useState<Set<string>>(new Set());
   const [formError, setFormError] = useState<string | null>(null);
 
   const sendMutation = useMutation({
@@ -110,6 +112,20 @@ export function StudentChatbot() {
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     sendQuestion(message);
+  }
+
+  function toggleReference(messageId: string) {
+    setExpandedReferences((current) => {
+      const next = new Set(current);
+
+      if (next.has(messageId)) {
+        next.delete(messageId);
+      } else {
+        next.add(messageId);
+      }
+
+      return next;
+    });
   }
 
   const apiError = sendMutation.error ? getFirstApiError(sendMutation.error) : null;
@@ -165,14 +181,11 @@ export function StudentChatbot() {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 className="text-xl font-black text-ink">Percakapan</h2>
-              <p className="mt-1 text-sm text-slate-600">
-                Mulai percakapan dengan menanyakan hal yang tersedia di Basis AI EMI.
-              </p>
-            </div>
-            <Badge tone="neutral">{modeLabel("default_extractive", "default")}</Badge>
+          <div>
+            <h2 className="text-xl font-black text-ink">Percakapan</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Mulai percakapan dengan menanyakan hal yang tersedia di Basis AI EMI.
+            </p>
           </div>
         </CardHeader>
         <CardContent>
@@ -185,57 +198,77 @@ export function StudentChatbot() {
                 <div className="flex min-h-56 items-center justify-center rounded-xl border-2 border-dashed border-ink bg-white p-6 text-center">
                   <div>
                     <p className="text-lg font-black text-ink">Mulai percakapan</p>
-                            <p className="mt-2 max-w-md text-sm leading-6 text-slate-600">
+                    <p className="mt-2 max-w-md text-sm leading-6 text-slate-600">
                       Mulai percakapan dengan menanyakan hal yang tersedia di Basis AI EMI. Agar jawaban lebih tepat, tuliskan pertanyaan dengan kata kunci yang jelas.
                     </p>
                   </div>
                 </div>
               ) : (
                 <div className="grid gap-4">
-                  {messages.map((chat) => (
-                    <div
-                      className={chat.role === "user" ? "flex justify-end" : "flex justify-start"}
-                      key={chat.id}
-                    >
+                  {messages.map((chat) => {
+                    const referenceOpen = expandedReferences.has(chat.id);
+                    const canShowReference = chat.role === "assistant" && chat.matched && chat.source;
+                    const isFallback = chat.role === "assistant" && !chat.matched && chat.content === fallbackAnswer;
+
+                    return (
                       <div
-                        className={
-                          chat.role === "user"
-                            ? "max-w-3xl rounded-2xl border-2 border-ink bg-yellow-200 p-4 text-sm font-bold leading-6 text-ink shadow-brutal"
-                            : "max-w-3xl rounded-2xl border-2 border-ink bg-white p-4 text-sm leading-6 text-slate-800 shadow-brutal"
-                        }
+                        className={chat.role === "user" ? "flex justify-end" : "flex justify-start"}
+                        key={chat.id}
                       >
-                        <p className="whitespace-pre-wrap">{chat.content}</p>
-                        {chat.role === "assistant" ? (
-                          <div className="mt-4 grid gap-2">
-                            {chat.matched && chat.source ? (
-                              <div className="rounded-xl border-2 border-ink bg-blue-50 p-3 text-xs leading-5 text-blue-950">
-                                <p className="font-black">Sumber: {chat.source.title}</p>
-                                <p>Kategori: {chat.source.category ?? "Umum"}</p>
-                                <p>Jenis sumber: {sourceTypeLabel(chat.source.source_type)}</p>
-                                {chat.source.source_url ? (
-                                  <a
-                                    className="mt-2 inline-flex rounded-lg border-2 border-ink bg-white px-3 py-1 font-black text-blue-800 underline hover:bg-yellow-100"
-                                    href={chat.source.source_url}
-                                    rel="noreferrer noopener"
-                                    target="_blank"
+                        <div
+                          className={
+                            chat.role === "user"
+                              ? "max-w-3xl rounded-2xl border-2 border-ink bg-yellow-200 p-4 text-sm font-bold leading-6 text-ink shadow-brutal"
+                              : "max-w-3xl rounded-2xl border-2 border-ink bg-white p-4 text-sm leading-6 text-slate-800 shadow-brutal"
+                          }
+                        >
+                          <p className="whitespace-pre-wrap">{displayAnswer(chat.content)}</p>
+                          {chat.role === "assistant" ? (
+                            <div className="mt-4 grid gap-2">
+                              {chat.matched ? (
+                                <p className="text-xs font-bold text-slate-500">
+                                  Jawaban berdasarkan Basis AI EMI
+                                </p>
+                              ) : null}
+                              {isFallback ? (
+                                <p className="rounded-xl border-2 border-dashed border-ink bg-orange-50 p-3 text-xs font-bold leading-5 text-orange-950">
+                                  Coba gunakan kata kunci yang lebih spesifik atau tanyakan topik yang tersedia di Basis AI EMI.
+                                </p>
+                              ) : null}
+                              {canShowReference ? (
+                                <div className="grid gap-2">
+                                  <button
+                                    className="w-fit text-xs font-black text-blue-700 underline hover:text-blue-900"
+                                    onClick={() => toggleReference(chat.id)}
+                                    type="button"
                                   >
-                                    {sourceLinkLabel(chat.source.source_type)}
-                                  </a>
-                                ) : null}
-                              </div>
-                            ) : (
-                              <div className="rounded-xl border-2 border-dashed border-ink bg-orange-50 p-3 text-xs font-bold leading-5 text-orange-950">
-                                Belum ada referensi Basis AI yang cocok untuk pertanyaan ini.
-                              </div>
-                            )}
-                            <p className="text-xs font-bold text-slate-500">
-                              {modeLabel(chat.mode, chat.provider)}
-                            </p>
-                          </div>
-                        ) : null}
+                                    {referenceOpen ? "Sembunyikan referensi" : "Lihat referensi"}
+                                  </button>
+                                  {referenceOpen ? (
+                                    <div className="rounded-xl border-2 border-ink bg-blue-50 p-3 text-xs leading-5 text-blue-950">
+                                      <p className="font-black">{chat.source?.title}</p>
+                                      <p>Kategori: {chat.source?.category ?? "Umum"}</p>
+                                      <p>Jenis sumber: {sourceTypeLabel(chat.source?.source_type)}</p>
+                                      {chat.source?.source_url ? (
+                                        <a
+                                          className="mt-2 inline-flex rounded-lg border-2 border-ink bg-white px-3 py-1 font-black text-blue-800 underline hover:bg-yellow-100"
+                                          href={chat.source.source_url}
+                                          rel="noreferrer noopener"
+                                          target="_blank"
+                                        >
+                                          {sourceLinkLabel(chat.source.source_type)}
+                                        </a>
+                                      ) : null}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {isPending ? (
                     <div className="flex justify-start">
                       <div className="rounded-2xl border-2 border-ink bg-white p-4 text-sm font-bold text-slate-700 shadow-brutal">
