@@ -1,4 +1,46 @@
-export type KnowledgeEndpointStatus = "unavailable";
+export type AiKnowledgeStatus = "draft" | "published" | "archived";
+export type AiKnowledgeSourceType = "manual" | "link" | "pdf";
+
+export type AiKnowledgeItem = {
+  id: string;
+  title: string;
+  category?: string | null;
+  content: string;
+  source_type: AiKnowledgeSourceType;
+  source_url?: string | null;
+  status: AiKnowledgeStatus;
+  created_by?: string | null;
+  updated_by?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type AiKnowledgePayload = {
+  title: string;
+  category?: string | null;
+  content: string;
+  source_type: AiKnowledgeSourceType;
+  source_url?: string | null;
+  status?: AiKnowledgeStatus;
+};
+
+export type AiKnowledgeFilters = {
+  search?: string;
+  category?: string;
+  status?: AiKnowledgeStatus | "";
+  page?: number;
+  per_page?: number;
+};
+
+export type PaginatedResult<T> = {
+  items: T[];
+  meta?: {
+    current_page?: number;
+    per_page?: number;
+    total?: number;
+    last_page?: number;
+  };
+};
 
 export type KnowledgeFeature = {
   label: string;
