@@ -25,6 +25,7 @@ type ChatMessage = {
   matched?: boolean;
   mode?: string;
   provider?: string;
+  confidence?: number;
 };
 
 function modeLabel(mode?: string, provider?: string) {
@@ -33,6 +34,22 @@ function modeLabel(mode?: string, provider?: string) {
   }
 
   return "Mode: Basis AI";
+}
+
+function sourceTypeLabel(sourceType?: string) {
+  if (sourceType === "pdf") {
+    return "PDF / Dokumen";
+  }
+
+  if (sourceType === "link") {
+    return "Link";
+  }
+
+  return "Teks Manual";
+}
+
+function sourceLinkLabel(sourceType?: string) {
+  return sourceType === "pdf" ? "Buka PDF Sumber" : "Buka Sumber";
 }
 
 function createMessageId() {
@@ -73,6 +90,7 @@ export function StudentChatbot() {
         matched: response.matched,
         mode: response.mode,
         provider: response.provider,
+        confidence: response.confidence,
       },
     ]);
   }
@@ -167,8 +185,8 @@ export function StudentChatbot() {
                 <div className="flex min-h-56 items-center justify-center rounded-xl border-2 border-dashed border-ink bg-white p-6 text-center">
                   <div>
                     <p className="text-lg font-black text-ink">Mulai percakapan</p>
-                    <p className="mt-2 max-w-md text-sm leading-6 text-slate-600">
-                      Mulai percakapan dengan menanyakan hal yang tersedia di Basis AI EMI.
+                            <p className="mt-2 max-w-md text-sm leading-6 text-slate-600">
+                      Mulai percakapan dengan menanyakan hal yang tersedia di Basis AI EMI. Agar jawaban lebih tepat, tuliskan pertanyaan dengan kata kunci yang jelas.
                     </p>
                   </div>
                 </div>
@@ -193,6 +211,17 @@ export function StudentChatbot() {
                               <div className="rounded-xl border-2 border-ink bg-blue-50 p-3 text-xs leading-5 text-blue-950">
                                 <p className="font-black">Sumber: {chat.source.title}</p>
                                 <p>Kategori: {chat.source.category ?? "Umum"}</p>
+                                <p>Jenis sumber: {sourceTypeLabel(chat.source.source_type)}</p>
+                                {chat.source.source_url ? (
+                                  <a
+                                    className="mt-2 inline-flex rounded-lg border-2 border-ink bg-white px-3 py-1 font-black text-blue-800 underline hover:bg-yellow-100"
+                                    href={chat.source.source_url}
+                                    rel="noreferrer noopener"
+                                    target="_blank"
+                                  >
+                                    {sourceLinkLabel(chat.source.source_type)}
+                                  </a>
+                                ) : null}
                               </div>
                             ) : (
                               <div className="rounded-xl border-2 border-dashed border-ink bg-orange-50 p-3 text-xs font-bold leading-5 text-orange-950">
@@ -216,6 +245,10 @@ export function StudentChatbot() {
                   ) : null}
                 </div>
               )}
+            </div>
+
+            <div className="rounded-xl border-2 border-dashed border-ink bg-white p-3 text-xs font-bold leading-5 text-slate-600">
+              Jawaban berasal dari Basis AI yang dipublish admin. PDF atau link sumber hanya dapat dijawab jika isi pentingnya sudah dimasukkan ke Konten Pengetahuan.
             </div>
 
             <form className="grid gap-3" onSubmit={submit}>

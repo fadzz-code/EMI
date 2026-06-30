@@ -81,7 +81,7 @@ class Phase9BasisAiTest extends TestCase
         $item = AiKnowledgeItem::factory()->published()->create([
             'title' => 'Sejarah Mekongga',
             'category' => 'Budaya',
-            'content' => 'Kerajaan Mekongga berkembang di wilayah Kolaka. Informasi ini berasal dari Basis AI EMI.',
+            'content' => 'Sejarah Kerajaan Mekongga berkembang di wilayah Kolaka. Informasi ini berasal dari Basis AI EMI.',
         ]);
 
         $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
@@ -94,7 +94,7 @@ class Phase9BasisAiTest extends TestCase
             ->assertJsonPath('data.source.title', 'Sejarah Mekongga')
             ->assertJsonPath('data.source.category', 'Budaya')
             ->assertJsonFragment([
-                'answer' => 'Berdasarkan Basis AI EMI, berikut informasi yang ditemukan: Kerajaan Mekongga berkembang di wilayah Kolaka.',
+                'answer' => 'Berdasarkan Basis AI EMI, berikut informasi yang ditemukan: Sejarah Kerajaan Mekongga berkembang di wilayah Kolaka.',
             ]);
     }
 
@@ -117,7 +117,7 @@ class Phase9BasisAiTest extends TestCase
         ]);
 
         $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
-            'message' => 'Jelaskan budaya Mekongga',
+            'message' => 'Jelaskan sumber terbit',
         ])->assertOk()
             ->assertJsonPath('data.matched', true)
             ->assertJsonPath('data.source.id', $published->id);
@@ -150,11 +150,104 @@ class Phase9BasisAiTest extends TestCase
         ]);
 
         $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
-            'message' => 'Bahasa Mekongga',
+            'message' => 'sumber dipublikasikan',
         ])->assertOk()
             ->assertJsonPath('data.mode', 'default_extractive')
             ->assertJsonPath('data.provider', 'default')
             ->assertJsonPath('data.matched', true);
+    }
+
+    public function test_chatbot_does_not_return_broad_item_only_because_of_generic_keyword(): void
+    {
+        $student = User::factory()->student()->approved()->create();
+        AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Budaya Mekongga',
+            'category' => 'Budaya',
+            'content' => 'Suku Tolaki-Mekongga merupakan suku yang mendiami daerah Mekongga.',
+        ]);
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'arti mekongga',
+        ])->assertOk()
+            ->assertJsonPath('data.answer', 'Saya belum menemukan jawaban dari Basis AI yang tersedia.')
+            ->assertJsonPath('data.matched', false)
+            ->assertJsonPath('data.confidence', 0);
+    }
+
+    public function test_chatbot_chooses_specific_item_over_broad_item(): void
+    {
+        $student = User::factory()->student()->approved()->create();
+        AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Budaya Mekongga',
+            'category' => 'Budaya',
+            'content' => 'Suku Tolaki-Mekongga merupakan suku yang mendiami daerah Mekongga.',
+        ]);
+        $specific = AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Arti nama Mekongga',
+            'category' => 'Sejarah',
+            'content' => 'Mekongga berasal dari cerita rakyat tentang asal-usul nama wilayah dan masyarakatnya.',
+        ]);
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'arti mekongga',
+        ])->assertOk()
+            ->assertJsonPath('data.matched', true)
+            ->assertJsonPath('data.source.id', $specific->id)
+            ->assertJsonPath('data.source.source_type', 'manual');
+    }
+
+    public function test_chatbot_returns_snippet_around_matched_keyword(): void
+    {
+        $student = User::factory()->student()->approved()->create();
+        AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Kosakata dasar Mekongga',
+            'content' => 'Pembuka umum tentang pembelajaran. Kata monga berarti makan dalam Bahasa Mekongga. Penutup materi.',
+        ]);
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'arti monga',
+        ])->assertOk()
+            ->assertJsonFragment([
+                'answer' => 'Berdasarkan Basis AI EMI, berikut informasi yang ditemukan: Kata monga berarti makan dalam Bahasa Mekongga.',
+            ]);
+    }
+
+    public function test_chatbot_response_includes_link_source_metadata(): void
+    {
+        $student = User::factory()->student()->approved()->create();
+        $item = AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Kosakata harian Mekongga',
+            'category' => 'Kosakata',
+            'content' => 'Kata monga digunakan untuk menjelaskan kegiatan makan sehari-hari.',
+            'source_type' => 'link',
+            'source_url' => 'https://example.com/kosakata-mekongga',
+        ]);
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'monga makan',
+        ])->assertOk()
+            ->assertJsonPath('data.source.id', $item->id)
+            ->assertJsonPath('data.source.source_type', 'link')
+            ->assertJsonPath('data.source.source_url', 'https://example.com/kosakata-mekongga');
+    }
+
+    public function test_published_link_and_pdf_items_are_searchable_through_content_field(): void
+    {
+        $student = User::factory()->student()->approved()->create();
+        $pdf = AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Dokumen asal usul Mekongga',
+            'content' => 'Ringkasan dokumen menjelaskan asal usul Mekongga dari cerita rakyat.',
+            'source_type' => 'pdf',
+            'source_url' => 'https://example.com/asal-usul.pdf',
+        ]);
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'asal usul cerita rakyat',
+        ])->assertOk()
+            ->assertJsonPath('data.matched', true)
+            ->assertJsonPath('data.source.id', $pdf->id)
+            ->assertJsonPath('data.source.source_type', 'pdf')
+            ->assertJsonPath('data.source.source_url', 'https://example.com/asal-usul.pdf');
     }
 
     private function tokenFor(User $user): string

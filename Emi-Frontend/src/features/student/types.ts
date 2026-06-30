@@ -335,6 +335,8 @@ export type ChatbotSource = {
   id: string;
   title: string;
   category?: string | null;
+  source_type?: "manual" | "link" | "pdf" | string;
+  source_url?: string | null;
 };
 
 export type StudentChatbotResponse = {
@@ -343,4 +345,5 @@ export type StudentChatbotResponse = {
   matched: boolean;
   mode: "default_extractive" | string;
   provider: "default" | string;
+  confidence?: number;
 };

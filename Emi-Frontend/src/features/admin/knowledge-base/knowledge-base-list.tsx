@@ -435,7 +435,7 @@ export function KnowledgeBaseList() {
             {previewItem.source_url ? (
               <div>
                 <p className="text-xs font-black uppercase text-slate-500">URL Sumber</p>
-                <a className="mt-1 block break-all text-sm font-bold text-blue-700 underline" href={previewItem.source_url} rel="noreferrer" target="_blank">
+                <a className="mt-1 block break-all text-sm font-bold text-blue-700 underline" href={previewItem.source_url} rel="noreferrer noopener" target="_blank">
                   {previewItem.source_url}
                 </a>
               </div>

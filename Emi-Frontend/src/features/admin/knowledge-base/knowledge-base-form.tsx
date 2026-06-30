@@ -82,6 +82,9 @@ export function KnowledgeBaseForm({
           required
           value={form.content}
         />
+        <p className="mt-2 text-xs font-bold leading-5 text-slate-600">
+          Agar Chatbot AI menjawab lebih tepat, buat pengetahuan secara spesifik. Contoh: &quot;Asal-usul Mekongga&quot;, &quot;Arti nama Mekongga&quot;, &quot;Kosakata dasar Mekongga&quot;, bukan satu konten terlalu umum.
+        </p>
       </FormField>
       <div className="grid gap-4 md:grid-cols-2">
         <FormField label="Jenis Sumber">
@@ -124,7 +127,7 @@ export function KnowledgeBaseForm({
       </FormField>
       {form.source_type === "pdf" ? (
         <Alert tone="warning">
-          Upload/parsing PDF belum aktif pada batch ini. Gunakan URL sumber atau isi konten manual terlebih dahulu.
+          Pada versi ini, PDF belum dibaca otomatis oleh chatbot. Masukkan ringkasan/isi penting PDF ke Konten Pengetahuan agar bisa digunakan sebagai jawaban.
         </Alert>
       ) : null}
       <div className="rounded-lg border-2 border-dashed border-ink bg-blue-50 p-4 text-sm leading-6 text-blue-950">
