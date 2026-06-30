@@ -1,0 +1,74 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\AiKnowledgeItem;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class AiKnowledgeService
+{
+    public function __construct(private readonly AuditLogService $auditLogService) {}
+
+    public function create(array $data, User $actor, Request $request): AiKnowledgeItem
+    {
+        return DB::transaction(function () use ($data, $actor, $request) {
+            $item = AiKnowledgeItem::query()->create([
+                'title' => $data['title'],
+                'category' => $data['category'] ?? null,
+                'content' => $data['content'],
+                'source_type' => $data['source_type'],
+                'source_url' => $data['source_url'] ?? null,
+                'status' => $data['status'] ?? 'draft',
+                'created_by' => $actor->id,
+            ]);
+
+            $this->auditLogService->record('ai_knowledge_item.created', $item, $actor, null, $item->only(['title', 'category', 'source_type', 'status']), [], $request);
+
+            return $item->refresh();
+        });
+    }
+
+    public function update(AiKnowledgeItem $item, array $data, User $actor, Request $request): AiKnowledgeItem
+    {
+        return DB::transaction(function () use ($item, $data, $actor, $request) {
+            $old = $item->only(['title', 'category', 'content', 'source_type', 'source_url', 'status']);
+            $item->fill(collect($data)->only(['title', 'category', 'content', 'source_type', 'source_url', 'status'])->all());
+            $item->updated_by = $actor->id;
+            $item->save();
+
+            $this->auditLogService->record('ai_knowledge_item.updated', $item, $actor, $old, $item->only(['title', 'category', 'content', 'source_type', 'source_url', 'status']), [], $request);
+
+            return $item->refresh();
+        });
+    }
+
+    public function publish(AiKnowledgeItem $item, User $actor, Request $request): AiKnowledgeItem
+    {
+        return $this->setStatus($item, 'published', $actor, $request, 'ai_knowledge_item.published');
+    }
+
+    public function archive(AiKnowledgeItem $item, User $actor, Request $request): AiKnowledgeItem
+    {
+        return $this->setStatus($item, 'archived', $actor, $request, 'ai_knowledge_item.archived');
+    }
+
+    public function delete(AiKnowledgeItem $item, User $actor, Request $request): void
+    {
+        $item->delete();
+        $this->auditLogService->record('ai_knowledge_item.deleted', $item, $actor, null, ['deleted_at' => now()->toISOString()], [], $request);
+    }
+
+    private function setStatus(AiKnowledgeItem $item, string $status, User $actor, Request $request, string $action): AiKnowledgeItem
+    {
+        $item->forceFill([
+            'status' => $status,
+            'updated_by' => $actor->id,
+        ])->save();
+
+        $this->auditLogService->record($action, $item, $actor, null, ['status' => $status], [], $request);
+
+        return $item->refresh();
+    }
+}

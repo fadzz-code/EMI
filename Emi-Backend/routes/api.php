@@ -1,12 +1,10 @@
 <?php
 
-use App\Http\Controllers\Api\AdminDashboardController;
-use App\Http\Controllers\Api\ClassCultureItemController;
-use App\Http\Controllers\Api\StudentCultureItemController;
+use App\Http\Controllers\Api\AdminAiKnowledgeController;
 use App\Http\Controllers\Api\AdminCultureItemController;
 use App\Http\Controllers\Api\AdminCultureTemplateController;
 use App\Http\Controllers\Api\AdminCultureTemplateItemController;
-use App\Http\Controllers\Api\CultureTemplateApplyController;
+use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\AdminDictionaryCategoryController;
 use App\Http\Controllers\Api\AdminDictionaryEntryController;
 use App\Http\Controllers\Api\AdminLessonTemplateController;
@@ -19,9 +17,11 @@ use App\Http\Controllers\Api\AdminRegistrationRequestController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AvatarController;
 use App\Http\Controllers\Api\ClassAssignmentController;
+use App\Http\Controllers\Api\ClassCultureItemController;
 use App\Http\Controllers\Api\ClassLessonController;
 use App\Http\Controllers\Api\ClassModuleController;
 use App\Http\Controllers\Api\ClassQuizController;
+use App\Http\Controllers\Api\CultureTemplateApplyController;
 use App\Http\Controllers\Api\DictionaryController;
 use App\Http\Controllers\Api\DictionaryImportController;
 use App\Http\Controllers\Api\MediaController;
@@ -34,6 +34,8 @@ use App\Http\Controllers\Api\QuizTemplateApplyController;
 use App\Http\Controllers\Api\ReportExportController;
 use App\Http\Controllers\Api\SchoolClassController;
 use App\Http\Controllers\Api\SchoolController;
+use App\Http\Controllers\Api\StudentChatbotController;
+use App\Http\Controllers\Api\StudentCultureItemController;
 use App\Http\Controllers\Api\StudentDashboardController;
 use App\Http\Controllers\Api\StudentModuleController;
 use App\Http\Controllers\Api\StudentProgressController;
@@ -101,6 +103,13 @@ Route::prefix('v1')->group(function () {
         Route::get('dictionary/imports/{id}', [DictionaryImportController::class, 'show']);
         Route::get('dictionary/imports/{id}/errors', [DictionaryImportController::class, 'errors']);
         Route::post('dictionary/imports/{id}/confirm', [DictionaryImportController::class, 'confirm']);
+        Route::get('ai/knowledge', [AdminAiKnowledgeController::class, 'index']);
+        Route::post('ai/knowledge', [AdminAiKnowledgeController::class, 'store']);
+        Route::get('ai/knowledge/{id}', [AdminAiKnowledgeController::class, 'show']);
+        Route::put('ai/knowledge/{id}', [AdminAiKnowledgeController::class, 'update']);
+        Route::delete('ai/knowledge/{id}', [AdminAiKnowledgeController::class, 'destroy']);
+        Route::post('ai/knowledge/{id}/publish', [AdminAiKnowledgeController::class, 'publish']);
+        Route::post('ai/knowledge/{id}/archive', [AdminAiKnowledgeController::class, 'archive']);
         Route::get('module-templates', [AdminModuleTemplateController::class, 'index']);
         Route::post('module-templates', [AdminModuleTemplateController::class, 'store']);
         Route::get('module-templates/{id}', [AdminModuleTemplateController::class, 'show']);
@@ -230,6 +239,7 @@ Route::prefix('v1')->group(function () {
         Route::patch('lessons/{id}/progress', [StudentProgressController::class, 'updateLesson']);
         Route::get('progress/modules', [StudentProgressController::class, 'modules']);
         Route::get('culture', [StudentCultureItemController::class, 'index']);
+        Route::post('chatbot/messages', [StudentChatbotController::class, 'store']);
         Route::get('quizzes', [StudentQuizController::class, 'index']);
         Route::get('quizzes/{id}', [StudentQuizController::class, 'show']);
     });
