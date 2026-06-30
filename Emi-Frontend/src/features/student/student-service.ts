@@ -9,6 +9,7 @@ import type {
   StudentModule,
   StudentCultureItem,
   StudentProgressReport,
+  StudentChatbotResponse,
 } from "./types";
 
 function paginated<T>(data: T[] | undefined, meta: unknown): PaginatedResult<T> {
@@ -26,6 +27,20 @@ export const studentService = {
 
     if (!response.data) {
       throw new Error("Ringkasan dashboard siswa tidak tersedia.");
+    }
+
+    return response.data;
+  },
+
+  async sendChatbotMessage(token: string, message: string) {
+    const response = await apiClient.post<StudentChatbotResponse>(
+      "/student/chatbot/messages",
+      { message },
+      { token },
+    );
+
+    if (!response.data) {
+      throw new Error("Respons Chatbot AI tidak tersedia.");
     }
 
     return response.data;

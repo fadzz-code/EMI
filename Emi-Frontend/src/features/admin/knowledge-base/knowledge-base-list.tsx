@@ -10,6 +10,7 @@ import {
   Card,
   CardContent,
   CardHeader,
+  ConfirmDialog,
   EmptyState,
   ErrorState,
   FilterPanel,
@@ -86,6 +87,7 @@ export function KnowledgeBaseList() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<AiKnowledgeItem | null>(null);
   const [previewItem, setPreviewItem] = useState<AiKnowledgeItem | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<AiKnowledgeItem | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const filters = useMemo(
@@ -128,6 +130,7 @@ export function KnowledgeBaseList() {
     mutationFn: (itemId: string) => knowledgeBaseService.delete(token ?? "", itemId),
     onSuccess: async () => {
       setSuccessMessage("Pengetahuan Basis AI berhasil dihapus.");
+      setItemToDelete(null);
       await queryClient.invalidateQueries({ queryKey: ["admin", "knowledge-base"] });
     },
   });
@@ -190,6 +193,14 @@ export function KnowledgeBaseList() {
   function submitFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     applySearch();
+  }
+
+  function confirmDelete() {
+    if (!itemToDelete) {
+      return;
+    }
+
+    deleteMutation.mutate(itemToDelete.id);
   }
 
   return (
@@ -364,7 +375,7 @@ export function KnowledgeBaseList() {
                             <Button
                               className="min-h-9 px-3 py-1 text-xs"
                               disabled={deleteMutation.isPending}
-                              onClick={() => deleteMutation.mutate(item.id)}
+                              onClick={() => setItemToDelete(item)}
                               variant="danger"
                             >
                               Hapus
@@ -399,6 +410,15 @@ export function KnowledgeBaseList() {
           onSubmit={submitForm}
         />
       </Modal>
+
+      <ConfirmDialog
+        confirmLabel={deleteMutation.isPending ? "Menghapus..." : "Ya, hapus"}
+        description={`Pengetahuan ${itemToDelete?.title ?? "ini"} akan dihapus dari Basis AI. Aksi ini tidak langsung menghapus data siswa, tetapi item tidak akan muncul lagi di daftar admin.`}
+        onCancel={() => setItemToDelete(null)}
+        onConfirm={confirmDelete}
+        open={Boolean(itemToDelete)}
+        title="Hapus Pengetahuan Basis AI?"
+      />
 
       <Modal onClose={() => setPreviewItem(null)} open={Boolean(previewItem)} title="Preview Pengetahuan Basis AI">
         {previewItem ? (

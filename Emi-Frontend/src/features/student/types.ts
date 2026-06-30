@@ -330,3 +330,17 @@ export type PaginatedResult<T> = {
   items: T[];
   meta?: ApiPaginationMeta;
 };
+
+export type ChatbotSource = {
+  id: string;
+  title: string;
+  category?: string | null;
+};
+
+export type StudentChatbotResponse = {
+  answer: string;
+  source: ChatbotSource | null;
+  matched: boolean;
+  mode: "default_extractive" | string;
+  provider: "default" | string;
+};
