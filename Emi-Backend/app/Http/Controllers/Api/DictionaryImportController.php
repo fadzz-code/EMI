@@ -31,7 +31,7 @@ class DictionaryImportController extends Controller
 
         return response()->streamDownload(function () use ($header): void {
             echo $header."\n";
-            echo "makan,eat,monga,Verba,inoi monga kade,saya sedang makan nasi,monga.mp3\n";
+            echo "makan,eat,monga,Verba,inoi monga kade,saya sedang makan nasi,\n";
         }, 'template_import_kamus_emi.csv', [
             'Content-Type' => 'text/csv; charset=UTF-8',
             'X-Content-Type-Options' => 'nosniff',

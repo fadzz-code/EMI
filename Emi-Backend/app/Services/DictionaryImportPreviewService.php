@@ -160,7 +160,7 @@ class DictionaryImportPreviewService
                 if (basename($audioFilename) !== $audioFilename) {
                     $rowErrors[] = $this->error($row['row_number'], 'audio_filename', 'UNSAFE_ZIP_ENTRY', 'Nama audio tidak boleh berisi path.', $data);
                 } elseif (! isset($zipFiles[$audioFilename])) {
-                    $rowErrors[] = $this->error($row['row_number'], 'audio_filename', 'AUDIO_FILE_NOT_FOUND', 'File audio tidak ditemukan dalam ZIP.', $data);
+                    $rowErrors[] = $this->error($row['row_number'], 'audio_filename', 'AUDIO_FILE_NOT_FOUND', "Audio \"{$audioFilename}\" tidak ditemukan karena ZIP audio tidak diunggah atau file tidak ada di ZIP. Kata tetap bisa diimpor tanpa audio.", $data, false);
                 } else {
                     $audioReferenced[$audioFilename] = true;
                 }
@@ -215,7 +215,7 @@ class DictionaryImportPreviewService
                 'audio_referenced' => count($audioReferenced),
                 'audio_missing' => count(array_filter($errors, fn ($error) => $error['code'] === 'AUDIO_FILE_NOT_FOUND')),
                 'unused_audio_files' => count($unusedAudio),
-                'warning_count' => count($unusedAudio) + count(array_filter($errors, fn ($error) => $error['code'] === 'CSV_DUPLICATE_SKIPPED')),
+                'warning_count' => count($unusedAudio) + count(array_filter($errors, fn ($error) => in_array($error['code'], ['CSV_DUPLICATE_SKIPPED', 'AUDIO_FILE_NOT_FOUND'], true))),
                 'sample_rows' => $sampleRows,
                 'sample_errors' => $sampleErrors,
             ],

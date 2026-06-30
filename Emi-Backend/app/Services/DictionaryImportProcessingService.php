@@ -65,7 +65,7 @@ class DictionaryImportProcessingService
                         $data = $row['data'];
                         $audioMediaId = null;
 
-                        if (($data['audio_filename'] ?? '') !== '') {
+                        if (($data['audio_filename'] ?? '') !== '' && isset($analysis['zip_files'][$data['audio_filename']])) {
                             $audioMediaId = $mediaByFilename[$data['audio_filename']] ??= $this->createAudioMedia($job, $actor, $data['audio_filename'], $analysis['zip_files'][$data['audio_filename']]['path']);
                         }
 

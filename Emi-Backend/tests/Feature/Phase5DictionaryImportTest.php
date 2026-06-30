@@ -238,6 +238,74 @@ class Phase5DictionaryImportTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'dictionary.import_previewed']);
     }
 
+    public function test_valid_csv_without_audio_zip_can_be_confirmed_and_imported_with_audio_warning(): void
+    {
+        Queue::fake();
+        $admin = User::factory()->admin()->create();
+        DictionaryCategory::factory()->create(['name' => 'Verba', 'slug' => 'verba', 'created_by' => $admin->id]);
+
+        $response = $this->withToken($this->tokenFor($admin))->post('/api/v1/admin/dictionary/imports/preview', [
+            'csv_file' => $this->csvFile($this->validCsv()),
+        ])->assertCreated()
+            ->assertJsonPath('data.summary.total_rows', 1)
+            ->assertJsonPath('data.summary.valid_rows', 1)
+            ->assertJsonPath('data.summary.invalid_rows', 0)
+            ->assertJsonPath('data.summary.warning_count', 1)
+            ->assertJsonPath('data.summary.audio_missing', 1);
+
+        $jobId = $response->json('data.id');
+        $this->assertDatabaseHas('dictionary_import_errors', [
+            'import_job_id' => $jobId,
+            'field' => 'audio_filename',
+            'code' => 'AUDIO_FILE_NOT_FOUND',
+        ]);
+
+        $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/dictionary/imports/{$jobId}/confirm")
+            ->assertStatus(202)
+            ->assertJsonPath('data.status', 'queued');
+        Queue::assertPushed(ProcessDictionaryImport::class, 1);
+
+        app(DictionaryImportProcessingService::class)->process($jobId);
+        $entry = DictionaryEntry::query()->where('indonesia', 'makan')->firstOrFail();
+        $this->assertNull($entry->audio_media_id);
+        $this->assertSame('completed', DictionaryImportJob::query()->findOrFail($jobId)->status);
+    }
+
+    public function test_audio_exact_filename_matching_does_not_use_row_order(): void
+    {
+        Queue::fake();
+        $admin = User::factory()->admin()->create();
+        DictionaryCategory::factory()->create(['name' => 'Verba', 'slug' => 'verba', 'created_by' => $admin->id]);
+
+        $job = $this->previewAndQueueWithZip($admin, $this->validCsv('makan.mp3'), [
+            'urutan-pertama.mp3' => $this->mp3Content(),
+            'makan.mp3' => $this->mp3Content(),
+        ]);
+        app(DictionaryImportProcessingService::class)->process($job->id);
+
+        $entry = DictionaryEntry::query()->where('indonesia', 'makan')->firstOrFail();
+        $this->assertNotNull($entry->audio_media_id);
+        $this->assertSame('makan.mp3', $entry->audioMedia->metadata['audio_filename'] ?? null);
+    }
+
+    public function test_required_text_fields_still_make_row_invalid_even_when_audio_is_optional(): void
+    {
+        $admin = User::factory()->admin()->create();
+        DictionaryCategory::factory()->create(['name' => 'Verba', 'slug' => 'verba', 'created_by' => $admin->id]);
+
+        $csv = implode(',', config('dictionary.csv_header'))."\n"
+            .",eat,monga,Verba,,,monga.mp3\n";
+
+        $response = $this->withToken($this->tokenFor($admin))->post('/api/v1/admin/dictionary/imports/preview', [
+            'csv_file' => $this->csvFile($csv),
+        ])->assertCreated();
+
+        $this->assertSame(0, $response->json('data.summary.valid_rows'));
+        $this->assertSame(1, $response->json('data.summary.invalid_rows'));
+        $this->assertDatabaseHas('dictionary_import_errors', ['code' => 'REQUIRED']);
+        $this->assertDatabaseHas('dictionary_import_errors', ['code' => 'AUDIO_FILE_NOT_FOUND']);
+    }
+
     public function test_zip_audio_security_and_exact_filename_mapping(): void
     {
         $admin = User::factory()->admin()->create();
@@ -340,6 +408,18 @@ class Phase5DictionaryImportTest extends TestCase
         $jobId = $this->withToken($this->tokenFor($admin))->post('/api/v1/admin/dictionary/imports/preview', [
             'csv_file' => $this->csvFile($csv),
             'duplicate_strategy' => $strategy,
+        ])->assertCreated()->json('data.id');
+
+        $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/dictionary/imports/{$jobId}/confirm")->assertStatus(202);
+
+        return DictionaryImportJob::query()->findOrFail($jobId);
+    }
+
+    private function previewAndQueueWithZip(User $admin, string $csv, array $zipFiles): DictionaryImportJob
+    {
+        $jobId = $this->withToken($this->tokenFor($admin))->post('/api/v1/admin/dictionary/imports/preview', [
+            'csv_file' => $this->csvFile($csv),
+            'audio_zip' => $this->zipFile($zipFiles),
         ])->assertCreated()->json('data.id');
 
         $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/dictionary/imports/{$jobId}/confirm")->assertStatus(202);

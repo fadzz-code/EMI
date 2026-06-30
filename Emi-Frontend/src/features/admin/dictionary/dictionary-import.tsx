@@ -180,6 +180,9 @@ export function DictionaryImport() {
                   accept=".zip,application/zip,application/x-zip-compressed"
                   onChange={(event) => setAudioZip(event.target.files?.[0] ?? null)}
                 />
+                <p className="mt-2 text-xs font-bold leading-5 text-slate-600">
+                  ZIP audio bersifat opsional. Jika tidak diunggah, data kata tetap bisa diimpor tanpa audio. Jika ingin menyertakan audio, pastikan nama file di CSV sama persis dengan nama file di ZIP.
+                </p>
               </FormField>
               {audioZip ? (
                 <FilePreview
@@ -375,7 +378,16 @@ export function DictionaryImport() {
                         <TableCell>{error.row_number ?? "-"}</TableCell>
                         <TableCell>{error.field ?? "-"}</TableCell>
                         <TableCell>{error.code ?? "-"}</TableCell>
-                        <TableCell>{error.message}</TableCell>
+                        <TableCell>
+                          <div className="grid gap-1">
+                            <p>{error.message}</p>
+                            {error.code === "AUDIO_FILE_NOT_FOUND" ? (
+                              <p className="text-xs font-bold text-slate-600">
+                                Kolom: audio. Masalah: File audio tidak ditemukan atau ZIP audio tidak diunggah. Solusi: Kata tetap bisa diimpor tanpa audio. Untuk menambahkan audio, unggah ZIP berisi file dengan nama yang sama seperti di CSV.
+                              </p>
+                            ) : null}
+                          </div>
+                        </TableCell>
                       </tr>
                     ))}
                   </tbody>
