@@ -74,6 +74,7 @@ class DevDemoDataSeeder extends Seeder
             ]);
 
             $this->seedDictionary($admin);
+            $this->call(BasisAiDemoSeeder::class);
             [$moduleTemplate, $lessonTemplates] = $this->seedModuleTemplate($admin, $now);
             $this->seedClassModule($class, $moduleTemplate, $lessonTemplates, $teacher, $now);
             [$quizTemplate, $templateQuestions] = $this->seedQuizTemplate($admin, $now);

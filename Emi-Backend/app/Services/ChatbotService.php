@@ -12,7 +12,7 @@ class ChatbotService
     private const MINIMUM_CONFIDENCE = 8;
 
     private const STOPWORDS = [
-        'apa', 'itu', 'yang', 'dari', 'dengan', 'untuk', 'bagaimana', 'cara', 'adalah', 'ini', 'dan', 'atau', 'di', 'ke', 'pada', 'dalam', 'tentang', 'jelaskan', 'sebutkan', 'suku', 'bahasa', 'budaya', 'mekongga',
+        'apa', 'itu', 'yang', 'dari', 'dengan', 'untuk', 'bagaimana', 'cara', 'adalah', 'ini', 'dan', 'atau', 'di', 'ke', 'pada', 'dalam', 'tentang', 'jelaskan', 'sebutkan', 'suku', 'mekongga',
     ];
 
     public function __construct(private readonly DefaultExtractiveAnswerProvider $defaultProvider) {}

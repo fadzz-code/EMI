@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AiKnowledgeItem;
 use App\Models\User;
+use Database\Seeders\BasisAiDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -248,6 +249,40 @@ class Phase9BasisAiTest extends TestCase
             ->assertJsonPath('data.source.id', $pdf->id)
             ->assertJsonPath('data.source.source_type', 'pdf')
             ->assertJsonPath('data.source.source_url', 'https://example.com/asal-usul.pdf');
+    }
+
+    public function test_basis_ai_demo_seeder_is_idempotent_and_chatbot_matches_distinct_sources(): void
+    {
+        $student = User::factory()->student()->approved()->create();
+        User::factory()->admin()->create(['email' => 'admin@emi.test']);
+
+        $this->seed(BasisAiDemoSeeder::class);
+        $this->seed(BasisAiDemoSeeder::class);
+
+        $this->assertSame(7, AiKnowledgeItem::query()->published()->count());
+
+        $arti = $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'arti mekongga',
+        ])->assertOk()
+            ->assertJsonPath('data.matched', true)
+            ->json('data.source.title');
+
+        $bahasa = $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'apa itu bahasa mekongga',
+        ])->assertOk()
+            ->assertJsonPath('data.matched', true)
+            ->json('data.source.title');
+
+        $belajar = $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'bagaimana cara belajar kosakata mekongga',
+        ])->assertOk()
+            ->assertJsonPath('data.matched', true)
+            ->json('data.source.title');
+
+        $this->assertSame('Arti Nama Mekongga', $arti);
+        $this->assertSame('Bahasa Mekongga', $bahasa);
+        $this->assertSame('Belajar Bahasa Mekongga', $belajar);
+        $this->assertCount(3, array_unique([$arti, $bahasa, $belajar]));
     }
 
     private function tokenFor(User $user): string
