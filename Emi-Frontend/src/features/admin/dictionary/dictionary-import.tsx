@@ -1,6 +1,7 @@
 "use client";
 
 import { type FormEvent, useMemo, useState } from "react";
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -92,7 +93,7 @@ export function DictionaryImport() {
     onSuccess: async (job) => {
       setPreviewJob(job);
       setSelectedJobId(job.id);
-      setSuccessMessage("Preview import berhasil dibuat. Periksa ringkasan sebelum confirm.");
+      setSuccessMessage("Pratinjau impor berhasil dibuat. Periksa ringkasan sebelum konfirmasi.");
       await queryClient.invalidateQueries({ queryKey: ["admin", "dictionary", "imports"] });
     },
   });
@@ -102,7 +103,7 @@ export function DictionaryImport() {
     onSuccess: async (job) => {
       setPreviewJob(job);
       setSelectedJobId(job.id);
-      setSuccessMessage("Import sudah dikonfirmasi. Status terbaru mengikuti backend.");
+      setSuccessMessage("Impor sedang diproses. Sistem akan memperbarui hasil impor secara otomatis.");
       await queryClient.invalidateQueries({ queryKey: ["admin", "dictionary"] });
     },
   });
@@ -135,9 +136,9 @@ export function DictionaryImport() {
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <Badge tone="yellow">Admin</Badge>
-          <h1 className="mt-2 text-3xl font-black text-ink">Import Kamus</h1>
+          <h1 className="mt-2 text-3xl font-black text-ink">Impor Kamus</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Preview CSV dan ZIP audio memakai endpoint import backend sebelum data
+            Pratinjau CSV dan ZIP audio memakai endpoint impor backend sebelum data
             benar-benar dimasukkan ke kamus.
           </p>
         </div>
@@ -197,14 +198,14 @@ export function DictionaryImport() {
                   onChange={(event) => setDuplicateStrategy(event.target.value as DuplicateStrategy)}
                   value={duplicateStrategy}
                 >
-                  <option value="skip">Skip duplikat</option>
-                  <option value="update">Update duplikat</option>
+                  <option value="skip">Lewati duplikat</option>
+                  <option value="update">Perbarui duplikat</option>
                   <option value="reject">Tolak jika duplikat</option>
                 </Select>
               </FormField>
 
               <Button disabled={!csvFile || previewMutation.isPending} type="submit">
-                Buat Preview Import
+                Buat Pratinjau
               </Button>
             </form>
           </CardContent>
@@ -213,7 +214,7 @@ export function DictionaryImport() {
         <Card>
           <CardHeader>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <h2 className="text-xl font-black text-ink">Ringkasan Preview</h2>
+              <h2 className="text-xl font-black text-ink">Ringkasan Pratinjau</h2>
               {selectedJob ? (
                 <Badge tone={statusTone(selectedJob.status)}>
                   {importStatusLabel(selectedJob.status)}
@@ -225,10 +226,10 @@ export function DictionaryImport() {
             {selectedJob ? (
               <div className="grid gap-4">
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  <StatsCard label="Total Row" value={numberValue(selectedJob.total_rows)} />
-                  <StatsCard label="Valid Row" value={numberValue(selectedJob.valid_rows)} />
-                  <StatsCard label="Invalid Row" value={numberValue(selectedJob.invalid_rows)} />
-                  <StatsCard label="Warning" value={numberValue(selectedJob.warning_count)} />
+                  <StatsCard label="Total Baris" value={numberValue(selectedJob.total_rows)} />
+                  <StatsCard label="Baris Valid" value={numberValue(selectedJob.valid_rows)} />
+                  <StatsCard label="Baris Tidak Valid" value={numberValue(selectedJob.invalid_rows)} />
+                  <StatsCard label="Peringatan" value={numberValue(selectedJob.warning_count)} />
                   <StatsCard label="Baru" value={summaryValue(selectedJob, "new_rows")} />
                   <StatsCard label="Duplikat" value={summaryValue(selectedJob, "duplicate_rows")} />
                   <StatsCard label="Audio Dirujuk" value={summaryValue(selectedJob, "audio_referenced")} />
@@ -244,28 +245,38 @@ export function DictionaryImport() {
                   <p>ZIP: {selectedJob.audio_zip_original_name ?? "-"} ({formatBytes(selectedJob.audio_zip_size_bytes)})</p>
                   <p>Strategi: {duplicateStrategyLabel(selectedJob.duplicate_strategy)}</p>
                   <p>Dibuat: {formatDateTime(selectedJob.created_at)}</p>
-                  <p>Inserted: {numberValue(selectedJob.inserted_rows)}</p>
-                  <p>Updated: {numberValue(selectedJob.updated_rows)}</p>
-                  <p>Skipped: {numberValue(selectedJob.skipped_rows)}</p>
-                  <p>Unused audio: {summaryValue(selectedJob, "unused_audio_files")}</p>
+                  <p>Ditambahkan: {numberValue(selectedJob.inserted_rows)}</p>
+                  <p>Diperbarui: {numberValue(selectedJob.updated_rows)}</p>
+                  <p>Dilewati: {numberValue(selectedJob.skipped_rows)}</p>
+                  <p>Audio Tidak Terpakai: {summaryValue(selectedJob, "unused_audio_files")}</p>
                 </div>
 
-                <Button
-                  disabled={
-                    confirmMutation.isPending ||
-                    selectedJob.status !== "preview_ready" ||
-                    (selectedJob.valid_rows ?? 0) < 1
-                  }
-                  onClick={() => confirmMutation.mutate(selectedJob.id)}
-                  variant="secondary"
-                >
-                  Confirm Import
-                </Button>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    disabled={
+                      confirmMutation.isPending ||
+                      selectedJob.status !== "preview_ready" ||
+                      (selectedJob.valid_rows ?? 0) < 1
+                    }
+                    onClick={() => confirmMutation.mutate(selectedJob.id)}
+                    variant="secondary"
+                  >
+                    Konfirmasi Impor
+                  </Button>
+                  {(selectedJob.status === "completed" || selectedJob.status === "completed_with_errors") ? (
+                    <Link
+                      className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-white px-4 py-2 text-sm font-bold text-ink shadow-brutal hover:bg-yellow-100"
+                      href="/admin/dictionary"
+                    >
+                      Lihat Kamus
+                    </Link>
+                  ) : null}
+                </div>
               </div>
             ) : (
               <EmptyState
-                description="Upload CSV untuk membuat preview, atau pilih riwayat import di bawah."
-                title="Belum ada preview dipilih"
+                description="Unggah CSV untuk membuat pratinjau, atau pilih riwayat impor di bawah."
+                title="Belum ada pratinjau dipilih"
               />
             )}
           </CardContent>
@@ -274,21 +285,21 @@ export function DictionaryImport() {
 
       <Card>
         <CardHeader>
-          <h2 className="text-xl font-black text-ink">Riwayat Import</h2>
+          <h2 className="text-xl font-black text-ink">Riwayat Impor</h2>
         </CardHeader>
         <CardContent>
-          {importsQuery.isLoading ? <LoadingState title="Memuat riwayat import" /> : null}
+          {importsQuery.isLoading ? <LoadingState title="Memuat riwayat impor" /> : null}
           {importsQuery.isError ? (
             <ErrorState
               description={getFirstApiError(importsQuery.error)}
               onRetry={() => void importsQuery.refetch()}
-              title="Gagal memuat riwayat import"
+              title="Gagal memuat riwayat impor"
             />
           ) : null}
           {!importsQuery.isLoading && !importsQuery.isError ? (
             imports.length === 0 ? (
               <EmptyState
-                description="Belum ada import kamus yang tersimpan."
+                description="Belum ada riwayat impor kamus yang tersimpan."
                 title="Riwayat kosong"
               />
             ) : (
@@ -345,29 +356,29 @@ export function DictionaryImport() {
       {selectedJobId ? (
         <Card>
           <CardHeader>
-            <h2 className="text-xl font-black text-ink">Error Import</h2>
+            <h2 className="text-xl font-black text-ink">Error Impor</h2>
           </CardHeader>
           <CardContent>
-            {errorsQuery.isLoading ? <LoadingState title="Memuat error import" /> : null}
+            {errorsQuery.isLoading ? <LoadingState title="Memuat error impor" /> : null}
             {errorsQuery.isError ? (
               <ErrorState
                 description={getFirstApiError(errorsQuery.error)}
                 onRetry={() => void errorsQuery.refetch()}
-                title="Gagal memuat error import"
+                title="Gagal memuat error impor"
               />
             ) : null}
             {!errorsQuery.isLoading && !errorsQuery.isError ? (
               (errorsQuery.data?.items ?? []).length === 0 ? (
                 <EmptyState
-                  description="Backend tidak mengembalikan error untuk import ini."
+                  description="Backend tidak mengembalikan error untuk impor ini."
                   title="Tidak ada error"
                 />
               ) : (
                 <Table>
                   <TableHeader>
                     <tr>
-                      <th className="px-4 py-3">Row</th>
-                      <th className="px-4 py-3">Field</th>
+                      <th className="px-4 py-3">Baris</th>
+                      <th className="px-4 py-3">Kolom</th>
                       <th className="px-4 py-3">Kode</th>
                       <th className="px-4 py-3">Pesan</th>
                     </tr>

@@ -46,7 +46,7 @@ export function importStatusLabel(status?: DictionaryImportStatus | string) {
     .replace(/[\s-]+/g, "_")
     .toLowerCase();
   const labels: Record<string, string> = {
-    previewing: "Membuat Preview",
+    previewing: "Membuat Pratinjau",
     preview_ready: "Siap Diimpor",
     queued: "Dalam Antrean",
     processing: "Diproses",
@@ -61,11 +61,11 @@ export function importStatusLabel(status?: DictionaryImportStatus | string) {
 
 export function duplicateStrategyLabel(strategy?: DuplicateStrategy | string) {
   if (strategy === "skip") {
-    return "Skip duplikat";
+    return "Lewati duplikat";
   }
 
   if (strategy === "update") {
-    return "Update duplikat";
+    return "Perbarui duplikat";
   }
 
   if (strategy === "reject") {
