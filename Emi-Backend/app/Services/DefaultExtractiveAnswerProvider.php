@@ -10,7 +10,7 @@ class DefaultExtractiveAnswerProvider
 {
     public const FALLBACK_ANSWER = 'Saya belum menemukan jawaban dari Basis AI yang tersedia.';
 
-    public function answer(?AiKnowledgeItem $item, string $message, int $confidence = 0, ?Collection $keywords = null): array
+    public function answer(?AiKnowledgeItem $item, string $message, int $confidence = 0, ?Collection $keywords = null, ?string $fallbackReason = null): array
     {
         if ($item === null) {
             return [
@@ -37,6 +37,25 @@ class DefaultExtractiveAnswerProvider
             'matched' => true,
             'mode' => 'default_extractive',
             'provider' => 'default',
+            'confidence' => $confidence,
+            'fallback_reason' => $fallbackReason,
+        ];
+    }
+
+    public function answerFromProvider(AiKnowledgeItem $item, string $answer, string $mode, string $provider, int $confidence = 0): array
+    {
+        return [
+            'answer' => $answer,
+            'source' => [
+                'id' => $item->id,
+                'title' => $item->title,
+                'category' => $item->category,
+                'source_type' => $item->source_type,
+                'source_url' => $item->source_url,
+            ],
+            'matched' => true,
+            'mode' => $mode,
+            'provider' => $provider,
             'confidence' => $confidence,
         ];
     }

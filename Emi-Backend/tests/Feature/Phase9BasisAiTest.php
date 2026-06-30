@@ -6,6 +6,8 @@ use App\Models\AiKnowledgeItem;
 use App\Models\User;
 use Database\Seeders\BasisAiDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class Phase9BasisAiTest extends TestCase
@@ -283,6 +285,119 @@ class Phase9BasisAiTest extends TestCase
         $this->assertSame('Bahasa Mekongga', $bahasa);
         $this->assertSame('Belajar Bahasa Mekongga', $belajar);
         $this->assertCount(3, array_unique([$arti, $bahasa, $belajar]));
+    }
+
+    public function test_ai_free_provider_none_uses_default_extractive(): void
+    {
+        config(['ai.free_provider' => 'none']);
+        $student = User::factory()->student()->approved()->create(['full_name' => 'Nama Siswa Rahasia', 'email' => 'rahasia@example.com']);
+        AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Kosakata monga',
+            'content' => 'Kata monga digunakan untuk menjelaskan kegiatan makan sehari-hari.',
+        ]);
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'monga makan',
+        ])->assertOk()
+            ->assertJsonPath('data.mode', 'default_extractive')
+            ->assertJsonPath('data.provider', 'default')
+            ->assertJsonPath('data.fallback_reason', 'free_ai_disabled');
+    }
+
+    public function test_no_basis_ai_match_does_not_call_external_provider(): void
+    {
+        config(['ai.free_provider' => 'groq', 'ai.free_api_key' => 'test-key']);
+        Http::fake();
+        $student = User::factory()->student()->approved()->create();
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'pertanyaan luar angkasa',
+        ])->assertOk()
+            ->assertJsonPath('data.matched', false)
+            ->assertJsonPath('data.provider', 'default');
+
+        Http::assertNothingSent();
+    }
+
+    public function test_free_provider_error_falls_back_to_default_extractive(): void
+    {
+        config(['ai.free_provider' => 'groq', 'ai.free_api_key' => 'test-key']);
+        Http::fake([
+            'api.groq.com/*' => Http::response(['error' => 'failed'], 500),
+        ]);
+        $student = User::factory()->student()->approved()->create();
+        AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Kosakata monga',
+            'content' => 'Kata monga digunakan untuk menjelaskan kegiatan makan sehari-hari.',
+        ]);
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'monga makan',
+        ])->assertOk()
+            ->assertJsonPath('data.mode', 'default_extractive')
+            ->assertJsonPath('data.provider', 'default')
+            ->assertJsonPath('data.fallback_reason', 'free_ai_error');
+    }
+
+    public function test_free_provider_success_returns_free_ai_mode_and_provider(): void
+    {
+        config(['ai.free_provider' => 'groq', 'ai.free_api_key' => 'test-key', 'ai.free_model' => 'demo-model']);
+        Http::fake([
+            'api.groq.com/*' => Http::response([
+                'choices' => [
+                    ['message' => ['content' => 'Monga berarti makan dalam konteks kosakata yang tersedia.']],
+                ],
+            ]),
+        ]);
+        $student = User::factory()->student()->approved()->create();
+        AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Kosakata monga',
+            'content' => 'Kata monga digunakan untuk menjelaskan kegiatan makan sehari-hari.',
+        ]);
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'monga makan',
+        ])->assertOk()
+            ->assertJsonPath('data.answer', 'Monga berarti makan dalam konteks kosakata yang tersedia.')
+            ->assertJsonPath('data.mode', 'free_ai')
+            ->assertJsonPath('data.provider', 'groq')
+            ->assertJsonPath('data.matched', true);
+    }
+
+    public function test_free_provider_prompt_uses_question_and_basis_ai_reference_without_user_personal_data(): void
+    {
+        config(['ai.free_provider' => 'groq', 'ai.free_api_key' => 'test-key']);
+        Http::fake([
+            'api.groq.com/*' => Http::response([
+                'choices' => [
+                    ['message' => ['content' => 'Jawaban dari referensi.']],
+                ],
+            ]),
+        ]);
+        $student = User::factory()->student()->approved()->create([
+            'full_name' => 'Nama Siswa Rahasia',
+            'email' => 'rahasia@example.com',
+        ]);
+        AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Kosakata monga',
+            'category' => 'Kosakata',
+            'content' => 'Kata monga digunakan untuk menjelaskan kegiatan makan sehari-hari.',
+        ]);
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'monga makan',
+        ])->assertOk()
+            ->assertJsonPath('data.mode', 'free_ai');
+
+        Http::assertSent(function (Request $request): bool {
+            $prompt = $request->data()['messages'][0]['content'] ?? '';
+
+            return str_contains($prompt, 'monga makan')
+                && str_contains($prompt, 'Kosakata monga')
+                && str_contains($prompt, 'Kata monga digunakan untuk menjelaskan kegiatan makan sehari-hari.')
+                && ! str_contains($prompt, 'Nama Siswa Rahasia')
+                && ! str_contains($prompt, 'rahasia@example.com');
+        });
     }
 
     private function tokenFor(User $user): string

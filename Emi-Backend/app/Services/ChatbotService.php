@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AiKnowledgeItem;
 use App\Models\User;
+use App\Services\Ai\AiAnswerProviderResolver;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -15,17 +16,37 @@ class ChatbotService
         'apa', 'itu', 'yang', 'dari', 'dengan', 'untuk', 'bagaimana', 'cara', 'adalah', 'ini', 'dan', 'atau', 'di', 'ke', 'pada', 'dalam', 'tentang', 'jelaskan', 'sebutkan', 'suku', 'mekongga',
     ];
 
-    public function __construct(private readonly DefaultExtractiveAnswerProvider $defaultProvider) {}
+    public function __construct(
+        private readonly DefaultExtractiveAnswerProvider $defaultProvider,
+        private readonly AiAnswerProviderResolver $providerResolver,
+    ) {}
 
     public function respond(User $student, string $message): array
     {
         $match = $this->findBestPublishedReference($message);
 
+        if ($match === null) {
+            return $this->defaultProvider->answer(null, $message);
+        }
+
+        $providerResult = $this->providerResolver->resolve()->generateAnswer($message, $match['item']);
+
+        if ($providerResult->success && $providerResult->answer) {
+            return $this->defaultProvider->answerFromProvider(
+                $match['item'],
+                $providerResult->answer,
+                $providerResult->mode,
+                $providerResult->provider,
+                $match['confidence'],
+            );
+        }
+
         return $this->defaultProvider->answer(
-            $match['item'] ?? null,
+            $match['item'],
             $message,
-            $match['confidence'] ?? 0,
-            $match['keywords'] ?? collect(),
+            $match['confidence'],
+            $match['keywords'],
+            $providerResult->fallbackReason,
         );
     }
 
