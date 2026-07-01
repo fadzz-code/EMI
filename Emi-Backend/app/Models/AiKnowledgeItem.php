@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class AiKnowledgeItem extends Model
@@ -41,6 +42,11 @@ class AiKnowledgeItem extends Model
     public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function chunks(): HasMany
+    {
+        return $this->hasMany(AiKnowledgeChunk::class);
     }
 
     public function scopeDraft(Builder $query): Builder

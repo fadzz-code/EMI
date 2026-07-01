@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AiKnowledgeChunk;
 use App\Models\AiKnowledgeItem;
 use App\Models\User;
 use App\Services\Ai\AiAnswerProviderResolver;
@@ -12,6 +13,8 @@ class ChatbotService
 {
     private const MINIMUM_CONFIDENCE = 8;
 
+    private const TOP_K = 3;
+
     private const STOPWORDS = [
         'apa', 'itu', 'yang', 'dari', 'dengan', 'untuk', 'bagaimana', 'cara', 'adalah', 'ini', 'dan', 'atau', 'di', 'ke', 'pada', 'dalam', 'tentang', 'jelaskan', 'sebutkan', 'suku', 'mekongga',
     ];
@@ -19,17 +22,18 @@ class ChatbotService
     public function __construct(
         private readonly DefaultExtractiveAnswerProvider $defaultProvider,
         private readonly AiAnswerProviderResolver $providerResolver,
+        private readonly AiKnowledgeChunkingService $chunkingService,
     ) {}
 
     public function respond(User $student, string $message): array
     {
-        $match = $this->findBestPublishedReference($message);
+        $match = $this->findBestPublishedReferences($message);
 
         if ($match === null) {
             return $this->defaultProvider->answer(null, $message);
         }
 
-        $providerResult = $this->providerResolver->resolve()->generateAnswer($message, $match['item']);
+        $providerResult = $this->providerResolver->resolve()->generateAnswer($message, $match['item'], $match['chunks']);
 
         if ($providerResult->success && $providerResult->answer) {
             return $this->defaultProvider->answerFromProvider(
@@ -38,11 +42,12 @@ class ChatbotService
                 $providerResult->mode,
                 $providerResult->provider,
                 $match['confidence'],
+                $match['chunks'],
             );
         }
 
-        return $this->defaultProvider->answer(
-            $match['item'],
+        return $this->defaultProvider->answerFromChunks(
+            $match['chunks'],
             $message,
             $match['confidence'],
             $match['keywords'],
@@ -50,7 +55,7 @@ class ChatbotService
         );
     }
 
-    private function findBestPublishedReference(string $message): ?array
+    private function findBestPublishedReferences(string $message): ?array
     {
         $keywords = $this->keywords($message);
 
@@ -58,31 +63,60 @@ class ChatbotService
             return null;
         }
 
-        $match = AiKnowledgeItem::query()
+        AiKnowledgeItem::query()
             ->published()
+            ->doesntHave('chunks')
             ->get()
-            ->map(fn (AiKnowledgeItem $item): array => [
-                'item' => $item,
-                'confidence' => $this->score($item, $keywords, $message),
-                'keywords' => $keywords,
-            ])
+            ->each(fn (AiKnowledgeItem $item) => $this->chunkingService->rebuild($item));
+
+        $matches = AiKnowledgeChunk::query()
+            ->with('knowledgeItem')
+            ->whereHas('knowledgeItem', fn ($query) => $query->published())
+            ->get()
+            ->map(function (AiKnowledgeChunk $chunk) use ($keywords, $message): array {
+                $item = $chunk->knowledgeItem;
+
+                return [
+                    'item' => $item,
+                    'chunk' => $chunk,
+                    'confidence' => $this->score($item, $chunk, $keywords, $message),
+                    'keywords' => $keywords,
+                ];
+            })
             ->filter(fn (array $result): bool => $result['confidence'] >= self::MINIMUM_CONFIDENCE)
             ->sortByDesc('confidence')
-            ->first();
+            ->take(self::TOP_K)
+            ->values();
 
-        return $match ?: null;
+        if ($matches->isEmpty()) {
+            return null;
+        }
+
+        $best = $matches->first();
+
+        return [
+            'item' => $best['item'],
+            'confidence' => $best['confidence'],
+            'keywords' => $keywords,
+            'chunks' => $matches->all(),
+        ];
     }
 
-    private function score(AiKnowledgeItem $item, Collection $keywords, string $message): int
+    private function score(AiKnowledgeItem $item, AiKnowledgeChunk $chunk, Collection $keywords, string $message): int
     {
         $title = $this->normalize($item->title);
         $category = $this->normalize($item->category ?? '');
-        $content = $this->normalize($item->content);
-        $phrase = $keywords->implode(' ');
+        $sourceType = $this->normalize($item->source_type);
+        $content = $this->normalize($chunk->content);
+        $phrase = $this->normalize($message);
         $score = 0;
         $matchedKeywords = 0;
 
         if ($phrase !== '' && Str::contains($title, $phrase)) {
+            $score += 24;
+        }
+
+        if ($phrase !== '' && Str::contains($content, $phrase)) {
             $score += 18;
         }
 
@@ -95,12 +129,18 @@ class ChatbotService
             }
 
             if (Str::contains($category, $keyword)) {
-                $score += 4;
+                $score += 5;
                 $matched = true;
             }
 
-            if (Str::contains($content, $keyword)) {
+            if (Str::contains($sourceType, $keyword)) {
                 $score += 2;
+                $matched = true;
+            }
+
+            $contentCount = substr_count($content, $keyword);
+            if ($contentCount > 0) {
+                $score += min(6, $contentCount * 2);
                 $matched = true;
             }
 
@@ -110,7 +150,7 @@ class ChatbotService
         }
 
         if ($matchedKeywords >= 2) {
-            $score += $matchedKeywords * 2;
+            $score += $matchedKeywords * 3;
         }
 
         return $score;

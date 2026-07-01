@@ -16,7 +16,7 @@ class FreeAiAnswerProvider implements AiAnswerProviderInterface
         private readonly int $timeoutSeconds,
     ) {}
 
-    public function generateAnswer(string $question, AiKnowledgeItem $reference): AiAnswerResult
+    public function generateAnswer(string $question, AiKnowledgeItem $reference, array $chunks = []): AiAnswerResult
     {
         if (! in_array($this->provider, ['gemini', 'groq'], true)) {
             return AiAnswerResult::fallback('free_ai_disabled');
@@ -26,7 +26,7 @@ class FreeAiAnswerProvider implements AiAnswerProviderInterface
             return AiAnswerResult::fallback('free_ai_unavailable');
         }
 
-        $prompt = $this->prompt($question, $reference);
+        $prompt = $this->prompt($question, $reference, $chunks);
 
         try {
             return match ($this->provider) {
@@ -45,8 +45,31 @@ class FreeAiAnswerProvider implements AiAnswerProviderInterface
         }
     }
 
-    public function prompt(string $question, AiKnowledgeItem $reference): string
+    public function prompt(string $question, AiKnowledgeItem $reference, array $chunks = []): string
     {
+        $references = collect($chunks)->map(function (array $chunk, int $index): string {
+            $item = $chunk['item'];
+            $number = $index + 1;
+
+            return implode("\n", [
+                "Referensi {$number}:",
+                'Judul: '.$item->title,
+                'Kategori: '.($item->category ?? 'Umum'),
+                'Konten:',
+                $chunk['chunk']->content,
+            ]);
+        })->implode("\n\n");
+
+        if ($references === '') {
+            $references = implode("\n", [
+                'Referensi 1:',
+                'Judul: '.$reference->title,
+                'Kategori: '.($reference->category ?? 'Umum'),
+                'Konten:',
+                $reference->content,
+            ]);
+        }
+
         return implode("\n", [
             'Anda adalah asisten EMI.',
             'Jawab hanya berdasarkan REFERENSI BASIS AI yang diberikan.',
@@ -57,11 +80,8 @@ class FreeAiAnswerProvider implements AiAnswerProviderInterface
             'Pertanyaan siswa:',
             $question,
             '',
-            'Referensi Basis AI:',
-            'Judul: '.$reference->title,
-            'Kategori: '.($reference->category ?? 'Umum'),
-            'Konten:',
-            $reference->content,
+            'REFERENSI BASIS AI:',
+            $references,
             '',
             'Tulis jawaban singkat, jelas, ramah untuk siswa.',
         ]);

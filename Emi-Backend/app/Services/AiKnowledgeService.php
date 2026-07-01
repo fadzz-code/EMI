@@ -9,7 +9,10 @@ use Illuminate\Support\Facades\DB;
 
 class AiKnowledgeService
 {
-    public function __construct(private readonly AuditLogService $auditLogService) {}
+    public function __construct(
+        private readonly AuditLogService $auditLogService,
+        private readonly AiKnowledgeChunkingService $chunkingService,
+    ) {}
 
     public function create(array $data, User $actor, Request $request): AiKnowledgeItem
     {
@@ -24,6 +27,7 @@ class AiKnowledgeService
                 'created_by' => $actor->id,
             ]);
 
+            $this->chunkingService->rebuild($item);
             $this->auditLogService->record('ai_knowledge_item.created', $item, $actor, null, $item->only(['title', 'category', 'source_type', 'status']), [], $request);
 
             return $item->refresh();
@@ -37,6 +41,7 @@ class AiKnowledgeService
             $item->fill(collect($data)->only(['title', 'category', 'content', 'source_type', 'source_url', 'status'])->all());
             $item->updated_by = $actor->id;
             $item->save();
+            $this->chunkingService->rebuild($item);
 
             $this->auditLogService->record('ai_knowledge_item.updated', $item, $actor, $old, $item->only(['title', 'category', 'content', 'source_type', 'source_url', 'status']), [], $request);
 
@@ -66,6 +71,10 @@ class AiKnowledgeService
             'status' => $status,
             'updated_by' => $actor->id,
         ])->save();
+
+        if ($status === 'published') {
+            $this->chunkingService->ensureChunks($item);
+        }
 
         $this->auditLogService->record($action, $item, $actor, null, ['status' => $status], [], $request);
 
