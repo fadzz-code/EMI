@@ -4,19 +4,24 @@ namespace App\Http\Controllers\Api;
 
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Ai\ExtractSourceAiKnowledgeRequest;
 use App\Http\Requests\Ai\ListAiKnowledgeItemsRequest;
 use App\Http\Requests\Ai\StoreAiKnowledgeItemRequest;
 use App\Http\Requests\Ai\UpdateAiKnowledgeItemRequest;
 use App\Http\Resources\AiKnowledgeItemResource;
 use App\Models\AiKnowledgeItem;
 use App\Services\AiKnowledgeService;
+use App\Services\AiSourceIngestionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 class AdminAiKnowledgeController extends Controller
 {
-    public function __construct(private readonly AiKnowledgeService $service) {}
+    public function __construct(
+        private readonly AiKnowledgeService $service,
+        private readonly AiSourceIngestionService $ingestionService
+    ) {}
 
     public function index(ListAiKnowledgeItemsRequest $request): JsonResponse
     {
@@ -82,5 +87,25 @@ class AdminAiKnowledgeController extends Controller
         Gate::authorize('update', $item);
 
         return ApiResponse::success('Basis AI berhasil diarsipkan.', new AiKnowledgeItemResource($this->service->archive($item, $request->user(), $request)));
+    }
+
+    public function extractSource(ExtractSourceAiKnowledgeRequest $request): JsonResponse
+    {
+        try {
+            $data = $this->ingestionService->extract(
+                $request->validated('source_type'),
+                $request->validated('source_url')
+            );
+
+            return ApiResponse::success('Isi sumber berhasil diambil.', $data);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Isi sumber tidak dapat diambil.',
+                'errors' => [
+                    'source_url' => [$e->getMessage()],
+                ],
+            ], 422);
+        }
     }
 }

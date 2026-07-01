@@ -408,6 +408,7 @@ export function KnowledgeBaseList() {
           key={editingItem?.id ?? "create"}
           onCancel={closeForm}
           onSubmit={submitForm}
+          token={token}
         />
       </Modal>
 

@@ -3,7 +3,9 @@
 import { type FormEvent, useState } from "react";
 
 import { Alert, Button, FormField, Input, Select, Textarea } from "@/components/ui";
+import { getFirstApiError } from "@/lib/api-client";
 
+import { knowledgeBaseService } from "./knowledge-base-service";
 import type { AiKnowledgeItem, AiKnowledgePayload, AiKnowledgeSourceType, AiKnowledgeStatus } from "./types";
 
 const defaultForm = {
@@ -39,13 +41,47 @@ export function KnowledgeBaseForm({
   isSubmitting,
   onCancel,
   onSubmit,
+  token,
 }: {
   item?: AiKnowledgeItem | null;
   isSubmitting?: boolean;
   onCancel: () => void;
   onSubmit: (payload: AiKnowledgePayload) => void;
+  token: string | null;
 }) {
   const [form, setForm] = useState(() => formFromItem(item));
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractMessage, setExtractMessage] = useState<string | null>(null);
+  const [extractError, setExtractError] = useState<string | null>(null);
+
+  async function extractSource() {
+    if (!token || (form.source_type !== "link" && form.source_type !== "pdf") || !form.source_url.trim()) {
+      return;
+    }
+
+    setIsExtracting(true);
+    setExtractMessage(null);
+    setExtractError(null);
+
+    try {
+      const result = await knowledgeBaseService.extractKnowledgeSource(token, {
+        source_type: form.source_type,
+        source_url: form.source_url.trim(),
+      });
+
+      setForm((current) => ({
+        ...current,
+        content: result.content,
+        title: current.title || result.title || current.title,
+      }));
+      setExtractMessage("Isi sumber berhasil diambil. Periksa kembali konten sebelum menyimpan.");
+    } catch (error) {
+      const message = getFirstApiError(error);
+      setExtractError(message || "Isi sumber tidak dapat diambil. Pastikan URL publik dapat diakses dan format sumber sesuai.");
+    } finally {
+      setIsExtracting(false);
+    }
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -120,15 +156,34 @@ export function KnowledgeBaseForm({
         <Input
           onChange={(event) => setForm((current) => ({ ...current, source_url: event.target.value }))}
           placeholder="https://contoh-sumber-resmi.test"
-          required={form.source_type === "link"}
+          required={form.source_type === "link" || form.source_type === "pdf"}
           type="url"
           value={form.source_url}
         />
+        {form.source_type === "link" ? (
+          <p className="mt-2 text-xs font-bold leading-5 text-slate-600">
+            Gunakan link artikel atau halaman publik yang dapat diakses tanpa login.
+          </p>
+        ) : null}
+        {form.source_type === "pdf" ? (
+          <p className="mt-2 text-xs font-bold leading-5 text-slate-600">
+            PDF harus berupa dokumen berbasis teks dari URL publik. PDF hasil scan/foto belum dapat dibaca otomatis. Pada versi ini, PDF dibaca dari URL PDF publik. Upload file PDF langsung belum aktif.
+          </p>
+        ) : null}
       </FormField>
-      {form.source_type === "pdf" ? (
-        <Alert tone="warning">
-          Pada versi ini, PDF belum dibaca otomatis oleh chatbot. Masukkan ringkasan/isi penting PDF ke Konten Pengetahuan agar bisa digunakan sebagai jawaban.
-        </Alert>
+      {form.source_type === "link" || form.source_type === "pdf" ? (
+        <div className="grid gap-3 rounded-lg border-2 border-ink bg-yellow-50 p-4 text-sm leading-6 text-yellow-950">
+          <p className="font-bold">
+            PDF/link tidak otomatis digunakan chatbot hanya karena URL disimpan. Gunakan tombol &quot;Ambil Isi Sumber&quot; agar isi sumber masuk ke Konten Pengetahuan. Admin tetap dapat mengoreksi konten sebelum dipublish.
+          </p>
+          <div>
+            <Button disabled={isExtracting || !form.source_url.trim()} onClick={extractSource} type="button" variant="secondary">
+              {isExtracting ? "Mengambil isi sumber..." : "Ambil Isi Sumber"}
+            </Button>
+          </div>
+          {extractMessage ? <Alert tone="success">{extractMessage}</Alert> : null}
+          {extractError ? <Alert tone="error">{extractError}</Alert> : null}
+        </div>
       ) : null}
       <div className="rounded-lg border-2 border-dashed border-ink bg-blue-50 p-4 text-sm leading-6 text-blue-950">
         Draft belum digunakan chatbot. Published digunakan chatbot siswa. Archived disimpan, tetapi tidak digunakan chatbot.

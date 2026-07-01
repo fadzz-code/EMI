@@ -24,6 +24,15 @@ export type AiKnowledgePayload = {
   status?: AiKnowledgeStatus;
 };
 
+export type AiKnowledgeSourceExtraction = {
+  title?: string | null;
+  content: string;
+  source_type: Extract<AiKnowledgeSourceType, "link" | "pdf">;
+  source_url: string;
+  character_count: number;
+  warnings: string[];
+};
+
 export type AiKnowledgeFilters = {
   search?: string;
   category?: string;

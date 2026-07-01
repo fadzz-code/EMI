@@ -4,6 +4,7 @@ import type {
   AiKnowledgeFilters,
   AiKnowledgeItem,
   AiKnowledgePayload,
+  AiKnowledgeSourceExtraction,
   PaginatedResult,
 } from "./types";
 
@@ -49,6 +50,23 @@ export const knowledgeBaseService = {
 
     if (!response.data) {
       throw new Error("Response Basis AI tidak tersedia.");
+    }
+
+    return response.data;
+  },
+
+  async extractKnowledgeSource(
+    token: string,
+    payload: { source_type: "link" | "pdf"; source_url: string },
+  ) {
+    const response = await apiClient.post<AiKnowledgeSourceExtraction>(
+      "/admin/ai/knowledge/extract-source",
+      payload,
+      { token },
+    );
+
+    if (!response.data) {
+      throw new Error("Response ekstraksi sumber tidak tersedia.");
     }
 
     return response.data;
