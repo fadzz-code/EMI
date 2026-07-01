@@ -6,7 +6,9 @@ use App\Models\AiKnowledgeItem;
 use App\Models\User;
 use App\Services\AiSourceIngestionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Mockery;
 use Tests\TestCase;
 
@@ -127,7 +129,62 @@ class BasisAiSourceIngestionTest extends TestCase
             ->assertJsonPath('errors.source_url.0', 'File bukan PDF yang valid.');
     }
 
-    public function test_extracted_content_can_be_saved_and_used_by_student_chatbot()
+    public function test_admin_can_upload_text_based_pdf_and_receive_extracted_content()
+    {
+        Storage::fake('public');
+        $file = UploadedFile::fake()->createWithContent('struktur bahasa mekongga.pdf', $this->textPdfContent());
+
+        $response = $this->actingAs($this->admin)->post('/api/v1/admin/ai/knowledge/extract-pdf-upload', [
+            'file' => $file,
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.source_type', 'pdf')
+            ->assertJsonPath('data.original_filename', 'struktur bahasa mekongga.pdf')
+            ->assertJsonPath('data.title', 'struktur bahasa mekongga');
+
+        $this->assertStringContainsString('Sagu rumbia pangan tradisional Mekongga', $response->json('data.content'));
+        $this->assertStringStartsWith('/storage/ai-knowledge-sources/', $response->json('data.source_url'));
+        Storage::disk('public')->assertExists(str_replace('/storage/', '', $response->json('data.source_url')));
+    }
+
+    public function test_non_admin_cannot_upload_pdf_for_extraction()
+    {
+        $file = UploadedFile::fake()->createWithContent('dokumen.pdf', $this->textPdfContent());
+
+        $response = $this->actingAs($this->student)->post('/api/v1/admin/ai/knowledge/extract-pdf-upload', [
+            'file' => $file,
+        ]);
+
+        $response->assertStatus(403);
+    }
+
+    public function test_invalid_non_pdf_upload_is_rejected()
+    {
+        $file = UploadedFile::fake()->createWithContent('dokumen.txt', 'bukan pdf');
+
+        $response = $this->actingAs($this->admin)->post('/api/v1/admin/ai/knowledge/extract-pdf-upload', [
+            'file' => $file,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors('file');
+    }
+
+    public function test_empty_pdf_upload_returns_clear_indonesian_error()
+    {
+        Storage::fake('public');
+        $file = UploadedFile::fake()->createWithContent('scan.pdf', $this->emptyPdfContent());
+
+        $response = $this->actingAs($this->admin)->post('/api/v1/admin/ai/knowledge/extract-pdf-upload', [
+            'file' => $file,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('errors.file.0', 'PDF tidak memiliki teks yang dapat dibaca. PDF hasil scan/foto belum didukung.');
+    }
+
+    public function test_uploaded_pdf_extracted_content_can_be_saved_and_used_by_student_chatbot()
     {
         AiKnowledgeItem::factory()->create([
             'title' => 'Artikel Rumbia',
@@ -145,5 +202,52 @@ class BasisAiSourceIngestionTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('data.matched', true)
             ->assertJsonPath('data.source.source_url', 'https://example.com/rumbia');
+    }
+
+    private function textPdfContent(): string
+    {
+        $stream = "BT /F1 18 Tf 100 700 Td (Sagu rumbia pangan tradisional Mekongga) Tj ET\n";
+
+        return $this->buildPdf([
+            '<< /Type /Catalog /Pages 2 0 R >>',
+            '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+            '<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >> /MediaBox [0 0 612 792] /Contents 5 0 R >>',
+            '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+            '<< /Length '.strlen($stream)." >>\nstream\n{$stream}endstream",
+        ]);
+    }
+
+    private function emptyPdfContent(): string
+    {
+        return $this->buildPdf([
+            '<< /Type /Catalog /Pages 2 0 R >>',
+            '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+            '<< /Type /Page /Parent 2 0 R /Resources << >> /MediaBox [0 0 612 792] >>',
+        ]);
+    }
+
+    private function buildPdf(array $objects): string
+    {
+        $pdf = "%PDF-1.4\n";
+        $offsets = [0];
+
+        foreach ($objects as $index => $object) {
+            $offsets[] = strlen($pdf);
+            $number = $index + 1;
+            $pdf .= "{$number} 0 obj\n{$object}\nendobj\n";
+        }
+
+        $xrefOffset = strlen($pdf);
+        $pdf .= "xref\n0 ".(count($objects) + 1)."\n";
+        $pdf .= "0000000000 65535 f \n";
+
+        foreach (array_slice($offsets, 1) as $offset) {
+            $pdf .= str_pad((string) $offset, 10, '0', STR_PAD_LEFT)." 00000 n \n";
+        }
+
+        $pdf .= "trailer\n<< /Root 1 0 R /Size ".(count($objects) + 1)." >>\n";
+        $pdf .= "startxref\n{$xrefOffset}\n%%EOF";
+
+        return $pdf;
     }
 }

@@ -5,7 +5,10 @@ namespace App\Services;
 use DOMDocument;
 use DOMXPath;
 use Exception;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Smalot\PdfParser\Parser;
 
 class AiSourceIngestionService
@@ -153,6 +156,22 @@ class AiSourceIngestionService
         ];
     }
 
+    public function extractFromPdfUpload(UploadedFile $file): array
+    {
+        $pdfContent = file_get_contents($file->getRealPath());
+        $title = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $extracted = $this->parsePdfContent($pdfContent, $title, 'PDF tidak memiliki teks yang dapat dibaca. PDF hasil scan/foto belum didukung.');
+        $filename = Str::uuid().'.pdf';
+        $path = $file->storeAs('ai-knowledge-sources', $filename, 'public');
+
+        return [
+            ...$extracted,
+            'source_type' => 'pdf',
+            'source_url' => $path ? Storage::disk('public')->url($path) : null,
+            'original_filename' => $file->getClientOriginalName(),
+        ];
+    }
+
     private function extractFromPdf(string $url): array
     {
         $response = Http::timeout(self::TIMEOUT_SECONDS)
@@ -165,39 +184,42 @@ class AiSourceIngestionService
 
         $pdfContent = $response->body();
 
-        if (strpos($pdfContent, '%PDF') !== 0) {
-            throw new Exception('File bukan PDF yang valid.');
-        }
-
         if (strlen($pdfContent) > 5 * 1024 * 1024) {
             throw new Exception('Ukuran PDF terlalu besar (Maks 5MB).');
         }
 
+        return [
+            ...$this->parsePdfContent($pdfContent, null, 'PDF harus berupa dokumen berbasis teks dari URL publik. PDF hasil scan/foto belum dapat dibaca otomatis.'),
+            'source_type' => 'pdf',
+            'source_url' => $url,
+        ];
+    }
+
+    private function parsePdfContent(string $pdfContent, ?string $fallbackTitle, string $emptyTextMessage): array
+    {
+        if (strpos($pdfContent, '%PDF') !== 0) {
+            throw new Exception('File bukan PDF yang valid.');
+        }
+
         $parser = new Parser;
         $pdf = $parser->parseContent($pdfContent);
+        $cleanText = $this->cleanText($pdf->getText());
 
-        $text = $pdf->getText();
-        $cleanText = $this->cleanText($text);
-
-        $warnings = [];
         if (empty($cleanText)) {
-            $warnings[] = 'PDF mungkin berupa hasil scan/gambar sehingga teks tidak dapat dibaca otomatis.';
-            throw new Exception('PDF harus berupa dokumen berbasis teks dari URL publik. PDF hasil scan/foto belum dapat dibaca otomatis.');
+            throw new Exception($emptyTextMessage);
         }
 
         $details = $pdf->getDetails();
         $title = $details['Title'] ?? null;
-        if ($title === 'Untitled' || empty(trim($title))) {
-            $title = null;
+        if ($title === 'Untitled' || empty(trim((string) $title))) {
+            $title = $fallbackTitle;
         }
 
         return [
             'content' => mb_substr($cleanText, 0, self::MAX_CONTENT_LENGTH),
             'title' => $title,
-            'source_type' => 'pdf',
-            'source_url' => $url,
             'character_count' => mb_strlen($cleanText),
-            'warnings' => $warnings,
+            'warnings' => [],
         ];
     }
 

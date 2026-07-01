@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Ai\ExtractPdfUploadAiKnowledgeRequest;
 use App\Http\Requests\Ai\ExtractSourceAiKnowledgeRequest;
 use App\Http\Requests\Ai\ListAiKnowledgeItemsRequest;
 use App\Http\Requests\Ai\StoreAiKnowledgeItemRequest;
@@ -104,6 +105,24 @@ class AdminAiKnowledgeController extends Controller
                 'message' => 'Isi sumber tidak dapat diambil.',
                 'errors' => [
                     'source_url' => [$e->getMessage()],
+                ],
+            ], 422);
+        }
+    }
+
+    public function extractPdfUpload(ExtractPdfUploadAiKnowledgeRequest $request): JsonResponse
+    {
+        try {
+            return ApiResponse::success(
+                'Isi PDF berhasil diambil.',
+                $this->ingestionService->extractFromPdfUpload($request->file('file'))
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Isi PDF tidak dapat dibaca.',
+                'errors' => [
+                    'file' => [$e->getMessage()],
                 ],
             ], 422);
         }

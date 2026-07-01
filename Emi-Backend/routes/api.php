@@ -104,6 +104,7 @@ Route::prefix('v1')->group(function () {
         Route::get('dictionary/imports/{id}/errors', [DictionaryImportController::class, 'errors']);
         Route::post('dictionary/imports/{id}/confirm', [DictionaryImportController::class, 'confirm']);
         Route::post('ai/knowledge/extract-source', [AdminAiKnowledgeController::class, 'extractSource']);
+        Route::post('ai/knowledge/extract-pdf-upload', [AdminAiKnowledgeController::class, 'extractPdfUpload']);
         Route::get('ai/knowledge', [AdminAiKnowledgeController::class, 'index']);
         Route::post('ai/knowledge', [AdminAiKnowledgeController::class, 'store']);
         Route::get('ai/knowledge/{id}', [AdminAiKnowledgeController::class, 'show']);

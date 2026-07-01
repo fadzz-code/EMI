@@ -72,6 +72,23 @@ export const knowledgeBaseService = {
     return response.data;
   },
 
+  async extractPdfUpload(token: string, file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await apiClient.post<AiKnowledgeSourceExtraction>(
+      "/admin/ai/knowledge/extract-pdf-upload",
+      formData,
+      { token, timeoutMs: 60000 },
+    );
+
+    if (!response.data) {
+      throw new Error("Response ekstraksi PDF tidak tersedia.");
+    }
+
+    return response.data;
+  },
+
   async delete(token: string, itemId: string) {
     await apiClient.delete<[]>(`/admin/ai/knowledge/${itemId}`, { token });
   },

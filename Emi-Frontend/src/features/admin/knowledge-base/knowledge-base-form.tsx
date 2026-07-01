@@ -51,6 +51,8 @@ export function KnowledgeBaseForm({
 }) {
   const [form, setForm] = useState(() => formFromItem(item));
   const [isExtracting, setIsExtracting] = useState(false);
+  const [pdfSourceMode, setPdfSourceMode] = useState<"upload" | "url">("upload");
+  const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
   const [extractMessage, setExtractMessage] = useState<string | null>(null);
   const [extractError, setExtractError] = useState<string | null>(null);
 
@@ -73,11 +75,40 @@ export function KnowledgeBaseForm({
         ...current,
         content: result.content,
         title: current.title || result.title || current.title,
+        source_url: result.source_url ?? current.source_url,
       }));
       setExtractMessage("Isi sumber berhasil diambil. Periksa kembali konten sebelum menyimpan.");
     } catch (error) {
       const message = getFirstApiError(error);
       setExtractError(message || "Isi sumber tidak dapat diambil. Pastikan URL publik dapat diakses dan format sumber sesuai.");
+    } finally {
+      setIsExtracting(false);
+    }
+  }
+
+  async function extractPdfUpload() {
+    if (!token || !selectedPdfFile) {
+      return;
+    }
+
+    setIsExtracting(true);
+    setExtractMessage(null);
+    setExtractError(null);
+
+    try {
+      const result = await knowledgeBaseService.extractPdfUpload(token, selectedPdfFile);
+
+      setForm((current) => ({
+        ...current,
+        content: result.content,
+        source_type: "pdf",
+        source_url: result.source_url ?? current.source_url,
+        title: current.title || result.title || current.title,
+      }));
+      setExtractMessage("Isi PDF berhasil diambil. Periksa kembali konten sebelum menyimpan.");
+    } catch (error) {
+      const message = getFirstApiError(error);
+      setExtractError(message || "Isi PDF tidak dapat dibaca. Pastikan PDF berbasis teks dan bukan hasil scan/foto.");
     } finally {
       setIsExtracting(false);
     }
@@ -152,29 +183,78 @@ export function KnowledgeBaseForm({
           </Select>
         </FormField>
       </div>
-      <FormField label="URL Sumber">
-        <Input
-          onChange={(event) => setForm((current) => ({ ...current, source_url: event.target.value }))}
-          placeholder="https://contoh-sumber-resmi.test"
-          required={form.source_type === "link" || form.source_type === "pdf"}
-          type="url"
-          value={form.source_url}
-        />
-        {form.source_type === "link" ? (
-          <p className="mt-2 text-xs font-bold leading-5 text-slate-600">
-            Gunakan link artikel atau halaman publik yang dapat diakses tanpa login.
+      {form.source_type !== "pdf" ? (
+        <FormField label="URL Sumber">
+          <Input
+            onChange={(event) => setForm((current) => ({ ...current, source_url: event.target.value }))}
+            placeholder="https://contoh-sumber-resmi.test"
+            required={form.source_type === "link"}
+            type="url"
+            value={form.source_url}
+          />
+          {form.source_type === "link" ? (
+            <p className="mt-2 text-xs font-bold leading-5 text-slate-600">
+              Gunakan link artikel atau halaman publik yang dapat diakses tanpa login.
+            </p>
+          ) : null}
+        </FormField>
+      ) : null}
+      {form.source_type === "pdf" ? (
+        <div className="grid gap-3 rounded-lg border-2 border-ink bg-yellow-50 p-4 text-sm leading-6 text-yellow-950">
+          <p className="font-bold">PDF dapat diambil dari upload file lokal atau dari URL PDF publik.</p>
+          <p>
+            Upload PDF dari perangkat digunakan untuk mengambil isi PDF dari file lokal admin. PDF harus berbasis teks. PDF hasil scan/foto belum dapat dibaca otomatis. Setelah isi PDF diambil, admin tetap dapat mengoreksi Konten Pengetahuan sebelum dipublish.
           </p>
-        ) : null}
-        {form.source_type === "pdf" ? (
-          <p className="mt-2 text-xs font-bold leading-5 text-slate-600">
-            PDF harus berupa dokumen berbasis teks dari URL publik. PDF hasil scan/foto belum dapat dibaca otomatis. Pada versi ini, PDF dibaca dari URL PDF publik. Upload file PDF langsung belum aktif.
-          </p>
-        ) : null}
-      </FormField>
-      {form.source_type === "link" || form.source_type === "pdf" ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="flex items-center gap-2 font-bold">
+              <input
+                checked={pdfSourceMode === "upload"}
+                onChange={() => setPdfSourceMode("upload")}
+                type="radio"
+              />
+              Upload PDF dari perangkat
+            </label>
+            <label className="flex items-center gap-2 font-bold">
+              <input checked={pdfSourceMode === "url"} onChange={() => setPdfSourceMode("url")} type="radio" />
+              Ambil dari URL PDF publik
+            </label>
+          </div>
+          {pdfSourceMode === "upload" ? (
+            <div className="grid gap-3">
+              <Input
+                accept="application/pdf,.pdf"
+                onChange={(event) => setSelectedPdfFile(event.target.files?.[0] ?? null)}
+                type="file"
+              />
+              <div>
+                <Button disabled={isExtracting || !selectedPdfFile} onClick={extractPdfUpload} type="button" variant="secondary">
+                  {isExtracting ? "Membaca isi PDF..." : "Ambil Isi PDF"}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <FormField label="URL PDF Publik">
+              <Input
+                onChange={(event) => setForm((current) => ({ ...current, source_url: event.target.value }))}
+                placeholder="https://contoh-sumber-resmi.test/dokumen.pdf"
+                type="url"
+                value={form.source_url}
+              />
+              <div className="mt-3">
+                <Button disabled={isExtracting || !form.source_url.trim()} onClick={extractSource} type="button" variant="secondary">
+                  {isExtracting ? "Mengambil isi sumber..." : "Ambil Isi Sumber"}
+                </Button>
+              </div>
+            </FormField>
+          )}
+          {extractMessage ? <Alert tone="success">{extractMessage}</Alert> : null}
+          {extractError ? <Alert tone="error">{extractError}</Alert> : null}
+        </div>
+      ) : null}
+      {form.source_type === "link" ? (
         <div className="grid gap-3 rounded-lg border-2 border-ink bg-yellow-50 p-4 text-sm leading-6 text-yellow-950">
           <p className="font-bold">
-            PDF/link tidak otomatis digunakan chatbot hanya karena URL disimpan. Gunakan tombol &quot;Ambil Isi Sumber&quot; agar isi sumber masuk ke Konten Pengetahuan. Admin tetap dapat mengoreksi konten sebelum dipublish.
+            Link tidak otomatis digunakan chatbot hanya karena URL disimpan. Gunakan tombol &quot;Ambil Isi Sumber&quot; agar isi sumber masuk ke Konten Pengetahuan. Admin tetap dapat mengoreksi konten sebelum dipublish.
           </p>
           <div>
             <Button disabled={isExtracting || !form.source_url.trim()} onClick={extractSource} type="button" variant="secondary">

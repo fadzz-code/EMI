@@ -28,7 +28,8 @@ export type AiKnowledgeSourceExtraction = {
   title?: string | null;
   content: string;
   source_type: Extract<AiKnowledgeSourceType, "link" | "pdf">;
-  source_url: string;
+  source_url?: string | null;
+  original_filename?: string | null;
   character_count: number;
   warnings: string[];
 };
