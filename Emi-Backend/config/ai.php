@@ -10,6 +10,7 @@ return [
         'provider' => env('AI_EMBEDDING_PROVIDER', 'none'),
         'api_key' => env('AI_EMBEDDING_API_KEY'),
         'model' => env('AI_EMBEDDING_MODEL', 'gemini-embedding-001'),
+        'base_url' => env('AI_EMBEDDING_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta'),
         'dimensions' => (int) env('AI_EMBEDDING_DIMENSIONS', 768),
         'timeout_seconds' => (int) env('AI_EMBEDDING_TIMEOUT_SECONDS', 10),
     ],

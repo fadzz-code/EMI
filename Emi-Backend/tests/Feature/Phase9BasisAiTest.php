@@ -5,6 +5,9 @@ namespace Tests\Feature;
 use App\Models\AiKnowledgeItem;
 use App\Models\DictionaryEntry;
 use App\Models\User;
+use App\Services\Ai\EmbeddingProviderResolver;
+use App\Services\Ai\GeminiEmbeddingProvider;
+use App\Services\Ai\NullEmbeddingProvider;
 use App\Services\DictionaryNormalizer;
 use Database\Seeders\BasisAiDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -72,6 +75,138 @@ class Phase9BasisAiTest extends TestCase
         $this->assertSame('gemini-embedding-001', config('ai.embedding.model'));
         $this->assertSame(768, config('ai.embedding.dimensions'));
         $this->assertFalse(config('ai.vector_retrieval.enabled'));
+    }
+
+    public function test_default_embedding_resolver_returns_null_provider(): void
+    {
+        $provider = app(EmbeddingProviderResolver::class)->resolve();
+
+        $this->assertInstanceOf(NullEmbeddingProvider::class, $provider);
+        $this->assertFalse($provider->isAvailable());
+    }
+
+    public function test_null_embedding_provider_returns_failed_document_result(): void
+    {
+        $result = (new NullEmbeddingProvider)->embedDocument('Materi budaya Mekongga.');
+
+        $this->assertFalse($result->success);
+        $this->assertSame([], $result->vector);
+        $this->assertSame('document', $result->inputType);
+        $this->assertSame('Provider embedding belum dikonfigurasi.', $result->error);
+    }
+
+    public function test_null_embedding_provider_returns_failed_query_result(): void
+    {
+        $result = (new NullEmbeddingProvider)->embedQuery('Apa itu Mekongga?');
+
+        $this->assertFalse($result->success);
+        $this->assertSame([], $result->vector);
+        $this->assertSame('query', $result->inputType);
+        $this->assertSame('Provider embedding belum dikonfigurasi.', $result->error);
+    }
+
+    public function test_gemini_embedding_provider_is_unavailable_without_api_key(): void
+    {
+        $provider = $this->geminiEmbeddingProvider(null);
+
+        $this->assertFalse($provider->isAvailable());
+        $this->assertFalse($provider->embedDocument('Materi')->success);
+    }
+
+    public function test_gemini_embedding_provider_parses_mocked_document_response(): void
+    {
+        Http::fake([
+            'https://generativelanguage.googleapis.com/v1beta/*' => Http::response([
+                'embedding' => ['values' => [0.1, 0.2, 0.3]],
+            ]),
+        ]);
+
+        $result = $this->geminiEmbeddingProvider()->embedDocument('Materi budaya Mekongga.');
+
+        $this->assertTrue($result->success);
+        $this->assertSame([0.1, 0.2, 0.3], $result->vector);
+        $this->assertSame('gemini', $result->provider);
+        $this->assertSame('gemini-embedding-001', $result->model);
+        $this->assertSame(3, $result->dimensions);
+        $this->assertSame('document', $result->inputType);
+        $this->assertSame('RETRIEVAL_DOCUMENT', $result->metadata['task_type']);
+
+        Http::assertSent(fn (Request $request): bool => $request->url() === 'https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=test-key'
+            && $request->data()['taskType'] === 'RETRIEVAL_DOCUMENT'
+            && $request->data()['outputDimensionality'] === 3);
+    }
+
+    public function test_gemini_embedding_provider_parses_mocked_query_response(): void
+    {
+        Http::fake([
+            'https://generativelanguage.googleapis.com/v1beta/*' => Http::response([
+                'embedding' => ['values' => ['0.4', '0.5', '0.6']],
+            ]),
+        ]);
+
+        $result = $this->geminiEmbeddingProvider()->embedQuery('Apa itu Mekongga?');
+
+        $this->assertTrue($result->success);
+        $this->assertSame([0.4, 0.5, 0.6], $result->vector);
+        $this->assertSame('query', $result->inputType);
+        $this->assertSame('RETRIEVAL_QUERY', $result->metadata['task_type']);
+
+        Http::assertSent(fn (Request $request): bool => $request->data()['taskType'] === 'RETRIEVAL_QUERY');
+    }
+
+    public function test_gemini_embedding_provider_returns_failure_on_non_success_response(): void
+    {
+        Http::fake([
+            'https://generativelanguage.googleapis.com/v1beta/*' => Http::response(['error' => 'failed'], 500),
+        ]);
+
+        $result = $this->geminiEmbeddingProvider()->embedDocument('Materi');
+
+        $this->assertFalse($result->success);
+        $this->assertSame('Provider embedding mengembalikan respons gagal.', $result->error);
+        $this->assertSame(500, $result->metadata['status']);
+    }
+
+    public function test_gemini_embedding_provider_returns_failure_on_malformed_response(): void
+    {
+        Http::fake([
+            'https://generativelanguage.googleapis.com/v1beta/*' => Http::response(['embedding' => ['values' => []]]),
+        ]);
+
+        $result = $this->geminiEmbeddingProvider()->embedDocument('Materi');
+
+        $this->assertFalse($result->success);
+        $this->assertSame('Respons embedding tidak valid.', $result->error);
+    }
+
+    public function test_gemini_embedding_provider_returns_failure_on_dimension_mismatch(): void
+    {
+        Http::fake([
+            'https://generativelanguage.googleapis.com/v1beta/*' => Http::response([
+                'embedding' => ['values' => [0.1, 0.2]],
+            ]),
+        ]);
+
+        $result = $this->geminiEmbeddingProvider()->embedDocument('Materi');
+
+        $this->assertFalse($result->success);
+        $this->assertSame('Dimensi embedding tidak sesuai konfigurasi.', $result->error);
+        $this->assertSame(2, $result->metadata['actual_dimensions']);
+    }
+
+    public function test_embedding_provider_tests_do_not_allow_real_http_requests(): void
+    {
+        Http::preventStrayRequests();
+        Http::fake([
+            'https://generativelanguage.googleapis.com/v1beta/*' => Http::response([
+                'embedding' => ['values' => [0.1, 0.2, 0.3]],
+            ]),
+        ]);
+
+        $result = $this->geminiEmbeddingProvider()->embedQuery('Apa itu Mekongga?');
+
+        $this->assertTrue($result->success);
+        Http::assertSentCount(1);
     }
 
     public function test_ai_vector_doctor_command_runs_without_postgresql(): void
@@ -526,6 +661,18 @@ class Phase9BasisAiTest extends TestCase
                 && ! str_contains($prompt, 'Nama Siswa Rahasia')
                 && ! str_contains($prompt, 'rahasia@example.com');
         });
+    }
+
+    private function geminiEmbeddingProvider(?string $apiKey = 'test-key'): GeminiEmbeddingProvider
+    {
+        return new GeminiEmbeddingProvider(
+            provider: 'gemini',
+            apiKey: $apiKey,
+            model: 'gemini-embedding-001',
+            baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+            dimensions: 3,
+            timeoutSeconds: 1,
+        );
     }
 
     private function createDictionaryEntry(string $indonesia, string $english, string $mekongga, string $status = 'active'): DictionaryEntry
