@@ -66,6 +66,28 @@ class Phase9BasisAiTest extends TestCase
         $this->assertSoftDeleted('ai_knowledge_items', ['id' => $item->id]);
     }
 
+    public function test_ai_vector_config_defaults_are_safe(): void
+    {
+        $this->assertSame('none', config('ai.embedding.provider'));
+        $this->assertSame('gemini-embedding-001', config('ai.embedding.model'));
+        $this->assertSame(768, config('ai.embedding.dimensions'));
+        $this->assertFalse(config('ai.vector_retrieval.enabled'));
+    }
+
+    public function test_ai_vector_doctor_command_runs_without_postgresql(): void
+    {
+        config([
+            'database.default' => 'sqlite',
+            'database.connections.sqlite.driver' => 'sqlite',
+            'database.connections.sqlite.database' => ':memory:',
+        ]);
+
+        $this->artisan('ai:vector:doctor')
+            ->expectsOutputToContain('Pemeriksaan Vector RAG EMI')
+            ->expectsOutputToContain('Vector retrieval membutuhkan PostgreSQL + pgvector')
+            ->assertSuccessful();
+    }
+
     public function test_student_chatbot_returns_fallback_without_published_match(): void
     {
         $student = User::factory()->student()->approved()->create();
