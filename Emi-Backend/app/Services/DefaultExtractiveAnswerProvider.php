@@ -49,7 +49,7 @@ class DefaultExtractiveAnswerProvider
 
         return [
             'answer' => $answer,
-            'source' => $source ? $this->sourceFromChunk($source['item'], $source['chunk']) : $this->sourceFromItem($item),
+            'source' => $source ? $this->sourceFromChunk($source['item'], $source['chunk'], $source) : $this->sourceFromItem($item),
             'sources' => $this->sourcesFromChunks($chunks),
             'matched' => true,
             'mode' => $mode,
@@ -69,7 +69,7 @@ class DefaultExtractiveAnswerProvider
 
         return [
             'answer' => 'Berdasarkan Basis AI EMI, berikut informasi yang ditemukan: '.$this->excerpt($best['chunk']->content, $searchKeywords),
-            'source' => $this->sourceFromChunk($best['item'], $best['chunk']),
+            'source' => $this->sourceFromChunk($best['item'], $best['chunk'], $best),
             'sources' => $this->sourcesFromChunks($chunks),
             'matched' => true,
             'mode' => 'default_extractive',
@@ -90,18 +90,21 @@ class DefaultExtractiveAnswerProvider
         ];
     }
 
-    private function sourceFromChunk(AiKnowledgeItem $item, AiKnowledgeChunk $chunk): array
+    private function sourceFromChunk(AiKnowledgeItem $item, AiKnowledgeChunk $chunk, array $metadata = []): array
     {
-        return [
+        return array_filter([
             ...$this->sourceFromItem($item),
             'chunk_id' => $chunk->id,
             'chunk_index' => $chunk->chunk_index,
-        ];
+            'retrieval_mode' => $metadata['retrieval_mode'] ?? null,
+            'similarity_score' => $metadata['similarity_score'] ?? null,
+            'distance' => $metadata['distance'] ?? null,
+        ], fn ($value): bool => $value !== null);
     }
 
     private function sourcesFromChunks(array $chunks): array
     {
-        return collect($chunks)->map(fn (array $chunk): array => $this->sourceFromChunk($chunk['item'], $chunk['chunk']))->values()->all();
+        return collect($chunks)->map(fn (array $chunk): array => $this->sourceFromChunk($chunk['item'], $chunk['chunk'], $chunk))->values()->all();
     }
 
     private function excerpt(string $content, Collection $keywords): string

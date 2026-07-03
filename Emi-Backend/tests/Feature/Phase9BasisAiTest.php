@@ -2,16 +2,21 @@
 
 namespace Tests\Feature;
 
+use App\Models\AiKnowledgeChunk;
 use App\Models\AiKnowledgeItem;
 use App\Models\DictionaryEntry;
 use App\Models\User;
+use App\Services\Ai\EmbeddingProviderInterface;
 use App\Services\Ai\EmbeddingProviderResolver;
+use App\Services\Ai\EmbeddingResult;
 use App\Services\Ai\GeminiEmbeddingProvider;
 use App\Services\Ai\NullEmbeddingProvider;
 use App\Services\DictionaryNormalizer;
+use App\Services\VectorChunkRetriever;
 use Database\Seeders\BasisAiDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -661,6 +666,295 @@ class Phase9BasisAiTest extends TestCase
                 && ! str_contains($prompt, 'Nama Siswa Rahasia')
                 && ! str_contains($prompt, 'rahasia@example.com');
         });
+    }
+
+    public function test_vector_retriever_is_not_called_when_disabled(): void
+    {
+        config(['ai.vector_retrieval.enabled' => false]);
+        $student = User::factory()->student()->approved()->create();
+        AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Kosakata monga',
+            'content' => 'Kata monga digunakan untuk menjelaskan kegiatan makan sehari-hari.',
+        ]);
+        $this->app->instance(VectorChunkRetriever::class, new class extends VectorChunkRetriever
+        {
+            public function __construct() {}
+
+            public function retrieve(string $message): array
+            {
+                throw new \RuntimeException('Vector retriever should not be called.');
+            }
+        });
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'monga makan',
+        ])->assertOk()
+            ->assertJsonPath('data.matched', true)
+            ->assertJsonPath('data.source.retrieval_mode', 'keyword');
+    }
+
+    public function test_dictionary_short_circuits_before_vector_retrieval(): void
+    {
+        config(['ai.vector_retrieval.enabled' => true]);
+        $student = User::factory()->student()->approved()->create();
+        $this->createDictionaryEntry('air', 'water', 'owai');
+        $this->app->instance(VectorChunkRetriever::class, new class extends VectorChunkRetriever
+        {
+            public function __construct() {}
+
+            public function retrieve(string $message): array
+            {
+                throw new \RuntimeException('Vector retriever should not be called.');
+            }
+        });
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'bahasa Mekongga dari air',
+        ])->assertOk()
+            ->assertJsonPath('data.mode', 'dictionary')
+            ->assertJsonPath('data.provider', 'dictionary');
+    }
+
+    public function test_vector_enabled_with_unavailable_provider_falls_back_to_keyword(): void
+    {
+        config(['ai.vector_retrieval.enabled' => true, 'ai.embedding.provider' => 'none']);
+        $student = User::factory()->student()->approved()->create();
+        AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Kosakata monga',
+            'content' => 'Kata monga digunakan untuk menjelaskan kegiatan makan sehari-hari.',
+        ]);
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'monga makan',
+        ])->assertOk()
+            ->assertJsonPath('data.matched', true)
+            ->assertJsonPath('data.source.retrieval_mode', 'keyword');
+    }
+
+    public function test_vector_enabled_with_query_embedding_failure_falls_back_to_keyword(): void
+    {
+        config(['ai.vector_retrieval.enabled' => true]);
+        $this->bindEmbeddingProvider(EmbeddingResult::failure('Gagal query.', 'fake', 'fake-model', 3));
+        $student = User::factory()->student()->approved()->create();
+        AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Kosakata monga',
+            'content' => 'Kata monga digunakan untuk menjelaskan kegiatan makan sehari-hari.',
+        ]);
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'monga makan',
+        ])->assertOk()
+            ->assertJsonPath('data.matched', true)
+            ->assertJsonPath('data.source.retrieval_mode', 'keyword');
+    }
+
+    public function test_vector_sql_failure_falls_back_to_keyword(): void
+    {
+        config(['ai.vector_retrieval.enabled' => true]);
+        $student = User::factory()->student()->approved()->create();
+        AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Kosakata monga',
+            'content' => 'Kata monga digunakan untuk menjelaskan kegiatan makan sehari-hari.',
+        ]);
+        $this->app->instance(VectorChunkRetriever::class, new class extends VectorChunkRetriever
+        {
+            public function __construct() {}
+
+            public function retrieve(string $message): array
+            {
+                return [];
+            }
+        });
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'monga makan',
+        ])->assertOk()
+            ->assertJsonPath('data.matched', true)
+            ->assertJsonPath('data.source.retrieval_mode', 'keyword');
+    }
+
+    public function test_vector_retriever_returns_published_embedded_chunks_only(): void
+    {
+        if (! $this->canRunVectorSql()) {
+            $this->markTestSkipped('pgvector is not available for this test database.');
+        }
+
+        config(['ai.vector_retrieval.enabled' => true]);
+        $this->bindEmbeddingProvider(EmbeddingResult::success(array_fill(0, 768, 0.1), 'fake', 'fake-model', 768, 'query'));
+        $published = $this->embeddedChunk('published', '[0.1,'.implode(',', array_fill(0, 767, '0.1')).']');
+        $this->embeddedChunk('draft', '[0.1,'.implode(',', array_fill(0, 767, '0.1')).']');
+        $this->embeddedChunk('archived', '[0.1,'.implode(',', array_fill(0, 767, '0.1')).']');
+
+        $results = app(VectorChunkRetriever::class)->retrieve('materi budaya');
+
+        $this->assertSame([$published->id], collect($results)->pluck('chunk.id')->all());
+        $this->assertSame('vector', $results[0]['retrieval_mode']);
+    }
+
+    public function test_vector_and_keyword_results_are_deduplicated(): void
+    {
+        config(['ai.vector_retrieval.enabled' => true]);
+        $student = User::factory()->student()->approved()->create();
+        $item = AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Kosakata monga',
+            'content' => 'Kata monga digunakan untuk menjelaskan kegiatan makan sehari-hari.',
+        ]);
+        $chunk = $item->chunks()->create([
+            'chunk_index' => 0,
+            'content' => $item->content,
+            'content_hash' => hash('sha256', $item->content),
+            'character_count' => mb_strlen($item->content),
+            'token_estimate' => 10,
+            'metadata' => [],
+        ]);
+        $this->app->instance(VectorChunkRetriever::class, new class($item, $chunk) extends VectorChunkRetriever
+        {
+            public function __construct(private readonly AiKnowledgeItem $item, private readonly AiKnowledgeChunk $chunk) {}
+
+            public function retrieve(string $message): array
+            {
+                return [[
+                    'item' => $this->item,
+                    'chunk' => $this->chunk,
+                    'confidence' => 90,
+                    'keywords' => collect(),
+                    'retrieval_mode' => 'vector',
+                    'similarity_score' => 0.9,
+                    'distance' => 0.1,
+                ]];
+            }
+        });
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'monga makan',
+        ])->assertOk()
+            ->assertJsonCount(1, 'data.sources')
+            ->assertJsonPath('data.source.retrieval_mode', 'vector');
+    }
+
+    public function test_ai_provider_receives_merged_selected_chunks_only(): void
+    {
+        config(['ai.vector_retrieval.enabled' => true, 'ai.free_provider' => 'groq', 'ai.free_api_key' => 'test-key']);
+        Http::fake([
+            'api.groq.com/*' => Http::response([
+                'choices' => [
+                    ['message' => ['content' => 'Jawaban dari referensi terpilih.']],
+                ],
+            ]),
+        ]);
+        $student = User::factory()->student()->approved()->create();
+        $vectorItem = AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Ritual mosehe',
+            'content' => 'Ritual mosehe adalah upacara penyucian wilayah.',
+        ]);
+        $keywordItem = AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Kosakata monga',
+            'content' => 'Kata monga digunakan untuk menjelaskan kegiatan makan sehari-hari.',
+        ]);
+        AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Dokumen tidak terpilih',
+            'content' => 'Konten ini tidak boleh masuk prompt provider.',
+        ]);
+        $vectorChunk = $vectorItem->chunks()->create([
+            'chunk_index' => 0,
+            'content' => $vectorItem->content,
+            'content_hash' => hash('sha256', $vectorItem->content),
+            'character_count' => mb_strlen($vectorItem->content),
+            'token_estimate' => 10,
+            'metadata' => [],
+        ]);
+        $this->app->instance(VectorChunkRetriever::class, new class($vectorItem, $vectorChunk) extends VectorChunkRetriever
+        {
+            public function __construct(private readonly AiKnowledgeItem $item, private readonly AiKnowledgeChunk $chunk) {}
+
+            public function retrieve(string $message): array
+            {
+                return [[
+                    'item' => $this->item,
+                    'chunk' => $this->chunk,
+                    'confidence' => 85,
+                    'keywords' => collect(),
+                    'retrieval_mode' => 'vector',
+                    'similarity_score' => 0.85,
+                    'distance' => 0.15,
+                ]];
+            }
+        });
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'monga makan',
+        ])->assertOk()
+            ->assertJsonPath('data.mode', 'free_ai');
+
+        Http::assertSent(function (Request $request): bool {
+            $prompt = $request->data()['messages'][0]['content'] ?? '';
+
+            return str_contains($prompt, 'Ritual mosehe adalah upacara penyucian wilayah.')
+                && str_contains($prompt, 'Kata monga digunakan untuk menjelaskan kegiatan makan sehari-hari.')
+                && ! str_contains($prompt, 'Konten ini tidak boleh masuk prompt provider.');
+        });
+    }
+
+    private function bindEmbeddingProvider(EmbeddingResult $result, bool $available = true): void
+    {
+        $provider = new class($result, $available) implements EmbeddingProviderInterface
+        {
+            public function __construct(private readonly EmbeddingResult $result, private readonly bool $available) {}
+
+            public function isAvailable(): bool
+            {
+                return $this->available;
+            }
+
+            public function embedDocument(string $text): EmbeddingResult
+            {
+                return $this->result;
+            }
+
+            public function embedQuery(string $text): EmbeddingResult
+            {
+                return $this->result;
+            }
+        };
+
+        $this->app->instance(EmbeddingProviderResolver::class, new class($provider) extends EmbeddingProviderResolver
+        {
+            public function __construct(private readonly EmbeddingProviderInterface $provider) {}
+
+            public function resolve(): EmbeddingProviderInterface
+            {
+                return $this->provider;
+            }
+        });
+    }
+
+    private function canRunVectorSql(): bool
+    {
+        try {
+            return DB::getDriverName() === 'pgsql'
+                && (bool) (DB::selectOne("select exists (select 1 from pg_extension where extname = 'vector') as installed")->installed ?? false);
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    private function embeddedChunk(string $status, string $embedding): AiKnowledgeChunk
+    {
+        $item = AiKnowledgeItem::factory()->create([
+            'status' => $status,
+            'content' => 'Materi budaya lokal yang sudah memiliki embedding.',
+        ]);
+        $chunk = $item->chunks()->create([
+            'chunk_index' => 0,
+            'content' => $item->content,
+            'content_hash' => hash('sha256', $item->content),
+            'character_count' => mb_strlen($item->content),
+            'token_estimate' => 10,
+            'metadata' => [],
+        ]);
+        DB::table('ai_knowledge_chunks')->where('id', $chunk->id)->update(['embedding' => $embedding]);
+
+        return $chunk->refresh();
     }
 
     private function geminiEmbeddingProvider(?string $apiKey = 'test-key'): GeminiEmbeddingProvider
