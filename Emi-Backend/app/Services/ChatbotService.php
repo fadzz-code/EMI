@@ -23,10 +23,17 @@ class ChatbotService
         private readonly DefaultExtractiveAnswerProvider $defaultProvider,
         private readonly AiAnswerProviderResolver $providerResolver,
         private readonly AiKnowledgeChunkingService $chunkingService,
+        private readonly DictionaryRetriever $dictionaryRetriever,
     ) {}
 
     public function respond(User $student, string $message): array
     {
+        $dictionaryMatch = $this->dictionaryRetriever->retrieve($message);
+
+        if ($dictionaryMatch !== null) {
+            return $dictionaryMatch;
+        }
+
         $match = $this->findBestPublishedReferences($message);
 
         if ($match === null) {

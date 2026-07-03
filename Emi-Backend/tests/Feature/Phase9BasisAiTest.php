@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\AiKnowledgeItem;
+use App\Models\DictionaryEntry;
 use App\Models\User;
+use App\Services\DictionaryNormalizer;
 use Database\Seeders\BasisAiDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -76,6 +78,110 @@ class Phase9BasisAiTest extends TestCase
             ->assertJsonPath('data.matched', false)
             ->assertJsonPath('data.mode', 'default_extractive')
             ->assertJsonPath('data.provider', 'default');
+    }
+
+    public function test_student_chatbot_answers_dictionary_exact_indonesian_match(): void
+    {
+        $student = User::factory()->student()->approved()->create();
+        $entry = $this->createDictionaryEntry('air', 'water', 'owai');
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'bahasa Mekongga dari air',
+        ])->assertOk()
+            ->assertJsonPath('data.answer', 'Dalam Kamus EMI, kata "air" memiliki padanan Bahasa Mekongga: "owai".')
+            ->assertJsonPath('data.source.title', 'Kamus EMI')
+            ->assertJsonPath('data.source.source_type', 'dictionary')
+            ->assertJsonPath('data.source.dictionary_entry_id', $entry->id)
+            ->assertJsonPath('data.matched', true)
+            ->assertJsonPath('data.mode', 'dictionary')
+            ->assertJsonPath('data.provider', 'dictionary')
+            ->assertJsonPath('data.confidence', 100);
+    }
+
+    public function test_student_chatbot_answers_arti_kata_from_dictionary_exact_indonesian_match(): void
+    {
+        $student = User::factory()->student()->approved()->create();
+        $this->createDictionaryEntry('makan', 'eat', 'monga');
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'arti kata makan',
+        ])->assertOk()
+            ->assertJsonPath('data.answer', 'Dalam Kamus EMI, kata "makan" memiliki padanan Bahasa Mekongga: "monga".')
+            ->assertJsonPath('data.mode', 'dictionary')
+            ->assertJsonPath('data.provider', 'dictionary');
+    }
+
+    public function test_dictionary_intent_without_match_does_not_invent_translation(): void
+    {
+        $student = User::factory()->student()->approved()->create();
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'bahasa Mekongga dari galaksi',
+        ])->assertOk()
+            ->assertJsonPath('data.answer', 'Saya belum menemukan jawaban dari Basis AI yang tersedia.')
+            ->assertJsonPath('data.matched', false)
+            ->assertJsonPath('data.provider', 'default');
+    }
+
+    public function test_missing_dictionary_word_falls_back_to_basis_ai_chunks(): void
+    {
+        $student = User::factory()->student()->approved()->create();
+        $item = AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Kosakata galaksi',
+            'content' => 'Galaksi dipakai sebagai contoh kata serapan dalam materi Basis AI.',
+        ]);
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'bahasa Mekongga dari galaksi',
+        ])->assertOk()
+            ->assertJsonPath('data.matched', true)
+            ->assertJsonPath('data.source.id', $item->id)
+            ->assertJsonPath('data.mode', 'default_extractive');
+    }
+
+    public function test_learning_method_kosakata_question_does_not_trigger_dictionary_mode(): void
+    {
+        $student = User::factory()->student()->approved()->create();
+        $item = AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Belajar Bahasa Mekongga',
+            'content' => 'Cara belajar kosakata Mekongga dimulai dari membaca kata lalu latihan percakapan.',
+        ]);
+        $this->createDictionaryEntry('kosakata', 'vocabulary', 'kosakata');
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'bagaimana cara belajar kosakata Mekongga',
+        ])->assertOk()
+            ->assertJsonPath('data.matched', true)
+            ->assertJsonPath('data.source.id', $item->id)
+            ->assertJsonPath('data.mode', 'default_extractive');
+    }
+
+    public function test_dictionary_answer_does_not_call_free_ai_provider(): void
+    {
+        config(['ai.free_provider' => 'groq', 'ai.free_api_key' => 'test-key']);
+        Http::fake();
+        $student = User::factory()->student()->approved()->create();
+        $this->createDictionaryEntry('minum', 'drink', 'inahu');
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'apa bahasa Mekongga dari minum',
+        ])->assertOk()
+            ->assertJsonPath('data.mode', 'dictionary')
+            ->assertJsonPath('data.provider', 'dictionary');
+
+        Http::assertNothingSent();
+    }
+
+    public function test_inactive_dictionary_entries_are_ignored(): void
+    {
+        $student = User::factory()->student()->approved()->create();
+        $this->createDictionaryEntry('air', 'water', 'owai', 'inactive');
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'bahasa Mekongga dari air',
+        ])->assertOk()
+            ->assertJsonPath('data.answer', 'Saya belum menemukan jawaban dari Basis AI yang tersedia.')
+            ->assertJsonPath('data.matched', false);
     }
 
     public function test_student_chatbot_returns_matched_answer_source_and_default_provider(): void
@@ -398,6 +504,21 @@ class Phase9BasisAiTest extends TestCase
                 && ! str_contains($prompt, 'Nama Siswa Rahasia')
                 && ! str_contains($prompt, 'rahasia@example.com');
         });
+    }
+
+    private function createDictionaryEntry(string $indonesia, string $english, string $mekongga, string $status = 'active'): DictionaryEntry
+    {
+        $normalizer = app(DictionaryNormalizer::class);
+
+        return DictionaryEntry::factory()->create([
+            'indonesia' => $indonesia,
+            'english' => $english,
+            'mekongga' => $mekongga,
+            'indonesia_normalized' => $normalizer->normalize($indonesia),
+            'english_normalized' => $normalizer->normalize($english),
+            'mekongga_normalized' => $normalizer->normalize($mekongga),
+            'status' => $status,
+        ]);
     }
 
     private function tokenFor(User $user): string
