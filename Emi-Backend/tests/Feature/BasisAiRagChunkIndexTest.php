@@ -5,10 +5,16 @@ namespace Tests\Feature;
 use App\Models\AiKnowledgeChunk;
 use App\Models\AiKnowledgeItem;
 use App\Models\User;
+use App\Services\Ai\EmbeddingProviderInterface;
+use App\Services\Ai\EmbeddingProviderResolver;
+use App\Services\Ai\EmbeddingResult;
 use App\Services\AiKnowledgeChunkingService;
+use App\Services\AiKnowledgeEmbeddingService;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class BasisAiRagChunkIndexTest extends TestCase
@@ -151,6 +157,202 @@ class BasisAiRagChunkIndexTest extends TestCase
                 && ! str_contains($prompt, str_repeat('Bagian awal tidak relevan dan tidak boleh dikirim penuh. ', 20))
                 && ! str_contains($prompt, str_repeat('Bagian akhir tidak relevan dan tidak boleh dikirim penuh. ', 20));
         });
+    }
+
+    public function test_embedding_metadata_fields_are_fillable_and_casted(): void
+    {
+        $chunk = new AiKnowledgeChunk([
+            'embedding_provider' => 'fake',
+            'embedding_model' => 'fake-model',
+            'embedding_dimensions' => 768,
+            'embedded_at' => now(),
+            'embedding_hash' => 'hash',
+            'embedding_error' => null,
+        ]);
+
+        $this->assertSame('fake', $chunk->embedding_provider);
+        $this->assertSame('integer', $chunk->getCasts()['embedding_dimensions']);
+        $this->assertSame('datetime', $chunk->getCasts()['embedded_at']);
+    }
+
+    public function test_embed_command_exists_and_exits_gracefully_when_provider_is_none(): void
+    {
+        $this->enableEmbeddingColumn();
+        config(['ai.embedding.provider' => 'none']);
+
+        $this->artisan('ai:knowledge:embed')
+            ->expectsOutput('Embedding Basis AI EMI')
+            ->expectsOutput('Provider embedding belum dikonfigurasi atau API key belum tersedia.')
+            ->assertExitCode(0);
+    }
+
+    public function test_embed_command_exits_gracefully_when_vector_storage_is_unavailable(): void
+    {
+        $this->app->instance(AiKnowledgeEmbeddingService::class, new class extends AiKnowledgeEmbeddingService
+        {
+            public function __construct() {}
+
+            public function vectorStorageAvailable(): bool
+            {
+                return false;
+            }
+
+            public function providerAvailable(): bool
+            {
+                return true;
+            }
+        });
+
+        $this->artisan('ai:knowledge:embed')
+            ->expectsOutput('Embedding Basis AI EMI')
+            ->expectsOutput('Kolom embedding belum tersedia. Jalankan migration pada PostgreSQL dengan pgvector aktif.')
+            ->assertExitCode(0);
+    }
+
+    public function test_embedding_service_stores_mocked_vector_and_metadata(): void
+    {
+        $this->enableEmbeddingColumn();
+        $this->bindFakeEmbeddingProvider(EmbeddingResult::success(array_fill(0, 768, 0.1), 'fake', 'fake-model', 768, 'document'));
+        $chunk = $this->makeChunk();
+
+        $result = app(AiKnowledgeEmbeddingService::class)->embed($chunk);
+
+        $this->assertSame('succeeded', $result['status']);
+        $chunk->refresh();
+        $this->assertStringStartsWith('[0.1,0.1,0.1', $chunk->embedding);
+        $this->assertSame('fake', $chunk->embedding_provider);
+        $this->assertSame('fake-model', $chunk->embedding_model);
+        $this->assertSame(768, $chunk->embedding_dimensions);
+        $this->assertNotNull($chunk->embedded_at);
+        $this->assertNotNull($chunk->embedding_hash);
+        $this->assertNull($chunk->embedding_error);
+    }
+
+    public function test_embedding_service_stores_error_when_provider_fails(): void
+    {
+        $this->enableEmbeddingColumn();
+        $this->bindFakeEmbeddingProvider(EmbeddingResult::failure('Gagal palsu.', 'fake', 'fake-model', 3));
+        $chunk = $this->makeChunk();
+
+        $result = app(AiKnowledgeEmbeddingService::class)->embed($chunk);
+
+        $this->assertSame('failed', $result['status']);
+        $this->assertSame('Gagal palsu.', $chunk->refresh()->embedding_error);
+    }
+
+    public function test_embedding_service_skips_unchanged_chunks_by_hash(): void
+    {
+        $this->enableEmbeddingColumn();
+        $this->bindFakeEmbeddingProvider(EmbeddingResult::success(array_fill(0, 768, 0.1), 'fake', 'fake-model', 768, 'document'));
+        $chunk = $this->makeChunk();
+        $service = app(AiKnowledgeEmbeddingService::class);
+        $service->embed($chunk);
+
+        $result = $service->embed($chunk->refresh());
+
+        $this->assertSame('skipped', $result['status']);
+    }
+
+    public function test_force_reembeds_unchanged_chunks(): void
+    {
+        $this->enableEmbeddingColumn();
+        $this->bindFakeEmbeddingProvider(EmbeddingResult::success(array_fill(0, 768, 0.1), 'fake', 'fake-model', 768, 'document'));
+        $chunk = $this->makeChunk();
+        $service = app(AiKnowledgeEmbeddingService::class);
+        $service->embed($chunk);
+
+        $result = $service->embed($chunk->refresh(), true);
+
+        $this->assertSame('succeeded', $result['status']);
+    }
+
+    public function test_embed_command_limit_limits_processed_chunks(): void
+    {
+        $this->enableEmbeddingColumn();
+        $this->bindFakeEmbeddingProvider(EmbeddingResult::success(array_fill(0, 768, 0.1), 'fake', 'fake-model', 768, 'document'));
+        $this->makeChunk();
+        $this->makeChunk('Konten kedua yang cukup panjang untuk embedding Basis AI EMI.');
+
+        $this->artisan('ai:knowledge:embed --limit=1')
+            ->expectsOutput('- Chunk diproses: 1')
+            ->assertExitCode(0);
+    }
+
+    public function test_reindex_without_embed_keeps_current_behavior(): void
+    {
+        AiKnowledgeItem::factory()->count(2)->create();
+
+        $this->artisan('ai:knowledge:reindex')
+            ->expectsOutputToContain('Basis AI reindex selesai.')
+            ->doesntExpectOutput('Embedding dilewati karena provider embedding atau kolom vector belum tersedia.')
+            ->assertExitCode(0);
+    }
+
+    public function test_reindex_with_embed_does_not_fail_when_provider_unavailable(): void
+    {
+        AiKnowledgeItem::factory()->create();
+
+        $this->artisan('ai:knowledge:reindex --embed')
+            ->expectsOutputToContain('Basis AI reindex selesai.')
+            ->expectsOutput('Embedding dilewati karena provider embedding atau kolom vector belum tersedia.')
+            ->assertExitCode(0);
+    }
+
+    private function enableEmbeddingColumn(): void
+    {
+        if (! Schema::hasColumn('ai_knowledge_chunks', 'embedding')) {
+            Schema::table('ai_knowledge_chunks', function (Blueprint $table) {
+                $table->text('embedding')->nullable();
+            });
+        }
+    }
+
+    private function bindFakeEmbeddingProvider(EmbeddingResult $result, bool $available = true): void
+    {
+        $provider = new class($result, $available) implements EmbeddingProviderInterface
+        {
+            public function __construct(private readonly EmbeddingResult $result, private readonly bool $available) {}
+
+            public function isAvailable(): bool
+            {
+                return $this->available;
+            }
+
+            public function embedDocument(string $text): EmbeddingResult
+            {
+                return $this->result;
+            }
+
+            public function embedQuery(string $text): EmbeddingResult
+            {
+                return $this->result;
+            }
+        };
+
+        $this->app->instance(EmbeddingProviderResolver::class, new class($provider) extends EmbeddingProviderResolver
+        {
+            public function __construct(private readonly EmbeddingProviderInterface $provider) {}
+
+            public function resolve(): EmbeddingProviderInterface
+            {
+                return $this->provider;
+            }
+        });
+    }
+
+    private function makeChunk(string $content = 'Konten pengetahuan yang cukup panjang untuk embedding Basis AI EMI.'): AiKnowledgeChunk
+    {
+        $item = AiKnowledgeItem::factory()->create(['content' => $content]);
+
+        return AiKnowledgeChunk::query()->create([
+            'ai_knowledge_item_id' => $item->id,
+            'chunk_index' => 0,
+            'content' => $content,
+            'content_hash' => hash('sha256', $content),
+            'character_count' => mb_strlen($content),
+            'token_estimate' => 10,
+            'metadata' => [],
+        ]);
     }
 
     private function tokenFor(User $user): string

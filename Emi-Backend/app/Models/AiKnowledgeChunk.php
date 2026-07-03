@@ -18,12 +18,21 @@ class AiKnowledgeChunk extends Model
         'character_count',
         'token_estimate',
         'metadata',
+        'embedding',
+        'embedding_provider',
+        'embedding_model',
+        'embedding_dimensions',
+        'embedded_at',
+        'embedding_hash',
+        'embedding_error',
     ];
 
     protected function casts(): array
     {
         return [
             'metadata' => 'array',
+            'embedded_at' => 'datetime',
+            'embedding_dimensions' => 'integer',
         ];
     }
 
