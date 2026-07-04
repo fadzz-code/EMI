@@ -67,8 +67,14 @@ class DefaultExtractiveAnswerProvider
         $best = $chunks[0];
         $searchKeywords = $keywords ?? $this->keywords($message);
 
+        $excerpt = $this->excerpt($best['chunk']->content, $searchKeywords);
+
+        if ($excerpt === '') {
+            return $this->answer(null, $message);
+        }
+
         return [
-            'answer' => 'Berdasarkan Basis AI EMI, berikut informasi yang ditemukan: '.$this->excerpt($best['chunk']->content, $searchKeywords),
+            'answer' => 'Berdasarkan Basis AI EMI, berikut informasi yang ditemukan: '.$excerpt,
             'source' => $this->sourceFromChunk($best['item'], $best['chunk'], $best),
             'sources' => $this->sourcesFromChunks($chunks),
             'matched' => true,
@@ -101,6 +107,7 @@ class DefaultExtractiveAnswerProvider
             'page_number' => $chunkMetadata['page_number'] ?? null,
             'page_start' => $chunkMetadata['page_start'] ?? null,
             'page_end' => $chunkMetadata['page_end'] ?? null,
+            'page_type' => $chunkMetadata['page_type'] ?? null,
             'retrieval_mode' => $metadata['retrieval_mode'] ?? null,
             'similarity_score' => $metadata['similarity_score'] ?? null,
             'distance' => $metadata['distance'] ?? null,
@@ -114,21 +121,47 @@ class DefaultExtractiveAnswerProvider
 
     private function excerpt(string $content, Collection $keywords): string
     {
-        $sentences = collect(preg_split('/(?<=[.!?])\s+/u', trim($content)) ?: [])
-            ->map(fn (string $sentence): string => trim($sentence))
-            ->filter();
+        $parts = collect(preg_split('/(?<=[.!?])\s+|\R+/u', trim($content)) ?: [])
+            ->map(fn (string $part): string => trim($part))
+            ->filter(fn (string $part): bool => $this->isAnswerLikePart($part))
+            ->values();
 
-        $matched = $sentences->sortByDesc(function (string $sentence) use ($keywords): int {
-            $normalized = $this->normalize($sentence);
+        if ($parts->isEmpty()) {
+            return '';
+        }
+
+        $matched = $parts->sortByDesc(function (string $part) use ($keywords): int {
+            $normalized = $this->normalize($part);
 
             return $keywords->sum(fn (string $keyword): int => Str::contains($normalized, $keyword) ? 1 : 0);
-        })->first(function (string $sentence) use ($keywords): bool {
-            $normalized = $this->normalize($sentence);
+        })->filter(function (string $part) use ($keywords): bool {
+            $normalized = $this->normalize($part);
 
-            return $keywords->contains(fn (string $keyword): bool => Str::contains($normalized, $keyword));
-        });
+            return $keywords->isEmpty() || $keywords->contains(fn (string $keyword): bool => Str::contains($normalized, $keyword));
+        })->take(5)->values();
 
-        return Str::limit($matched ?: $content, 700);
+        $selected = $matched->isNotEmpty() ? $matched : $parts->take(3);
+
+        return Str::limit($selected->implode(' '), 900);
+    }
+
+    private function isAnswerLikePart(string $part): bool
+    {
+        $normalized = $this->normalize($part);
+
+        if (mb_strlen($normalized) < 40) {
+            return false;
+        }
+
+        if (preg_match('/^(bab\s+[ivxlcdm]+|\d+(?:\.\d+)*)\b.*(\.{2,}|\s\d{1,3}$)/iu', $part)) {
+            return false;
+        }
+
+        if (preg_match('/\.{3,}\s*\d+\s*$/u', $part)) {
+            return false;
+        }
+
+        return true;
     }
 
     private function keywords(string $value): Collection

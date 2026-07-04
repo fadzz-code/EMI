@@ -11,6 +11,7 @@ use App\Services\Ai\EmbeddingProviderResolver;
 use App\Services\Ai\EmbeddingResult;
 use App\Services\AiKnowledgeChunkingService;
 use App\Services\AiKnowledgeEmbeddingService;
+use App\Services\KeywordChunkRetriever;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -94,7 +95,7 @@ class BasisAiRagChunkIndexTest extends TestCase
             'content_hash' => hash('sha256', 'Halaman empat belas menjelaskan struktur bahasa Mekongga secara rinci.'),
             'char_count' => 68,
             'word_count' => 8,
-            'metadata' => ['source' => 'pdf', 'page_number' => 14],
+            'metadata' => ['source' => 'pdf', 'page_number' => 14, 'page_type' => 'body', 'searchable' => true],
         ]);
 
         $this->artisan('ai:knowledge:reindex')->assertExitCode(0);
@@ -119,6 +120,66 @@ class BasisAiRagChunkIndexTest extends TestCase
         $this->assertStringContainsString('Konten manual', $item->refresh()->chunks()->firstOrFail()->content);
     }
 
+    public function test_reindex_skips_non_searchable_source_pages_and_keeps_body_metadata(): void
+    {
+        $item = AiKnowledgeItem::factory()->create([
+            'content' => 'Placeholder PDF.',
+            'source_type' => 'pdf',
+        ]);
+        AiKnowledgeSourcePage::query()->create([
+            'ai_knowledge_item_id' => $item->id,
+            'page_number' => 3,
+            'content' => "DAFTAR ISI\nBAB I PENDAHULUAN ........ 1\n1.1 Latar Belakang ........ 2\n2.3 Wilayah Pemakaian Bahasa Mekongga ..... 12",
+            'content_hash' => hash('sha256', 'toc'),
+            'char_count' => 120,
+            'word_count' => 14,
+            'metadata' => ['page_type' => 'table_of_contents', 'searchable' => false],
+        ]);
+        AiKnowledgeSourcePage::query()->create([
+            'ai_knowledge_item_id' => $item->id,
+            'page_number' => 14,
+            'content' => 'Bahasa Mekongga digunakan sebagai alat komunikasi sehari-hari masyarakat dan menjadi pendukung kebudayaan daerah di Sulawesi Tenggara.',
+            'content_hash' => hash('sha256', 'body'),
+            'char_count' => 132,
+            'word_count' => 15,
+            'metadata' => ['page_type' => 'body', 'searchable' => true],
+        ]);
+
+        $this->artisan('ai:knowledge:reindex')->assertExitCode(0);
+
+        $this->assertSame(1, $item->refresh()->chunks()->count());
+        $chunk = $item->chunks()->firstOrFail();
+        $this->assertStringContainsString('alat komunikasi sehari-hari', $chunk->content);
+        $this->assertSame('body', $chunk->metadata['page_type']);
+        $this->assertSame(14, $chunk->metadata['page_number']);
+    }
+
+    public function test_keyword_retriever_does_not_return_toc_or_non_searchable_chunks(): void
+    {
+        $item = AiKnowledgeItem::factory()->published()->create(['title' => 'Bahasa Mekongga']);
+        $toc = $item->chunks()->create([
+            'chunk_index' => 0,
+            'content' => 'DAFTAR ISI BAB I PENDAHULUAN 1 2.3 Wilayah Pemakaian Bahasa Mekongga 12',
+            'content_hash' => hash('sha256', 'toc'),
+            'character_count' => 78,
+            'token_estimate' => 20,
+            'metadata' => ['page_type' => 'table_of_contents', 'searchable' => false],
+        ]);
+        $body = $item->chunks()->create([
+            'chunk_index' => 1,
+            'content' => 'Bahasa Mekongga digunakan sebagai alat komunikasi sehari-hari masyarakat Mekongga di Sulawesi Tenggara.',
+            'content_hash' => hash('sha256', 'body'),
+            'character_count' => 101,
+            'token_estimate' => 25,
+            'metadata' => ['page_type' => 'body', 'searchable' => true],
+        ]);
+
+        $results = app(KeywordChunkRetriever::class)->retrieve('wilayah pemakaian bahasa Mekongga komunikasi masyarakat');
+
+        $this->assertContains($body->id, collect($results)->pluck('chunk.id')->all());
+        $this->assertNotContains($toc->id, collect($results)->pluck('chunk.id')->all());
+    }
+
     public function test_chatbot_uses_pdf_source_page_chunk_instead_of_placeholder_content(): void
     {
         $student = User::factory()->student()->approved()->create();
@@ -135,7 +196,7 @@ class BasisAiRagChunkIndexTest extends TestCase
             'content_hash' => hash('sha256', 'Latar belakang bahasa Mekongga berkaitan dengan sejarah masyarakat Mekongga dan penggunaannya dalam komunikasi adat.'),
             'char_count' => 113,
             'word_count' => 13,
-            'metadata' => ['source' => 'pdf', 'page_number' => 14],
+            'metadata' => ['source' => 'pdf', 'page_number' => 14, 'page_type' => 'body', 'searchable' => true],
         ]);
 
         app(AiKnowledgeChunkingService::class)->rebuild($item);
@@ -147,7 +208,9 @@ class BasisAiRagChunkIndexTest extends TestCase
             ->assertJsonPath('data.sources.0.page_number', 14)
             ->assertJsonPath('data.sources.0.page_start', 14)
             ->assertJsonPath('data.sources.0.page_end', 14)
-            ->assertJsonMissing(['answer' => 'b']);
+            ->assertJsonPath('data.sources.0.page_type', 'body')
+            ->assertJsonMissing(['answer' => 'b'])
+            ->assertJsonFragment(['answer' => 'Berdasarkan Basis AI EMI, berikut informasi yang ditemukan: Latar belakang bahasa Mekongga berkaitan dengan sejarah masyarakat Mekongga dan penggunaannya dalam komunikasi adat.']);
     }
 
     public function test_chatbot_searches_chunks_and_chooses_most_relevant_chunk(): void

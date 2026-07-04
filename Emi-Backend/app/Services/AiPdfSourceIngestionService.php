@@ -19,6 +19,7 @@ class AiPdfSourceIngestionService
     public function __construct(
         private readonly AiKnowledgeChunkingService $chunkingService,
         private readonly AuditLogService $auditLogService,
+        private readonly AiPdfPageClassifier $pageClassifier,
     ) {}
 
     public function import(array $data, UploadedFile $file, User $actor, Request $request): array
@@ -87,8 +88,9 @@ class AiPdfSourceIngestionService
         foreach ($pdf->getPages() as $index => $page) {
             $pageNumber = $index + 1;
             $original = trim($page->getText());
-            $cleaned = $this->cleanPageText($original);
-            $skipReason = $this->skipReason($cleaned, $pageNumber);
+            $classification = $this->pageClassifier->classify($original, $pageNumber);
+            $cleaned = $classification['content'];
+            $skipReason = in_array($classification['page_type'], ['empty', 'low_quality_ocr'], true) ? $classification['skip_reason'] : null;
 
             $pages[] = [
                 'page_number' => $pageNumber,
@@ -100,6 +102,10 @@ class AiPdfSourceIngestionService
                     'original_char_count' => mb_strlen($original),
                     'cleaned_char_count' => mb_strlen($cleaned),
                     'skipped_reason' => $skipReason,
+                    'page_type' => $classification['page_type'],
+                    'searchable' => $classification['searchable'],
+                    'skip_reason' => $classification['skip_reason'],
+                    'ocr_noise_score' => $classification['ocr_noise_score'],
                 ],
             ];
         }
@@ -107,28 +113,4 @@ class AiPdfSourceIngestionService
         return $pages;
     }
 
-    private function cleanPageText(string $text): string
-    {
-        $text = preg_replace("/[ \t]+/", ' ', $text);
-        $text = preg_replace("/\n\s+/", "\n", $text);
-        $text = preg_replace("/-\s*\n\s*/u", '', $text);
-        $text = preg_replace("/\n{3,}/", "\n\n", $text);
-
-        return trim($text);
-    }
-
-    private function skipReason(string $text, int $pageNumber): ?string
-    {
-        $normalized = mb_strtolower(trim($text));
-
-        if ($normalized === '' || mb_strlen($normalized) < 20) {
-            return 'empty_or_too_short';
-        }
-
-        if ($pageNumber <= 5 && mb_strlen($normalized) < 160 && preg_match('/^(daftar isi|contents|table of contents|copyright|hak cipta)/u', $normalized)) {
-            return 'front_matter';
-        }
-
-        return null;
-    }
 }

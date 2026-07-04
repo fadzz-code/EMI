@@ -35,6 +35,8 @@ class VectorChunkRetriever
                 where c.embedding is not null
                     and i.status = ?
                     and i.deleted_at is null
+                    and (c.metadata is null or c.metadata->>\'searchable\' is distinct from \'false\')
+                    and (c.metadata is null or coalesce(c.metadata->>\'page_type\', \'body\') not in (\'table_of_contents\', \'front_matter\', \'copyright\', \'bibliography\', \'cover\', \'low_quality_ocr\'))
                 order by c.embedding <=> ?::vector
                 limit ?',
                 [$vector, 'published', $vector, $limit]

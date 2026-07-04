@@ -27,6 +27,7 @@ class KeywordChunkRetriever
             ->with('knowledgeItem')
             ->whereHas('knowledgeItem', fn ($query) => $query->published())
             ->get()
+            ->filter(fn (AiKnowledgeChunk $chunk): bool => ($chunk->metadata['searchable'] ?? true) !== false)
             ->map(function (AiKnowledgeChunk $chunk) use ($keywords, $message): array {
                 $item = $chunk->knowledgeItem;
 
@@ -104,6 +105,14 @@ class KeywordChunkRetriever
 
         if ($matchedKeywords >= 2) {
             $score += $matchedKeywords * 3;
+        }
+
+        $pageType = $chunk->metadata['page_type'] ?? 'body';
+        if ($pageType === 'body') {
+            $score += 4;
+        }
+        if (in_array($pageType, ['table_of_contents', 'front_matter', 'copyright', 'bibliography', 'cover', 'low_quality_ocr'], true)) {
+            $score -= 20;
         }
 
         return $score;

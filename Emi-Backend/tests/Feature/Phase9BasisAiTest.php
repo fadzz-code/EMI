@@ -805,6 +805,22 @@ class Phase9BasisAiTest extends TestCase
         $this->assertSame('vector', $results[0]['retrieval_mode']);
     }
 
+    public function test_vector_retriever_ignores_non_searchable_pdf_chunks(): void
+    {
+        if (! $this->canRunVectorSql()) {
+            $this->markTestSkipped('pgvector is not available for this test database.');
+        }
+
+        config(['ai.vector_retrieval.enabled' => true]);
+        $this->bindEmbeddingProvider(EmbeddingResult::success(array_fill(0, 768, 0.1), 'fake', 'fake-model', 768, 'query'));
+        $body = $this->embeddedChunk('published', '[0.1,'.implode(',', array_fill(0, 767, '0.1')).']', ['page_type' => 'body', 'searchable' => true]);
+        $this->embeddedChunk('published', '[0.1,'.implode(',', array_fill(0, 767, '0.1')).']', ['page_type' => 'table_of_contents', 'searchable' => false]);
+
+        $results = app(VectorChunkRetriever::class)->retrieve('materi budaya');
+
+        $this->assertSame([$body->id], collect($results)->pluck('chunk.id')->all());
+    }
+
     public function test_vector_and_keyword_results_are_deduplicated(): void
     {
         config(['ai.vector_retrieval.enabled' => true]);
@@ -952,7 +968,7 @@ class Phase9BasisAiTest extends TestCase
         }
     }
 
-    private function embeddedChunk(string $status, string $embedding): AiKnowledgeChunk
+    private function embeddedChunk(string $status, string $embedding, array $metadata = []): AiKnowledgeChunk
     {
         $item = AiKnowledgeItem::factory()->create([
             'status' => $status,
@@ -964,7 +980,7 @@ class Phase9BasisAiTest extends TestCase
             'content_hash' => hash('sha256', $item->content),
             'character_count' => mb_strlen($item->content),
             'token_estimate' => 10,
-            'metadata' => [],
+            'metadata' => $metadata,
         ]);
         DB::table('ai_knowledge_chunks')->where('id', $chunk->id)->update(['embedding' => $embedding]);
 

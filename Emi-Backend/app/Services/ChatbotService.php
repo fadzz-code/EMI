@@ -69,9 +69,10 @@ class ChatbotService
         $keywordMatches = $this->keywordChunkRetriever->retrieve($message);
         $matches = collect([...$vectorMatches, ...$keywordMatches])
             ->unique(fn (array $result): string => (string) $result['chunk']->id)
-            ->sortByDesc(fn (array $result): int|float => $result['retrieval_mode'] === 'vector'
+            ->filter(fn (array $result): bool => (($result['chunk']->metadata['searchable'] ?? true) !== false))
+            ->sortByDesc(fn (array $result): int|float => ($result['retrieval_mode'] === 'vector'
                 ? ($result['similarity_score'] ?? 0) * 100
-                : $result['confidence'])
+                : $result['confidence']) + $this->pageQualityBoost($result))
             ->take(self::TOP_K)
             ->values();
 
@@ -88,5 +89,16 @@ class ChatbotService
             'keywords' => $keywords,
             'chunks' => $matches->all(),
         ];
+    }
+
+    private function pageQualityBoost(array $result): int
+    {
+        $pageType = $result['chunk']->metadata['page_type'] ?? 'body';
+
+        return match ($pageType) {
+            'body' => 5,
+            'table_of_contents', 'front_matter', 'copyright', 'bibliography', 'cover', 'low_quality_ocr' => -50,
+            default => 0,
+        };
     }
 }

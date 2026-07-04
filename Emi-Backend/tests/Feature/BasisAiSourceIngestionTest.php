@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AiKnowledgeItem;
 use App\Models\AiKnowledgeSourcePage;
 use App\Models\User;
+use App\Services\AiPdfPageClassifier;
 use App\Services\AiSourceIngestionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -251,6 +252,38 @@ class BasisAiSourceIngestionTest extends TestCase
         $this->assertSame(1, $metadata['page_start']);
         $this->assertSame(1, $metadata['page_end']);
         Storage::disk('public')->assertExists(str_replace('/storage/', '', $item->source_url));
+    }
+
+    public function test_pdf_page_classifier_detects_table_of_contents(): void
+    {
+        $result = app(AiPdfPageClassifier::class)->classify("DAFTAR ISI\nBAB I PENDAHULUAN ........ 1\n1.1 Latar Belakang ........ 2\n1.2 Masalah ........ 3\n2.3 Wilayah Pemakaian dan Pemakai Bahasa Mekongga ..... 12", 3);
+
+        $this->assertSame('table_of_contents', $result['page_type']);
+        $this->assertFalse($result['searchable']);
+        $this->assertSame('Daftar isi', $result['skip_reason']);
+    }
+
+    public function test_toc_source_page_is_stored_but_marked_not_searchable(): void
+    {
+        $item = AiKnowledgeItem::factory()->create(['created_by' => $this->admin->id]);
+        $classification = app(AiPdfPageClassifier::class)->classify("DAFTAR ISI\nBAB I PENDAHULUAN ........ 1\n1.1 Latar Belakang ........ 2\n1.2 Masalah ........ 3\n2.3 Wilayah Pemakaian Bahasa Mekongga ..... 12", 3);
+
+        $page = AiKnowledgeSourcePage::query()->create([
+            'ai_knowledge_item_id' => $item->id,
+            'page_number' => 3,
+            'content' => $classification['content'],
+            'content_hash' => hash('sha256', $classification['content']),
+            'char_count' => mb_strlen($classification['content']),
+            'word_count' => str_word_count($classification['content']),
+            'metadata' => [
+                'page_type' => $classification['page_type'],
+                'searchable' => $classification['searchable'],
+                'skip_reason' => $classification['skip_reason'],
+            ],
+        ]);
+
+        $this->assertSame('table_of_contents', $page->fresh()->metadata['page_type']);
+        $this->assertFalse($page->fresh()->metadata['searchable']);
     }
 
     public function test_import_empty_pdf_returns_clear_error(): void

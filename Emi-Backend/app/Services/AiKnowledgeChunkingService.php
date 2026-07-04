@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\DB;
 
 class AiKnowledgeChunkingService
 {
+    public function __construct(private readonly AiPdfPageClassifier $pageClassifier) {}
+
     private const CHUNK_SIZE = 1000;
 
     private const OVERLAP_SIZE = 150;
@@ -58,12 +60,34 @@ class AiKnowledgeChunkingService
     private function chunksFromSourcePages(AiKnowledgeItem $item): Collection
     {
         return $item->sourcePages()->get()->flatMap(function ($page) use ($item): Collection {
+            $metadata = $page->metadata ?? [];
+            $classification = $this->pageClassifier->classify($page->content, $page->page_number);
+            $pageType = $metadata['page_type'] ?? $classification['page_type'];
+            $searchable = $metadata['searchable'] ?? $classification['searchable'];
+
+            if ($metadata === [] || ! array_key_exists('page_type', $metadata) || ! array_key_exists('searchable', $metadata)) {
+                $metadata = [
+                    ...$metadata,
+                    'page_type' => $pageType,
+                    'searchable' => $searchable,
+                    'skip_reason' => $metadata['skip_reason'] ?? $classification['skip_reason'],
+                    'ocr_noise_score' => $metadata['ocr_noise_score'] ?? $classification['ocr_noise_score'],
+                ];
+                $page->forceFill(['metadata' => $metadata])->save();
+            }
+
+            if ($searchable === false) {
+                return collect();
+            }
+
             return $this->chunk($page->content)->map(fn (string $chunk): array => [
                 'content' => $chunk,
                 'metadata' => $this->baseMetadata($item) + [
                     'page_number' => $page->page_number,
                     'page_start' => $page->page_number,
                     'page_end' => $page->page_number,
+                    'page_type' => $pageType,
+                    'searchable' => true,
                     'ingestion_mode' => 'pdf_pages',
                     'source_page_id' => $page->id,
                 ],
