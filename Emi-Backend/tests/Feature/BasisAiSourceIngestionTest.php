@@ -231,6 +231,7 @@ class BasisAiSourceIngestionTest extends TestCase
         $response = $this->actingAs($this->admin)->post('/api/v1/admin/ai/knowledge/import-pdf', [
             'title' => 'Struktur Bahasa Mekongga',
             'category' => 'Bahasa',
+            'content' => 'b',
             'file' => $file,
             'status' => 'draft',
         ]);

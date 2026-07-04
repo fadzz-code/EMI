@@ -55,6 +55,8 @@ export function KnowledgeBaseForm({
   const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
   const [extractMessage, setExtractMessage] = useState<string | null>(null);
   const [extractError, setExtractError] = useState<string | null>(null);
+  const [isPdfSourceImported, setIsPdfSourceImported] = useState(false);
+  const isPdfRagCreate = !item && form.source_type === "pdf" && pdfSourceMode === "rag";
 
   async function extractSource() {
     if (!token || (form.source_type !== "link" && form.source_type !== "pdf") || !form.source_url.trim()) {
@@ -137,6 +139,7 @@ export function KnowledgeBaseForm({
         source_type: "pdf",
         source_url: result.source_url ?? current.source_url,
       }));
+      setIsPdfSourceImported(true);
       setExtractMessage(`PDF berhasil diproses. Halaman terbaca: ${result.page_count}. Halaman dilewati: ${result.skipped_page_count}. Chunk dibuat: ${result.chunk_count}.`);
     } catch (error) {
       const message = getFirstApiError(error);
@@ -146,8 +149,14 @@ export function KnowledgeBaseForm({
     }
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (!item && form.source_type === "pdf" && pdfSourceMode === "rag") {
+      await importPdfSource();
+      return;
+    }
+
     onSubmit({
       title: form.title.trim(),
       category: nullable(form.category),
@@ -174,17 +183,23 @@ export function KnowledgeBaseForm({
           value={form.category}
         />
       </FormField>
-      <FormField label="Konten Pengetahuan">
-        <Textarea
-          className="min-h-40"
-          onChange={(event) => setForm((current) => ({ ...current, content: event.target.value }))}
-          required
-          value={form.content}
-        />
-        <p className="mt-2 text-xs font-bold leading-5 text-slate-600">
-          Agar Chatbot AI menjawab lebih tepat, buat pengetahuan secara spesifik. Contoh: &quot;Asal-usul Mekongga&quot;, &quot;Arti nama Mekongga&quot;, &quot;Kosakata dasar Mekongga&quot;, bukan satu konten terlalu umum.
-        </p>
-      </FormField>
+      {!isPdfRagCreate ? (
+        <FormField label="Konten Pengetahuan">
+          <Textarea
+            className="min-h-40"
+            onChange={(event) => setForm((current) => ({ ...current, content: event.target.value }))}
+            required
+            value={form.content}
+          />
+          <p className="mt-2 text-xs font-bold leading-5 text-slate-600">
+            Agar Chatbot AI menjawab lebih tepat, buat pengetahuan secara spesifik. Contoh: &quot;Asal-usul Mekongga&quot;, &quot;Arti nama Mekongga&quot;, &quot;Kosakata dasar Mekongga&quot;, bukan satu konten terlalu umum.
+          </p>
+        </FormField>
+      ) : (
+        <div className="rounded-lg border-2 border-ink bg-blue-50 p-4 text-sm font-bold leading-6 text-blue-950">
+          Konten Pengetahuan tidak diperlukan untuk Sumber RAG. PDF akan diproses per halaman dan chunk dibuat dari teks PDF.
+        </div>
+      )}
       <div className="grid gap-4 md:grid-cols-2">
         <FormField label="Jenis Sumber">
           <Select
@@ -259,13 +274,16 @@ export function KnowledgeBaseForm({
             <div className="grid gap-3">
               <Input
                 accept="application/pdf,.pdf"
-                onChange={(event) => setSelectedPdfFile(event.target.files?.[0] ?? null)}
+                onChange={(event) => {
+                  setSelectedPdfFile(event.target.files?.[0] ?? null);
+                  setIsPdfSourceImported(false);
+                }}
                 type="file"
               />
               <div>
                 {pdfSourceMode === "rag" ? (
-                  <Button disabled={isExtracting || !selectedPdfFile || !form.title.trim()} onClick={importPdfSource} type="button" variant="secondary">
-                    {isExtracting ? "Memproses PDF..." : "Upload PDF Besar sebagai Sumber"}
+                  <Button disabled={isExtracting || !selectedPdfFile || !form.title.trim() || isPdfSourceImported} onClick={importPdfSource} type="button" variant="secondary">
+                    {isExtracting ? "Memproses PDF..." : isPdfSourceImported ? "PDF Sumber RAG Sudah Diproses" : "Upload PDF Besar sebagai Sumber"}
                   </Button>
                 ) : (
                   <Button disabled={isExtracting || !selectedPdfFile} onClick={extractPdfUpload} type="button" variant="secondary">
@@ -314,8 +332,8 @@ export function KnowledgeBaseForm({
         <Button onClick={onCancel} type="button" variant="ghost">
           Batal
         </Button>
-        <Button disabled={isSubmitting} type="submit">
-          {item ? "Simpan Perubahan" : "Simpan Pengetahuan"}
+        <Button disabled={isSubmitting || (isPdfRagCreate && isPdfSourceImported)} type="submit">
+          {isPdfRagCreate ? "Proses PDF sebagai Sumber RAG" : item ? "Simpan Perubahan" : "Simpan Pengetahuan"}
         </Button>
       </div>
     </form>

@@ -44,6 +44,17 @@ class Phase9BasisAiTest extends TestCase
         ]);
     }
 
+    public function test_manual_content_create_flow_requires_content(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->withToken($this->tokenFor($admin))->postJson('/api/v1/admin/ai/knowledge', [
+            'title' => 'Manual Tanpa Konten',
+            'source_type' => 'manual',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('content');
+    }
+
     public function test_non_admin_cannot_create_admin_knowledge_item(): void
     {
         $teacher = User::factory()->teacher()->approved()->create();

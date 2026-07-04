@@ -119,6 +119,37 @@ class BasisAiRagChunkIndexTest extends TestCase
         $this->assertStringContainsString('Konten manual', $item->refresh()->chunks()->firstOrFail()->content);
     }
 
+    public function test_chatbot_uses_pdf_source_page_chunk_instead_of_placeholder_content(): void
+    {
+        $student = User::factory()->student()->approved()->create();
+        $item = AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Struktur Bahasa Mekongga',
+            'content' => 'b',
+            'source_type' => 'pdf',
+            'source_url' => '/storage/ai-knowledge-sources/struktur.pdf',
+        ]);
+        AiKnowledgeSourcePage::query()->create([
+            'ai_knowledge_item_id' => $item->id,
+            'page_number' => 14,
+            'content' => 'Latar belakang bahasa Mekongga berkaitan dengan sejarah masyarakat Mekongga dan penggunaannya dalam komunikasi adat.',
+            'content_hash' => hash('sha256', 'Latar belakang bahasa Mekongga berkaitan dengan sejarah masyarakat Mekongga dan penggunaannya dalam komunikasi adat.'),
+            'char_count' => 113,
+            'word_count' => 13,
+            'metadata' => ['source' => 'pdf', 'page_number' => 14],
+        ]);
+
+        app(AiKnowledgeChunkingService::class)->rebuild($item);
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'apa latar belakang bahasa Mekongga',
+        ])->assertOk()
+            ->assertJsonPath('data.matched', true)
+            ->assertJsonPath('data.sources.0.page_number', 14)
+            ->assertJsonPath('data.sources.0.page_start', 14)
+            ->assertJsonPath('data.sources.0.page_end', 14)
+            ->assertJsonMissing(['answer' => 'b']);
+    }
+
     public function test_chatbot_searches_chunks_and_chooses_most_relevant_chunk(): void
     {
         $student = User::factory()->student()->approved()->create();
