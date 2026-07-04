@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\MediaFile;
+use App\Models\SpeakingAttempt;
 use App\Models\User;
 
 class MediaFilePolicy
@@ -11,7 +12,8 @@ class MediaFilePolicy
     {
         return $user->role === 'admin'
             || $mediaFile->uploaded_by === $user->id
-            || $mediaFile->isPublic();
+            || $mediaFile->isPublic()
+            || $this->teacherCanReviewSpeakingRecording($user, $mediaFile);
     }
 
     public function upload(User $user, string $purpose): bool
@@ -31,7 +33,7 @@ class MediaFilePolicy
     public function requestTemporaryUrl(User $user, MediaFile $mediaFile): bool
     {
         return $mediaFile->isPrivate()
-            && ($user->role === 'admin' || $mediaFile->uploaded_by === $user->id);
+            && ($user->role === 'admin' || $mediaFile->uploaded_by === $user->id || $this->teacherCanReviewSpeakingRecording($user, $mediaFile));
     }
 
     public function delete(User $user, MediaFile $mediaFile): bool
@@ -42,5 +44,21 @@ class MediaFilePolicy
     public function viewPublicContent(?User $user, MediaFile $mediaFile): bool
     {
         return $mediaFile->isPublic();
+    }
+
+    private function teacherCanReviewSpeakingRecording(User $user, MediaFile $mediaFile): bool
+    {
+        if ($user->role !== 'teacher' || $mediaFile->purpose !== 'speaking_recording') {
+            return false;
+        }
+
+        $attempt = SpeakingAttempt::query()->with('exercise')->where('audio_media_id', $mediaFile->id)->first();
+        $classId = $attempt?->exercise?->classroom_id;
+
+        if (! $classId) {
+            return false;
+        }
+
+        return $user->teacherClassAssignments()->where('class_id', $classId)->where('is_active', true)->exists();
     }
 }

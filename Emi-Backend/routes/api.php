@@ -42,9 +42,11 @@ use App\Http\Controllers\Api\StudentProgressController;
 use App\Http\Controllers\Api\StudentProgressReportController;
 use App\Http\Controllers\Api\StudentQuizController;
 use App\Http\Controllers\Api\StudentQuizResultReportController;
+use App\Http\Controllers\Api\StudentSpeakingController;
 use App\Http\Controllers\Api\TeacherDashboardController;
 use App\Http\Controllers\Api\TeacherProgressReportController;
 use App\Http\Controllers\Api\TeacherQuizResultReportController;
+use App\Http\Controllers\Api\TeacherSpeakingController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -245,12 +247,20 @@ Route::prefix('v1')->group(function () {
         Route::post('chatbot/messages', [StudentChatbotController::class, 'store']);
         Route::get('quizzes', [StudentQuizController::class, 'index']);
         Route::get('quizzes/{id}', [StudentQuizController::class, 'show']);
+        Route::get('speaking/exercises', [StudentSpeakingController::class, 'exercises']);
+        Route::get('speaking/exercises/{exercise}', [StudentSpeakingController::class, 'showExercise']);
+        Route::get('speaking/attempts', [StudentSpeakingController::class, 'attempts']);
+        Route::get('speaking/attempts/{attempt}', [StudentSpeakingController::class, 'showAttempt']);
+        Route::post('speaking/exercises/{exercise}/attempts', [StudentSpeakingController::class, 'storeAttempt']);
     });
 
     Route::middleware(['auth:sanctum', 'role:teacher'])->prefix('teacher')->group(function () {
         Route::get('dashboard/summary', [TeacherDashboardController::class, 'summary']);
         Route::get('reports/progress/students', [TeacherProgressReportController::class, 'students']);
         Route::get('reports/quiz-results', [TeacherQuizResultReportController::class, 'index']);
+        Route::get('speaking/attempts', [TeacherSpeakingController::class, 'attempts']);
+        Route::get('speaking/attempts/{attempt}', [TeacherSpeakingController::class, 'showAttempt']);
+        Route::patch('speaking/attempts/{attempt}/feedback', [TeacherSpeakingController::class, 'feedback']);
         Route::get('reports/progress/students/export', [ReportExportController::class, 'teacherStudents']);
         Route::get('reports/quiz-results/export', [ReportExportController::class, 'teacherQuizResults']);
     });

@@ -16,6 +16,7 @@ use App\Models\QuizTemplateOption;
 use App\Models\QuizTemplateQuestion;
 use App\Models\School;
 use App\Models\SchoolClass;
+use App\Models\SpeakingExercise;
 use App\Models\StudentClassMembership;
 use App\Models\TeacherClassAssignment;
 use App\Models\User;
@@ -79,6 +80,7 @@ class DevDemoDataSeeder extends Seeder
             $this->seedClassModule($class, $moduleTemplate, $lessonTemplates, $teacher, $now);
             [$quizTemplate, $templateQuestions] = $this->seedQuizTemplate($admin, $now);
             $this->seedClassQuiz($class, $quizTemplate, $templateQuestions, $teacher, $now);
+            $this->seedSpeakingExercises($class, $teacher);
         });
     }
 
@@ -331,6 +333,33 @@ class DevDemoDataSeeder extends Seeder
         }
 
         return $classQuiz;
+    }
+
+    private function seedSpeakingExercises(SchoolClass $class, User $teacher): void
+    {
+        $exercises = [
+            ['Salam dasar', 'Ari nggiro', 'Contoh demo salam sederhana.'],
+            ['Perkenalan sederhana', 'Inaku siswa EMI', 'Contoh demo perkenalan sederhana.'],
+            ['Kosakata makan', 'Makan', 'Contoh demo kosakata aktivitas.'],
+        ];
+
+        foreach ($exercises as [$title, $targetText, $prompt]) {
+            $this->updateOrCreateWithUuid(SpeakingExercise::class, [
+                'title' => $title,
+                'classroom_id' => $class->id,
+            ], [
+                'prompt_text' => $prompt,
+                'target_text' => $targetText,
+                'target_translation' => null,
+                'language_code' => 'mekongga',
+                'difficulty' => 'demo',
+                'lesson_id' => null,
+                'module_id' => null,
+                'created_by_id' => $teacher->id,
+                'status' => 'published',
+                'metadata' => ['source' => 'demo'],
+            ]);
+        }
     }
 
     private function updateOrCreateWithUuid(string $modelClass, array $attributes, array $values)
