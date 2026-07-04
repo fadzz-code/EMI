@@ -6,12 +6,14 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Ai\ExtractPdfUploadAiKnowledgeRequest;
 use App\Http\Requests\Ai\ExtractSourceAiKnowledgeRequest;
+use App\Http\Requests\Ai\ImportPdfAiKnowledgeRequest;
 use App\Http\Requests\Ai\ListAiKnowledgeItemsRequest;
 use App\Http\Requests\Ai\StoreAiKnowledgeItemRequest;
 use App\Http\Requests\Ai\UpdateAiKnowledgeItemRequest;
 use App\Http\Resources\AiKnowledgeItemResource;
 use App\Models\AiKnowledgeItem;
 use App\Services\AiKnowledgeService;
+use App\Services\AiPdfSourceIngestionService;
 use App\Services\AiSourceIngestionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,7 +23,8 @@ class AdminAiKnowledgeController extends Controller
 {
     public function __construct(
         private readonly AiKnowledgeService $service,
-        private readonly AiSourceIngestionService $ingestionService
+        private readonly AiSourceIngestionService $ingestionService,
+        private readonly AiPdfSourceIngestionService $pdfSourceIngestionService
     ) {}
 
     public function index(ListAiKnowledgeItemsRequest $request): JsonResponse
@@ -121,6 +124,27 @@ class AdminAiKnowledgeController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Isi PDF tidak dapat dibaca.',
+                'errors' => [
+                    'file' => [$e->getMessage()],
+                ],
+            ], 422);
+        }
+    }
+
+    public function importPdf(ImportPdfAiKnowledgeRequest $request): JsonResponse
+    {
+        Gate::authorize('create', AiKnowledgeItem::class);
+
+        try {
+            return ApiResponse::success(
+                'PDF berhasil diproses sebagai sumber Basis AI.',
+                $this->pdfSourceIngestionService->import($request->validated(), $request->file('file'), $request->user(), $request),
+                201
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'PDF tidak dapat diproses sebagai sumber Basis AI.',
                 'errors' => [
                     'file' => [$e->getMessage()],
                 ],

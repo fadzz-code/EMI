@@ -76,6 +76,8 @@ class Phase9BasisAiTest extends TestCase
 
     public function test_ai_vector_config_defaults_are_safe(): void
     {
+        config(['ai.embedding.provider' => 'none', 'ai.vector_retrieval.enabled' => false]);
+
         $this->assertSame('none', config('ai.embedding.provider'));
         $this->assertSame('gemini-embedding-001', config('ai.embedding.model'));
         $this->assertSame(768, config('ai.embedding.dimensions'));
@@ -84,6 +86,7 @@ class Phase9BasisAiTest extends TestCase
 
     public function test_default_embedding_resolver_returns_null_provider(): void
     {
+        config(['ai.embedding.provider' => 'none']);
         $provider = app(EmbeddingProviderResolver::class)->resolve();
 
         $this->assertInstanceOf(NullEmbeddingProvider::class, $provider);
@@ -574,7 +577,7 @@ class Phase9BasisAiTest extends TestCase
 
     public function test_no_basis_ai_match_does_not_call_external_provider(): void
     {
-        config(['ai.free_provider' => 'groq', 'ai.free_api_key' => 'test-key']);
+        config(['ai.free_provider' => 'groq', 'ai.free_api_key' => 'test-key', 'ai.vector_retrieval.enabled' => false, 'ai.embedding.provider' => 'none']);
         Http::fake();
         $student = User::factory()->student()->approved()->create();
 

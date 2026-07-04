@@ -16,27 +16,29 @@ class AiKnowledgeChunkingService
 
     public function rebuild(AiKnowledgeItem $item): int
     {
-        $content = $this->normalize($item->content);
-        $chunks = $this->chunk($content);
+        $chunks = $item->sourcePages()->exists()
+            ? $this->chunksFromSourcePages($item)
+            : $this->chunk($this->normalize($item->content))->map(fn (string $chunk): array => [
+                'content' => $chunk,
+                'metadata' => $this->baseMetadata($item) + [
+                    'page' => null,
+                    'section' => null,
+                ],
+            ]);
 
         return DB::transaction(function () use ($item, $chunks): int {
             $item->chunks()->delete();
 
             foreach ($chunks as $index => $chunk) {
+                $content = $chunk['content'];
+
                 $item->chunks()->create([
                     'chunk_index' => $index,
-                    'content' => $chunk,
-                    'content_hash' => hash('sha256', $chunk),
-                    'character_count' => mb_strlen($chunk),
-                    'token_estimate' => max(1, (int) ceil(mb_strlen($chunk) / 4)),
-                    'metadata' => [
-                        'source_title' => $item->title,
-                        'source_type' => $item->source_type,
-                        'source_url' => $item->source_url,
-                        'category' => $item->category,
-                        'page' => null,
-                        'section' => null,
-                    ],
+                    'content' => $content,
+                    'content_hash' => hash('sha256', $content),
+                    'character_count' => mb_strlen($content),
+                    'token_estimate' => max(1, (int) ceil(mb_strlen($content) / 4)),
+                    'metadata' => $chunk['metadata'],
                 ]);
             }
 
@@ -51,6 +53,32 @@ class AiKnowledgeChunkingService
         }
 
         return $this->rebuild($item);
+    }
+
+    private function chunksFromSourcePages(AiKnowledgeItem $item): Collection
+    {
+        return $item->sourcePages()->get()->flatMap(function ($page) use ($item): Collection {
+            return $this->chunk($page->content)->map(fn (string $chunk): array => [
+                'content' => $chunk,
+                'metadata' => $this->baseMetadata($item) + [
+                    'page_number' => $page->page_number,
+                    'page_start' => $page->page_number,
+                    'page_end' => $page->page_number,
+                    'ingestion_mode' => 'pdf_pages',
+                    'source_page_id' => $page->id,
+                ],
+            ]);
+        })->values();
+    }
+
+    private function baseMetadata(AiKnowledgeItem $item): array
+    {
+        return [
+            'source_title' => $item->title,
+            'source_type' => $item->source_type,
+            'source_url' => $item->source_url,
+            'category' => $item->category,
+        ];
     }
 
     public function chunk(string $content): Collection

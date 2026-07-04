@@ -49,6 +49,11 @@ class AiKnowledgeItem extends Model
         return $this->hasMany(AiKnowledgeChunk::class);
     }
 
+    public function sourcePages(): HasMany
+    {
+        return $this->hasMany(AiKnowledgeSourcePage::class)->orderBy('page_number');
+    }
+
     public function scopeDraft(Builder $query): Builder
     {
         return $query->where('status', 'draft');

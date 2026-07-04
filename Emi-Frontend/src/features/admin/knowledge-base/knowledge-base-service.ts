@@ -4,6 +4,7 @@ import type {
   AiKnowledgeFilters,
   AiKnowledgeItem,
   AiKnowledgePayload,
+  AiKnowledgePdfImportResult,
   AiKnowledgeSourceExtraction,
   PaginatedResult,
 } from "./types";
@@ -84,6 +85,33 @@ export const knowledgeBaseService = {
 
     if (!response.data) {
       throw new Error("Response ekstraksi PDF tidak tersedia.");
+    }
+
+    return response.data;
+  },
+
+  async importPdfSource(
+    token: string,
+    payload: { title: string; category?: string | null; file: File; status?: "draft" | "published" },
+  ) {
+    const formData = new FormData();
+    formData.append("title", payload.title);
+    if (payload.category) {
+      formData.append("category", payload.category);
+    }
+    if (payload.status) {
+      formData.append("status", payload.status);
+    }
+    formData.append("file", payload.file);
+
+    const response = await apiClient.post<AiKnowledgePdfImportResult>(
+      "/admin/ai/knowledge/import-pdf",
+      formData,
+      { token, timeoutMs: 60000 },
+    );
+
+    if (!response.data) {
+      throw new Error("Response impor PDF tidak tersedia.");
     }
 
     return response.data;

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AiKnowledgeChunk;
 use App\Models\AiKnowledgeItem;
+use App\Models\AiKnowledgeSourcePage;
 use App\Models\User;
 use App\Services\Ai\EmbeddingProviderInterface;
 use App\Services\Ai\EmbeddingProviderResolver;
@@ -77,6 +78,45 @@ class BasisAiRagChunkIndexTest extends TestCase
         $this->artisan('ai:knowledge:reindex')->assertExitCode(0);
 
         $this->assertSame($firstCount, AiKnowledgeChunk::query()->count());
+    }
+
+    public function test_reindex_rebuilds_pdf_chunks_from_source_pages_not_placeholder(): void
+    {
+        $item = AiKnowledgeItem::factory()->create([
+            'content' => 'Placeholder yang tidak boleh menjadi chunk final.',
+            'source_type' => 'pdf',
+            'source_url' => '/storage/ai-knowledge-sources/test.pdf',
+        ]);
+        AiKnowledgeSourcePage::query()->create([
+            'ai_knowledge_item_id' => $item->id,
+            'page_number' => 14,
+            'content' => 'Halaman empat belas menjelaskan struktur bahasa Mekongga secara rinci.',
+            'content_hash' => hash('sha256', 'Halaman empat belas menjelaskan struktur bahasa Mekongga secara rinci.'),
+            'char_count' => 68,
+            'word_count' => 8,
+            'metadata' => ['source' => 'pdf', 'page_number' => 14],
+        ]);
+
+        $this->artisan('ai:knowledge:reindex')->assertExitCode(0);
+
+        $chunk = $item->refresh()->chunks()->firstOrFail();
+        $this->assertStringContainsString('Halaman empat belas', $chunk->content);
+        $this->assertStringNotContainsString('Placeholder', $chunk->content);
+        $this->assertSame(14, $chunk->metadata['page_number']);
+        $this->assertSame(14, $chunk->metadata['page_start']);
+        $this->assertSame(14, $chunk->metadata['page_end']);
+    }
+
+    public function test_manual_content_still_chunks_from_content(): void
+    {
+        $item = AiKnowledgeItem::factory()->create([
+            'content' => 'Konten manual tetap digunakan sebagai sumber chunk Basis AI.',
+            'source_type' => 'manual',
+        ]);
+
+        app(AiKnowledgeChunkingService::class)->rebuild($item);
+
+        $this->assertStringContainsString('Konten manual', $item->refresh()->chunks()->firstOrFail()->content);
     }
 
     public function test_chatbot_searches_chunks_and_chooses_most_relevant_chunk(): void
@@ -291,6 +331,7 @@ class BasisAiRagChunkIndexTest extends TestCase
     public function test_reindex_with_embed_does_not_fail_when_provider_unavailable(): void
     {
         AiKnowledgeItem::factory()->create();
+        $this->bindFakeEmbeddingProvider(EmbeddingResult::failure('Provider tidak tersedia.'), false);
 
         $this->artisan('ai:knowledge:reindex --embed')
             ->expectsOutputToContain('Basis AI reindex selesai.')

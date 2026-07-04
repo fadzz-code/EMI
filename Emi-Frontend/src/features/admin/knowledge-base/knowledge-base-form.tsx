@@ -51,7 +51,7 @@ export function KnowledgeBaseForm({
 }) {
   const [form, setForm] = useState(() => formFromItem(item));
   const [isExtracting, setIsExtracting] = useState(false);
-  const [pdfSourceMode, setPdfSourceMode] = useState<"upload" | "url">("upload");
+  const [pdfSourceMode, setPdfSourceMode] = useState<"upload" | "url" | "rag">("upload");
   const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
   const [extractMessage, setExtractMessage] = useState<string | null>(null);
   const [extractError, setExtractError] = useState<string | null>(null);
@@ -109,6 +109,38 @@ export function KnowledgeBaseForm({
     } catch (error) {
       const message = getFirstApiError(error);
       setExtractError(message || "Isi PDF tidak dapat dibaca. Pastikan PDF berbasis teks dan bukan hasil scan/foto.");
+    } finally {
+      setIsExtracting(false);
+    }
+  }
+
+  async function importPdfSource() {
+    if (!token || !selectedPdfFile || !form.title.trim()) {
+      return;
+    }
+
+    setIsExtracting(true);
+    setExtractMessage(null);
+    setExtractError(null);
+
+    try {
+      const result = await knowledgeBaseService.importPdfSource(token, {
+        title: form.title.trim(),
+        category: nullable(form.category),
+        file: selectedPdfFile,
+        status: form.status === "archived" ? "draft" : form.status,
+      });
+
+      setForm((current) => ({
+        ...current,
+        content: "Dokumen PDF telah diproses sebagai sumber Basis AI. Isi lengkap disimpan per halaman dan digunakan untuk pencarian Chatbot AI.",
+        source_type: "pdf",
+        source_url: result.source_url ?? current.source_url,
+      }));
+      setExtractMessage(`PDF berhasil diproses. Halaman terbaca: ${result.page_count}. Halaman dilewati: ${result.skipped_page_count}. Chunk dibuat: ${result.chunk_count}.`);
+    } catch (error) {
+      const message = getFirstApiError(error);
+      setExtractError(message || "PDF tidak dapat diproses sebagai sumber RAG.");
     } finally {
       setIsExtracting(false);
     }
@@ -205,21 +237,25 @@ export function KnowledgeBaseForm({
           <p>
             Upload PDF dari perangkat digunakan untuk mengambil isi PDF dari file lokal admin. PDF harus berbasis teks. PDF hasil scan/foto belum dapat dibaca otomatis. Setelah isi PDF diambil, admin tetap dapat mengoreksi Konten Pengetahuan sebelum dipublish.
           </p>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-3">
             <label className="flex items-center gap-2 font-bold">
               <input
                 checked={pdfSourceMode === "upload"}
                 onChange={() => setPdfSourceMode("upload")}
                 type="radio"
               />
-              Upload PDF dari perangkat
+              Ekstrak ke Konten
+            </label>
+            <label className="flex items-center gap-2 font-bold">
+              <input checked={pdfSourceMode === "rag"} onChange={() => setPdfSourceMode("rag")} type="radio" />
+              Proses Sumber RAG
             </label>
             <label className="flex items-center gap-2 font-bold">
               <input checked={pdfSourceMode === "url"} onChange={() => setPdfSourceMode("url")} type="radio" />
               Ambil dari URL PDF publik
             </label>
           </div>
-          {pdfSourceMode === "upload" ? (
+          {pdfSourceMode === "upload" || pdfSourceMode === "rag" ? (
             <div className="grid gap-3">
               <Input
                 accept="application/pdf,.pdf"
@@ -227,9 +263,15 @@ export function KnowledgeBaseForm({
                 type="file"
               />
               <div>
-                <Button disabled={isExtracting || !selectedPdfFile} onClick={extractPdfUpload} type="button" variant="secondary">
-                  {isExtracting ? "Membaca isi PDF..." : "Ambil Isi PDF"}
-                </Button>
+                {pdfSourceMode === "rag" ? (
+                  <Button disabled={isExtracting || !selectedPdfFile || !form.title.trim()} onClick={importPdfSource} type="button" variant="secondary">
+                    {isExtracting ? "Memproses PDF..." : "Upload PDF Besar sebagai Sumber"}
+                  </Button>
+                ) : (
+                  <Button disabled={isExtracting || !selectedPdfFile} onClick={extractPdfUpload} type="button" variant="secondary">
+                    {isExtracting ? "Membaca isi PDF..." : "Ambil Isi PDF"}
+                  </Button>
+                )}
               </div>
             </div>
           ) : (

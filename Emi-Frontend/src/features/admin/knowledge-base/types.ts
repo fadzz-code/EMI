@@ -34,6 +34,14 @@ export type AiKnowledgeSourceExtraction = {
   warnings: string[];
 };
 
+export type AiKnowledgePdfImportResult = {
+  item_id: string;
+  page_count: number;
+  chunk_count: number;
+  skipped_page_count: number;
+  source_url?: string | null;
+};
+
 export type AiKnowledgeFilters = {
   search?: string;
   category?: string;

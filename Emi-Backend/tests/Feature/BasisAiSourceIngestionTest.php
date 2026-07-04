@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AiKnowledgeItem;
+use App\Models\AiKnowledgeSourcePage;
 use App\Models\User;
 use App\Services\AiSourceIngestionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -202,6 +203,67 @@ class BasisAiSourceIngestionTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('data.matched', true)
             ->assertJsonPath('data.source.source_url', 'https://example.com/rumbia');
+    }
+
+    public function test_pdf_source_page_model_table_works(): void
+    {
+        $item = AiKnowledgeItem::factory()->create(['created_by' => $this->admin->id]);
+
+        $page = AiKnowledgeSourcePage::query()->create([
+            'ai_knowledge_item_id' => $item->id,
+            'page_number' => 14,
+            'content' => 'Struktur bahasa Mekongga memiliki pola kalimat khusus.',
+            'content_hash' => hash('sha256', 'Struktur bahasa Mekongga memiliki pola kalimat khusus.'),
+            'char_count' => 54,
+            'word_count' => 7,
+            'metadata' => ['source' => 'pdf', 'page_number' => 14],
+        ]);
+
+        $this->assertSame(14, $page->fresh()->metadata['page_number']);
+        $this->assertSame(1, $item->sourcePages()->count());
+    }
+
+    public function test_admin_can_import_pdf_as_page_aware_source_without_content(): void
+    {
+        Storage::fake('public');
+        $file = UploadedFile::fake()->createWithContent('struktur bahasa mekongga.pdf', $this->textPdfContent());
+
+        $response = $this->actingAs($this->admin)->post('/api/v1/admin/ai/knowledge/import-pdf', [
+            'title' => 'Struktur Bahasa Mekongga',
+            'category' => 'Bahasa',
+            'file' => $file,
+            'status' => 'draft',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.page_count', 1)
+            ->assertJsonPath('data.skipped_page_count', 0);
+
+        $item = AiKnowledgeItem::query()->findOrFail($response->json('data.item_id'));
+        $this->assertSame('pdf', $item->source_type);
+        $this->assertStringStartsWith('/storage/ai-knowledge-sources/', $item->source_url);
+        $this->assertSame('Dokumen PDF telah diproses sebagai sumber Basis AI. Isi lengkap disimpan per halaman dan digunakan untuk pencarian Chatbot AI.', $item->content);
+        $this->assertStringContainsString('Sagu rumbia pangan tradisional Mekongga', $item->sourcePages()->first()->content);
+        $this->assertGreaterThan(0, $item->chunks()->count());
+        $metadata = $item->chunks()->first()->metadata;
+        $this->assertSame(1, $metadata['page_number']);
+        $this->assertSame(1, $metadata['page_start']);
+        $this->assertSame(1, $metadata['page_end']);
+        Storage::disk('public')->assertExists(str_replace('/storage/', '', $item->source_url));
+    }
+
+    public function test_import_empty_pdf_returns_clear_error(): void
+    {
+        Storage::fake('public');
+        $file = UploadedFile::fake()->createWithContent('scan.pdf', $this->emptyPdfContent());
+
+        $response = $this->actingAs($this->admin)->post('/api/v1/admin/ai/knowledge/import-pdf', [
+            'title' => 'Scan PDF',
+            'file' => $file,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('errors.file.0', 'PDF tidak memiliki teks yang dapat dibaca. PDF hasil scan/foto belum didukung tanpa OCR.');
     }
 
     private function textPdfContent(): string

@@ -92,10 +92,15 @@ class DefaultExtractiveAnswerProvider
 
     private function sourceFromChunk(AiKnowledgeItem $item, AiKnowledgeChunk $chunk, array $metadata = []): array
     {
+        $chunkMetadata = $chunk->metadata ?? [];
+
         return array_filter([
             ...$this->sourceFromItem($item),
             'chunk_id' => $chunk->id,
             'chunk_index' => $chunk->chunk_index,
+            'page_number' => $chunkMetadata['page_number'] ?? null,
+            'page_start' => $chunkMetadata['page_start'] ?? null,
+            'page_end' => $chunkMetadata['page_end'] ?? null,
             'retrieval_mode' => $metadata['retrieval_mode'] ?? null,
             'similarity_score' => $metadata['similarity_score'] ?? null,
             'distance' => $metadata['distance'] ?? null,
