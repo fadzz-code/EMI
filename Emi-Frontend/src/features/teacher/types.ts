@@ -1,5 +1,6 @@
 import type { ApiPaginationMeta } from "@/lib/api-client";
 import type { EntityStatus, SchoolClass, ClassStudent } from "@/features/admin/management/types";
+import type { SpeakingAttempt, SpeakingExercise } from "@/features/student/types";
 
 export type TeacherDashboardSummary = {
   class: {
@@ -230,6 +231,16 @@ export type TeacherQuizReport = {
     incorrect_count?: number | null;
     average_awarded_points?: number | null;
   }>;
+};
+
+export type TeacherSpeakingAttempt = SpeakingAttempt & {
+  exercise?: SpeakingExercise | null;
+  student?: { id: string; full_name?: string | null; email?: string | null } | null;
+};
+
+export type SpeakingFeedbackRequest = {
+  teacher_score: number;
+  teacher_feedback?: string | null;
 };
 
 export type TeacherUserProfile = {

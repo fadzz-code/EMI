@@ -10,6 +10,8 @@ import type {
   StudentCultureItem,
   StudentProgressReport,
   StudentChatbotResponse,
+  SpeakingAttempt,
+  SpeakingExercise,
 } from "./types";
 
 function paginated<T>(data: T[] | undefined, meta: unknown): PaginatedResult<T> {
@@ -137,5 +139,35 @@ export const studentService = {
 
   async progressReport(token: string) {
     return this.getStudentProgressReport(token);
+  },
+
+  async speakingExercises(token: string) {
+    const response = await apiClient.get<SpeakingExercise[]>("/student/speaking/exercises", { token });
+    return response.data ?? [];
+  },
+
+  async speakingAttempts(token: string) {
+    const response = await apiClient.get<SpeakingAttempt[]>("/student/speaking/attempts", { token });
+    return response.data ?? [];
+  },
+
+  async speakingAttemptDetail(token: string, attemptId: string) {
+    const response = await apiClient.get<SpeakingAttempt>(`/student/speaking/attempts/${attemptId}`, { token });
+    if (!response.data) throw new Error("Detail percobaan speaking tidak tersedia.");
+    return response.data;
+  },
+
+  async submitSpeakingAttempt(token: string, exerciseId: string, file: File) {
+    const formData = new FormData();
+    formData.append("file", file, file.name);
+
+    const response = await apiClient.post<SpeakingAttempt>(
+      `/student/speaking/exercises/${exerciseId}/attempts`,
+      formData,
+      { token, timeoutMs: 60_000 },
+    );
+
+    if (!response.data) throw new Error("Percobaan speaking tidak tersedia.");
+    return response.data;
   },
 };

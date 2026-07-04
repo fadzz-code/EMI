@@ -16,6 +16,8 @@ import type {
   TeacherQuizQuestion,
   TeacherQuizReport,
   TeacherUserProfile,
+  TeacherSpeakingAttempt,
+  SpeakingFeedbackRequest,
 } from "./types";
 
 function paginated<T>(data: T[] | undefined, meta: unknown): PaginatedResult<T> {
@@ -376,6 +378,41 @@ export const teacherService = {
       throw new Error("Detail media tidak tersedia.");
     }
 
+    return response.data;
+  },
+
+  async temporaryMediaUrl(token: string, mediaId: string) {
+    const response = await apiClient.post<{ url: string; expires_at: string }>(
+      `/media/${mediaId}/temporary-url`,
+      { expires_in_minutes: 15, disposition: "inline" },
+      { token },
+    );
+
+    if (!response.data) {
+      throw new Error("URL audio tidak tersedia.");
+    }
+
+    return response.data.url;
+  },
+
+  async speakingAttempts(token: string) {
+    const response = await apiClient.get<TeacherSpeakingAttempt[]>("/teacher/speaking/attempts", { token });
+    return response.data ?? [];
+  },
+
+  async speakingAttemptDetail(token: string, attemptId: string) {
+    const response = await apiClient.get<TeacherSpeakingAttempt>(`/teacher/speaking/attempts/${attemptId}`, { token });
+    if (!response.data) throw new Error("Detail hasil speaking tidak tersedia.");
+    return response.data;
+  },
+
+  async submitSpeakingFeedback(token: string, attemptId: string, payload: SpeakingFeedbackRequest) {
+    const response = await apiClient.patch<TeacherSpeakingAttempt>(
+      `/teacher/speaking/attempts/${attemptId}/feedback`,
+      payload,
+      { token },
+    );
+    if (!response.data) throw new Error("Feedback speaking tidak tersedia.");
     return response.data;
   },
 

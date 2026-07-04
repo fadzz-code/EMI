@@ -1,0 +1,13 @@
+# EMI Speaking AI local artifacts
+Emi-Speaking-AI/.venv/
+Emi-Speaking-AI/__pycache__/
+Emi-Speaking-AI/**/*.pyc
+Emi-Speaking-AI/.env
+
+# VSCode
+.vscode/
+
+# Logs
+*.log
+Emi-Frontend/dev_stdout.log
+Emi-Frontend/dev_stderr.log

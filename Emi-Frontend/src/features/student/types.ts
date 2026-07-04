@@ -203,6 +203,41 @@ export type StudentQuizResultsReport = {
   rows?: StudentQuizResultReportRow[];
 };
 
+export type SpeakingAttemptStatus = "pending" | "processing" | "completed" | "failed" | "reviewed" | string;
+
+export type SpeakingExercise = {
+  id: string;
+  title: string;
+  prompt_text?: string | null;
+  target_text: string;
+  target_translation?: string | null;
+  language_code?: string | null;
+  difficulty?: string | null;
+  status?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type SpeakingAttempt = {
+  id: string;
+  exercise_id: string;
+  target_text: string;
+  status: SpeakingAttemptStatus;
+  ai_score?: number | null;
+  ai_transcription?: string | null;
+  ai_alignment?: Record<string, number> | null;
+  ai_error?: string | null;
+  teacher_score?: number | null;
+  teacher_feedback?: string | null;
+  reviewed_at?: string | null;
+  audio_media_id?: string | null;
+  audio_url?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  exercise?: SpeakingExercise | null;
+  student?: { id: string; full_name?: string | null; email?: string | null } | null;
+};
+
 export type DictionaryCategory = {
   id: string;
   name: string;
