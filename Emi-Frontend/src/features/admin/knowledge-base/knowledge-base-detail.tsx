@@ -17,11 +17,11 @@ import { knowledgeEndpointMessage, unavailableKnowledgeActions } from "./knowled
 
 const disabledControlClass = "bg-slate-100 text-slate-500";
 
-function DisabledInput({ value = "Belum tersedia dari backend" }: { value?: string }) {
+function DisabledInput({ value = "Belum tersedia" }: { value?: string }) {
   return <Input className={disabledControlClass} disabled value={value} />;
 }
 
-function DisabledTextarea({ value = "Belum tersedia dari backend" }: { value?: string }) {
+function DisabledTextarea({ value = "Belum tersedia" }: { value?: string }) {
   return <Textarea className={disabledControlClass} disabled value={value} />;
 }
 
@@ -33,8 +33,8 @@ export function KnowledgeBaseDetail({ knowledgeId }: { knowledgeId: string }) {
           <Badge tone="yellow">ADMIN-12</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">Detail Pengetahuan AI</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Detail/edit sumber pengetahuan AI. Backend aktual belum menyediakan endpoint
-            detail knowledge document, jadi halaman ini tampil sebagai fallback read-only.
+            Halaman detail ini menjaga rute admin tetap tersedia. Untuk saat ini,
+            pengelolaan sumber aktif dilakukan dari daftar Basis AI.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -49,8 +49,8 @@ export function KnowledgeBaseDetail({ knowledgeId }: { knowledgeId: string }) {
       </header>
 
       <Alert tone="warning">
-        {knowledgeEndpointMessage} ID dari URL hanya ditampilkan sebagai konteks, bukan
-        hasil fetch data backend.
+        {knowledgeEndpointMessage} ID dari URL hanya ditampilkan sebagai konteks sampai
+        detail sumber tersedia penuh.
       </Alert>
 
       <Card>
@@ -59,7 +59,8 @@ export function KnowledgeBaseDetail({ knowledgeId }: { knowledgeId: string }) {
             <div>
               <h2 className="text-xl font-black text-ink">Metadata Sumber</h2>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                Field detail akan aktif setelah backend menyediakan endpoint show/update.
+                Field detail masih read-only. Gunakan daftar Basis AI untuk tambah, edit,
+                terbitkan, arsipkan, dan hapus pengetahuan.
               </p>
             </div>
             <Badge tone="neutral">Read-only</Badge>
@@ -110,7 +111,7 @@ export function KnowledgeBaseDetail({ knowledgeId }: { knowledgeId: string }) {
               <DisabledTextarea />
             </FormField>
             <FormField label="Chunk dan embedding">
-              <DisabledTextarea value="Belum tersedia. Endpoint chunk, embedding, verify, dan reindex belum aktif di route backend aktual." />
+              <DisabledTextarea value="Belum tersedia. Chunk, embedding, verifikasi, dan reindex dapat dipoles pada batch Basis AI berikutnya." />
             </FormField>
             <KnowledgeBaseEmptyState />
           </div>

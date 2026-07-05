@@ -233,7 +233,7 @@ export function QuestionForm({
       </FormField>
 
       <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
-        <FormField label="Image media ID">
+        <FormField label="ID media gambar">
           <Input
             onChange={(event) =>
               setForm((current) => ({ ...current, image_media_id: event.target.value }))

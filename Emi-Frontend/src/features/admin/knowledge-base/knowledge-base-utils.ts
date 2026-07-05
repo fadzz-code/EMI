@@ -1,24 +1,24 @@
 import type { KnowledgeFeature, KnowledgePlaceholderRow } from "./types";
 
 export const knowledgeEndpointMessage =
-  "Endpoint basis pengetahuan AI belum terdaftar di routes/api.php.";
+  "Detail sumber pengetahuan belum tersedia penuh di halaman ini.";
 
 export const unavailableKnowledgeActions: KnowledgeFeature[] = [
   {
     label: "Tambah sumber pengetahuan",
-    description: "Membutuhkan POST /knowledge-documents atau endpoint admin yang setara.",
+    description: "Gunakan daftar Basis AI untuk menambah pengetahuan manual, link, atau PDF.",
   },
   {
     label: "Upload dokumen",
-    description: "Belum ada endpoint upload dokumen knowledge base yang aktif.",
+    description: "Upload dan ekstraksi PDF tersedia dari form tambah pengetahuan.",
   },
   {
     label: "Aktifkan/nonaktifkan sumber",
-    description: "Belum ada field status atau endpoint update knowledge yang tersedia.",
+    description: "Status draft, terbit, dan arsip dikelola dari daftar Basis AI.",
   },
   {
     label: "Verifikasi dan reindex",
-    description: "Kontrak API menyebut verify/reindex, tetapi route aktual belum tersedia.",
+    description: "Verifikasi dan reindex bisa dipoles pada batch Basis AI berikutnya.",
   },
 ];
 

@@ -5,8 +5,8 @@ import { knowledgeEndpointMessage } from "./knowledge-base-utils";
 export function KnowledgeBaseEmptyState() {
   return (
     <EmptyState
-      description={`${knowledgeEndpointMessage} Data sumber pengetahuan belum dapat dimuat dari backend aktual.`}
-      title="Basis pengetahuan AI belum tersedia"
+      description={`${knowledgeEndpointMessage} Buka daftar Basis AI untuk mengelola sumber pengetahuan yang sudah aktif.`}
+      title="Detail pengetahuan belum tersedia"
     />
   );
 }

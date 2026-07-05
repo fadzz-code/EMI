@@ -85,6 +85,8 @@ High-level status:
 - [ ] Admin embedding workflow UI if client requests it.
 - [x] Admin dashboard UI/data polish before demo: placeholder/static values replaced with real `/admin/dashboard/summary` data, honest loading/error/empty states, and Figma-aligned hero/stats/actions layout.
 - [x] Batch 4B admin table/form/content polish completed for approvals, user/class management, dictionary/import, Basis AI, modules/quizzes, culture, progress, and settings without backend/API logic changes.
+- [x] Batch 4C admin detail/editor polish completed for demo-visible admin editors: user/class detail, module editor, quiz builder, dictionary detail, Basis AI form/detail fallback, and Budaya Mekongga global/template editor wording/layout without backend/API logic changes.
+- [ ] Admin detail/editor follow-up if client requests deeper polish: approval detail, progress class/student detail, modal accessibility/focus behavior, and browser responsive QA across edited admin detail screens.
 - [ ] Admin broad manual QA pass after latest changes.
 
 ## 6. Teacher Web

@@ -244,7 +244,7 @@ export function ModuleContentForm({
                 value={form.media_id}
               />
             </FormField>
-            <FormField label="Visibility">
+            <FormField label="Visibilitas">
               <Select
                 onChange={(event) => setVisibility(event.target.value as MediaVisibility)}
                 value={visibility}

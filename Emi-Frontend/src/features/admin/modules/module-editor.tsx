@@ -69,8 +69,8 @@ function LessonPreview({ lesson }: { lesson: LessonTemplate }) {
   if (lesson.media.visibility === "private") {
     return (
       <p className="text-sm text-slate-600">
-        Media private terhubung dengan ID {lesson.media.id}. Preview langsung tidak tersedia di
-        endpoint template.
+        Media private terhubung dengan ID {lesson.media.id}. Preview langsung tidak tersedia
+        untuk template admin.
       </p>
     );
   }
@@ -181,7 +181,7 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
   const deleteLessonMutation = useMutation({
     mutationFn: (lessonId: string) => lessonTemplateService.delete(token ?? "", lessonId),
     onSuccess: async () => {
-      setSuccessMessage("Materi berhasil dihapus sesuai aturan soft delete backend.");
+      setSuccessMessage("Materi berhasil dihapus dari daftar aktif.");
       setDeleteLessonTarget(null);
       await invalidateModule();
     },
@@ -232,8 +232,8 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
             {moduleTemplate?.title ?? "Editor Modul Default"}
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Edit metadata dan materi template modul. Penerbitan modul mengikuti validasi
-            backend: minimal satu materi harus terbit dan valid.
+            Edit metadata dan materi template modul. Modul siap dibagikan setelah minimal
+            satu materi valid diterbitkan.
           </p>
         </div>
         <Link
@@ -257,7 +257,7 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
       ) : null}
 
       {moduleTemplate ? (
-        <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
+        <div className="grid gap-6 xl:grid-cols-[minmax(320px,380px)_1fr]">
           <Card>
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -268,6 +268,10 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
               </div>
               <p className="text-xs text-slate-600">
                 Diubah terakhir: {formatDate(moduleTemplate.updated_at)}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Simpan perubahan metadata lebih dulu, lalu terbitkan atau arsipkan modul sesuai
+                kesiapan materi.
               </p>
             </CardHeader>
             <CardContent>
@@ -476,7 +480,7 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
         confirmLabel={deleteLessonMutation.isPending ? "Menghapus..." : "Hapus Materi"}
         description={
           deleteLessonTarget
-            ? `Materi "${deleteLessonTarget.title}" akan dihapus dengan soft delete sesuai backend.`
+            ? `Materi "${deleteLessonTarget.title}" akan dihapus dari daftar aktif.`
             : ""
         }
         onCancel={() => setDeleteLessonTarget(null)}

@@ -108,8 +108,8 @@ export function DictionaryDetail({ entryId }: { entryId: string }) {
               </div>
               <h1 className="mt-2 text-3xl font-black text-ink">{entry.mekongga}</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                Detail kata kamus dari endpoint admin dictionary. Perubahan tetap
-                mengikuti validasi dan policy backend.
+                Tinjau terjemahan, contoh kalimat, status, kategori, dan audio yang
+                terhubung dengan kata ini.
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
@@ -151,7 +151,7 @@ export function DictionaryDetail({ entryId }: { entryId: string }) {
               <CardContent>
                 <AudioPlayer src={entry.audio?.url} title={`Audio ${entry.mekongga}`} />
                 <p className="mt-3 text-sm text-slate-600">
-                  Audio memakai file media publik yang terhubung melalui `audio_media_id`.
+                  Audio muncul jika entri sudah memiliki file media publik yang valid.
                 </p>
               </CardContent>
             </Card>
@@ -170,7 +170,7 @@ export function DictionaryDetail({ entryId }: { entryId: string }) {
 
           <ConfirmDialog
             confirmLabel="Hapus Entri"
-            description="Aksi ini memakai endpoint DELETE admin dictionary. Lanjutkan hanya jika entri memang tidak dipakai."
+            description="Lanjutkan hanya jika entri memang tidak dipakai lagi di kamus."
             onCancel={() => setDeleteOpen(false)}
             onConfirm={() => deleteMutation.mutate()}
             open={deleteOpen}

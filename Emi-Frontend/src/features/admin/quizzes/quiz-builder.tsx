@@ -105,7 +105,7 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
   const deleteQuestionMutation = useMutation({
     mutationFn: (questionId: string) => quizQuestionService.delete(token ?? "", questionId),
     onSuccess: async () => {
-      setSuccessMessage("Soal berhasil dihapus sesuai aturan soft delete backend.");
+      setSuccessMessage("Soal berhasil dihapus dari daftar aktif.");
       setDeleteQuestionTarget(null);
       await invalidateQuiz();
     },
@@ -155,8 +155,8 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
             {quiz?.title ?? "Builder Soal Kuis"}
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Bangun soal template kuis default. Backend mendukung pilihan ganda,
-            isian singkat, reorder, hapus, dan gambar soal.
+            Bangun soal template kuis default, atur urutan, poin, gambar soal,
+            dan pembahasan sebelum kuis diterbitkan.
           </p>
         </div>
         <Link
@@ -171,9 +171,8 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
       {actionError ? <Alert tone="error">{getFirstApiError(actionError)}</Alert> : null}
       {isPublished ? (
         <Alert tone="warning">
-          Kuis yang sudah terbit dikunci oleh backend. Arsipkan atau buat kuis baru jika
-          perlu.
-          mengubah konten soal.
+          Kuis yang sudah terbit dikunci agar konten soal tetap stabil. Arsipkan atau
+          buat kuis baru jika perlu mengubah isi soal.
         </Alert>
       ) : null}
 
@@ -187,7 +186,7 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
       ) : null}
 
       {quiz ? (
-        <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
+        <div className="grid gap-6 xl:grid-cols-[minmax(320px,380px)_1fr]">
           <Card>
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -196,6 +195,9 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
               </div>
               <p className="text-xs text-slate-600">
                 Dibuat: {formatDate(quiz.created_at)} | Diubah: {formatDate(quiz.updated_at)}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Simpan metadata kuis terpisah dari daftar soal agar perubahan mudah diperiksa.
               </p>
             </CardHeader>
             <CardContent>
@@ -318,7 +320,7 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
         confirmLabel={deleteQuestionMutation.isPending ? "Menghapus..." : "Hapus Soal"}
         description={
           deleteQuestionTarget
-            ? `Soal #${deleteQuestionTarget.order_number} akan dihapus dengan soft delete sesuai backend.`
+            ? `Soal #${deleteQuestionTarget.order_number} akan dihapus dari daftar aktif.`
             : ""
         }
         onCancel={() => setDeleteQuestionTarget(null)}

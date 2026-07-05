@@ -116,7 +116,9 @@
 - Dummy dash values and stale implementation copy were removed. Loading, error, retry, and empty states now clearly reflect the backend/API state.
 - The dashboard now follows the Figma direction more closely with a warm hero card, real stats grid, quick admin actions, and operational signals.
 - Preserved admin feature entry points: approvals, school/class management, dictionary import, Basis AI/RAG, modules, quizzes, Budaya Mekongga, progress, and settings.
-- Remaining Batch 4 work: polish dense admin tables/forms and detailed admin pages after the dashboard.
+- Batch 4B polished admin management/list/form screens: approvals, user/class management, dictionary/import, Basis AI list, module/quiz list and apply modals, Budaya Mekongga list, progress overview, and settings copy.
+- Batch 4C polished demo-visible admin detail/editor screens: user detail, class detail, module editor and lesson form wording, quiz builder and question form wording, dictionary detail, Basis AI form/detail fallback, Budaya Mekongga global content form, and culture template editor copy.
+- Remaining admin polish notes: approval detail and progress detail routes can still receive a deeper visual pass; shared modal accessibility/focus behavior and browser responsive QA remain deferred.
 
 ## 2. Design Principles for EMI
 

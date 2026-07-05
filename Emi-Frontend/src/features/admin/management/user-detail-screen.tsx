@@ -204,11 +204,11 @@ export function UserDetailScreen({ userId }: { userId: string }) {
                 Edit Pengguna
               </Button>
               <Button onClick={() => setStatusOpen(true)} variant="danger">
-                Update Status
+                Ubah Status
               </Button>
               {canAssign ? (
                 <Button onClick={() => setAssignOpen(true)}>
-                  {user.role === "teacher" ? "Assign Guru" : "Assign Siswa"}
+                  {user.role === "teacher" ? "Tetapkan Guru" : "Tempatkan Siswa"}
                 </Button>
               ) : null}
             </div>
@@ -235,17 +235,19 @@ export function UserDetailScreen({ userId }: { userId: string }) {
               {user.role === "teacher" ? (
                 <div className="grid gap-3">
                   <p className="text-sm text-slate-600">
-                    Guru memakai assignment aktif. Reassign dilakukan melalui endpoint kelas.
+                    Guru memakai assignment aktif. Gunakan aksi tetapkan guru untuk memindahkan
+                    assignment ke kelas lain.
                   </p>
                   <DetailItem
-                    label="Assignment Aktif"
+                    label="Penempatan Aktif"
                     value={user.active_assignment ? classLabel(user.active_class) : "-"}
                   />
                 </div>
               ) : user.role === "student" ? (
                 <div className="grid gap-3">
                   <p className="text-sm text-slate-600">
-                    Siswa memakai membership aktif. Pindah kelas dilakukan melalui endpoint kelas.
+                    Siswa memakai membership aktif. Gunakan aksi tempatkan siswa untuk memindahkan
+                    membership ke kelas lain.
                   </p>
                   <DetailItem
                     label="Membership Aktif"
@@ -254,7 +256,7 @@ export function UserDetailScreen({ userId }: { userId: string }) {
                 </div>
               ) : (
                 <Alert tone="info">
-                  Assignment kelas hanya tersedia untuk Guru dan Siswa.
+                  Penempatan kelas hanya tersedia untuk Guru dan Siswa.
                 </Alert>
               )}
             </CardContent>
@@ -301,8 +303,8 @@ export function UserDetailScreen({ userId }: { userId: string }) {
       <Modal onClose={() => setStatusOpen(false)} open={statusOpen} title="Update Status Pengguna">
         <form className="grid gap-4" onSubmit={submitStatus}>
           <Alert tone="warning">
-            Endpoint status hanya menerima `approved` atau `inactive`. Alasan wajib
-            saat menonaktifkan akun.
+            Perubahan status hanya mendukung status disetujui atau nonaktif. Alasan wajib
+            diisi saat menonaktifkan akun.
           </Alert>
           <FormField label="Status baru">
             <Select
@@ -333,7 +335,7 @@ export function UserDetailScreen({ userId }: { userId: string }) {
               type="submit"
               variant="danger"
             >
-              Update Status
+              Simpan Status
             </Button>
           </div>
         </form>
@@ -342,12 +344,12 @@ export function UserDetailScreen({ userId }: { userId: string }) {
       <Modal
         onClose={() => setAssignOpen(false)}
         open={assignOpen}
-        title={user?.role === "teacher" ? "Assign / Reassign Guru" : "Assign / Pindahkan Siswa"}
+        title={user?.role === "teacher" ? "Tetapkan Guru ke Kelas" : "Tempatkan Siswa ke Kelas"}
       >
         {user && canAssign ? (
           <div className="grid gap-4">
             <Alert tone="info">
-              Backend menjadi sumber kebenaran untuk aturan satu guru/siswa aktif per kelas.
+              Sistem akan menjaga aturan satu guru atau siswa aktif pada kelas yang dipilih.
             </Alert>
             <FormField label="Kelas aktif">
               <Select
@@ -370,7 +372,7 @@ export function UserDetailScreen({ userId }: { userId: string }) {
                 disabled={!selectedClassId || assignMutation.isPending}
                 onClick={() => assignMutation.mutate({ role: user.role, classId: selectedClassId })}
               >
-                Simpan Assignment
+                Simpan Penempatan
               </Button>
             </div>
           </div>

@@ -204,7 +204,7 @@ export function ClassDetailScreen({ classId }: { classId: string }) {
                 Edit Kelas
               </Button>
               <Button onClick={() => setAssignTeacherOpen(true)}>
-                Assign Guru
+                Tetapkan Guru
               </Button>
               <Button onClick={() => setAssignStudentOpen(true)} variant="secondary">
                 Tambah/Pindah Siswa
@@ -247,7 +247,7 @@ export function ClassDetailScreen({ classId }: { classId: string }) {
             <CardHeader>
               <h2 className="text-xl font-black text-ink">Siswa Kelas</h2>
               <p className="mt-1 text-sm text-slate-600">
-                Membership aktif sesuai endpoint `/classes/{classId}/students`.
+                Daftar siswa aktif yang saat ini ditempatkan di kelas ini.
               </p>
             </CardHeader>
             <CardContent>
@@ -370,12 +370,12 @@ export function ClassDetailScreen({ classId }: { classId: string }) {
       <Modal
         onClose={() => setAssignTeacherOpen(false)}
         open={assignTeacherOpen}
-        title="Assign / Reassign Guru"
+        title="Tetapkan Guru Kelas"
       >
         <div className="grid gap-4">
           <Alert tone="info">
-            Backend akan menutup assignment guru aktif lama sesuai aturan satu guru
-            aktif per kelas dan satu kelas aktif per guru.
+            Sistem akan menutup assignment guru aktif lama sesuai aturan satu guru aktif
+            per kelas dan satu kelas aktif per guru.
           </Alert>
           <FormField label="Guru approved">
             <Select
@@ -411,8 +411,8 @@ export function ClassDetailScreen({ classId }: { classId: string }) {
       >
         <div className="grid gap-4">
           <Alert tone="info">
-            Endpoint backend akan membuat membership aktif baru dan menangani aturan
-            satu kelas aktif per siswa.
+            Sistem akan membuat membership aktif baru dan menangani aturan satu kelas aktif
+            per siswa.
           </Alert>
           <FormField label="Siswa approved">
             <Select

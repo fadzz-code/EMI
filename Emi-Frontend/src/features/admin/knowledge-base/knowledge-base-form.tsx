@@ -168,21 +168,31 @@ export function KnowledgeBaseForm({
   }
 
   return (
-    <form className="grid gap-4" onSubmit={submit}>
-      <FormField label="Judul">
-        <Input
-          onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
-          required
-          value={form.title}
-        />
-      </FormField>
-      <FormField label="Kategori">
-        <Input
-          onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))}
-          placeholder="Contoh: Budaya, Bahasa, Sejarah"
-          value={form.category}
-        />
-      </FormField>
+    <form className="grid gap-5" onSubmit={submit}>
+      <section className="grid gap-4 rounded-lg border-2 border-ink bg-white p-4">
+        <div>
+          <h3 className="text-base font-black text-ink">Identitas Pengetahuan</h3>
+          <p className="mt-1 text-sm leading-6 text-slate-600">
+            Judul dan kategori membantu admin menemukan sumber saat mengelola Basis AI.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField label="Judul">
+            <Input
+              onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+              required
+              value={form.title}
+            />
+          </FormField>
+          <FormField label="Kategori">
+            <Input
+              onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))}
+              placeholder="Contoh: Budaya, Bahasa, Sejarah"
+              value={form.category}
+            />
+          </FormField>
+        </div>
+      </section>
       {!isPdfRagCreate ? (
         <FormField label="Konten Pengetahuan">
           <Textarea
@@ -200,6 +210,13 @@ export function KnowledgeBaseForm({
           Konten Pengetahuan tidak diperlukan untuk Sumber RAG. PDF akan diproses per halaman dan chunk dibuat dari teks PDF.
         </div>
       )}
+      <section className="grid gap-4 rounded-lg border-2 border-ink bg-surface-muted p-4">
+        <div>
+          <h3 className="text-base font-black text-ink">Sumber dan Status</h3>
+          <p className="mt-1 text-sm leading-6 text-slate-600">
+            Pilih jenis sumber sesuai cara admin memasukkan pengetahuan.
+          </p>
+        </div>
       <div className="grid gap-4 md:grid-cols-2">
         <FormField label="Jenis Sumber">
           <Select
@@ -225,11 +242,12 @@ export function KnowledgeBaseForm({
             value={form.status}
           >
             <option value="draft">Draft</option>
-            <option value="published">Published</option>
-            <option value="archived">Archived</option>
+            <option value="published">Terbit</option>
+            <option value="archived">Arsip</option>
           </Select>
         </FormField>
       </div>
+      </section>
       {form.source_type !== "pdf" ? (
         <FormField label="URL Sumber">
           <Input
@@ -250,7 +268,7 @@ export function KnowledgeBaseForm({
         <div className="grid gap-3 rounded-lg border-2 border-ink bg-yellow-50 p-4 text-sm leading-6 text-yellow-950">
           <p className="font-bold">PDF dapat diambil dari upload file lokal atau dari URL PDF publik.</p>
           <p>
-            Upload PDF dari perangkat digunakan untuk mengambil isi PDF dari file lokal admin. PDF harus berbasis teks. PDF hasil scan/foto belum dapat dibaca otomatis. Setelah isi PDF diambil, admin tetap dapat mengoreksi Konten Pengetahuan sebelum dipublish.
+            Upload PDF dari perangkat digunakan untuk mengambil isi PDF dari file lokal admin. PDF harus berbasis teks. PDF hasil scan/foto belum dapat dibaca otomatis. Setelah isi PDF diambil, admin tetap dapat mengoreksi Konten Pengetahuan sebelum diterbitkan.
           </p>
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="flex items-center gap-2 font-bold">
@@ -314,7 +332,7 @@ export function KnowledgeBaseForm({
       {form.source_type === "link" ? (
         <div className="grid gap-3 rounded-lg border-2 border-ink bg-yellow-50 p-4 text-sm leading-6 text-yellow-950">
           <p className="font-bold">
-            Link tidak otomatis digunakan chatbot hanya karena URL disimpan. Gunakan tombol &quot;Ambil Isi Sumber&quot; agar isi sumber masuk ke Konten Pengetahuan. Admin tetap dapat mengoreksi konten sebelum dipublish.
+            Link tidak otomatis digunakan chatbot hanya karena URL disimpan. Gunakan tombol &quot;Ambil Isi Sumber&quot; agar isi sumber masuk ke Konten Pengetahuan. Admin tetap dapat mengoreksi konten sebelum diterbitkan.
           </p>
           <div>
             <Button disabled={isExtracting || !form.source_url.trim()} onClick={extractSource} type="button" variant="secondary">
@@ -326,7 +344,7 @@ export function KnowledgeBaseForm({
         </div>
       ) : null}
       <div className="rounded-lg border-2 border-dashed border-ink bg-blue-50 p-4 text-sm leading-6 text-blue-950">
-        Draft belum digunakan chatbot. Published digunakan chatbot siswa. Archived disimpan, tetapi tidak digunakan chatbot.
+        Draft belum digunakan chatbot. Terbit digunakan chatbot siswa. Arsip tetap tersimpan, tetapi tidak digunakan chatbot.
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
         <Button onClick={onCancel} type="button" variant="ghost">
