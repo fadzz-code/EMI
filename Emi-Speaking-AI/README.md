@@ -10,13 +10,41 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-## Run locally
+## FFmpeg for browser audio
 
-```bash
-uvicorn main:app --host 127.0.0.1 --port 8001
+Browser WebM/Opus recordings require FFmpeg for conversion to temporary mono 16 kHz WAV before analysis.
+
+Install on Windows:
+
+```cmd
+winget install -e --id Gyan.FFmpeg
 ```
 
-The Wav2Vec2 model may download on first run. Browser WebM/Opus conversion requires `ffmpeg` available on PATH or `SPEAKING_AI_FFMPEG_PATH` pointing to `ffmpeg.exe`. Conversion produces a temporary mono 16 kHz WAV and fails clearly if `ffmpeg` is unavailable or outputs an empty file.
+Verify:
+
+```cmd
+ffmpeg -version
+```
+
+If the Python service still cannot find FFmpeg, locate it in PowerShell:
+
+```powershell
+Get-ChildItem -Path "$env:LOCALAPPDATA\Microsoft\WinGet" -Recurse -Filter ffmpeg.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+```
+
+Then set the path in the same terminal before running Uvicorn. Replace this example path with the path found on your machine:
+
+```cmd
+set SPEAKING_AI_FFMPEG_PATH=C:\Users\Tulo\AppData\Local\Microsoft\WinGet\Links\ffmpeg.exe
+```
+
+## Run locally
+
+```cmd
+python -m uvicorn main:app --host 127.0.0.1 --port 8001
+```
+
+The Wav2Vec2 model may download on first run.
 
 ## Endpoints
 
@@ -51,6 +79,13 @@ Errors return:
   "code": "SPEAKING_AI_ERROR"
 }
 ```
+
+## Troubleshooting
+
+- `ffmpeg tidak ditemukan untuk konversi audio browser`: set `SPEAKING_AI_FFMPEG_PATH` in the same terminal before running Uvicorn.
+- `Jenis audio tidak didukung`: confirm the upload is WAV, WebM/Opus, MP3, MP4, M4A, OGG, or safe octet-stream with an audio extension.
+- First inference can be slow because the Wav2Vec2 model may load or download on first use.
+- If attempts stay pending, confirm Laravel queue worker is running when `QUEUE_CONNECTION=database`.
 
 ## Limitations
 

@@ -122,10 +122,34 @@ cd Emi-Speaking-AI
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-uvicorn main:app --host 127.0.0.1 --port 8001
+winget install -e --id Gyan.FFmpeg
+ffmpeg -version
+python -m uvicorn main:app --host 127.0.0.1 --port 8001
 ```
 
 The Hugging Face model may download on first run. Browser WebM/Opus conversion requires `ffmpeg` available on PATH or `SPEAKING_AI_FFMPEG_PATH` pointing to `ffmpeg.exe`. Conversion produces a temporary mono 16 kHz WAV and fails clearly if `ffmpeg` is unavailable or outputs an empty file.
+
+If Python cannot find FFmpeg after install, find it in PowerShell:
+
+```powershell
+Get-ChildItem -Path "$env:LOCALAPPDATA\Microsoft\WinGet" -Recurse -Filter ffmpeg.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+```
+
+Then set the path in the same terminal before running Uvicorn. Replace this example path with your own path:
+
+```cmd
+set SPEAKING_AI_FFMPEG_PATH=C:\Users\Tulo\AppData\Local\Microsoft\WinGet\Links\ffmpeg.exe
+python -m uvicorn main:app --host 127.0.0.1 --port 8001
+```
+
+Recent manual QA evidence: student browser recording submission completed AI analysis locally after `SPEAKING_AI_FFMPEG_PATH` pointed to the WinGet FFmpeg executable. Teacher review and student feedback display still need full manual QA.
+
+## Troubleshooting
+
+- `ffmpeg tidak ditemukan untuk konversi audio browser`: set `SPEAKING_AI_FFMPEG_PATH` in the same terminal before running Uvicorn.
+- `Jenis audio tidak didukung`: confirm the upload is WAV, WebM/Opus, MP3, MP4, M4A, OGG, or safe octet-stream with an audio extension.
+- First inference can be slow because the Wav2Vec2 model may load or download on first use.
+- If attempts stay pending, confirm Laravel queue worker is running when `QUEUE_CONNECTION=database`.
 
 ## Production Notes
 

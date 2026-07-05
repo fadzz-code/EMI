@@ -17,9 +17,9 @@
 
 ## 2. Current Snapshot
 
-Current focus: speaking end-to-end manual QA after Laravel and Python browser audio upload validation fixes.
+Current focus: finish teacher speaking review QA after student browser recording AI-analysis flow passed with FFmpeg path override.
 
-Last known local HEAD before this task: `a926cb9 docs: add reusable project handover and progress tracker`.
+Last known local HEAD before this task: `a2fceb9 fix: stabilize speaking audio conversion`.
 Remote may be behind local if user has not pushed.
 
 High-level status:
@@ -119,8 +119,8 @@ High-level status:
 - [x] Speaking results UI.
 - [x] Browser recording upload sends named WebM file.
 - [x] Friendly speaking upload validation message in frontend.
-- [ ] Speaking practice real-browser manual QA.
-- [ ] Speaking results real attempt QA.
+- [x] Speaking practice real-browser student submit and AI-analysis QA.
+- [x] Speaking results show AI score/transcription for real student attempt.
 - [ ] Remaining student QA pass.
 
 ## 8. Basis AI / RAG
@@ -182,7 +182,7 @@ High-level status:
 - [x] Python accepts safe browser WebM/Opus MIME variants.
 - [x] Python validates ffmpeg conversion output before transcription.
 - [x] No frontend direct call to Python service.
-- [ ] Manual QA end-to-end.
+- [ ] Manual QA end-to-end. Student AI-analysis path passed locally after setting `SPEAKING_AI_FFMPEG_PATH` to the WinGet `ffmpeg.exe`; teacher review path still pending.
 - [ ] Status polling tuning after manual QA if needed.
 - [ ] Teacher feedback verify from student side.
 - [ ] Python service hardening for production.
@@ -237,12 +237,12 @@ High-level status:
 
 ## 14. Known Bugs / QA Issues
 
-- [ ] Speaking manual QA not completed with full local service stack.
-- [ ] Confirm speaking status progression with `QUEUE_CONNECTION=database` and real queue worker.
+- [ ] Full siswa + guru speaking manual QA not completed; teacher review and student feedback display still need verification.
+- [x] Confirm speaking status progression reaches completed with `QUEUE_CONNECTION=database` and real queue worker for student AI-analysis flow.
 - [ ] Confirm teacher feedback appears correctly for student after review.
-- [ ] Confirm no `validation.mimetypes` error after `79bbbe9` in real browsers.
-- [ ] Confirm no Python `Jenis audio tidak didukung.` error after browser WebM/Opus MIME fix.
-- [ ] Confirm no Python 500 decode/conversion error after ffmpeg conversion hardening.
+- [x] Confirm no `validation.mimetypes` error after `79bbbe9` in real browsers.
+- [x] Confirm no Python `Jenis audio tidak didukung.` error after browser WebM/Opus MIME fix.
+- [x] Confirm no Python 500 decode/conversion error after ffmpeg conversion hardening when `SPEAKING_AI_FFMPEG_PATH` points to WinGet FFmpeg.
 - [ ] Confirm Python model first-download behavior is acceptable for local/prod setup.
 - [ ] Review known composer audit advisories for `guzzlehttp/guzzle` and `guzzlehttp/psr7`; do not modify dependencies unless user asks.
 
@@ -260,6 +260,8 @@ High-level status:
 
 ## 16. Completed Log
 
+- `a2fceb9` — Stabilized speaking audio conversion with ffmpeg.
+- `7f2eddd` — Supported browser WebM speaking audio in Python service.
 - `79bbbe9` — Fixed browser speaking audio upload validation.
 - `da68f90` — Connected speaking practice web UI.
 - `55056a3` — Added speaking AI integration foundation.
