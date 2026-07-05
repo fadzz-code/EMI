@@ -33,7 +33,7 @@ export function TeacherClassQuizzes({ classId }: { classId: string }) {
       <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href={teacherRoutes.classes}>
         Kembali ke Daftar Kelas
       </Link>
-      <PageHeader badge="Guru" description="Kuis kelas dan attempt dibaca dari endpoint backend teacher-accessible." title="Kuis Kelas" />
+      <PageHeader badge="Guru" description="Kelola kuis kelas, pantau attempt siswa, dan buka hasil penilaian." title="Kuis Kelas" />
 
       <TeacherClassNav classId={classId} />
 
@@ -42,13 +42,13 @@ export function TeacherClassQuizzes({ classId }: { classId: string }) {
 
       {!quizzesQuery.isLoading && !quizzesQuery.isError ? (
         quizzes.length === 0 ? (
-          <Card><CardContent><EmptyState description="Belum ada kuis kelas dari backend." title="Kuis belum tersedia" /></CardContent></Card>
+          <Card><CardContent><EmptyState description="Belum ada kuis kelas yang bisa dikelola." title="Kuis belum tersedia" /></CardContent></Card>
         ) : (
           <div className="grid gap-4">
             <section className="grid gap-4 sm:grid-cols-3">
               <StatsCard helper="Semua status" label="Total kuis" value={formatCount(quizzes.length)} />
               <StatsCard helper="Status published" label="Kuis terbit" value={formatCount(publishedCount)} />
-              <StatsCard helper="Dari withCount attempts" label="Attempt" value={formatCount(quizzes.reduce((sum, quiz) => sum + (quiz.attempts_count ?? 0), 0))} />
+              <StatsCard helper="Percobaan siswa yang tercatat" label="Attempt" value={formatCount(quizzes.reduce((sum, quiz) => sum + (quiz.attempts_count ?? 0), 0))} />
             </section>
             <div className="grid gap-4 md:grid-cols-2">
               {quizzes.map((quiz) => {

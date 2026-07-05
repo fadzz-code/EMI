@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import { Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, PageHeader, StatsCard } from "@/components/ui";
+import { Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState, PageHeader, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 import { teacherRoutes } from "@/lib/routes";
@@ -13,19 +14,28 @@ import { formatCount, formatOptional, formatPercent } from "./teacher-utils";
 
 export function TeacherStudentList() {
   const { token, user } = useAuth();
+  const [search, setSearch] = useState("");
   const studentsQuery = useQuery({
     queryKey: ["teacher", "students"],
     queryFn: () => teacherService.studentProgress(token ?? ""),
     enabled: Boolean(token),
   });
 
-  const students = studentsQuery.data?.items ?? [];
+  const students = useMemo(() => studentsQuery.data?.items ?? [], [studentsQuery.data?.items]);
+  const filteredStudents = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+    if (!keyword) return students;
+    return students.filter((student) => [
+      student.full_name,
+      student.class?.name,
+    ].filter(Boolean).join(" ").toLowerCase().includes(keyword));
+  }, [search, students]);
 
   return (
     <div className="grid gap-6">
       <PageHeader
         badge="Guru"
-        description="Daftar siswa dalam kelas aktif Anda berdasarkan data progress."
+        description="Cari siswa, lihat progress modul, dan buka detail belajar dari kelas aktif Anda."
         title="Daftar Siswa"
       />
 
@@ -62,8 +72,22 @@ export function TeacherStudentList() {
               )} />
             </section>
 
+            <Card>
+              <CardContent>
+                <Input onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama siswa atau kelas..." value={search} />
+              </CardContent>
+            </Card>
+
+            {filteredStudents.length === 0 ? (
+              <Card>
+                <CardContent>
+                  <EmptyState description="Coba gunakan kata kunci lain." title="Siswa tidak ditemukan" />
+                </CardContent>
+              </Card>
+            ) : null}
+
             <div className="grid gap-4 md:grid-cols-2">
-              {students.map((student) => (
+              {filteredStudents.map((student) => (
                 <Card key={student.student_id}>
                   <CardHeader>
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

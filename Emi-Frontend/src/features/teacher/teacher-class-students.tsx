@@ -33,7 +33,7 @@ export function TeacherClassStudents({ classId }: { classId: string }) {
       <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href={teacherRoutes.classes}>
         Kembali ke Daftar Kelas
       </Link>
-      <PageHeader badge="Guru" description="Daftar siswa aktif berasal dari endpoint kelas dan tetap mengikuti scope assignment guru." title="Siswa Kelas" />
+      <PageHeader badge="Guru" description="Daftar siswa aktif di kelas yang ditetapkan untuk Anda." title="Siswa Kelas" />
 
       <TeacherClassNav classId={classId} />
 
@@ -46,7 +46,7 @@ export function TeacherClassStudents({ classId }: { classId: string }) {
         ) : (
           <div className="grid gap-4">
             <section className="grid gap-4 sm:grid-cols-3">
-              <StatsCard helper="Endpoint /classes/{id}/students" label="Total siswa" value={formatCount(students.length)} />
+              <StatsCard helper="Siswa aktif di kelas" label="Total siswa" value={formatCount(students.length)} />
               <StatsCard helper="Jika laporan progress tersedia" label="Progress tersedia" value={formatCount(progressRows.length)} />
               <StatsCard helper="Data kosong bukan dibuat-buat" label="Catatan" value={progressRows.length > 0 ? "Real" : "Belum tersedia"} />
             </section>
@@ -82,7 +82,7 @@ export function TeacherClassStudents({ classId }: { classId: string }) {
                           <dd className="mt-1 font-bold text-ink">{progress ? formatPercent(progress.overall_learning_progress_percent) : "Belum tersedia"}</dd>
                         </div>
                       </dl>
-                      {!progress ? <p className="mt-3 text-sm font-bold text-slate-500">Progress belum tersedia dari backend untuk siswa ini.</p> : null}
+                      {!progress ? <p className="mt-3 text-sm font-bold text-slate-500">Progress belum tersedia untuk siswa ini.</p> : null}
                     </CardContent>
                   </Card>
                 );

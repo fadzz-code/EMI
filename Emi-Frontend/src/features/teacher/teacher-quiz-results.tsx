@@ -70,7 +70,7 @@ export function TeacherQuizResults({ classQuizId }: { classQuizId: string }) {
         <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href={teacherRoutes.quizzes}>Kembali ke Kuis</Link>
         <Link className="w-fit rounded-lg border-2 border-ink bg-yellow-300 px-3 py-2 text-sm font-black text-ink shadow-brutal hover:bg-yellow-200" href={teacherRoutes.quizBuilder(classQuizId)}>Buka Builder</Link>
       </div>
-      <PageHeader badge="Guru" description="Review attempt dan hasil kuis dari endpoint backend kelas Anda." title="Hasil Kuis" />
+      <PageHeader badge="Guru" description="Tinjau attempt siswa, cek skor, dan buka detail jawaban untuk kuis kelas." title="Hasil Kuis" />
 
       {quizQuery.isLoading || attemptsQuery.isLoading ? <LoadingState title="Memuat hasil kuis" /> : null}
       {quizQuery.isError ? <ErrorState description={getFirstApiError(quizQuery.error)} onRetry={() => void quizQuery.refetch()} title="Gagal memuat kuis" /> : null}
@@ -93,7 +93,7 @@ export function TeacherQuizResults({ classQuizId }: { classQuizId: string }) {
       ) : null}
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <StatsCard helper="Dari report backend" label="Total attempt" value={formatCount(reportQuery.data?.attempts_count ?? attemptsQuery.data?.meta?.total)} />
+        <StatsCard helper="Percobaan siswa" label="Total attempt" value={formatCount(reportQuery.data?.attempts_count ?? attemptsQuery.data?.meta?.total)} />
         <StatsCard helper="Submitted/expired" label="Selesai" value={formatCount(reportQuery.data?.submitted_count)} />
         <StatsCard helper="Rata-rata" label="Skor rata-rata" value={formatPercent(reportQuery.data?.average_score_percent)} />
         <StatsCard helper="Tertinggi" label="Skor tertinggi" value={formatPercent(reportQuery.data?.highest_score_percent)} />

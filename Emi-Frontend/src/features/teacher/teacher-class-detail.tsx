@@ -76,8 +76,8 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatsCard helper="Dari detail kelas" label="Sekolah" value={formatOptional(teacherClass.school?.name)} />
             <StatsCard helper="Assignment aktif" label="Guru" value={formatOptional(teacherClass.active_teacher_assignment?.teacher?.full_name)} />
-            <StatsCard helper="Endpoint /classes/{id}/students" label="Siswa" value={formatCount(teacherClass.active_students_count ?? students.length)} />
-            <StatsCard helper="Endpoint /classes/{id}/modules" label="Modul" value={formatCount(modules.length)} />
+            <StatsCard helper="Siswa aktif di kelas" label="Siswa" value={formatCount(teacherClass.active_students_count ?? students.length)} />
+            <StatsCard helper="Materi yang tersedia" label="Modul" value={formatCount(modules.length)} />
           </section>
 
           <TeacherClassNav classId={classId} />
@@ -121,7 +121,7 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
                 ) : null}
                 {!progressQuery.isLoading && !progressQuery.isError ? (
                   progressRows.length === 0 ? (
-                    <EmptyState description="Belum ada laporan progress siswa dari backend." title="Progress belum tersedia" />
+                    <EmptyState description="Belum ada laporan progress siswa untuk kelas ini." title="Progress belum tersedia" />
                   ) : (
                     <div className="grid gap-3">
                       {progressRows.slice(0, 8).map((row, index) => (
@@ -157,7 +157,7 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
                 ) : null}
                 {!modulesQuery.isLoading && !modulesQuery.isError ? (
                   modules.length === 0 ? (
-                    <EmptyState description="Belum ada modul kelas dari backend." title="Modul belum tersedia" />
+                    <EmptyState description="Belum ada modul kelas yang bisa dikelola." title="Modul belum tersedia" />
                   ) : (
                     <div className="grid gap-3">
                       {modules.map((module) => (
@@ -184,7 +184,7 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
                 ) : null}
                 {!quizzesQuery.isLoading && !quizzesQuery.isError ? (
                   quizzes.length === 0 ? (
-                    <EmptyState description="Belum ada kuis kelas dari backend." title="Kuis belum tersedia" />
+                    <EmptyState description="Belum ada kuis kelas yang bisa ditinjau." title="Kuis belum tersedia" />
                   ) : (
                     <div className="grid gap-3">
                       {quizzes.map((quiz) => (
@@ -203,7 +203,7 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
           </section>
 
           <Alert tone="info">
-            Halaman ini read-only untuk demo awal. Aksi membuat modul, kuis, atau laporan detail tidak ditambahkan di cluster ini.
+            Detail kelas ini berfungsi sebagai ringkasan cepat. Untuk mengelola materi atau kuis, gunakan menu Modul dan Kuis.
           </Alert>
         </>
       ) : null}

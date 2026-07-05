@@ -120,6 +120,15 @@
 - Batch 4C polished demo-visible admin detail/editor screens: user detail, class detail, module editor and lesson form wording, quiz builder and question form wording, dictionary detail, Basis AI form/detail fallback, Budaya Mekongga global content form, and culture template editor copy.
 - Remaining admin polish notes: approval detail and progress detail routes can still receive a deeper visual pass; shared modal accessibility/focus behavior and browser responsive QA remain deferred.
 
+### Batch 5 Guru Screens Update
+
+- Batch 5 polished the main guru screens without changing backend/API contracts, auth/role guards, Python Speaking AI, or speaking feedback payloads.
+- Guru dashboard now follows the Figma direction more closely with a warm class hero, stats, clearer task hierarchy, and non-technical speaking summary.
+- Speaking teacher review now has status summary cards, explicit AI-assisted wording, clearer audio/private URL helper text, and synced score/feedback form state when switching attempts.
+- Student/progress views now have clearer copy, student search, summary stats, and mobile card fallback for progress rows.
+- Module, quiz, class, culture, media, and profile pages had internal technical wording reduced. The media page now honestly clarifies that upload is active but a standalone gallery is deferred.
+- Remaining guru polish notes: module/lesson editor density, quiz/culture destructive-action confirm dialogs, and browser responsive QA are still future work.
+
 ## 2. Design Principles for EMI
 
 - Figma is the visual reference for layout, spacing, typography, color, button style, card style, table/list structure, modal/dialog style, responsive intent, and information hierarchy when actual frames are accessible.
@@ -156,10 +165,11 @@
 ### Guru
 
 - Existing screens found: dashboard, classes, class detail, class students, students, student detail, modules, module edit, lesson edit, quizzes, quiz builder, quiz results, culture, progress report, speaking results/review, profile. `/teacher/media` currently redirects to culture.
-- Matching Figma screens: not verifiable via MCP because no file key/frame URLs were available. Legacy docs list Teacher frame names, but visual comparison is blocked.
-- Major UX gaps: speaking review is functional but dense; class/module/quiz management uses repeated card grids that need hierarchy; media route redirect should be documented or polished if it remains.
+- Matching Figma screens: Batch 5 used the Batch 1.5 MCP mapping for `TEACHER-01` to `TEACHER-13`; direct teacher node screenshots were limited by large/truncated page metadata during implementation.
+- Batch 5 polish completed: teacher dashboard hero/stats/task hierarchy, speaking review status summary and teacher-review positioning, student search, progress report mobile cards, quiz/module/class copy cleanup, culture/media/profile wording, and media page clarification.
+- Remaining UX gaps: deeper module/lesson editor form layout, shared confirm dialogs for destructive quiz/culture actions, and true browser responsive QA remain deferred.
 - Responsive risks: two-column speaking review, quiz result detail, module/lesson editor, quiz builder option rows.
-- Priority polish list: teacher dashboard and class shell consistency; speaking review usability; quiz result detail readability; editor forms; clarify or remove visible "backend/capability" language.
+- Priority polish list: if requested, continue with teacher module/lesson editor layout and confirm-dialog consistency; do not build a standalone media gallery without a clear product/API batch.
 
 ### Siswa
 
@@ -237,7 +247,7 @@ These features must be preserved even if Figma has no explicit screen or the fra
 
 ## 10. Next Recommended Batch
 
-Recommend continuing **Batch 4: Admin screens polish** next, now focused on dense admin table/form/content pages: approvals, user/class management, dictionary/import, Basis AI, modules/quizzes, culture, progress, and settings.
+Recommend continuing **Batch 6: Siswa screens polish** next, unless the client wants a small Batch 5B for deeper guru module/lesson editor layout, confirm dialogs, or browser responsive QA.
 
 ## Baseline Mapping Table (Batch 1 Pre-MCP)
 

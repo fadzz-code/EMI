@@ -28,7 +28,7 @@ export function TeacherClassModules({ classId }: { classId: string }) {
       <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href={teacherRoutes.classes}>
         Kembali ke Daftar Kelas
       </Link>
-      <PageHeader badge="Guru" description="Modul yang ditampilkan adalah class_modules dari backend, bukan template admin." title="Modul Kelas" />
+      <PageHeader badge="Guru" description="Kelola modul pembelajaran yang sudah tersedia untuk kelas Anda." title="Modul Kelas" />
 
       <TeacherClassNav classId={classId} />
 
@@ -37,13 +37,13 @@ export function TeacherClassModules({ classId }: { classId: string }) {
 
       {!modulesQuery.isLoading && !modulesQuery.isError ? (
         modules.length === 0 ? (
-          <Card><CardContent><EmptyState description="Belum ada modul kelas dari backend." title="Modul belum tersedia" /></CardContent></Card>
+          <Card><CardContent><EmptyState description="Belum ada modul kelas yang bisa dikelola." title="Modul belum tersedia" /></CardContent></Card>
         ) : (
           <div className="grid gap-4">
             <section className="grid gap-4 sm:grid-cols-3">
               <StatsCard helper="Semua status" label="Total modul" value={formatCount(modules.length)} />
               <StatsCard helper="Status published" label="Modul terbit" value={formatCount(publishedCount)} />
-              <StatsCard helper="Dari detail modul jika dibuka" label="Lesson detail" value="Read-only" />
+              <StatsCard helper="Buka kartu modul untuk melihat materi" label="Materi" value="Tersedia" />
             </section>
             <div className="grid gap-4 md:grid-cols-2">
               {modules.map((module) => (
@@ -100,7 +100,7 @@ function ModuleLessons({ token, moduleId }: { token: string; moduleId: string })
   }
 
   if (lessons.length === 0) {
-    return <p className="mt-4 text-sm font-bold text-slate-500">Lesson belum tersedia dari backend.</p>;
+    return <p className="mt-4 text-sm font-bold text-slate-500">Materi belum tersedia untuk modul ini.</p>;
   }
 
   return (

@@ -50,7 +50,7 @@ export function TeacherQuizList() {
   return (
     <div className="grid gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <PageHeader badge="Guru" description="Kelola kuis dari class_quizzes backend untuk kelas yang ditugaskan kepada Anda." title="Kuis" />
+        <PageHeader badge="Guru" description="Buat kuis draft, buka builder soal, dan pantau hasil attempt siswa." title="Kuis" />
         <Button onClick={() => setShowCreate((value) => !value)} type="button">{showCreate ? "Tutup Form" : "Buat Kuis"}</Button>
       </div>
 
@@ -97,13 +97,13 @@ export function TeacherQuizList() {
 
       {!quizzesQuery.isLoading && !quizzesQuery.isError ? (
         quizzes.length === 0 ? (
-          <Card><CardContent><EmptyState description="Belum ada kuis kelas dari backend." title="Kuis belum tersedia" /></CardContent></Card>
+          <Card><CardContent><EmptyState description="Belum ada kuis kelas yang bisa dikelola." title="Kuis belum tersedia" /></CardContent></Card>
         ) : (
           <div className="grid gap-4">
             <section className="grid gap-4 sm:grid-cols-3">
               <StatsCard helper={user?.active_class?.name ?? "Kelas aktif"} label="Total kuis" value={formatCount(quizzes.length)} />
               <StatsCard helper="Status published" label="Kuis terbit" value={formatCount(publishedCount)} />
-              <StatsCard helper="Dari withCount attempts" label="Attempt" value={formatCount(quizzes.reduce((sum, quiz) => sum + (quiz.attempts_count ?? 0), 0))} />
+              <StatsCard helper="Percobaan siswa yang tercatat" label="Attempt" value={formatCount(quizzes.reduce((sum, quiz) => sum + (quiz.attempts_count ?? 0), 0))} />
             </section>
             <div className="grid gap-4 md:grid-cols-2">
               {quizzes.map((quiz) => {

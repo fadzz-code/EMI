@@ -25,7 +25,7 @@ export function TeacherClassList() {
     <div className="grid gap-6">
       <PageHeader
         badge="Guru"
-        description="Daftar kelas yang dapat diakses guru mengikuti scope backend. Untuk EMI saat ini guru hanya memiliki satu kelas aktif."
+        description="Daftar kelas yang dapat Anda akses. Untuk EMI saat ini, guru mengajar dari satu kelas aktif."
         title="Kelas Saya"
       />
 
@@ -51,9 +51,9 @@ export function TeacherClassList() {
         ) : (
           <div className="grid gap-4">
             <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              <StatsCard helper="Scope dari endpoint /classes" label="Kelas aktif" value={formatCount(classesQuery.data?.meta?.total ?? classes.length)} />
+              <StatsCard helper="Kelas yang ditetapkan Admin" label="Kelas aktif" value={formatCount(classesQuery.data?.meta?.total ?? classes.length)} />
               <StatsCard helper="Jumlah dari active_students_count jika tersedia" label="Total siswa" value={formatCount(classes.reduce((sum, item) => sum + (item.active_students_count ?? 0), 0))} />
-              <StatsCard helper="Dibatasi assignment aktif backend" label="Akses" value="Read-only" />
+              <StatsCard helper="Mengikuti assignment aktif" label="Akses" value="Aman" />
             </section>
 
             <div className="grid gap-4 md:grid-cols-2">

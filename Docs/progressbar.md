@@ -103,6 +103,8 @@ High-level status:
 - [x] Profile.
 - [x] Media page.
 - [x] Verify teacher speaking review with real student attempt.
+- [x] Batch 5 guru screens polish completed for dashboard, class/student/progress views, modules/quizzes/results, culture/media/profile copy, and speaking review hierarchy without backend/API/Python changes.
+- [ ] Teacher follow-up polish if requested: deeper module/lesson editor form layout, shared confirm dialogs for destructive quiz/culture actions, and browser responsive QA across edited guru screens.
 - [ ] Remaining teacher QA pass.
 
 ## 7. Student Web
@@ -228,6 +230,7 @@ High-level status:
 - [x] Batch 2 global web design system foundation completed in Next.js: semantic tokens, Figma-aligned typography, shared UI primitives, shell primitives, and state components normalized without changing logic/API behavior.
 - [x] Batch 3 layout shell/sidebar/header responsive base completed in Next.js: sticky role topbar, desktop sidebar panel, mobile full menu, mobile bottom nav, active navigation states, and stale implemented-feature `Next` badges cleaned without changing routes/API behavior.
 - [x] Batch 4 admin dashboard P0 polish completed in Next.js: dashboard now uses existing Laravel summary API data, demo-safe copy, loading/error/empty states, quick admin actions, and operational signals without backend/API changes.
+- [x] Batch 5 guru screens polish completed in Next.js: Figma-aligned dashboard hero/stats, speaking review status hierarchy, progress mobile cards, student search, non-technical guru copy, and media-route clarification without changing API contracts.
 - [ ] Keep route inventory current after speaking route additions.
 - [ ] Refresh stale legacy docs if they become active planning references.
 
@@ -255,7 +258,7 @@ High-level status:
 - [x] Confirm no Python 500 decode/conversion error after ffmpeg conversion hardening when `SPEAKING_AI_FFMPEG_PATH` points to WinGet FFmpeg.
 - [ ] Confirm Python model first-download behavior is acceptable for local/prod setup.
 - [x] UI audit found `/admin/dashboard` still uses placeholder/static values and stale implementation copy; addressed by Batch 4 dashboard polish using real `/admin/dashboard/summary` data.
-- [ ] UI mapping found Figma `TEACHER-12 - Media Kelas`, while current `/teacher/media` redirects to culture; clarify or polish in a future teacher UI batch.
+- [ ] UI mapping found Figma `TEACHER-12 - Media Kelas`, while current `/teacher/media` does not have a standalone gallery endpoint; Batch 5 clarified copy/upload behavior, but a true media library remains deferred.
 - [ ] Review known composer audit advisories for `guzzlehttp/guzzle` and `guzzlehttp/psr7`; do not modify dependencies unless user asks.
 
 ## 15. Deferred / Future Enhancements

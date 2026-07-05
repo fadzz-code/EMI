@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 
-import { Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, PageHeader, StatsCard } from "@/components/ui";
+import { Alert, Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, PageHeader, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 import { teacherRoutes } from "@/lib/routes";
@@ -26,7 +26,7 @@ export function TeacherModuleList() {
 
   return (
     <div className="grid gap-6">
-      <PageHeader badge="Guru" description="Kelola modul pembelajaran kelas Anda dari materi template admin yang telah disalin ke kelas." title="Modul Kelas" />
+      <PageHeader badge="Guru" description="Kelola modul pembelajaran kelas, cek status terbit, dan buka editor materi." title="Modul Kelas" />
 
       {!classId ? (
         <Alert tone="warning">Anda belum memiliki kelas aktif. Minta Admin untuk menetapkan Anda ke sebuah kelas.</Alert>
@@ -37,13 +37,13 @@ export function TeacherModuleList() {
 
       {!modulesQuery.isLoading && !modulesQuery.isError && classId ? (
         modules.length === 0 ? (
-          <Card><CardContent><EmptyState description="Belum ada modul kelas dari backend." title="Modul belum tersedia" /></CardContent></Card>
+          <Card><CardContent><EmptyState description="Belum ada modul kelas yang bisa dikelola." title="Modul belum tersedia" /></CardContent></Card>
         ) : (
           <div className="grid gap-4">
             <section className="grid gap-4 sm:grid-cols-3">
               <StatsCard helper={user?.active_class?.name ?? "Kelas aktif"} label="Total modul" value={formatCount(modules.length)} />
               <StatsCard helper="Status published" label="Modul terbit" value={formatCount(publishedCount)} />
-              <StatsCard helper="Dari detail modul" label="Aksi" value="Kelola / Edit" />
+              <StatsCard helper="Buka editor untuk mengatur materi" label="Aksi" value="Kelola" />
             </section>
             <div className="grid gap-4 md:grid-cols-2">
               {modules.map((module) => (
@@ -85,14 +85,4 @@ export function TeacherModuleList() {
       ) : null}
     </div>
   );
-}
-
-function Alert({ children, tone = "info" }: { children: React.ReactNode; tone?: "info" | "warning" | "error" | "success" }) {
-  const tones = {
-    info: "border-blue-900 bg-blue-50 text-blue-950",
-    warning: "border-yellow-900 bg-yellow-100 text-yellow-950",
-    error: "border-orange-900 bg-orange-100 text-orange-950",
-    success: "border-emerald-900 bg-emerald-50 text-emerald-950",
-  };
-  return <div className={`rounded-lg border-2 px-4 py-3 text-sm font-medium ${tones[tone]}`}>{children}</div>;
 }

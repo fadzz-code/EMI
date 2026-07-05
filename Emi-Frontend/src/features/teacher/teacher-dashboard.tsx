@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 
-import { Alert, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, PageHeader, StatsCard } from "@/components/ui";
+import { Alert, Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, PageHeader, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 import { teacherRoutes } from "@/lib/routes";
@@ -26,7 +26,7 @@ export function TeacherDashboard() {
     <div className="grid gap-6">
       <PageHeader
         badge="Guru"
-        description="Pantau kelas aktif, siswa, modul, kuis, dan progress belajar dari data backend."
+        description="Pantau kelas aktif, perkembangan siswa, materi, kuis, dan tugas speaking yang perlu ditinjau."
         title={`Halo, ${user?.full_name ?? "Guru"}`}
       />
 
@@ -41,9 +41,32 @@ export function TeacherDashboard() {
 
       {summary ? (
         <>
+          <Card className="overflow-hidden bg-[var(--color-primary-muted)]">
+            <CardContent>
+              <div className="grid gap-5 lg:grid-cols-[1.4fr_0.8fr] lg:items-center">
+                <div>
+                  <Badge tone="yellow">Beranda Kelas</Badge>
+                  <h2 className="mt-3 text-2xl font-black text-ink md:text-3xl">
+                    {teacherClass ? `Kelas ${teacherClass.name}` : "Kelas aktif belum ditetapkan"}
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+                    {teacherClass
+                      ? `Fokus hari ini: cek progress siswa, lanjutkan materi, dan tinjau kuis atau speaking yang membutuhkan perhatian.`
+                      : "Setelah Admin menetapkan kelas, ringkasan belajar dan aksi guru akan tampil di sini."}
+                  </p>
+                </div>
+                <div className="grid gap-2 rounded-2xl border-2 border-ink bg-white p-4 shadow-brutal-sm">
+                  <p className="text-xs font-black uppercase text-muted-foreground">Sekolah</p>
+                  <p className="text-lg font-black text-ink">{teacherClass?.school?.name ?? "Belum tersedia"}</p>
+                  <p className="text-sm text-muted">Akses guru mengikuti kelas aktif yang ditetapkan Admin.</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatsCard helper={teacherClass?.school?.name ?? "Assignment aktif guru"} label="Kelas" value={teacherClass?.name ?? "Belum tersedia"} />
-            <StatsCard helper="Siswa aktif dari backend" label="Siswa" value={formatCount(summary.students.active)} />
+            <StatsCard helper={teacherClass?.school?.name ?? "Menunggu penetapan Admin"} label="Kelas" value={teacherClass?.name ?? "Belum tersedia"} />
+            <StatsCard helper="Siswa aktif di kelas" label="Siswa" value={formatCount(summary.students.active)} />
             <StatsCard helper={`${formatCount(summary.learning.published_lessons)} materi terbit`} label="Modul Terbit" value={formatCount(summary.learning.published_modules)} />
             <StatsCard helper="Rata-rata progress kelas" label="Progress" value={formatPercent(summary.learning.average_progress_percent)} />
           </section>
@@ -108,7 +131,7 @@ export function TeacherDashboard() {
           </section>
 
           <Alert tone="info">
-            Speaking report: {summary.capabilities?.speaking_reports ? "Tersedia" : "Belum tersedia"}. Data speaking ditampilkan read-only sesuai capability backend.
+            Hasil speaking: {summary.capabilities?.speaking_reports ? "tersedia untuk ditinjau guru" : "belum ada ringkasan di dashboard"}. Penilaian AI tetap menjadi skor awal dan guru memberi tinjauan akhir.
           </Alert>
         </>
       ) : null}

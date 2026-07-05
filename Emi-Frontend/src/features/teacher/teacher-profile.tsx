@@ -33,7 +33,7 @@ export function TeacherProfile() {
 
   return (
     <div className="grid gap-6">
-      <PageHeader badge="Guru" description="Profil dibaca dan diperbarui melalui endpoint auth backend." title="Profil Guru" />
+      <PageHeader badge="Guru" description="Perbarui identitas guru yang tampil di kelas dan laporan." title="Profil Guru" />
 
       {profileQuery.isLoading ? <LoadingState title="Memuat profil" /> : null}
       {profileQuery.isError ? <ErrorState description={getFirstApiError(profileQuery.error)} onRetry={() => void profileQuery.refetch()} title="Gagal memuat profil" /> : null}
