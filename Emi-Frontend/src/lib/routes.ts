@@ -3,6 +3,7 @@ import type { UserRole } from "./roles";
 export type NavItem = {
   label: string;
   href: string;
+  shortLabel?: string;
   status?: "ready" | "next";
 };
 
@@ -41,12 +42,12 @@ export const teacherRoutes = {
 
 export const roleNavItems: Record<UserRole, NavItem[]> = {
   admin: [
-    { label: "Dashboard", href: "/admin/dashboard", status: "ready" },
+    { label: "Beranda", href: "/admin/dashboard", shortLabel: "Beranda", status: "ready" },
     { label: "Persetujuan", href: "/admin/approvals", status: "ready" },
     { label: "Sekolah & Kelas", href: "/admin/schools-classes", status: "ready" },
     { label: "Guru & Siswa", href: "/admin/users", status: "ready" },
     { label: "Kamus", href: "/admin/dictionary", status: "ready" },
-    { label: "Basis AI", href: "/admin/knowledge-base", status: "next" },
+    { label: "Basis AI", href: "/admin/knowledge-base", status: "ready" },
     { label: "Modul", href: "/admin/modules", status: "ready" },
     { label: "Kuis", href: "/admin/quizzes", status: "ready" },
     { label: "Budaya Mekongga", href: "/admin/culture/templates", status: "ready" },
@@ -54,25 +55,59 @@ export const roleNavItems: Record<UserRole, NavItem[]> = {
     { label: "Pengaturan", href: "/admin/settings", status: "ready" },
   ],
   teacher: [
-    { label: "Dashboard", href: teacherRoutes.dashboard, status: "ready" },
+    { label: "Beranda", href: teacherRoutes.dashboard, shortLabel: "Beranda", status: "ready" },
     { label: "Kelas", href: teacherRoutes.classes, status: "ready" },
     { label: "Siswa", href: teacherRoutes.students, status: "ready" },
     { label: "Progress", href: teacherRoutes.progressReport, status: "ready" },
     { label: "Modul", href: teacherRoutes.modules, status: "ready" },
     { label: "Kuis", href: teacherRoutes.quizzes, status: "ready" },
     { label: "Budaya Mekongga", href: teacherRoutes.culture, status: "ready" },
-    { label: "Hasil Speaking", href: teacherRoutes.speakingResults, status: "next" },
+    { label: "Hasil Speaking", href: teacherRoutes.speakingResults, shortLabel: "Speaking", status: "ready" },
     { label: "Profil", href: teacherRoutes.profile, status: "ready" },
   ],
   student: [
-    { label: "Beranda", href: "/student/dashboard", status: "ready" },
+    { label: "Beranda", href: "/student/dashboard", shortLabel: "Beranda", status: "ready" },
     { label: "Modul Belajar", href: "/student/modules", status: "ready" },
     { label: "Kamus", href: "/student/dictionary", status: "ready" },
-    { label: "Latihan Speaking", href: "/student/speaking", status: "next" },
+    { label: "Latihan Speaking", href: "/student/speaking", shortLabel: "Speaking", status: "ready" },
     { label: "Kuis", href: "/student/quizzes", status: "ready" },
     { label: "Budaya Mekongga", href: "/student/culture", status: "ready" },
-    { label: "Chatbot AI", href: "/student/chatbot", status: "next" },
+    { label: "Chatbot AI", href: "/student/chatbot", shortLabel: "Chatbot", status: "ready" },
     { label: "Progres Belajar", href: "/student/progress", status: "ready" },
     { label: "Profil", href: "/student/profile", status: "ready" },
   ],
 };
+
+function pickNavItems(items: NavItem[], hrefs: string[]): NavItem[] {
+  return hrefs
+    .map((href) => items.find((item) => item.href === href))
+    .filter((item): item is NavItem => Boolean(item));
+}
+
+export const roleMobileNavItems: Record<UserRole, NavItem[]> = {
+  admin: pickNavItems(roleNavItems.admin, [
+    "/admin/dashboard",
+    "/admin/approvals",
+    "/admin/schools-classes",
+    "/admin/knowledge-base",
+    "/admin/progress",
+  ]),
+  teacher: pickNavItems(roleNavItems.teacher, [
+    teacherRoutes.dashboard,
+    teacherRoutes.classes,
+    teacherRoutes.students,
+    teacherRoutes.quizzes,
+    teacherRoutes.speakingResults,
+  ]),
+  student: pickNavItems(roleNavItems.student, [
+    "/student/dashboard",
+    "/student/modules",
+    "/student/dictionary",
+    "/student/speaking",
+    "/student/chatbot",
+  ]),
+};
+
+export function isActiveNavItem(activePath: string, href: string): boolean {
+  return activePath === href || activePath.startsWith(`${href}/`);
+}

@@ -223,6 +223,7 @@ High-level status:
 - [x] UI polish guardrail documented: preserve existing app-only features even when Figma frames are missing/inaccessible, including Budaya Mekongga, Basis AI/RAG, speaking teacher review, dictionary detail/import, and PDF/link/manual knowledge ingestion.
 - [x] Batch 1.5 Figma MCP visual mapping completed in `Docs/ui-ux-figma-audit.md`; Figma file was accessible and 104 top-level frames were inventoried/mapped.
 - [x] Batch 2 global web design system foundation completed in Next.js: semantic tokens, Figma-aligned typography, shared UI primitives, shell primitives, and state components normalized without changing logic/API behavior.
+- [x] Batch 3 layout shell/sidebar/header responsive base completed in Next.js: sticky role topbar, desktop sidebar panel, mobile full menu, mobile bottom nav, active navigation states, and stale implemented-feature `Next` badges cleaned without changing routes/API behavior.
 - [ ] Keep route inventory current after speaking route additions.
 - [ ] Refresh stale legacy docs if they become active planning references.
 

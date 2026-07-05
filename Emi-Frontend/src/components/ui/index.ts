@@ -9,6 +9,7 @@ export * from "./filter-panel";
 export * from "./form-field";
 export * from "./input";
 export * from "./modal";
+export * from "./mobile-role-navigation";
 export * from "./page-header";
 export * from "./pagination";
 export * from "./search-bar";
