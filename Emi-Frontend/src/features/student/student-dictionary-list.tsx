@@ -76,7 +76,7 @@ export function StudentDictionaryList() {
     <div className="grid gap-6">
       <PageHeader
         badge="Siswa"
-        description="Cari kosakata Bahasa Indonesia, Bahasa Inggris, dan Bahasa Mekongga dari API kamus EMI."
+        description="Cari arti kata, contoh kalimat, dan audio Bahasa Mekongga."
         title="Kamus Mekongga"
       />
 

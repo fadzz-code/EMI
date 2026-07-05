@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
-import { Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, StatsCard } from "@/components/ui";
+import { Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
@@ -56,10 +56,18 @@ export function StudentQuizResult({ quizId }: { quizId: string }) {
 
       {attemptId && !attemptQuery.isLoading && !attemptQuery.isError && attempt ? (
         <>
-          <header className="grid gap-4 rounded-3xl border-2 border-ink bg-white p-5 shadow-brutal">
+          <header className="grid gap-5 rounded-3xl border-2 border-ink bg-[var(--color-primary-muted)] p-5 shadow-brutal lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
             <div>
-              <h1 className="text-3xl font-black text-ink">{quiz?.title ?? "Hasil Kuis"}</h1>
-              <p className="mt-2 text-sm text-slate-600">Dikumpulkan pada: {formatDate(attempt.submitted_at) || "Belum dikumpulkan"}</p>
+              <Badge tone="blue">Hasil Kuis</Badge>
+              <h1 className="mt-3 text-3xl font-black text-ink">{quiz?.title ?? "Hasil Kuis"}</h1>
+              <p className="mt-2 text-sm text-slate-700">Dikumpulkan pada: {formatDate(attempt.submitted_at) || "Belum dikumpulkan"}</p>
+            </div>
+            <div className="rounded-2xl border-2 border-ink bg-white p-4 shadow-brutal">
+              <p className="text-xs font-black uppercase text-slate-500">Nilai akhir</p>
+              <p className="mt-2 text-5xl font-black text-ink">{attempt.score_percent !== null ? formatPercent(attempt.score_percent) : "-"}</p>
+              <p className="mt-2 text-sm font-bold text-slate-600">
+                {attempt.correct_count !== null ? `${formatCount(attempt.correct_count)} jawaban benar` : "Menunggu penilaian"}
+              </p>
             </div>
           </header>
 
@@ -77,7 +85,7 @@ export function StudentQuizResult({ quizId }: { quizId: string }) {
             <CardContent>
               <div className="text-sm leading-6 text-slate-700">
                 <p>
-                  Jika nilai belum tersedia, guru mungkin mengatur agar nilai tidak langsung ditampilkan (pengaturan show_result) atau kuis belum selesai dinilai.
+                  Jika nilai belum tersedia, guru mungkin mengatur agar nilai tidak langsung ditampilkan atau kuis belum selesai dinilai.
                 </p>
                 <p className="mt-2">
                   Untuk melihat percobaan lain atau kuis yang tersedia, silakan kembali ke halaman kuis.
@@ -90,10 +98,16 @@ export function StudentQuizResult({ quizId }: { quizId: string }) {
 
       {!attemptId && !reportQuery.isLoading && !reportQuery.isError && reportRow ? (
         <>
-          <header className="grid gap-4 rounded-3xl border-2 border-ink bg-white p-5 shadow-brutal">
+          <header className="grid gap-5 rounded-3xl border-2 border-ink bg-[var(--color-primary-muted)] p-5 shadow-brutal lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
             <div>
-              <h1 className="text-3xl font-black text-ink">{reportRow.quiz?.title ?? "Hasil Kuis"}</h1>
-              <p className="mt-2 text-sm text-slate-600">Aktivitas terakhir: {formatDate(reportRow.latest_submitted_at)}</p>
+              <Badge tone="blue">Laporan Hasil</Badge>
+              <h1 className="mt-3 text-3xl font-black text-ink">{reportRow.quiz?.title ?? "Hasil Kuis"}</h1>
+              <p className="mt-2 text-sm text-slate-700">Aktivitas terakhir: {formatDate(reportRow.latest_submitted_at)}</p>
+            </div>
+            <div className="rounded-2xl border-2 border-ink bg-white p-4 shadow-brutal">
+              <p className="text-xs font-black uppercase text-slate-500">Nilai terbaik</p>
+              <p className="mt-2 text-5xl font-black text-ink">{reportRow.best_score_percent !== null ? formatPercent(reportRow.best_score_percent) : "-"}</p>
+              <p className="mt-2 text-sm font-bold text-slate-600">{formatCount(reportRow.final_attempt_count)} percobaan selesai</p>
             </div>
           </header>
 
@@ -110,7 +124,7 @@ export function StudentQuizResult({ quizId }: { quizId: string }) {
             </CardHeader>
             <CardContent>
               {reportRow.quiz?.show_result === false ? (
-                <EmptyState description="Nilai kuis ini disembunyikan oleh pengaturan backend." title="Nilai belum ditampilkan" />
+                <EmptyState description="Nilai kuis ini belum ditampilkan oleh guru." title="Nilai belum ditampilkan" />
               ) : reportRow.final_attempt_count ? (
                 <div className="text-sm leading-6 text-slate-700">
                   <p>Attempt terbaik: {formatCount(reportRow.best_attempt_number)}</p>

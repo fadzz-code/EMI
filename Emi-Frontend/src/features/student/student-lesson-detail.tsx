@@ -13,7 +13,7 @@ import type { LessonContent } from "./types";
 
 function LessonBody({ content }: { content?: LessonContent }) {
   if (!content) {
-    return <EmptyState description="Konten materi belum dikembalikan backend." title="Konten belum tersedia" />;
+    return <EmptyState description="Konten materi belum tersedia untuk dibaca." title="Konten belum tersedia" />;
   }
 
   if (content.type === "text") {
@@ -25,7 +25,7 @@ function LessonBody({ content }: { content?: LessonContent }) {
   }
 
   if (!content.url) {
-    return <EmptyState description="URL media materi belum tersedia dari backend." title="Media belum tersedia" />;
+    return <EmptyState description="Media untuk materi ini belum tersedia." title="Media belum tersedia" />;
   }
 
   if (content.type === "image") {
@@ -90,13 +90,15 @@ export function StudentLessonDetail({ lessonId }: { lessonId: string }) {
           {completeMutation.isSuccess ? <Alert tone="success">Materi ditandai selesai.</Alert> : null}
           {completeMutation.error ? <Alert tone="error">{getFirstApiError(completeMutation.error)}</Alert> : null}
 
-          <header className="grid gap-4 rounded-3xl border-2 border-ink bg-white p-5 shadow-brutal">
-            <Badge tone="blue">{contentTypeLabel(lesson.content_type)}</Badge>
-            <div>
-              <h1 className="text-3xl font-black text-ink">{lesson.title}</h1>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{formatOptional(lesson.description)}</p>
+          <header className="grid gap-5 rounded-3xl border-2 border-ink bg-[var(--color-primary-muted)] p-5 shadow-brutal lg:grid-cols-[1.2fr_auto] lg:items-center">
+            <div className="grid gap-4">
+              <Badge tone="blue">{contentTypeLabel(lesson.content_type)}</Badge>
+              <div>
+                <h1 className="text-3xl font-black text-ink">{lesson.title}</h1>
+                <p className="mt-2 text-sm leading-6 text-slate-700">{formatOptional(lesson.description)}</p>
+              </div>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
               <Button disabled={completeMutation.isPending} onClick={() => completeMutation.mutate()}>
                 Tandai Selesai
               </Button>

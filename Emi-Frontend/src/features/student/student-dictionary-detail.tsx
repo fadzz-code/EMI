@@ -46,16 +46,23 @@ export function StudentDictionaryDetail({ entryId }: { entryId: string }) {
 
       {entry ? (
         <>
-          <header className="grid gap-4 rounded-3xl border-2 border-ink bg-white p-5 shadow-brutal">
-            <div className="flex flex-wrap gap-2">
-              <Badge tone="blue">{entry.category?.name ?? "Tanpa kategori"}</Badge>
-              <Badge tone={entry.audio ? "yellow" : "neutral"}>{entry.audio ? "Audio tersedia" : "Audio belum tersedia"}</Badge>
+          <header className="grid gap-5 rounded-3xl border-2 border-ink bg-[var(--color-primary-muted)] p-5 shadow-brutal lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
+            <div className="grid gap-4">
+              <div className="flex flex-wrap gap-2">
+                <Badge tone="blue">{entry.category?.name ?? "Tanpa kategori"}</Badge>
+                <Badge tone={entry.audio ? "yellow" : "neutral"}>{entry.audio ? "Audio tersedia" : "Audio belum tersedia"}</Badge>
+              </div>
+              <div>
+                <p className="text-xs font-black uppercase text-slate-500">Bahasa Mekongga</p>
+                <h1 className="mt-2 text-5xl font-black text-ink">{entry.mekongga}</h1>
+                <p className="mt-3 text-lg font-black text-slate-700">Indonesia: {formatOptional(entry.indonesia)}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-black uppercase text-slate-500">Bahasa Mekongga</p>
-              <h1 className="mt-2 text-4xl font-black text-ink">{entry.mekongga}</h1>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                Detail kosakata dari endpoint kamus backend EMI.
+            <div className="rounded-2xl border-2 border-ink bg-white p-4 shadow-brutal">
+              <p className="text-xs font-black uppercase text-slate-500">Dengarkan kata</p>
+              <AudioPlayer src={entry.audio?.url} title="Mekongga" />
+              <p className="mt-3 text-sm font-bold text-slate-600">
+                {entry.audio ? "Audio membantu latihan pelafalan." : "Audio belum tersedia untuk kata ini."}
               </p>
             </div>
           </header>
@@ -81,9 +88,7 @@ export function StudentDictionaryDetail({ entryId }: { entryId: string }) {
           <Card>
             <CardHeader>
               <h2 className="text-xl font-black text-ink">Audio Mekongga</h2>
-              <p className="mt-1 text-sm text-slate-600">
-                Audio memakai URL publik yang dikembalikan resource kamus backend jika tersedia.
-              </p>
+              <p className="mt-1 text-sm text-slate-600">Gunakan audio ini sebagai pendamping saat membaca kosakata Mekongga.</p>
             </CardHeader>
             <CardContent>
               <AudioPlayer src={entry.audio?.url} title="Mekongga" />
@@ -94,7 +99,7 @@ export function StudentDictionaryDetail({ entryId }: { entryId: string }) {
           </Card>
         </>
       ) : !entryQuery.isLoading && !entryQuery.isError ? (
-        <EmptyState description="Data kata tidak dikembalikan oleh backend." title="Kata tidak ditemukan" />
+        <EmptyState description="Kata ini belum tersedia di kamus." title="Kata tidak ditemukan" />
       ) : null}
     </div>
   );

@@ -57,19 +57,31 @@ export function StudentQuizDetail({ quizId }: { quizId: string }) {
           {startMutation.error ? <Alert tone="error">{getFirstApiError(startMutation.error)}</Alert> : null}
           {quiz.attempt_limit_reached ? <Alert tone="warning">Batas percobaan tercapai.</Alert> : null}
 
-          <header className="grid gap-4 rounded-3xl border-2 border-ink bg-white p-5 shadow-brutal">
-            <div className="flex flex-wrap gap-2 text-sm font-bold text-slate-500">
-              {quiz.open_at ? <Badge tone="neutral">Buka: {formatDate(quiz.open_at)}</Badge> : null}
-              {quiz.close_at ? <Badge tone="neutral">Tutup: {formatDate(quiz.close_at)}</Badge> : null}
+          <header className="grid gap-5 rounded-3xl border-2 border-ink bg-[var(--color-primary-muted)] p-5 shadow-brutal lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
+            <div className="grid gap-4">
+              <div className="flex flex-wrap gap-2 text-sm font-bold text-slate-500">
+                {quiz.open_at ? <Badge tone="neutral">Buka: {formatDate(quiz.open_at)}</Badge> : null}
+                {quiz.close_at ? <Badge tone="neutral">Tutup: {formatDate(quiz.close_at)}</Badge> : null}
+                <Badge tone={quiz.attempt_limit_reached ? "orange" : "blue"}>{quiz.attempt_limit_reached ? "Percobaan habis" : "Siap dikerjakan"}</Badge>
+              </div>
+              <div>
+                <h1 className="text-3xl font-black text-ink">{quiz.title}</h1>
+                <p className="mt-2 text-sm leading-6 text-slate-700 whitespace-pre-wrap">{formatOptional(quiz.description)}</p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button disabled={startMutation.isPending || quiz.attempt_limit_reached} onClick={() => startMutation.mutate()}>
+                  {quiz.attempt_limit_reached ? "Batas Percobaan Tercapai" : "Mulai Kerjakan"}
+                </Button>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-black text-ink">{quiz.title}</h1>
-              <p className="mt-2 text-sm leading-6 text-slate-600 whitespace-pre-wrap">{formatOptional(quiz.description)}</p>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row mt-2">
-              <Button disabled={startMutation.isPending || quiz.attempt_limit_reached} onClick={() => startMutation.mutate()}>
-                {quiz.attempt_limit_reached ? "Batas Percobaan Tercapai" : "Mulai Kerjakan"}
-              </Button>
+            <div className="rounded-2xl border-2 border-ink bg-white p-4 shadow-brutal">
+              <p className="text-xs font-black uppercase text-slate-500">Ringkasan kuis</p>
+              <p className="mt-2 text-4xl font-black text-ink">{formatCount(quiz.questions_count)}</p>
+              <p className="text-sm font-bold text-slate-600">soal tersedia</p>
+              <div className="mt-4 grid gap-2 text-sm font-bold text-slate-700">
+                <span>Durasi: {quiz.duration_minutes ? `${quiz.duration_minutes} menit` : "Tidak dibatasi"}</span>
+                <span>Percobaan: {quiz.max_attempts ? `${usedAttempts} / ${quiz.max_attempts}` : formatCount(usedAttempts)}</span>
+              </div>
             </div>
           </header>
 
@@ -77,7 +89,7 @@ export function StudentQuizDetail({ quizId }: { quizId: string }) {
             <StatsCard helper="Total soal yang harus dijawab" label="Jumlah Soal" value={formatCount(quiz.questions_count)} />
             <StatsCard helper="Batas waktu pengerjaan" label="Durasi" value={quiz.duration_minutes ? `${quiz.duration_minutes} menit` : "Tidak dibatasi"} />
             <StatsCard helper="Percobaan terpakai" label="Percobaan" value={quiz.max_attempts ? `${usedAttempts} / ${quiz.max_attempts}` : formatCount(usedAttempts)} />
-            <StatsCard helper={hasSubmittedScore ? `Terakhir dikumpulkan: ${formatDate(quiz.latest_submitted_at)}` : "Belum ada attempt submitted"} label="Nilai Terakhir" value={hasSubmittedScore ? formatScoreOutOf100(quiz.latest_score_normalized) : "Belum dikerjakan"} />
+            <StatsCard helper={hasSubmittedScore ? `Terakhir dikumpulkan: ${formatDate(quiz.latest_submitted_at)}` : "Belum ada percobaan yang selesai"} label="Nilai Terakhir" value={hasSubmittedScore ? formatScoreOutOf100(quiz.latest_score_normalized) : "Belum dikerjakan"} />
           </section>
 
           <Card>

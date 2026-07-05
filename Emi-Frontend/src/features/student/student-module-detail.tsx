@@ -46,26 +46,38 @@ export function StudentModuleDetail({ moduleId }: { moduleId: string }) {
       {studentModule ? (
         <>
           {startMutation.error ? <Alert tone="error">{getFirstApiError(startMutation.error)}</Alert> : null}
-          <header className="grid gap-4 rounded-3xl border-2 border-ink bg-white p-5 shadow-brutal">
-            <Badge tone={badgeToneForProgress(studentModule.progress.status)}>{statusLabel(studentModule.progress.status)}</Badge>
-            <div>
-              <h1 className="text-3xl font-black text-ink">{studentModule.title}</h1>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{formatOptional(studentModule.description)}</p>
+          <header className="grid gap-5 rounded-3xl border-2 border-ink bg-[var(--color-primary-muted)] p-5 shadow-brutal lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
+            <div className="grid gap-4">
+              <Badge tone={badgeToneForProgress(studentModule.progress.status)}>{statusLabel(studentModule.progress.status)}</Badge>
+              <div>
+                <h1 className="text-3xl font-black text-ink">{studentModule.title}</h1>
+                <p className="mt-2 text-sm leading-6 text-slate-700">{formatOptional(studentModule.description)}</p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button disabled={startMutation.isPending || studentModule.progress.status !== "not_started"} onClick={() => startMutation.mutate()}>
+                  Mulai Modul
+                </Button>
+                <Link className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-yellow-300 px-4 py-2 text-sm font-bold text-ink shadow-brutal hover:bg-yellow-200" href={lessons[0] ? `/student/lessons/${lessons[0].id}` : "/student/modules"}>
+                  Buka Materi Pertama
+                </Link>
+              </div>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Button disabled={startMutation.isPending || studentModule.progress.status !== "not_started"} onClick={() => startMutation.mutate()}>
-                Mulai Modul
-              </Button>
-              <Link className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-yellow-300 px-4 py-2 text-sm font-bold text-ink shadow-brutal hover:bg-yellow-200" href={lessons[0] ? `/student/lessons/${lessons[0].id}` : "/student/modules"}>
-                Buka Materi Pertama
-              </Link>
+            <div className="rounded-2xl border-2 border-ink bg-white p-4 shadow-brutal">
+              <p className="text-xs font-black uppercase text-slate-500">Progress modul</p>
+              <p className="mt-2 text-4xl font-black text-ink">{formatPercent(studentModule.progress.progress_percent)}</p>
+              <div className="mt-3 h-3 overflow-hidden rounded-full border-2 border-ink bg-white">
+                <div className="h-full bg-blue-600" style={{ width: `${studentModule.progress.progress_percent}%` }} />
+              </div>
+              <p className="mt-3 text-sm font-bold text-slate-600">
+                {formatCount(studentModule.progress.completed_lessons)} dari {formatCount(studentModule.progress.total_lessons || lessons.length)} materi selesai.
+              </p>
             </div>
           </header>
 
           <section className="grid gap-4 sm:grid-cols-3">
-            <StatsCard helper="Progress backend" label="Progress" value={formatPercent(studentModule.progress.progress_percent)} />
+            <StatsCard helper="Persentase materi yang sudah selesai" label="Progress" value={formatPercent(studentModule.progress.progress_percent)} />
             <StatsCard helper="Materi selesai" label="Selesai" value={formatCount(studentModule.progress.completed_lessons)} />
-            <StatsCard helper="Materi published" label="Total Materi" value={formatCount(studentModule.progress.total_lessons || lessons.length)} />
+            <StatsCard helper="Materi yang bisa dipelajari" label="Total Materi" value={formatCount(studentModule.progress.total_lessons || lessons.length)} />
           </section>
 
           <Card>
@@ -78,9 +90,12 @@ export function StudentModuleDetail({ moduleId }: { moduleId: string }) {
               ) : (
                 <div className="grid gap-3">
                   {lessons.map((lesson, index) => (
-                    <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-[1fr_auto] sm:items-center" key={lesson.id}>
+                    <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-[auto_1fr_auto] sm:items-center" key={lesson.id}>
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-ink bg-yellow-300 text-sm font-black text-ink">
+                        {index + 1}
+                      </div>
                       <div>
-                        <p className="text-xs font-black uppercase text-slate-500">Materi {index + 1} · {contentTypeLabel(lesson.content_type)}</p>
+                        <p className="text-xs font-black uppercase text-slate-500">{contentTypeLabel(lesson.content_type)}</p>
                         <h3 className="mt-1 text-lg font-black text-ink">{lesson.title}</h3>
                         <p className="mt-1 text-sm text-slate-600">{formatOptional(lesson.description)}</p>
                       </div>

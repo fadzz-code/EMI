@@ -175,9 +175,19 @@
 
 - Existing screens found: dashboard, modules, module detail, lesson detail, dictionary, dictionary detail, quizzes, quiz detail, quiz attempt, quiz result, culture, chatbot, progress, profile, speaking practice, speaking results.
 - Matching Figma screens: not verifiable via MCP because no file key/frame URLs were available. Legacy docs list Student frame names, but visual comparison is blocked.
-- Major UX gaps: chatbot is functional but looks like a general card stack instead of a focused chat surface; speaking practice works but recording/status feedback can be clearer; quiz attempt confirmation uses native browser confirm; dashboard includes internal "speaking report" capability wording.
-- Responsive risks: quiz attempt image/options, chatbot conversation width, speaking two-column layout, dictionary/detail media playback, module lesson content.
-- Priority polish list: student dashboard learning-first hierarchy; chatbot conversation surface; speaking recorder/status states; quiz attempt flow; mobile-friendly module/dictionary cards.
+- Batch 6 polish completed: dashboard now has a warm learning hero, class progress bar, primary next-learning CTA, quiz CTA, and quick action cards for modules, quizzes, dictionary, chatbot, and speaking. Module/list/detail screens now show clearer progress bars, module order/status badges, and numbered lesson journey cards. Quiz list/detail/result screens now have summary stats, stronger status/attempt panels, and large score/result hero cards. Dictionary detail now emphasizes the Mekongga word, translation, and audio practice area. Culture feed cards now use readable badges, class placement, description spacing, and framed media preview.
+- Remaining UX gaps: chatbot is functional but still needs a dedicated chat-surface polish pass; speaking practice works but detailed recorder/status feedback remains Batch 7; quiz attempt confirmation still uses native browser confirm; progress/profile were preserved and remain candidates for a lighter follow-up if requested.
+- Responsive risks: quiz attempt image/options, chatbot conversation width, speaking two-column layout, dictionary/detail media playback, module lesson content, and real-browser responsive QA across the edited Batch 6 screens.
+- Priority polish list: Batch 7 chatbot/speaking detailed UI, quiz attempt confirmation/status polish, progress/profile visual hierarchy if requested, and responsive QA.
+
+### Batch 6 Siswa Screens Update
+
+- Batch 6 changed only the Next.js frontend student UI and docs. No Laravel API contracts, Python Speaking AI, auth guards, routes, payload shapes, or dynamic data behavior were changed.
+- Visible dashboard impact: siswa now lands on a learning-first hero with a big progress card/bar, clear "Lanjut Belajar" and "Cek Kuis" actions, and five quick action cards including light chatbot/speaking entry guidance.
+- Visible learning-flow impact: module cards and module detail now expose progress bars, order/status badges, and numbered lesson cards so the next material is easier to scan on desktop and mobile.
+- Visible quiz/result impact: quiz list/detail/result now separates status, attempts, timing, and score into larger panels; result pages use large score cards and remove technical `show_result` wording.
+- Visible dictionary/culture impact: dictionary detail now reads like a vocabulary page with a large Mekongga word, translation, and audio practice panel; culture cards now have cleaner badges, readable descriptions, and framed media previews.
+- Deferred: detailed chatbot conversation layout and speaking recorder/results polish remain Batch 7; progress/profile deep polish and browser manual QA are not marked complete.
 
 ## 5. AI/RAG and Speaking Audit
 
@@ -217,7 +227,7 @@ These features must be preserved even if Figma has no explicit screen or the fra
 - **Batch 3: Layout shell/sidebar/header.** Completed foundation pass: role shell, responsive mobile menu/bottom nav, topbar/sidebar active states, and stale route status badges.
 - **Batch 4: Admin polish.** Dashboard P0 completed; continue with approvals, user/class management, dictionary/import, Basis AI, modules/quizzes, culture, progress/settings.
 - **Batch 5: Guru polish.** Dashboard/classes/students, modules/lessons, quizzes/results, culture, profile, speaking review.
-- **Batch 6: Siswa polish.** Dashboard, modules/lessons, dictionary/detail, quizzes/attempt/result, culture, progress/profile.
+- **Batch 6: Siswa polish.** Completed priority demo screens: dashboard, modules/lessons, dictionary/detail, quizzes/detail/result, culture, and light chatbot/speaking entry from dashboard. Progress/profile and quiz attempt details can be revisited if requested.
 - **Batch 7: AI chatbot + Speaking polish.** Focused chat surface, citations/source display, speaking recorder/status, teacher review layout, accessible audio/status feedback.
 - **Batch 8: Responsive QA.** Desktop/tablet/mobile pass across high-risk tables, forms, modals, chatbot, quiz attempt, and speaking.
 
@@ -231,7 +241,7 @@ These features must be preserved even if Figma has no explicit screen or the fra
 | P1 | Mobile navigation lacks drawer/collapse | Batch 3 added a mobile full menu plus bottom nav foundation | Done; full responsive QA remains Batch 8 |
 | P1 | Dense table/form action layouts | Admin/teacher workflows are hard on small screens | Batch 4/5/8 |
 | P1 | Modal accessibility gaps | Many admin workflows depend on modals | Batch 2/4 |
-| P1 | Speaking/chatbot state hierarchy | Important AI-assisted flows need clearer trust/status messaging | Batch 7 |
+| P1 | Speaking/chatbot state hierarchy | Dashboard entry cards were clarified in Batch 6, but focused chat and recorder/status surfaces still need dedicated polish | Batch 7 |
 | P2 | Internal/backend wording visible to users | Looks unfinished in demo | Batch 2 onward |
 | P2 | Card/shadow density | Visual consistency and hierarchy polish | Batch 2 onward |
 | P2 | Native confirm usage in quiz/culture areas | Replace with shared confirm dialog for consistency | Relevant role batch |
@@ -247,7 +257,7 @@ These features must be preserved even if Figma has no explicit screen or the fra
 
 ## 10. Next Recommended Batch
 
-Recommend continuing **Batch 6: Siswa screens polish** next, unless the client wants a small Batch 5B for deeper guru module/lesson editor layout, confirm dialogs, or browser responsive QA.
+Recommend continuing **Batch 7: AI chatbot + Speaking UI polish** next. Batch 6 covered the most demo-visible student screens; chatbot conversation layout and speaking recorder/results status hierarchy should stay isolated in the next batch.
 
 ## Baseline Mapping Table (Batch 1 Pre-MCP)
 

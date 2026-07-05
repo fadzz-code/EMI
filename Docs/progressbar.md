@@ -127,6 +127,8 @@ High-level status:
 - [x] Friendly speaking upload validation message in frontend.
 - [x] Speaking practice real-browser student submit and AI-analysis QA.
 - [x] Speaking results show AI score/transcription for real student attempt.
+- [x] Batch 6 siswa screens polish completed for dashboard, module/lesson learning flow, quiz list/detail/result, dictionary list/detail, culture feed readability, and light chatbot/speaking entry cards from dashboard without backend/API/Python changes.
+- [ ] Student follow-up polish if requested: progress/profile visual hierarchy, quiz attempt custom confirmation/status polish, detailed chatbot/speaking UI polish in Batch 7, and browser responsive QA across edited siswa screens.
 - [ ] Remaining student QA pass.
 
 ## 8. Basis AI / RAG
@@ -231,6 +233,7 @@ High-level status:
 - [x] Batch 3 layout shell/sidebar/header responsive base completed in Next.js: sticky role topbar, desktop sidebar panel, mobile full menu, mobile bottom nav, active navigation states, and stale implemented-feature `Next` badges cleaned without changing routes/API behavior.
 - [x] Batch 4 admin dashboard P0 polish completed in Next.js: dashboard now uses existing Laravel summary API data, demo-safe copy, loading/error/empty states, quick admin actions, and operational signals without backend/API changes.
 - [x] Batch 5 guru screens polish completed in Next.js: Figma-aligned dashboard hero/stats, speaking review status hierarchy, progress mobile cards, student search, non-technical guru copy, and media-route clarification without changing API contracts.
+- [x] Batch 6 siswa screens polish completed in Next.js: visible dashboard hero/quick actions, module progress bars, lesson journey cards, quiz/result hierarchy, dictionary detail readability, and culture content cards without changing API contracts.
 - [ ] Keep route inventory current after speaking route additions.
 - [ ] Refresh stale legacy docs if they become active planning references.
 
