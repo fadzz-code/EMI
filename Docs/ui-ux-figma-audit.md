@@ -38,7 +38,7 @@
 | Public | `AUTH-03 - Registrasi Guru` | `/register/teacher` | High | Visual style close but should use shared design tokens | P1 | Preserve school/class lookup. |
 | Public | `AUTH-04 - Registrasi Siswa` | `/register/student` | High | Visual style close but should use shared design tokens | P1 | Preserve pending approval flow. |
 | Public | `AUTH-05 - Menunggu Persetujuan Admin` | `/pending-approval` | High | Align copy/spacing to Figma | P2 | No logic changes needed. |
-| Admin | `ADMIN-01 - Beranda Admin` | `/admin/dashboard` | Low | Existing route is static placeholder and does not match Figma dashboard richness | P0 | Figma shows stats, quick actions, and recent activity. |
+| Admin | `ADMIN-01 - Beranda Admin` | `/admin/dashboard` | Medium | Batch 4 replaced the placeholder with real `/admin/dashboard/summary` data, Figma-aligned hero/stats/actions, and honest states; deeper admin dashboard content polish can continue later | Done/P1 | Preserve real API data and avoid dummy demo values. |
 | Admin | `ADMIN-02`, `ADMIN-03` | `/admin/approvals`, `/admin/approvals/[requestId]` | Medium | Existing functionality present; visual/table/card hierarchy needs alignment | P1 | Preserve approve/reject review flow. |
 | Admin | `ADMIN-04`, `ADMIN-5` | `/admin/schools-classes`, `/admin/classes/[classId]` | Medium | Figma includes clearer dashboard/detail hierarchy; app uses modal-heavy management | P1 | Preserve school/class CRUD and assignment behavior. |
 | Admin | `ADMIN-06`, `ADMIN-07` | `/admin/users`, `/admin/users/[userId]` | Medium | Existing route has table/detail; needs Figma filters, status chips, and edit hierarchy polish | P1 | Preserve user status and class assignment. |
@@ -109,6 +109,15 @@
 - Stale `Next` badges were removed from implemented/usable features: admin Basis AI, teacher Hasil Speaking, student Latihan Speaking, and student Chatbot AI.
 - Batch 3 intentionally did not redesign page content, fix the admin dashboard placeholder, implement mobile/offline/sync concepts, or resolve the teacher media route mismatch.
 
+### Batch 4 Admin Dashboard Update
+
+- Batch 4 addressed the P0 `/admin/dashboard` placeholder/static values issue without changing backend/API contracts.
+- The admin dashboard now uses the existing Laravel endpoint `/admin/dashboard/summary` through the current frontend service layer and TanStack Query.
+- Dummy dash values and stale implementation copy were removed. Loading, error, retry, and empty states now clearly reflect the backend/API state.
+- The dashboard now follows the Figma direction more closely with a warm hero card, real stats grid, quick admin actions, and operational signals.
+- Preserved admin feature entry points: approvals, school/class management, dictionary import, Basis AI/RAG, modules, quizzes, Budaya Mekongga, progress, and settings.
+- Remaining Batch 4 work: polish dense admin tables/forms and detailed admin pages after the dashboard.
+
 ## 2. Design Principles for EMI
 
 - Figma is the visual reference for layout, spacing, typography, color, button style, card style, table/list structure, modal/dialog style, responsive intent, and information hierarchy when actual frames are accessible.
@@ -120,7 +129,7 @@
 
 ## 3. Global UI/UX Findings
 
-- **P0: Admin dashboard is still a static placeholder.** `/admin/dashboard` shows dash values and stale text about future integration/speaking, while other admin modules are active. This is demo-visible and should be corrected before final UI polish or demo.
+- **Done/P1: Admin dashboard placeholder was addressed in Batch 4.** `/admin/dashboard` now uses existing summary API data and honest loading/error/empty states. Remaining admin dashboard work is visual/content polish, not the original P0 placeholder issue.
 - **P1: Visual system is inconsistent across old and newer screens.** Shared UI uses a bold bordered/brutalist style, but auth screens and some feature screens hardcode colors, borders, radii, and shadows separately. Batch 2 should normalize tokens without changing behavior.
 - **P1: Navigation status labels are stale.** Routes for Basis AI, Chatbot AI, Latihan Speaking, and Hasil Speaking still use `status: "next"` badges in `src/lib/routes.ts` even though several are implemented and QA-backed.
 - **P1: Layout shell is serviceable but not final.** `RoleLayoutShell` uses a topbar plus sticky sidebar in a `max-w-7xl` grid. It lacks a mobile drawer/collapsible navigation pattern, so long role menus risk pushing content down on small screens.
@@ -138,9 +147,9 @@
 - Existing screens found: dashboard, approvals, approval detail, schools/classes, class detail, users, user detail, dictionary, dictionary import, dictionary detail, knowledge base, knowledge detail, modules, module editor, quizzes, quiz builder, culture/global culture templates, progress overview, class/student progress detail, settings/profile.
 - Matching Figma screens: not verifiable via MCP because no file key/frame URLs were available. Legacy docs list Admin frame names, but visual comparison is blocked.
 - Missing Figma screens but existing required features: global Budaya Mekongga management, active Basis AI/RAG knowledge management, PDF/link/manual knowledge ingestion, dictionary CSV/ZIP import, progress print/export-style reporting, class assignment details.
-- Major UX gaps: static admin dashboard, stale "next/placeholder" labels in some nav/docs wording, dense table/action layouts, modal accessibility, some internal/backend wording.
+- Major UX gaps: dense table/action layouts, modal accessibility, some internal/backend wording, and admin detail page hierarchy. The static admin dashboard P0 was addressed in Batch 4.
 - Responsive risks: management tables, filter panels with many columns, modal forms for school/class/user/module/dictionary/knowledge flows.
-- Priority polish list: reconnect admin dashboard summary and copy; standardize filter/table/action patterns; align knowledge/dictionary/module/culture forms to design tokens; preserve all admin-only features absent from Figma.
+- Priority polish list: continue admin filter/table/action patterns; align knowledge/dictionary/module/culture forms to design tokens; refine admin detail page hierarchy; preserve all admin-only features absent from Figma.
 
 ### Guru
 
@@ -194,7 +203,7 @@ These features must be preserved even if Figma has no explicit screen or the fra
 
 - **Batch 2: Design system global.** Completed foundation pass: normalized tokens, shared components, color/radius/shadow/typography, state components, and shell primitives across auth and role screens without logic changes.
 - **Batch 3: Layout shell/sidebar/header.** Completed foundation pass: role shell, responsive mobile menu/bottom nav, topbar/sidebar active states, and stale route status badges.
-- **Batch 4: Admin polish.** Start with admin dashboard placeholder, then approvals, user/class management, dictionary/import, Basis AI, modules/quizzes, culture, progress/settings.
+- **Batch 4: Admin polish.** Dashboard P0 completed; continue with approvals, user/class management, dictionary/import, Basis AI, modules/quizzes, culture, progress/settings.
 - **Batch 5: Guru polish.** Dashboard/classes/students, modules/lessons, quizzes/results, culture, profile, speaking review.
 - **Batch 6: Siswa polish.** Dashboard, modules/lessons, dictionary/detail, quizzes/attempt/result, culture, progress/profile.
 - **Batch 7: AI chatbot + Speaking polish.** Focused chat surface, citations/source display, speaking recorder/status, teacher review layout, accessible audio/status feedback.
@@ -204,7 +213,7 @@ These features must be preserved even if Figma has no explicit screen or the fra
 
 | Priority | Item | Reason | Recommended Batch |
 |---|---|---|---|
-| P0 | Admin dashboard placeholder/static data | Demo-visible and contradicts current "mostly done" status | Batch 4 or a tiny pre-Batch 4 admin dashboard fix |
+| Done | Admin dashboard placeholder/static data | Batch 4 replaced misleading static values with real summary API data and honest states | Done; continue admin polish |
 | P1 | Design token inconsistency | Foundation completed in Batch 2; page-level hardcoded styling can still be reduced during role batches | Batch 4/5/6 |
 | P1 | Stale navigation `Next` badges | Cleaned for implemented Basis AI/chatbot/speaking features in Batch 3 | Done |
 | P1 | Mobile navigation lacks drawer/collapse | Batch 3 added a mobile full menu plus bottom nav foundation | Done; full responsive QA remains Batch 8 |
@@ -226,7 +235,7 @@ These features must be preserved even if Figma has no explicit screen or the fra
 
 ## 10. Next Recommended Batch
 
-Recommend **Batch 4: Admin screens polish** next, starting with the P0 `/admin/dashboard` placeholder/static values and then continuing through admin approvals, user/class management, dictionary/import, Basis AI, modules/quizzes, culture, progress, and settings.
+Recommend continuing **Batch 4: Admin screens polish** next, now focused on dense admin table/form/content pages: approvals, user/class management, dictionary/import, Basis AI, modules/quizzes, culture, progress, and settings.
 
 ## Baseline Mapping Table (Batch 1 Pre-MCP)
 
@@ -236,7 +245,7 @@ This table is retained as the original frontend-first baseline from Batch 1. For
 |---|---|---|---|---|---|---|---|
 | Public | `/login` | Login/auth redirect | MCP not accessible; legacy docs name `AUTH-01 - Login` | Low | Visual comparison blocked; hardcoded auth styling differs from shared tokens | P1 | Keep Sanctum login and role redirect. |
 | Public | `/register`, `/register/teacher`, `/register/student`, `/pending-approval` | Role registration and pending approval | MCP not accessible; legacy docs name `AUTH-02` to `AUTH-05` | Low | Visual comparison blocked; auth screens use separate hardcoded palette | P1 | Preserve public school/class lookup and pending status behavior. |
-| Admin | `/admin/dashboard` | Admin landing/dashboard | MCP not accessible; legacy docs name `ADMIN-01 - Beranda Admin` | Low | Static placeholder data and stale copy | P0 | Fix before demo-facing admin polish. |
+| Admin | `/admin/dashboard` | Admin landing/dashboard | MCP not accessible; legacy docs name `ADMIN-01 - Beranda Admin` | Medium | Batch 4 replaced static placeholder values with real `/admin/dashboard/summary` data and demo-safe states | Done/P1 | Continue only visual/content refinement later. |
 | Admin | `/admin/approvals`, `/admin/approvals/[requestId]` | Registration request list/detail/approve/reject | MCP not accessible; legacy docs name `ADMIN-02`, `ADMIN-03` | Low | Dense cards/dialogs need visual alignment | P1 | Preserve confirm/review note behavior. |
 | Admin | `/admin/schools-classes`, `/admin/classes/[classId]` | School/class CRUD, teacher/student assignment | MCP not accessible; legacy docs name `ADMIN-04`, `ADMIN-05` | Low | Complex modal forms and two-column management need responsive polish | P1 | Do not alter class assignment API flow. |
 | Admin | `/admin/users`, `/admin/users/[userId]` | Guru/siswa management, status/class assignment | MCP not accessible; legacy docs name `ADMIN-06`, `ADMIN-07` | Low | Wide table and modal-heavy detail screens | P1 | Preserve role/status filters. |

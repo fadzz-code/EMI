@@ -83,7 +83,8 @@ High-level status:
 - [x] Settings page.
 - [ ] PDF source/page citation display polish if client requests it.
 - [ ] Admin embedding workflow UI if client requests it.
-- [ ] Admin dashboard UI/data polish before demo: current Next.js dashboard route still shows static placeholder values/copy.
+- [x] Admin dashboard UI/data polish before demo: placeholder/static values replaced with real `/admin/dashboard/summary` data, honest loading/error/empty states, and Figma-aligned hero/stats/actions layout.
+- [ ] Continue Batch 4 admin table/form/content polish for approvals, user/class management, dictionary/import, Basis AI, modules/quizzes, culture, progress, and settings.
 - [ ] Admin broad manual QA pass after latest changes.
 
 ## 6. Teacher Web
@@ -224,6 +225,7 @@ High-level status:
 - [x] Batch 1.5 Figma MCP visual mapping completed in `Docs/ui-ux-figma-audit.md`; Figma file was accessible and 104 top-level frames were inventoried/mapped.
 - [x] Batch 2 global web design system foundation completed in Next.js: semantic tokens, Figma-aligned typography, shared UI primitives, shell primitives, and state components normalized without changing logic/API behavior.
 - [x] Batch 3 layout shell/sidebar/header responsive base completed in Next.js: sticky role topbar, desktop sidebar panel, mobile full menu, mobile bottom nav, active navigation states, and stale implemented-feature `Next` badges cleaned without changing routes/API behavior.
+- [x] Batch 4 admin dashboard P0 polish completed in Next.js: dashboard now uses existing Laravel summary API data, demo-safe copy, loading/error/empty states, quick admin actions, and operational signals without backend/API changes.
 - [ ] Keep route inventory current after speaking route additions.
 - [ ] Refresh stale legacy docs if they become active planning references.
 
@@ -250,7 +252,7 @@ High-level status:
 - [x] Confirm no Python `Jenis audio tidak didukung.` error after browser WebM/Opus MIME fix.
 - [x] Confirm no Python 500 decode/conversion error after ffmpeg conversion hardening when `SPEAKING_AI_FFMPEG_PATH` points to WinGet FFmpeg.
 - [ ] Confirm Python model first-download behavior is acceptable for local/prod setup.
-- [ ] UI audit found `/admin/dashboard` still uses placeholder/static values and stale implementation copy; fix before demo-facing polish.
+- [x] UI audit found `/admin/dashboard` still uses placeholder/static values and stale implementation copy; addressed by Batch 4 dashboard polish using real `/admin/dashboard/summary` data.
 - [ ] UI mapping found Figma `TEACHER-12 - Media Kelas`, while current `/teacher/media` redirects to culture; clarify or polish in a future teacher UI batch.
 - [ ] Review known composer audit advisories for `guzzlehttp/guzzle` and `guzzlehttp/psr7`; do not modify dependencies unless user asks.
 
