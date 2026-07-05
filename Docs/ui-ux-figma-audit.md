@@ -92,6 +92,14 @@
 - **Dashboard pattern:** hero/header card, stats grid, quick actions, recent activity/task list. This directly highlights the current admin dashboard placeholder gap.
 - **Responsive clues:** Figma provides separate mobile variants for auth, admin, teacher, and student, including bottom navigation. Current web shell uses sidebar/topbar and should gain responsive nav polish in a later batch.
 
+### Batch 2 Design System Foundation Update
+
+- Batch 2 implemented the first global web design system foundation in the Next.js frontend without changing application logic, API calls, routes, auth guards, backend, or Python Speaking AI behavior.
+- Global CSS now exposes semantic Tailwind v4 tokens for paper, surface, border, muted text, primary orange, accent yellow, success, danger, info, radii, and EMI shadows.
+- Root typography now uses Quicksand and Plus Jakarta Sans through `next/font/google`, matching the dominant Figma direction while avoiding a noisy mix of every font family seen in frames.
+- Shared primitives were aligned to the new token vocabulary: button, card, badge, alert, input, textarea, select, table, modal, filter panel, page header, sidebar, topbar, stats card, and loading/empty/error states.
+- Batch 2 intentionally did not fix page-specific layout gaps, dashboard data placeholders, modal accessibility behavior, route status badges, or responsive navigation. Those remain for later batches.
+
 ## 2. Design Principles for EMI
 
 - Figma is the visual reference for layout, spacing, typography, color, button style, card style, table/list structure, modal/dialog style, responsive intent, and information hierarchy when actual frames are accessible.
@@ -175,7 +183,7 @@ These features must be preserved even if Figma has no explicit screen or the fra
 
 ## 7. Recommended Batch Plan
 
-- **Batch 2: Design system global.** Normalize tokens, shared components, color/radius/shadow/typography, state components, and button/link styles across auth and role screens.
+- **Batch 2: Design system global.** Completed foundation pass: normalized tokens, shared components, color/radius/shadow/typography, state components, and shell primitives across auth and role screens without logic changes.
 - **Batch 3: Layout shell/sidebar/header.** Polish role shell, responsive navigation, topbar, active states, and route status badges.
 - **Batch 4: Admin polish.** Start with admin dashboard placeholder, then approvals, user/class management, dictionary/import, Basis AI, modules/quizzes, culture, progress/settings.
 - **Batch 5: Guru polish.** Dashboard/classes/students, modules/lessons, quizzes/results, culture, profile, speaking review.
@@ -188,7 +196,7 @@ These features must be preserved even if Figma has no explicit screen or the fra
 | Priority | Item | Reason | Recommended Batch |
 |---|---|---|---|
 | P0 | Admin dashboard placeholder/static data | Demo-visible and contradicts current "mostly done" status | Batch 4 or a tiny pre-Batch 4 admin dashboard fix |
-| P1 | Design token inconsistency | Blocks safe visual polish across 40+ screens | Batch 2 |
+| P1 | Design token inconsistency | Foundation completed in Batch 2; page-level hardcoded styling can still be reduced during role batches | Batch 4/5/6 |
 | P1 | Stale navigation `Next` badges | Misleads users for implemented Basis AI/chatbot/speaking features | Batch 3 |
 | P1 | Mobile navigation lacks drawer/collapse | Role menus are long and can dominate small screens | Batch 3 |
 | P1 | Dense table/form action layouts | Admin/teacher workflows are hard on small screens | Batch 4/5/8 |
@@ -209,7 +217,7 @@ These features must be preserved even if Figma has no explicit screen or the fra
 
 ## 10. Next Recommended Batch
 
-Recommend **Batch 2: Design system global** first. The audit found a P0 admin dashboard placeholder, but it is a demo/content integration issue rather than a global layout blocker. Batch 2 should establish safe shared UI tokens/components, then Batch 3/4 can fix shell and admin dashboard without one-off styling drift.
+Recommend **Batch 3: Layout shell/sidebar/header** next. Batch 2 established the shared token/component foundation; the next safest polish step is responsive shell navigation, topbar/sidebar active states, and stale route status badges before page-specific admin/guru/siswa polish.
 
 ## Baseline Mapping Table (Batch 1 Pre-MCP)
 

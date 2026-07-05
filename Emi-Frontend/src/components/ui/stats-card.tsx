@@ -12,9 +12,9 @@ export function StatsCard({
   return (
     <Card>
       <CardContent>
-        <p className="text-xs font-black uppercase text-slate-500">{label}</p>
+        <p className="text-xs font-black uppercase text-muted-foreground">{label}</p>
         <p className="mt-3 text-3xl font-black text-ink">{value}</p>
-        {helper ? <p className="mt-2 text-sm text-slate-600">{helper}</p> : null}
+        {helper ? <p className="mt-2 text-sm text-muted">{helper}</p> : null}
       </CardContent>
     </Card>
   );

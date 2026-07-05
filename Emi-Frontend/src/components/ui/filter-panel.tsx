@@ -11,7 +11,10 @@ export function FilterPanel({
 }) {
   return (
     <section
-      className={cn("grid gap-3 rounded-lg border-2 border-ink bg-blue-50 p-4 md:grid-cols-3", className)}
+      className={cn(
+        "grid gap-3 rounded-[var(--radius-card)] border-2 border-border bg-surface-muted p-4 md:grid-cols-3",
+        className,
+      )}
     >
       {children}
     </section>

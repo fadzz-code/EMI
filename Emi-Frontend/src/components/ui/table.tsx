@@ -7,7 +7,7 @@ export function Table({
   ...props
 }: TableHTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="w-full overflow-x-auto rounded-lg border-2 border-ink bg-white">
+    <div className="w-full overflow-x-auto rounded-[var(--radius-card)] border-2 border-border bg-surface">
       <table className={cn("w-full min-w-[640px] text-left text-sm", className)} {...props} />
     </div>
   );
@@ -17,12 +17,12 @@ export function TableHeader({
   className,
   ...props
 }: HTMLAttributes<HTMLTableSectionElement>) {
-  return <thead className={cn("bg-yellow-200", className)} {...props} />;
+  return <thead className={cn("bg-accent text-accent-foreground", className)} {...props} />;
 }
 
 export function TableCell({
   className,
   ...props
 }: HTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn("border-t border-slate-200 px-4 py-3", className)} {...props} />;
+  return <td className={cn("border-t border-surface-muted px-4 py-3", className)} {...props} />;
 }

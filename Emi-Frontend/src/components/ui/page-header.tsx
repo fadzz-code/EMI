@@ -16,7 +16,7 @@ export function PageHeader({
         <h1 className="mt-2 text-2xl font-black tracking-normal text-ink md:text-3xl">
           {title}
         </h1>
-        {description ? <p className="mt-2 max-w-3xl text-sm text-slate-600">{description}</p> : null}
+        {description ? <p className="mt-2 max-w-3xl text-sm text-muted">{description}</p> : null}
       </div>
     </header>
   );

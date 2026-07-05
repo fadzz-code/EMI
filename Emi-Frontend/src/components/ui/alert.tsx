@@ -5,10 +5,10 @@ import { cn } from "@/lib/utils";
 type AlertTone = "info" | "warning" | "error" | "success";
 
 const tones: Record<AlertTone, string> = {
-  info: "border-blue-900 bg-blue-50 text-blue-950",
-  warning: "border-yellow-900 bg-yellow-100 text-yellow-950",
-  error: "border-orange-900 bg-orange-100 text-orange-950",
-  success: "border-emerald-900 bg-emerald-50 text-emerald-950",
+  info: "border-info-foreground bg-blue-50 text-info-foreground",
+  warning: "border-accent-foreground bg-yellow-100 text-accent-foreground",
+  error: "border-danger bg-danger-muted text-danger",
+  success: "border-success-foreground bg-green-50 text-success-foreground",
 };
 
 type AlertProps = HTMLAttributes<HTMLDivElement> & {
@@ -18,7 +18,7 @@ type AlertProps = HTMLAttributes<HTMLDivElement> & {
 export function Alert({ className, tone = "info", ...props }: AlertProps) {
   return (
     <div
-      className={cn("rounded-lg border-2 px-4 py-3 text-sm font-medium", tones[tone], className)}
+      className={cn("rounded-[var(--radius-control)] border-2 px-4 py-3 text-sm font-medium", tones[tone], className)}
       role="status"
       {...props}
     />

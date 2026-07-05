@@ -2,13 +2,15 @@ import type { HTMLAttributes } from "react";
 
 import { cn } from "@/lib/utils";
 
-type BadgeTone = "blue" | "yellow" | "orange" | "neutral";
+type BadgeTone = "blue" | "yellow" | "orange" | "green" | "danger" | "neutral";
 
 const tones: Record<BadgeTone, string> = {
-  blue: "border-blue-900 bg-blue-100 text-blue-900",
-  yellow: "border-yellow-900 bg-yellow-200 text-yellow-950",
-  orange: "border-orange-900 bg-orange-100 text-orange-900",
-  neutral: "border-ink bg-slate-100 text-ink",
+  blue: "border-info-foreground bg-blue-100 text-info-foreground",
+  yellow: "border-accent-foreground bg-accent text-accent-foreground",
+  orange: "border-primary-foreground bg-orange-100 text-primary-foreground",
+  green: "border-success-foreground bg-green-100 text-success-foreground",
+  danger: "border-danger bg-danger-muted text-danger",
+  neutral: "border-border bg-surface-muted text-ink",
 };
 
 type BadgeProps = HTMLAttributes<HTMLSpanElement> & {

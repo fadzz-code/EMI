@@ -20,8 +20,8 @@ export function Sidebar({
         return (
           <Link
             className={cn(
-              "flex min-h-11 items-center justify-between rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink transition hover:bg-yellow-100",
-              isActive && "bg-yellow-200 shadow-brutal",
+              "flex min-h-11 items-center justify-between rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 py-2 text-sm font-black text-ink transition hover:bg-surface-muted",
+              isActive && "bg-accent text-accent-foreground shadow-emi",
             )}
             href={item.href}
             key={item.href}

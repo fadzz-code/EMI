@@ -1,13 +1,34 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fffdf7;
-  --foreground: #111827;
-  --ink: #111827;
-  --paper: #fffdf7;
-  --emi-blue: #2563eb;
-  --emi-yellow: #facc15;
-  --emi-orange: #fb923c;
+  --background: #fff8f2;
+  --foreground: #241914;
+  --ink: #241914;
+  --paper: #fff8f2;
+  --surface: #ffffff;
+  --surface-muted: #fff1e8;
+  --surface-strong: #ffe2cc;
+  --border: #241914;
+  --muted: #6b5548;
+  --muted-foreground: #8a7567;
+  --primary: #ff8a3d;
+  --primary-foreground: #4f2300;
+  --accent: #ffd84d;
+  --accent-foreground: #5f4a00;
+  --success: #59c36a;
+  --success-foreground: #0b4f19;
+  --danger: #c0392b;
+  --danger-foreground: #ffffff;
+  --danger-muted: #ffe1dc;
+  --info: #62a7ff;
+  --info-foreground: #073763;
+  --emi-blue: var(--info);
+  --emi-yellow: var(--accent);
+  --emi-orange: var(--primary);
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --emi-shadow: 6px 6px 0 var(--border);
+  --emi-shadow-soft: 0 14px 36px rgb(36 25 20 / 10%);
 }
 
 @theme inline {
@@ -15,21 +36,43 @@
   --color-foreground: var(--foreground);
   --color-ink: var(--ink);
   --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-strong: var(--surface-strong);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-danger-muted: var(--danger-muted);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
   --color-emi-blue: var(--emi-blue);
   --color-emi-yellow: var(--emi-yellow);
   --color-emi-orange: var(--emi-orange);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-quicksand), var(--font-plus-jakarta), Arial, Helvetica, sans-serif;
   --font-mono: var(--font-geist-mono);
-  --shadow-brutal: 6px 6px 0 var(--ink);
+  --radius-emi-control: var(--radius-control);
+  --radius-emi-card: var(--radius-card);
+  --shadow-brutal: var(--emi-shadow);
+  --shadow-emi: var(--emi-shadow);
+  --shadow-emi-soft: var(--emi-shadow-soft);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-quicksand), var(--font-plus-jakarta), Arial, Helvetica, sans-serif;
+  text-rendering: optimizeLegibility;
 }
 
 ::selection {
-  background: var(--emi-yellow);
+  background: var(--accent);
   color: var(--ink);
 }
