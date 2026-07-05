@@ -142,7 +142,7 @@ set SPEAKING_AI_FFMPEG_PATH=C:\Users\Tulo\AppData\Local\Microsoft\WinGet\Links\f
 python -m uvicorn main:app --host 127.0.0.1 --port 8001
 ```
 
-Recent manual QA evidence: student browser recording submission completed AI analysis locally after `SPEAKING_AI_FFMPEG_PATH` pointed to the WinGet FFmpeg executable. Teacher review and student feedback display still need full manual QA.
+Recent manual QA evidence: full siswa + guru speaking flow passed. Student browser recording submission completed AI analysis locally after `SPEAKING_AI_FFMPEG_PATH` pointed to the WinGet FFmpeg executable; teacher could play the audio and submit score/feedback; student could see teacher feedback.
 
 ## Troubleshooting
 
@@ -165,9 +165,14 @@ Recent manual QA evidence: student browser recording submission completed AI ana
 - Duration validation uses client-provided metadata for now; deeper server-side duration probing can be added later.
 - Teacher review is the authoritative correction path.
 
-## Next Frontend Batch TODO
+## Current QA Status
 
-- Connect student speaking page to the new exercise/attempt endpoints.
-- Add polling for `pending`, `processing`, `completed`, and `failed` statuses.
-- Connect teacher speaking results page to teacher endpoints.
-- Add audio playback through existing private media URL flow.
+- Student submit + AI analysis: passed.
+- Teacher playback and review submission: passed.
+- Student feedback display after teacher review: passed.
+- Speaking remains AI-assisted initial scoring plus teacher manual review, not final authoritative Mekongga phonetic assessment.
+
+## Recommended Next Batch
+
+- Start Mobile MVP planning from the Laravel API docs.
+- Keep FFmpeg/WebM setup documented for local and production Python service deployment.

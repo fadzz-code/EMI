@@ -157,15 +157,15 @@ php artisan db:seed --class=DevDemoDataSeeder
 | Teacher | Modules/lessons | Mostly Done | Teacher can manage class modules/lessons. |
 | Teacher | Quizzes | Mostly Done | Teacher can manage class quizzes and results. |
 | Teacher | Culture class content | Mostly Done | Class culture management exists. |
-| Teacher | Speaking results/review | Needs Manual QA | API and web page exist; verify end-to-end with real audio. |
+| Teacher | Speaking results/review | Done | Manual QA passed for audio playback, score, and feedback submission. |
 | Teacher | Profile | Mostly Done | Web profile exists. |
 | Student | Dashboard | Mostly Done | Web and API exist. |
 | Student | Modules | Mostly Done | Student module list/detail and start flow. |
 | Student | Lesson detail | Mostly Done | Lesson/progress flows exist. |
 | Student | Dictionary | Mostly Done | List/search and detail pages. |
 | Student | Dictionary detail | Mostly Done | Detail route exists. |
-| Student | Speaking practice | Needs Manual QA | Web recording/upload integrated; browser MIME fix exists in latest local HEAD. |
-| Student | Speaking results | Needs Manual QA | Results page and polling exist; verify after real submissions. |
+| Student | Speaking practice | Done | Manual QA passed for browser recording upload and AI analysis. |
+| Student | Speaking results | Done | Manual QA passed for AI score/transcription and teacher feedback display. |
 | Student | Quizzes | Mostly Done | List/detail/attempt/result pages. |
 | Student | Quiz attempt | Mostly Done | Attempt lifecycle exists. |
 | Student | Quiz result | Mostly Done | Result page exists. |
@@ -262,7 +262,7 @@ Culture content is mostly done:
 
 ## 16. Speaking Current State
 
-Speaking is recently integrated end-to-end and needs manual QA.
+Speaking is integrated end-to-end and has passed manual QA for the siswa + guru flow.
 
 Model:
 
@@ -284,7 +284,8 @@ Important notes:
 - Current scoring uses Indonesian Wav2Vec2 transcription plus Levenshtein-style similarity, not final Mekongga phonetic assessment.
 - Teacher review remains important and should be treated as authoritative correction.
 - Audio is stored as private media; raw binary is not stored in DB.
-- Latest local HEAD contains a browser audio upload validation fix accepting safe WebM/audio MIME variants.
+- Manual QA passed for student recording submit, AI score/transcription, teacher audio playback/review, and student feedback display.
+- Local browser WebM/Opus analysis requires FFmpeg available to Python; WinGet installs may require `SPEAKING_AI_FFMPEG_PATH`.
 
 Local speaking QA checklist:
 
@@ -325,7 +326,6 @@ See also:
 
 ## 18. Current Known Issues
 
-- Speaking requires manual QA with real browser recording, queue worker, Laravel, and Python service.
 - Python Speaking AI is approximate because it uses Indonesian STT, not a dedicated Mekongga phonetic model.
 - Production process management for queue worker and Python AI service still needs setup.
 - Composer audit currently reports known advisories in `guzzlehttp/guzzle` and `guzzlehttp/psr7` in recent checks.
@@ -360,12 +360,10 @@ Always trust current command output over this section if it differs.
 
 ## 21. Recommended Next Steps
 
-1. Run manual QA for speaking end-to-end with real browser recording.
-2. Confirm teacher speaking review and student result visibility.
-3. Update `Docs/api-v1-route-inventory.md` speaking section if route inventory docs are needed for mobile planning.
-4. Polish Basis AI citation display and admin embedding workflow if required by user/client.
-5. Plan student-first mobile app against Laravel `/api/v1` after web QA is stable.
-6. Prepare production process management for queue worker and Python Speaking AI.
+1. Start Mobile MVP planning from `Docs/backend-api-mobile-readiness-handover.md` and `Docs/api-v1-route-inventory.md`.
+2. Update `Docs/api-v1-route-inventory.md` speaking section if route inventory docs are needed for mobile planning.
+3. Polish Basis AI citation display and admin embedding workflow if required by user/client.
+4. Prepare production process management for queue worker and Python Speaking AI.
 
 ## 22. How To Continue From A New GPT Chat
 

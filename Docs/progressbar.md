@@ -17,9 +17,9 @@
 
 ## 2. Current Snapshot
 
-Current focus: finish teacher speaking review QA after student browser recording AI-analysis flow passed with FFmpeg path override.
+Current focus: Mobile MVP planning after full speaking siswa + guru manual QA passed.
 
-Last known local HEAD before this task: `a2fceb9 fix: stabilize speaking audio conversion`.
+Last known local HEAD before this task: `cb0ea23 docs: record speaking qa ffmpeg setup`.
 Remote may be behind local if user has not pushed.
 
 High-level status:
@@ -28,7 +28,7 @@ High-level status:
 - Teacher web: mostly OK.
 - Student web: mostly OK.
 - Basis AI/RAG: demo-ready.
-- Speaking: integrated end-to-end, but needs real manual QA.
+- Speaking: integrated end-to-end and passed full siswa + guru manual QA.
 - Mobile: not started; should consume Laravel API, not a separate backend.
 
 ## 3. Global Setup / Repository
@@ -98,7 +98,7 @@ High-level status:
 - [x] Teacher speaking manual feedback API/UI.
 - [x] Profile.
 - [x] Media page.
-- [ ] Verify teacher speaking review with real student attempt.
+- [x] Verify teacher speaking review with real student attempt.
 - [ ] Remaining teacher QA pass.
 
 ## 7. Student Web
@@ -182,9 +182,9 @@ High-level status:
 - [x] Python accepts safe browser WebM/Opus MIME variants.
 - [x] Python validates ffmpeg conversion output before transcription.
 - [x] No frontend direct call to Python service.
-- [ ] Manual QA end-to-end. Student AI-analysis path passed locally after setting `SPEAKING_AI_FFMPEG_PATH` to the WinGet `ffmpeg.exe`; teacher review path still pending.
-- [ ] Status polling tuning after manual QA if needed.
-- [ ] Teacher feedback verify from student side.
+- [x] Manual QA end-to-end passed for siswa record/submit, AI analysis, guru playback/review, and siswa feedback display. Local run used WinGet FFmpeg with `SPEAKING_AI_FFMPEG_PATH` when PATH lookup failed.
+- [x] Status polling reaches completed in manual QA.
+- [x] Teacher feedback verify from student side.
 - [ ] Python service hardening for production.
 - [ ] Server-side duration probing if needed.
 - [ ] Mobile speaking later after web QA stable.
@@ -237,9 +237,9 @@ High-level status:
 
 ## 14. Known Bugs / QA Issues
 
-- [ ] Full siswa + guru speaking manual QA not completed; teacher review and student feedback display still need verification.
+- [x] Full siswa + guru speaking manual QA completed: student submit, AI analysis, teacher playback/review, and student feedback display passed.
 - [x] Confirm speaking status progression reaches completed with `QUEUE_CONNECTION=database` and real queue worker for student AI-analysis flow.
-- [ ] Confirm teacher feedback appears correctly for student after review.
+- [x] Confirm teacher feedback appears correctly for student after review.
 - [x] Confirm no `validation.mimetypes` error after `79bbbe9` in real browsers.
 - [x] Confirm no Python `Jenis audio tidak didukung.` error after browser WebM/Opus MIME fix.
 - [x] Confirm no Python 500 decode/conversion error after ffmpeg conversion hardening when `SPEAKING_AI_FFMPEG_PATH` points to WinGet FFmpeg.
@@ -260,6 +260,7 @@ High-level status:
 
 ## 16. Completed Log
 
+- `cb0ea23` — Documented speaking QA FFmpeg setup.
 - `a2fceb9` — Stabilized speaking audio conversion with ffmpeg.
 - `7f2eddd` — Supported browser WebM speaking audio in Python service.
 - `79bbbe9` — Fixed browser speaking audio upload validation.
