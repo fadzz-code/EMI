@@ -2,9 +2,95 @@
 
 ## 1. Scope
 
-- Figma source via MCP: Figma MCP tools are available in Codex, but no Figma file URL, file key, or node-specific frame URL is present in the active prompt or repository docs. The repository search found legacy frame names in `Docs/06-Figma-Screen-Map.md`, but those entries still use `TODO: tempel link frame Figma`; therefore no visual frame was opened or compared through MCP in this batch.
+- Figma source via MCP: Batch 1 was blocked because no Figma URL was available. Batch 1.5 inspected `https://www.figma.com/design/tZcPOdYQhry2xHzm1B0UIC/Untitled?node-id=0-1&p=f&t=Dg5Gf5gwDyf7Sfxx-0` through Figma MCP. The file was accessible and contains 104 top-level frames on `Page 1`.
 - Existing frontend inspected: `Emi-Frontend/src/app`, `src/components`, `src/components/layout`, `src/components/ui`, `src/lib`, `src/features/admin`, `src/features/teacher`, `src/features/student`, auth screens, chatbot, speaking, global CSS, routes, API client, and role layout shell.
 - No large UI implementation performed. This batch only creates audit/planning documentation and a light progressbar update.
+
+## Figma MCP Visual Mapping
+
+### Figma Access
+
+- URL inspected: `https://www.figma.com/design/tZcPOdYQhry2xHzm1B0UIC/Untitled?node-id=0-1&p=f&t=Dg5Gf5gwDyf7Sfxx-0`
+- MCP access status: accessible. Figma MCP listed `Page 1` (`0:1`) and read its frame tree.
+- Pages/frames discovered: 1 page, 104 top-level frames.
+- Frame naming quality: desktop frames are clear for auth, admin, teacher, and student. Mobile/responsive frames use a mix of role-specific names and generic `SCREEN N` names, but most map cleanly by title.
+- Limitations: this audit used MCP metadata and programmatic frame inspection, not a pixel-perfect visual QA pass against running frontend screenshots. Some text nodes are named generically as `Text`, so design-token readings are approximate.
+
+### Frame Inventory
+
+| Figma Page | Figma Frame | Inferred Role | Inferred Screen | Notes |
+|---|---|---|---|---|
+| Page 1 | `AUTH-01` to `AUTH-05` | Public/Auth | Login, role selection, teacher register, student register, pending approval | Desktop auth set. |
+| Page 1 | `ADMIN-01` to `ADMIN-19` | Admin | Dashboard through settings | Desktop admin set. `ADMIN-5` is named without zero padding but maps to class detail. |
+| Page 1 | `TEACHER-01` to `TEACHER-13` | Guru | Dashboard through profile/media/speaking | Desktop teacher set. Culture management is not explicit in the desktop teacher frame names. |
+| Page 1 | `STUDENT-01` to `STUDENT-14` | Siswa | Dashboard through profile | Desktop student set. |
+| Page 1 | `Pilih Jenis Akun EMI (Mobile)` to `Menunggu Persetujuan Admin (Mobile)` | Public/Auth | Mobile auth variants | Responsive reference for auth screens. |
+| Page 1 | `SCREEN 1` to `SCREEN 17` at admin-mobile area | Admin | Mobile admin dashboard/menu/management/progress/settings | Responsive/mobile admin variants. |
+| Page 1 | `SCREEN 1` to `SCREEN 13` at teacher-mobile area | Guru | Mobile teacher dashboard/menu/students/modules/quizzes/speaking/media/profile | Responsive/mobile teacher variants. |
+| Page 1 | `SCREEN 1` to `SCREEN 18` at student-mobile area | Siswa | Mobile student dashboard/menu/modules/dictionary/speaking/quizzes/culture/chatbot/progress/profile/sync | Responsive/mobile student variants. Includes mobile-only offline/sync concepts. |
+
+### Figma-to-App Mapping
+
+| Role | Figma Frame | Existing Route/Page | Match Level | Gap | Priority | Notes |
+|---|---|---|---|---|---|---|
+| Public | `AUTH-01 - Login` | `/login` | High | Visual polish needed; app already follows similar bold auth style | P1 | Preserve login, role redirect, and API error handling. |
+| Public | `AUTH-02 - Registrasi Pilih Role` | `/register` | High | Needs token/style alignment only | P1 | Existing route chooses guru/siswa. |
+| Public | `AUTH-03 - Registrasi Guru` | `/register/teacher` | High | Visual style close but should use shared design tokens | P1 | Preserve school/class lookup. |
+| Public | `AUTH-04 - Registrasi Siswa` | `/register/student` | High | Visual style close but should use shared design tokens | P1 | Preserve pending approval flow. |
+| Public | `AUTH-05 - Menunggu Persetujuan Admin` | `/pending-approval` | High | Align copy/spacing to Figma | P2 | No logic changes needed. |
+| Admin | `ADMIN-01 - Beranda Admin` | `/admin/dashboard` | Low | Existing route is static placeholder and does not match Figma dashboard richness | P0 | Figma shows stats, quick actions, and recent activity. |
+| Admin | `ADMIN-02`, `ADMIN-03` | `/admin/approvals`, `/admin/approvals/[requestId]` | Medium | Existing functionality present; visual/table/card hierarchy needs alignment | P1 | Preserve approve/reject review flow. |
+| Admin | `ADMIN-04`, `ADMIN-5` | `/admin/schools-classes`, `/admin/classes/[classId]` | Medium | Figma includes clearer dashboard/detail hierarchy; app uses modal-heavy management | P1 | Preserve school/class CRUD and assignment behavior. |
+| Admin | `ADMIN-06`, `ADMIN-07` | `/admin/users`, `/admin/users/[userId]` | Medium | Existing route has table/detail; needs Figma filters, status chips, and edit hierarchy polish | P1 | Preserve user status and class assignment. |
+| Admin | `ADMIN-08` to `ADMIN-10` | `/admin/dictionary/import`, `/admin/dictionary`, `/admin/dictionary/[entryId]` | High | Existing routes cover the Figma flow; polish tables/import cards/audio preview | P1 | Dictionary import/detail must remain. |
+| Admin | `ADMIN-11`, `ADMIN-12` | `/admin/knowledge-base`, `/admin/knowledge-base/[knowledgeId]` | Medium | Figma covers basic AI knowledge but not all current RAG ingestion details | P1 | Preserve PDF/link/manual ingestion and source metadata. |
+| Admin | `ADMIN-13`, `ADMIN-14` | `/admin/modules`, `/admin/modules/[moduleId]/edit` | Medium | App has extra apply-to-class behavior beyond Figma wording | P1 | Preserve apply-to-class and publish-class-content guardrail. |
+| Admin | `ADMIN-15`, `ADMIN-16` | `/admin/quizzes`, `/admin/quizzes/[quizId]/builder` | Medium | Figma covers quiz template/builder; app details may need visual simplification | P1 | Preserve question image and answer rules. |
+| Admin | `ADMIN-17`, `ADMIN-18` | `/admin/progress`, detail routes | Medium | App report routes exist; Figma emphasizes progress dashboards | P1 | Preserve class/student detail report routes. |
+| Admin | `ADMIN-19` | `/admin/settings` | Medium | Existing route is profile/settings subset, not broad system settings | P2 | Do not invent unsupported backend settings. |
+| Guru | `TEACHER-01` | `/teacher/dashboard` | Medium | Existing dashboard functional; remove internal capability wording and align cards | P1 | Preserve empty assignment state. |
+| Guru | `TEACHER-02`, `TEACHER-03` | `/teacher/students`, `/teacher/students/[studentId]` | Medium | Existing reports/detail present; needs hierarchy/table polish | P1 | Preserve scoped student access. |
+| Guru | `TEACHER-04` to `TEACHER-06` | `/teacher/modules`, module/lesson edit routes | Medium | Existing app supports modules/lessons but editor density differs | P1 | Preserve media/content URL flow. |
+| Guru | `TEACHER-07` to `TEACHER-10` | `/teacher/quizzes`, builder/results, `/teacher/reports/progress` | Medium | Existing functionality present; needs Figma dashboard/table/card polish | P1 | Preserve result visibility and report logic. |
+| Guru | `TEACHER-11 - Hasil Speaking` | `/teacher/speaking/results` | Medium | Existing feature active and QA-backed; Figma can guide review layout | P1 | Keep teacher manual review central. |
+| Guru | `TEACHER-12 - Media Kelas` | `/teacher/media` | Low | App route redirects to culture and has no standalone media library | P1 | Either implement later by prompt or document as intentionally redirected. |
+| Guru | `TEACHER-13 - Profil Guru` | `/teacher/profile` | Medium | Existing profile route present; visual polish only | P2 | Preserve auth profile endpoint. |
+| Siswa | `STUDENT-01 - Beranda Belajar` | `/student/dashboard` | Medium | Existing dashboard works; Figma has richer achievement/quick menu pattern | P1 | Preserve hidden quiz result behavior. |
+| Siswa | `STUDENT-02`, `STUDENT-03` | `/student/modules`, `/student/modules/[moduleId]`, `/student/lessons/[lessonId]` | Medium | Existing route structure differs from Figma naming but feature exists | P1 | Preserve lesson progress/content URL flow. |
+| Siswa | `STUDENT-04`, `STUDENT-05` | `/student/dictionary`, `/student/dictionary/[entryId]` | High | Existing feature maps directly; polish search/detail/audio cards | P1 | Preserve dictionary audio handling. |
+| Siswa | `STUDENT-06`, `STUDENT-07` | `/student/speaking`, `/student/speaking/results` | Medium | Existing feature active and QA-backed; Figma guides recorder/result layout | P1 | Keep AI-assisted + teacher review wording. |
+| Siswa | `STUDENT-08` to `STUDENT-10` | `/student/quizzes`, quiz detail/attempt/result routes | Medium | Existing flow present; quiz attempt/result needs Figma hierarchy and responsive polish | P1 | Preserve idempotent submit and result visibility. |
+| Siswa | `STUDENT-11` | `/student/culture` | Medium | Existing culture feed present; Figma also has mobile detail content screen | P1 | No detail route exists yet. |
+| Siswa | `STUDENT-12 - Chatbot AI` | `/student/chatbot` | Medium | Existing chatbot has source references; Figma guides focused chat layout | P1 | Preserve references/sources. |
+| Siswa | `STUDENT-13`, `STUDENT-14` | `/student/progress`, `/student/profile` | Medium | Existing routes present; visual polish needed | P1/P2 | Preserve profile/progress APIs. |
+| Web responsive | Mobile auth/admin/guru/siswa `SCREEN` frames | Same route families as above | Ambiguous | These are responsive references, not separate routes | P1 | Use for Batch 8 responsive QA and shell/mobile nav design. |
+| Siswa/Future mobile | `SCREEN 5 - Mode Offline / Unduhan Materi`, `SCREEN 18 - Sinkronisasi Data` | No existing web route | Missing in App | Offline/sync is future enhancement, not current web scope | P2 | Do not build in Batch 2 unless explicitly requested. |
+| Siswa | `SCREEN 14 - Detail Konten Budaya` | No existing `/student/culture/[id]` route found | Missing in App | Figma has detail content pattern; app currently has feed only | P2 | Add only in a later feature batch if requested. |
+
+### Features Present in App but Missing/Unclear in Figma
+
+- Admin global Budaya Mekongga management (`/admin/culture/templates`) is not explicit in desktop Figma admin frames.
+- Teacher Budaya Mekongga class management (`/teacher/culture`, class culture redirects) is not explicit in desktop teacher frames.
+- Basis AI has Figma screens, but current app also includes PDF extraction/import, link extraction, manual ingestion, publish/archive, preview/source metadata, and page-aware RAG behavior that are not fully represented.
+- Chatbot source/reference expansion exists in the app; Figma chatbot should be checked in polish to ensure citations/source affordances are not lost.
+- Speaking teacher review is present in Figma and app, but app-specific private audio temporary URL behavior must be preserved.
+- Dictionary CSV/ZIP import is represented in Figma and app; import history/errors and duplicate strategies are app/API guardrails that may not be visually explicit.
+- Module apply-to-class and class-content publish behavior exists in app and is only partly suggested by Figma.
+- Teacher class culture routes and class-specific module/quiz shortcut routes exist in app but are not one-to-one with Figma frames.
+- `/teacher/media` is shown as a Figma concept, while the current app redirects it to culture.
+
+### Design System Signals from Figma
+
+- **Primary colors:** warm ink/brown `#241914`, muted brown `#564338`, paper/cream `#fff8f6`, white `#ffffff`, orange `#ff8a3d`, yellow `#fdd758`, green `#5bbe5d`, danger red `#ba1a1a`.
+- **Typography:** dominant desktop UI uses Quicksand; mobile/student responsive frames heavily use Plus Jakarta Sans; auth frames also show Lexend and Work Sans. Batch 2 should choose a practical web font strategy rather than mixing all families blindly.
+- **Spacing/layout:** desktop role screens use fixed 1280px artboards with sidebars/topbars, large 48px content padding, stats grids, hero/header cards, and two-column content sections. Mobile frames use 390px width, top app bars, bottom nav bars, and stacked cards.
+- **Radius:** common radii are 8px and 12px, with pill chips at 9999px.
+- **Card style:** white/cream surfaces, thick dark strokes, visible drop shadows, and strong section separation.
+- **Button style:** bold filled orange/yellow/green actions with dark borders/shadows; secondary actions use white/cream fills with strong borders.
+- **Table/list style:** Figma favors status chips, search bars, filters, card-like rows, and clear table headers; app tables should remain functional but become more mobile-card-friendly.
+- **Modal/dialog style:** standalone modal components are not clearly isolated in the Figma frame tree; use Figma cards/forms as style reference and preserve existing app modal behavior until a specific modal design is provided.
+- **Dashboard pattern:** hero/header card, stats grid, quick actions, recent activity/task list. This directly highlights the current admin dashboard placeholder gap.
+- **Responsive clues:** Figma provides separate mobile variants for auth, admin, teacher, and student, including bottom navigation. Current web shell uses sidebar/topbar and should gain responsive nav polish in a later batch.
 
 ## 2. Design Principles for EMI
 
@@ -125,7 +211,9 @@ These features must be preserved even if Figma has no explicit screen or the fra
 
 Recommend **Batch 2: Design system global** first. The audit found a P0 admin dashboard placeholder, but it is a demo/content integration issue rather than a global layout blocker. Batch 2 should establish safe shared UI tokens/components, then Batch 3/4 can fix shell and admin dashboard without one-off styling drift.
 
-## Mapping Table
+## Baseline Mapping Table (Batch 1 Pre-MCP)
+
+This table is retained as the original frontend-first baseline from Batch 1. For current Figma-informed mapping, use the `Figma MCP Visual Mapping` section above.
 
 | Role | Existing Route/Page | Existing Feature | Figma Frame/Reference | Match Level | Gap | Priority | Notes |
 |---|---|---|---|---|---|---|---|
