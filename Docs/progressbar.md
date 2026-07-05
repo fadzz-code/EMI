@@ -83,6 +83,7 @@ High-level status:
 - [x] Settings page.
 - [ ] PDF source/page citation display polish if client requests it.
 - [ ] Admin embedding workflow UI if client requests it.
+- [ ] Admin dashboard UI/data polish before demo: current Next.js dashboard route still shows static placeholder values/copy.
 - [ ] Admin broad manual QA pass after latest changes.
 
 ## 6. Teacher Web
@@ -218,6 +219,8 @@ High-level status:
 - [x] Reusable progressbar exists.
 - [x] AI workflow protocol exists.
 - [x] `Docs/Progress.md` replaced by `Docs/progressbar.md`.
+- [x] Batch 1 UI/UX audit existing web vs Figma MCP completed in `Docs/ui-ux-figma-audit.md`.
+- [x] UI polish guardrail documented: preserve existing app-only features even when Figma frames are missing/inaccessible, including Budaya Mekongga, Basis AI/RAG, speaking teacher review, dictionary detail/import, and PDF/link/manual knowledge ingestion.
 - [ ] Keep route inventory current after speaking route additions.
 - [ ] Refresh stale legacy docs if they become active planning references.
 
@@ -244,6 +247,7 @@ High-level status:
 - [x] Confirm no Python `Jenis audio tidak didukung.` error after browser WebM/Opus MIME fix.
 - [x] Confirm no Python 500 decode/conversion error after ffmpeg conversion hardening when `SPEAKING_AI_FFMPEG_PATH` points to WinGet FFmpeg.
 - [ ] Confirm Python model first-download behavior is acceptable for local/prod setup.
+- [ ] UI audit found `/admin/dashboard` still uses placeholder/static values and stale implementation copy; fix before demo-facing polish.
 - [ ] Review known composer audit advisories for `guzzlehttp/guzzle` and `guzzlehttp/psr7`; do not modify dependencies unless user asks.
 
 ## 15. Deferred / Future Enhancements
