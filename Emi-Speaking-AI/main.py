@@ -1,4 +1,6 @@
+import logging
 import os
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -24,6 +26,7 @@ SAFE_CONTENT_TYPES = {
 WARNING = "Model is Indonesian STT; Mekongga pronunciation scoring is approximate."
 
 app = FastAPI(title="EMI Speaking AI", version="0.1.0")
+logger = logging.getLogger("emi-speaking-ai")
 _model: dict[str, Any] | None = None
 
 
@@ -42,29 +45,63 @@ def validate_upload(file: UploadFile) -> None:
         raise HTTPException(status_code=422, detail="Jenis audio tidak didukung.")
 
 
+def resolve_ffmpeg_path() -> str | None:
+    configured = os.getenv("SPEAKING_AI_FFMPEG_PATH")
+    if configured and Path(configured).is_file():
+        return configured
+
+    detected = shutil.which("ffmpeg")
+    if detected:
+        return detected
+
+    return None
+
+
 def prepare_audio_for_transcription(path: str) -> tuple[str, str | None]:
     suffix = Path(path).suffix.lower()
     if suffix == ".wav":
+        if os.path.getsize(path) < 1:
+            raise RuntimeError("File audio kosong.")
+
         return path, None
+
+    ffmpeg_path = resolve_ffmpeg_path()
+    if not ffmpeg_path:
+        raise RuntimeError("ffmpeg tidak ditemukan untuk konversi audio browser.")
 
     wav_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
     wav_path = wav_file.name
     wav_file.close()
 
     try:
-        subprocess.run(
-            ["ffmpeg", "-y", "-i", path, "-ac", "1", "-ar", "16000", wav_path],
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+        result = subprocess.run(
+            [ffmpeg_path, "-y", "-i", path, "-ac", "1", "-ar", "16000", "-vn", "-f", "wav", wav_path],
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=30,
         )
+
+        if result.returncode != 0:
+            logger.warning("ffmpeg audio conversion failed: %s", (result.stderr or result.stdout).strip())
+            raise RuntimeError("Konversi audio browser gagal.")
+
+        if not os.path.exists(wav_path) or os.path.getsize(wav_path) < 1:
+            logger.warning("ffmpeg audio conversion produced an empty wav file")
+            raise RuntimeError("Konversi audio browser menghasilkan file kosong.")
+
         return wav_path, wav_path
-    except (FileNotFoundError, subprocess.CalledProcessError):
-        try:
-            os.remove(wav_path)
-        except FileNotFoundError:
-            pass
-        return path, None
+    except subprocess.TimeoutExpired as exc:
+        logger.warning("ffmpeg audio conversion timed out")
+        raise RuntimeError("Konversi audio browser terlalu lama.") from exc
+    except RuntimeError:
+        raise
+    finally:
+        if os.path.exists(wav_path) and os.path.getsize(wav_path) < 1:
+            try:
+                os.remove(wav_path)
+            except FileNotFoundError:
+                pass
 
 
 def levenshtein_score(target: str, transcription: str) -> tuple[float, dict[str, int]]:
@@ -109,7 +146,15 @@ def transcribe(path: str) -> str:
     processor = bundle["processor"]
     model = bundle["model"]
 
-    speech, _ = librosa.load(path, sr=16000)
+    try:
+        speech, _ = librosa.load(path, sr=16000)
+    except Exception as exc:
+        logger.warning("audio decode failed: %s", exc)
+        raise RuntimeError("Audio tidak dapat dibaca setelah konversi.") from exc
+
+    if len(speech) < 1:
+        raise RuntimeError("Audio tidak berisi sinyal suara yang dapat dianalisis.")
+
     inputs = processor(speech, sampling_rate=16000, return_tensors="pt", padding=True)
 
     with torch.no_grad():
@@ -168,8 +213,11 @@ async def predict(target_text: str = Form(...), file: UploadFile = File(...)) ->
         })
     except HTTPException:
         raise
-    except Exception as exc:
+    except RuntimeError as exc:
         return error_response(str(exc), "SPEAKING_AI_ERROR", 500)
+    except Exception as exc:
+        logger.exception("Unexpected speaking AI prediction error")
+        return error_response("Analisis speaking AI gagal.", "SPEAKING_AI_ERROR", 500)
     finally:
         await file.close()
         for path in [converted_path, temp_path]:

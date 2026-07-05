@@ -16,7 +16,7 @@ pip install -r requirements.txt
 uvicorn main:app --host 127.0.0.1 --port 8001
 ```
 
-The Wav2Vec2 model may download on first run. Browser WebM/Opus conversion requires `ffmpeg` available on PATH.
+The Wav2Vec2 model may download on first run. Browser WebM/Opus conversion requires `ffmpeg` available on PATH or `SPEAKING_AI_FFMPEG_PATH` pointing to `ffmpeg.exe`. Conversion produces a temporary mono 16 kHz WAV and fails clearly if `ffmpeg` is unavailable or outputs an empty file.
 
 ## Endpoints
 

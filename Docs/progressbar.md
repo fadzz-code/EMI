@@ -180,6 +180,7 @@ High-level status:
 - [x] Fix `validation.mimetypes` browser upload issue.
 - [x] Audio upload MIME acceptance for safe browser formats.
 - [x] Python accepts safe browser WebM/Opus MIME variants.
+- [x] Python validates ffmpeg conversion output before transcription.
 - [x] No frontend direct call to Python service.
 - [ ] Manual QA end-to-end.
 - [ ] Status polling tuning after manual QA if needed.
@@ -241,6 +242,7 @@ High-level status:
 - [ ] Confirm teacher feedback appears correctly for student after review.
 - [ ] Confirm no `validation.mimetypes` error after `79bbbe9` in real browsers.
 - [ ] Confirm no Python `Jenis audio tidak didukung.` error after browser WebM/Opus MIME fix.
+- [ ] Confirm no Python 500 decode/conversion error after ffmpeg conversion hardening.
 - [ ] Confirm Python model first-download behavior is acceptable for local/prod setup.
 - [ ] Review known composer audit advisories for `guzzlehttp/guzzle` and `guzzlehttp/psr7`; do not modify dependencies unless user asks.
 
