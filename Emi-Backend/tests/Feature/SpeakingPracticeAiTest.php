@@ -58,6 +58,45 @@ class SpeakingPracticeAiTest extends TestCase
         $this->assertSame(['0_ari' => 100], $attempt->ai_alignment);
     }
 
+    public function test_student_can_upload_audio_webm_speaking_attempt(): void
+    {
+        Storage::fake('local');
+        config(['speaking.ai.enabled' => true]);
+        $this->bindSpeakingAiSuccess();
+        [$student, , $class] = $this->classroomUsers();
+        $exercise = $this->exercise($class);
+
+        $response = $this->withToken($this->tokenFor($student))->post('/api/v1/student/speaking/exercises/'.$exercise->id.'/attempts', [
+            'file' => UploadedFile::fake()->create('speaking-attempt.webm', 128, 'audio/webm'),
+        ]);
+
+        $response->assertCreated();
+
+        $attempt = SpeakingAttempt::query()->firstOrFail();
+        $this->assertSame('private', $attempt->audioMedia->visibility);
+        $this->assertSame('speaking_recording', $attempt->audioMedia->purpose);
+        $this->assertSame('local', $attempt->audioMedia->disk);
+        $this->assertSame('webm', $attempt->audioMedia->extension);
+        $this->assertDatabaseMissing('speaking_attempts', ['audio_path' => 'binary']);
+        Storage::disk($attempt->audio_disk)->assertExists($attempt->audio_path);
+    }
+
+    public function test_student_can_upload_video_webm_speaking_attempt(): void
+    {
+        Storage::fake('local');
+        config(['speaking.ai.enabled' => true]);
+        $this->bindSpeakingAiSuccess();
+        [$student, , $class] = $this->classroomUsers();
+        $exercise = $this->exercise($class);
+
+        $response = $this->withToken($this->tokenFor($student))->post('/api/v1/student/speaking/exercises/'.$exercise->id.'/attempts', [
+            'file' => UploadedFile::fake()->create('speaking-attempt.webm', 128, 'video/webm'),
+        ]);
+
+        $response->assertCreated();
+        $this->assertSame('webm', SpeakingAttempt::query()->firstOrFail()->audioMedia->extension);
+    }
+
     public function test_ai_failure_marks_attempt_failed_and_stores_error(): void
     {
         Storage::fake('local');

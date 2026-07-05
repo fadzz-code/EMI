@@ -25,10 +25,15 @@ class MediaUploadService
 
         $visibility = $this->normalizeVisibility($purpose, $visibility);
         $mimeType = (string) $file->getMimeType();
-        $this->validateMime($purpose, $mimeType);
+        $clientExtension = strtolower($file->getClientOriginalExtension());
+        $this->validateMime($purpose, $mimeType, $clientExtension);
         $this->validateSize($purpose, (int) $file->getSize());
 
         $extension = config("media.extensions.{$mimeType}");
+
+        if ($mimeType === 'application/octet-stream' && $purpose === 'speaking_recording') {
+            $extension = $clientExtension;
+        }
 
         if (! is_string($extension) || $extension === '') {
             throw new ApiException('Jenis file tidak didukung.', 'MEDIA_MIME_NOT_ALLOWED', 422);
@@ -106,15 +111,23 @@ class MediaUploadService
         };
     }
 
-    private function validateMime(string $purpose, string $mimeType): void
+    private function validateMime(string $purpose, string $mimeType, string $clientExtension): void
     {
         $allowed = config("media.allowed_mimes.{$purpose}", []);
 
-        if (! in_array($mimeType, $allowed, true)) {
-            throw new ApiException('Jenis file tidak sesuai dengan tujuan unggahan.', 'MEDIA_MIME_NOT_ALLOWED', 422, [
-                'file' => ['Jenis file tidak sesuai dengan tujuan unggahan.'],
-            ]);
+        if (in_array($mimeType, $allowed, true)) {
+            return;
         }
+
+        $safeExtensions = ['webm', 'wav', 'mp3', 'm4a', 'mp4', 'mpeg', 'mpga', 'ogg', 'oga'];
+
+        if ($purpose === 'speaking_recording' && $mimeType === 'application/octet-stream' && in_array($clientExtension, $safeExtensions, true)) {
+            return;
+        }
+
+        throw new ApiException('Jenis file tidak sesuai dengan tujuan unggahan.', 'MEDIA_MIME_NOT_ALLOWED', 422, [
+            'file' => ['Jenis file tidak sesuai dengan tujuan unggahan.'],
+        ]);
     }
 
     private function validateSize(string $purpose, int $sizeBytes): void

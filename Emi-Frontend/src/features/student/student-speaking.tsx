@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, PageHeader } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
-import { getFirstApiError } from "@/lib/api-client";
+import { ApiError, getFirstApiError } from "@/lib/api-client";
 
 import { studentService } from "./student-service";
 import type { SpeakingAttempt, SpeakingExercise } from "./types";
@@ -24,6 +24,16 @@ function statusLabel(status?: string) {
 
 function score(value?: number | null) {
   return value === null || value === undefined ? "-" : `${value}/100`;
+}
+
+function speakingErrorMessage(error: unknown) {
+  const message = getFirstApiError(error);
+
+  if (message === "validation.mimetypes" || (error instanceof ApiError && error.status === 422 && message.toLowerCase().includes("format audio"))) {
+    return "Format audio tidak didukung. Coba rekam ulang atau gunakan browser terbaru.";
+  }
+
+  return message;
 }
 
 export function StudentSpeaking() {
@@ -63,7 +73,7 @@ export function StudentSpeaking() {
         const detail = await studentService.speakingAttemptDetail(token, activeAttempt.id);
         setActiveAttempt(detail);
       } catch (err) {
-        setError(getFirstApiError(err));
+        setError(speakingErrorMessage(err));
       }
     }, 2500);
     return () => window.clearInterval(interval);
@@ -89,8 +99,10 @@ export function StudentSpeaking() {
         if (event.data.size > 0) chunksRef.current.push(event.data);
       };
       recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        const file = new File([blob], `speaking-${Date.now()}.webm`, { type: blob.type || "audio/webm" });
+        const blobType = recorder.mimeType || "audio/webm";
+        const blob = new Blob(chunksRef.current, { type: blobType });
+        const fileType = blobType.startsWith("audio/") ? blobType : "audio/webm";
+        const file = new File([blob], "speaking-attempt.webm", { type: fileType });
         if (recordedUrl) URL.revokeObjectURL(recordedUrl);
         setRecordedFile(file);
         setRecordedUrl(URL.createObjectURL(blob));
@@ -117,7 +129,7 @@ export function StudentSpeaking() {
       const attempt = await studentService.submitSpeakingAttempt(token, selectedExercise.id, recordedFile);
       setActiveAttempt(attempt);
     } catch (err) {
-      setError(getFirstApiError(err));
+      setError(speakingErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }

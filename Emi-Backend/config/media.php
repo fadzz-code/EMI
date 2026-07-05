@@ -70,8 +70,10 @@ return [
             'audio/wav',
             'audio/x-wav',
             'audio/mp4',
+            'audio/m4a',
             'audio/ogg',
             'audio/webm',
+            'video/webm',
         ],
     ],
 
@@ -84,7 +86,9 @@ return [
         'audio/wav' => 'wav',
         'audio/x-wav' => 'wav',
         'audio/mp4' => 'm4a',
+        'audio/m4a' => 'm4a',
         'audio/ogg' => 'ogg',
         'audio/webm' => 'webm',
+        'video/webm' => 'webm',
     ],
 ];
