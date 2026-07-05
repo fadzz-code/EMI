@@ -143,8 +143,8 @@ export function QuizList() {
     onSuccess: ({ result, publishedCount }) => {
       setSuccessMessage(
         publishedCount > 0
-          ? `Template kuis diterapkan ke ${result.applied.length} kelas dan ${publishedCount} kuis kelas langsung dipublish. Kuis terlihat untuk siswa yang terdaftar pada kelas tersebut.`
-          : `Template kuis diterapkan: ${result.applied.length} kelas, dilewati: ${result.skipped.length}, gagal: ${result.failed.length}. Kuis kelas masih draft dan perlu dipublish agar terlihat siswa.`,
+          ? `Template kuis diterapkan ke ${result.applied.length} kelas dan ${publishedCount} kuis kelas langsung diterbitkan. Kuis terlihat untuk siswa yang terdaftar pada kelas tersebut.`
+          : `Template kuis diterapkan: ${result.applied.length} kelas, dilewati: ${result.skipped.length}, gagal: ${result.failed.length}. Kuis kelas masih draft dan perlu diterbitkan agar terlihat siswa.`,
       );
       setApplyTarget(null);
       setSelectedClassIds([]);
@@ -155,7 +155,7 @@ export function QuizList() {
   const deleteMutation = useMutation({
     mutationFn: (quizId: string) => quizTemplateService.delete(token ?? "", quizId),
     onSuccess: async () => {
-      setSuccessMessage("Kuis berhasil dihapus sesuai aturan soft delete backend.");
+      setSuccessMessage("Kuis berhasil dihapus dari daftar aktif.");
       setDeleteTarget(null);
       await queryClient.invalidateQueries({ queryKey: ["admin", "quiz-templates"] });
     },
@@ -193,15 +193,14 @@ export function QuizList() {
           <Badge tone="yellow">ADMIN-15</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">Kuis & LKPD Default</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Kelola template kuis default dari endpoint admin/quiz-templates. LKPD khusus
-            belum punya endpoint terpisah, jadi layar ini mengikuti model quiz template backend.
+            Kelola template kuis, metadata LKPD, soal, status terbit, dan distribusi kuis ke kelas aktif.
           </p>
         </div>
         <Button onClick={() => setCreateModalOpen(true)}>Tambah Kuis</Button>
       </header>
 
       <Alert tone="info">
-        Alur visibilitas: 1) Publish Template, 2) Terapkan ke Kelas, 3) Publish Konten Kelas, 4) Guru dan siswa pada kelas tersebut dapat melihat kuis. Publish template saja belum membuat kuis terlihat.
+        Alur tampil ke siswa: terbitkan template, terapkan ke kelas, lalu pastikan kuis kelas ikut diterbitkan.
       </Alert>
       {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
       {actionError ? <Alert tone="error">{getFirstApiError(actionError)}</Alert> : null}
@@ -397,7 +396,7 @@ export function QuizList() {
       >
         <div className="grid gap-4">
           <Alert tone="info">
-            Publish template hanya membuat template kuis siap dipakai. Apply akan membuat kuis kelas berstatus draft. Aktifkan opsi publish di bawah agar kuis kelas langsung terlihat oleh guru dan siswa yang terhubung ke kelas.
+            Menerapkan template akan membuat kuis kelas. Aktifkan opsi terbitkan di bawah agar kuis langsung terlihat oleh guru dan siswa yang terhubung ke kelas.
           </Alert>
           {classesQuery.isLoading ? <LoadingState title="Memuat kelas" /> : null}
           {classesQuery.isError ? <ErrorState description={getFirstApiError(classesQuery.error)} title="Gagal memuat kelas" /> : null}
@@ -413,7 +412,7 @@ export function QuizList() {
                       onChange={() => toggleClass(schoolClass.id)}
                       type="checkbox"
                     />
-                    <span>{schoolClass.name} · {schoolClass.academic_year}</span>
+                    <span>{schoolClass.name} - {schoolClass.academic_year}</span>
                   </label>
                 ))}
               </div>
@@ -426,7 +425,7 @@ export function QuizList() {
               onChange={(event) => setPublishAfterApply(event.target.checked)}
               type="checkbox"
             />
-            <span>Setelah apply, langsung publish kuis kelas agar terlihat oleh guru dan siswa.</span>
+            <span>Setelah diterapkan, langsung terbitkan kuis kelas agar terlihat oleh guru dan siswa.</span>
           </label>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button onClick={() => setApplyTarget(null)} type="button" variant="ghost">
@@ -451,7 +450,7 @@ export function QuizList() {
         confirmLabel={deleteMutation.isPending ? "Menghapus..." : "Hapus Kuis"}
         description={
           deleteTarget
-            ? `Kuis "${deleteTarget.title}" akan dihapus dengan soft delete sesuai backend.`
+            ? `Kuis "${deleteTarget.title}" akan dihapus dari daftar aktif.`
             : ""
         }
         onCancel={() => setDeleteTarget(null)}

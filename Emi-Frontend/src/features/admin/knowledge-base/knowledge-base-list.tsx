@@ -32,8 +32,8 @@ import type { AiKnowledgeItem, AiKnowledgePayload, AiKnowledgeStatus } from "./t
 
 const statusOptions: Array<{ value: AiKnowledgeStatus; label: string; description: string }> = [
   { value: "draft", label: "Draft", description: "Belum digunakan chatbot." },
-  { value: "published", label: "Published", description: "Digunakan chatbot siswa." },
-  { value: "archived", label: "Archived", description: "Disimpan, tetapi tidak digunakan chatbot." },
+  { value: "published", label: "Terbit", description: "Digunakan chatbot siswa." },
+  { value: "archived", label: "Arsip", description: "Disimpan, tetapi tidak digunakan chatbot." },
 ];
 
 const sourceTypeLabel = {
@@ -138,7 +138,7 @@ export function KnowledgeBaseList() {
   const publishMutation = useMutation({
     mutationFn: (itemId: string) => knowledgeBaseService.publish(token ?? "", itemId),
     onSuccess: async (item) => {
-      setSuccessMessage(`Pengetahuan ${item.title} berhasil dipublish.`);
+      setSuccessMessage(`Pengetahuan ${item.title} berhasil diterbitkan.`);
       await queryClient.invalidateQueries({ queryKey: ["admin", "knowledge-base"] });
     },
   });
@@ -210,7 +210,8 @@ export function KnowledgeBaseList() {
           <Badge tone="yellow">ADMIN-11</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">Basis AI</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Kelola sumber pengetahuan untuk Chatbot AI siswa. Basis AI adalah sumber pengetahuan yang digunakan Chatbot AI siswa. Hanya pengetahuan berstatus published yang digunakan oleh chatbot.
+            Kelola sumber pengetahuan Chatbot AI siswa. Hanya item berstatus terbit
+            yang dipakai sebagai rujukan jawaban.
           </p>
         </div>
         <Button onClick={openCreateForm}>Tambah Pengetahuan</Button>
@@ -234,13 +235,13 @@ export function KnowledgeBaseList() {
         </Card>
         <Card>
           <CardContent>
-            <p className="text-xs font-black uppercase text-slate-500">Published</p>
+            <p className="text-xs font-black uppercase text-slate-500">Terbit</p>
             <p className="mt-2 text-2xl font-black text-ink">{countByStatus(items, "published")}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent>
-            <p className="text-xs font-black uppercase text-slate-500">Archived</p>
+            <p className="text-xs font-black uppercase text-slate-500">Arsip</p>
             <p className="mt-2 text-2xl font-black text-ink">{countByStatus(items, "archived")}</p>
           </CardContent>
         </Card>
@@ -298,10 +299,10 @@ export function KnowledgeBaseList() {
             <div>
               <h2 className="text-xl font-black text-ink">Daftar Pengetahuan</h2>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                Draft belum digunakan chatbot. Published digunakan chatbot siswa. Archived disimpan, tetapi tidak digunakan chatbot.
+                Draft belum digunakan chatbot. Terbit digunakan chatbot siswa. Arsip tetap tersimpan, tetapi tidak digunakan.
               </p>
             </div>
-            <Badge tone="blue">Backend aktif</Badge>
+            <Badge tone="blue">Aktif untuk chatbot</Badge>
           </div>
         </CardHeader>
         <CardContent>
@@ -316,7 +317,7 @@ export function KnowledgeBaseList() {
           {!knowledgeQuery.isLoading && !knowledgeQuery.isError ? (
             items.length === 0 ? (
               <EmptyState
-                description="Belum ada pengetahuan sesuai filter saat ini. Tambahkan pengetahuan pertama agar nanti dapat digunakan Chatbot AI siswa setelah dipublish."
+                description="Belum ada pengetahuan sesuai filter saat ini. Tambahkan pengetahuan pertama agar dapat digunakan Chatbot AI siswa setelah diterbitkan."
                 title="Basis AI kosong"
               />
             ) : (
@@ -359,7 +360,7 @@ export function KnowledgeBaseList() {
                                 disabled={publishMutation.isPending}
                                 onClick={() => publishMutation.mutate(item.id)}
                               >
-                                Publish
+                                Terbitkan
                               </Button>
                             ) : null}
                             {item.status === "published" ? (
@@ -369,7 +370,7 @@ export function KnowledgeBaseList() {
                                 onClick={() => archiveMutation.mutate(item.id)}
                                 variant="ghost"
                               >
-                                Archive
+                                Arsipkan
                               </Button>
                             ) : null}
                             <Button

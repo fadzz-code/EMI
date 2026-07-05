@@ -138,8 +138,8 @@ export function DictionaryImport() {
           <Badge tone="yellow">Admin</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">Impor Kamus</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Pratinjau CSV dan ZIP audio memakai endpoint impor backend sebelum data
-            benar-benar dimasukkan ke kamus.
+            Buat pratinjau CSV dan ZIP audio terlebih dahulu, lalu konfirmasi hanya
+            jika ringkasan baris valid sudah sesuai.
           </p>
         </div>
         <Button
@@ -370,7 +370,7 @@ export function DictionaryImport() {
             {!errorsQuery.isLoading && !errorsQuery.isError ? (
               (errorsQuery.data?.items ?? []).length === 0 ? (
                 <EmptyState
-                  description="Backend tidak mengembalikan error untuk impor ini."
+                  description="Tidak ada error validasi untuk impor ini."
                   title="Tidak ada error"
                 />
               ) : (

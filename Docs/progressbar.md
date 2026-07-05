@@ -84,7 +84,7 @@ High-level status:
 - [ ] PDF source/page citation display polish if client requests it.
 - [ ] Admin embedding workflow UI if client requests it.
 - [x] Admin dashboard UI/data polish before demo: placeholder/static values replaced with real `/admin/dashboard/summary` data, honest loading/error/empty states, and Figma-aligned hero/stats/actions layout.
-- [ ] Continue Batch 4 admin table/form/content polish for approvals, user/class management, dictionary/import, Basis AI, modules/quizzes, culture, progress, and settings.
+- [x] Batch 4B admin table/form/content polish completed for approvals, user/class management, dictionary/import, Basis AI, modules/quizzes, culture, progress, and settings without backend/API logic changes.
 - [ ] Admin broad manual QA pass after latest changes.
 
 ## 6. Teacher Web

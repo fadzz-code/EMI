@@ -247,7 +247,7 @@ export function ApprovalList() {
       {!approvalsQuery.isLoading && !approvalsQuery.isError ? (
         rows.length === 0 ? (
           <EmptyState
-            description="Tidak ada akun Guru atau Siswa yang menunggu approval untuk filter saat ini."
+            description="Tidak ada akun guru atau siswa yang menunggu persetujuan untuk filter saat ini."
             title="Belum ada permintaan pending"
           />
         ) : (
@@ -308,14 +308,14 @@ export function ApprovalList() {
                             onClick={() => setPendingAction({ action: "approve", request })}
                             variant="secondary"
                           >
-                            Approve
+                            Setujui
                           </Button>
                           <Button
                             className="min-h-10 rounded-[6px] border-2 border-[#241914] bg-[#ffdad6] px-3 py-2 text-xs text-[#93000a] shadow-[2px_2px_0_#241914] hover:bg-[#ffe6e2]"
                             onClick={() => setPendingAction({ action: "reject", request })}
                             variant="danger"
                           >
-                            Reject
+                            Tolak
                           </Button>
                         </div>
                       </TableCell>

@@ -132,8 +132,8 @@ export function ModuleList() {
     onSuccess: ({ result, publishedCount }) => {
       setSuccessMessage(
         publishedCount > 0
-          ? `Template modul diterapkan ke ${result.applied.length} kelas dan ${publishedCount} modul kelas langsung dipublish. Modul terlihat untuk siswa yang terdaftar pada kelas tersebut.`
-          : `Template modul diterapkan: ${result.applied.length} kelas, dilewati: ${result.skipped.length}, gagal: ${result.failed.length}. Modul kelas masih draft dan perlu dipublish agar terlihat siswa.`,
+          ? `Template modul diterapkan ke ${result.applied.length} kelas dan ${publishedCount} modul kelas langsung diterbitkan. Modul terlihat untuk siswa yang terdaftar pada kelas tersebut.`
+          : `Template modul diterapkan: ${result.applied.length} kelas, dilewati: ${result.skipped.length}, gagal: ${result.failed.length}. Modul kelas masih draft dan perlu diterbitkan agar terlihat siswa.`,
       );
       setApplyTarget(null);
       setSelectedClassIds([]);
@@ -144,7 +144,7 @@ export function ModuleList() {
   const deleteMutation = useMutation({
     mutationFn: (moduleId: string) => moduleTemplateService.delete(token ?? "", moduleId),
     onSuccess: async () => {
-      setSuccessMessage("Modul berhasil dihapus sesuai aturan soft delete backend.");
+      setSuccessMessage("Modul berhasil dihapus dari daftar aktif.");
       setDeleteTarget(null);
       await queryClient.invalidateQueries({ queryKey: ["admin", "module-templates"] });
     },
@@ -181,15 +181,14 @@ export function ModuleList() {
           <Badge tone="yellow">ADMIN-13</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">Modul Pembelajaran</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Kelola template modul default. Daftar ini memakai endpoint
-            admin/module-templates dari backend.
+            Kelola template modul, materi awal, status terbit, dan distribusi modul ke kelas aktif.
           </p>
         </div>
         <Button onClick={() => setCreateModalOpen(true)}>Tambah Modul</Button>
       </header>
 
       <Alert tone="info">
-        Alur visibilitas: 1) Publish Template, 2) Terapkan ke Kelas, 3) Publish Konten Kelas, 4) Guru dan siswa pada kelas tersebut dapat melihat konten. Publish template saja belum membuat konten terlihat.
+        Alur tampil ke siswa: terbitkan template, terapkan ke kelas, lalu pastikan modul kelas ikut diterbitkan.
       </Alert>
       {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
       {actionError ? <Alert tone="error">{getFirstApiError(actionError)}</Alert> : null}
@@ -359,7 +358,7 @@ export function ModuleList() {
       >
         <div className="grid gap-4">
           <Alert tone="info">
-            Publish template hanya membuat template siap dipakai. Apply akan membuat modul kelas berstatus draft. Aktifkan opsi publish di bawah agar modul kelas langsung terlihat oleh guru dan siswa yang terhubung ke kelas.
+            Menerapkan template akan membuat modul kelas. Aktifkan opsi terbitkan di bawah agar modul langsung terlihat oleh guru dan siswa yang terhubung ke kelas.
           </Alert>
           {classesQuery.isLoading ? <LoadingState title="Memuat kelas" /> : null}
           {classesQuery.isError ? <ErrorState description={getFirstApiError(classesQuery.error)} title="Gagal memuat kelas" /> : null}
@@ -375,7 +374,7 @@ export function ModuleList() {
                       onChange={() => toggleClass(schoolClass.id)}
                       type="checkbox"
                     />
-                    <span>{schoolClass.name} · {schoolClass.academic_year}</span>
+                    <span>{schoolClass.name} - {schoolClass.academic_year}</span>
                   </label>
                 ))}
               </div>
@@ -388,7 +387,7 @@ export function ModuleList() {
               onChange={(event) => setPublishAfterApply(event.target.checked)}
               type="checkbox"
             />
-            <span>Setelah apply, langsung publish modul kelas agar terlihat oleh guru dan siswa.</span>
+            <span>Setelah diterapkan, langsung terbitkan modul kelas agar terlihat oleh guru dan siswa.</span>
           </label>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button onClick={() => setApplyTarget(null)} type="button" variant="ghost">
@@ -413,7 +412,7 @@ export function ModuleList() {
         confirmLabel={deleteMutation.isPending ? "Menghapus..." : "Hapus Modul"}
         description={
           deleteTarget
-            ? `Modul "${deleteTarget.title}" akan dihapus dengan soft delete sesuai backend.`
+            ? `Modul "${deleteTarget.title}" akan dihapus dari daftar aktif.`
             : ""
         }
         onCancel={() => setDeleteTarget(null)}

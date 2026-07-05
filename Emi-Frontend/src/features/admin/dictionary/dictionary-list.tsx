@@ -108,7 +108,7 @@ export function DictionaryList() {
   const deleteEntryMutation = useMutation({
     mutationFn: (entryId: string) => dictionaryService.deleteEntry(token ?? "", entryId),
     onSuccess: async () => {
-      setSuccessMessage("Entri kamus berhasil dihapus/nonaktif sesuai backend.");
+      setSuccessMessage("Entri kamus berhasil dinonaktifkan atau dihapus sesuai aturan sistem.");
       await queryClient.invalidateQueries({ queryKey: ["admin", "dictionary", "entries"] });
     },
   });
@@ -140,7 +140,7 @@ export function DictionaryList() {
           <Badge tone="yellow">Admin</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">Kelola Kamus Mekongga</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Kelola kata Indonesia, Inggris, dan Mekongga dari endpoint admin dictionary.
+            Kelola kosakata Mekongga beserta terjemahan, kategori, status, dan audio pendukung.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -148,7 +148,7 @@ export function DictionaryList() {
             className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-white px-4 py-2 text-sm font-bold text-ink shadow-brutal hover:bg-yellow-100"
             href="/admin/dictionary/import"
           >
-            Import CSV
+            Impor CSV/ZIP
           </Link>
           <Button onClick={() => setCategoryModalOpen(true)} variant="secondary">
             Tambah Kategori
@@ -303,7 +303,7 @@ export function DictionaryList() {
 
       <Card>
         <CardHeader>
-          <h2 className="text-xl font-black text-ink">Preview Audio Terpilih</h2>
+          <h2 className="text-xl font-black text-ink">Pratinjau Audio Kamus</h2>
         </CardHeader>
         <CardContent>
           <AudioPlayer
@@ -311,7 +311,7 @@ export function DictionaryList() {
             title="audio kamus"
           />
           <p className="mt-3 text-sm text-slate-600">
-            Pemutar ini memakai URL audio publik yang dikembalikan resource kamus.
+            Audio pertama yang tersedia dari hasil filter ditampilkan untuk pemeriksaan cepat.
           </p>
         </CardContent>
       </Card>

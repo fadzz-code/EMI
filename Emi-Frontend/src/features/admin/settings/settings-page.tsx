@@ -38,11 +38,11 @@ function getInitials(name?: string) {
   );
 }
 
-function DisabledInput({ value = "Belum tersedia dari backend" }: { value?: string }) {
+function DisabledInput({ value = "Belum tersedia" }: { value?: string }) {
   return <Input className={disabledFieldClass} disabled value={value} />;
 }
 
-function DisabledTextarea({ value = "Belum tersedia dari backend" }: { value?: string }) {
+function DisabledTextarea({ value = "Belum tersedia" }: { value?: string }) {
   return <Textarea className={disabledFieldClass} disabled value={value} />;
 }
 
@@ -147,8 +147,8 @@ export function SettingsPage() {
       </header>
 
       <Alert tone="info">
-        Backend belum menyediakan endpoint system settings. Field konfigurasi sistem
-        ditampilkan sebagai read-only, sementara data profil admin tetap bisa disimpan.
+        Pengaturan sistem penuh belum tersedia. Field konfigurasi ditampilkan read-only,
+        sementara data profil admin tetap bisa disimpan.
       </Alert>
 
       {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
@@ -174,7 +174,7 @@ export function SettingsPage() {
         >
           <SettingsSectionCard
             badge="Read-only"
-            description="Endpoint konfigurasi aplikasi belum tersedia, jadi field ini belum bisa disimpan."
+            description="Konfigurasi aplikasi belum bisa disimpan dari layar ini."
             title="Pengaturan Aplikasi"
           >
             <div className="grid gap-4 md:grid-cols-2">
@@ -195,7 +195,7 @@ export function SettingsPage() {
 
           <SettingsSectionCard
             badge="Bisa disimpan"
-            description="Profil admin memakai endpoint auth aktual. Email kantor masih read-only."
+            description="Nama dan telepon admin dapat diperbarui. Email kantor tetap read-only."
             title="Profil Admin"
           >
             {user ? (
@@ -231,13 +231,13 @@ export function SettingsPage() {
                 </div>
               </div>
             ) : (
-              <PanelNote>Profil admin tidak dikembalikan oleh backend.</PanelNote>
+              <PanelNote>Profil admin belum tersedia.</PanelNote>
             )}
           </SettingsSectionCard>
 
           <SettingsSectionCard
             badge="Belum tersedia"
-            description="Banner login belum punya endpoint upload atau penyimpanan konfigurasi."
+            description="Banner login belum bisa diunggah atau disimpan dari layar ini."
             title="Pengaturan Banner Login"
           >
             <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
@@ -246,7 +246,7 @@ export function SettingsPage() {
                 <div className="mt-3 rounded-lg border-2 border-dashed border-ink bg-white p-6">
                   <p className="text-lg font-black text-ink">Belum tersedia</p>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
-                    Preview akan aktif setelah backend menyediakan konfigurasi banner login.
+                    Preview akan aktif setelah konfigurasi banner login tersedia.
                   </p>
                 </div>
                 <Button className="mt-4 w-full" disabled variant="ghost">
@@ -262,12 +262,11 @@ export function SettingsPage() {
                   <DisabledTextarea />
                 </FormField>
                 <SettingsToggle
-                  helper="Toggle belum aktif karena tidak ada endpoint banner."
+                  helper="Toggle belum aktif karena konfigurasi banner belum tersedia."
                   label="Aktifkan Banner"
                 />
                 <PanelNote>
-                  Riwayat banner belum tersedia. Belum ada endpoint untuk membaca versi banner
-                  atau audit perubahannya.
+                  Riwayat banner belum tersedia. Versi banner dan audit perubahannya belum dapat ditampilkan.
                 </PanelNote>
               </div>
             </div>
@@ -289,11 +288,11 @@ export function SettingsPage() {
               </div>
               <div className="grid gap-3">
                 <SettingsToggle
-                  helper="Preferensi notifikasi login belum tersedia dari backend."
+                  helper="Preferensi notifikasi login belum tersedia."
                   label="Peringatan Login Baru"
                 />
                 <SettingsToggle
-                  helper="Preferensi email laporan belum tersedia dari backend."
+                  helper="Preferensi email laporan belum tersedia."
                   label="Email Laporan Mingguan"
                 />
               </div>
@@ -302,7 +301,7 @@ export function SettingsPage() {
 
           <div className="flex flex-col-reverse gap-3 rounded-lg border-2 border-ink bg-white p-4 shadow-brutal sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs font-semibold leading-5 text-slate-600">
-              Tombol simpan hanya mengirim field profil admin yang didukung backend.
+              Tombol simpan hanya mengirim field profil admin yang sudah didukung.
             </p>
             <div className="flex gap-3">
               <Button onClick={cancelChanges} type="button" variant="ghost">

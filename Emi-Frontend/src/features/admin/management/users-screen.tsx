@@ -9,11 +9,13 @@ import {
   Button,
   Card,
   CardContent,
+  CardHeader,
   EmptyState,
   ErrorState,
   FilterPanel,
   Input,
   LoadingState,
+  PageHeader,
   Pagination,
   Select,
   Table,
@@ -68,19 +70,16 @@ export function UsersScreen() {
 
   return (
     <div className="grid gap-6">
-      <header>
-        <Badge tone="yellow">Admin</Badge>
-        <h1 className="mt-2 text-3xl font-black text-ink">Data Guru & Siswa</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-          Kelola data pengguna pembelajaran. Admin tidak menjadi target utama
-          screen ini.
-        </p>
-      </header>
+      <PageHeader
+        badge="Admin"
+        description="Cari, filter, dan buka detail akun guru atau siswa tanpa mengubah alur persetujuan pendaftaran."
+        title="Data Guru & Siswa"
+      />
 
       <div className="flex flex-wrap gap-2">
         {[
-          { label: "Guru", value: "teacher" },
-          { label: "Siswa", value: "student" },
+          { label: "Daftar Guru", value: "teacher" },
+          { label: "Daftar Siswa", value: "student" },
         ].map((item) => (
           <Button
             key={item.value}
@@ -133,6 +132,19 @@ export function UsersScreen() {
       </FilterPanel>
 
       <Card>
+        <CardHeader>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-xl font-black text-ink">
+                {role === "teacher" ? "Daftar Guru" : "Daftar Siswa"}
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Gunakan detail untuk meninjau profil, status akun, dan relasi sekolah atau kelas.
+              </p>
+            </div>
+            <Badge tone="neutral">{meta?.total ?? users.length} data</Badge>
+          </div>
+        </CardHeader>
         <CardContent>
           {usersQuery.isLoading ? <LoadingState title="Memuat pengguna" /> : null}
           {usersQuery.isError ? (

@@ -297,8 +297,8 @@ export function SchoolsClassesScreen() {
           <Badge tone="yellow">Admin</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">Sekolah & Kelas</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Kelola sekolah dan kelas aktif EMI. Perubahan status mengikuti aturan
-            backend dan tidak memakai delete permanen palsu.
+            Kelola data master sekolah, kelas, guru pengampu, dan status aktif untuk
+            kebutuhan registrasi serta pembelajaran.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -379,7 +379,7 @@ export function SchoolsClassesScreen() {
               <div>
                 <h2 className="text-xl font-black text-ink">Daftar Sekolah</h2>
                 <p className="mt-1 text-sm text-slate-600">
-                  Data master sekolah untuk registrasi dan kelas.
+                  Data sekolah dipakai saat pendaftaran akun dan pengelompokan kelas.
                 </p>
               </div>
               <Badge tone="neutral">{schoolMeta?.total ?? schools.length} data</Badge>
@@ -476,7 +476,7 @@ export function SchoolsClassesScreen() {
               <div>
                 <h2 className="text-xl font-black text-ink">Daftar Kelas</h2>
                 <p className="mt-1 text-sm text-slate-600">
-                  Kelas dapat difilter berdasarkan sekolah.
+                  Pilih sekolah untuk melihat kelas terkait dan mengelola relasi gurunya.
                 </p>
               </div>
               <Badge tone="neutral">{classMeta?.total ?? classes.length} data</Badge>

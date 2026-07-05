@@ -138,8 +138,7 @@ export function ProgressOverview() {
           <Badge tone="yellow">ADMIN-17</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">Progress Siswa</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Ringkasan progress global, daftar siswa, dan ringkasan kelas dari endpoint
-            laporan admin. Data email siswa tidak dikirim oleh report progress backend.
+            Pantau progress global, daftar siswa, dan ringkasan kelas untuk kebutuhan laporan admin.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -277,7 +276,7 @@ export function ProgressOverview() {
                         <tr key={student.student_id}>
                           <TableCell>
                             <p className="font-black text-ink">{student.full_name}</p>
-                            <p className="mt-1 text-xs text-slate-600">Email belum tersedia di endpoint progress.</p>
+                            <p className="mt-1 text-xs text-slate-600">Email belum tersedia di laporan progress.</p>
                           </TableCell>
                           <TableCell>
                             <p className="font-bold text-ink">{student.school.name}</p>
@@ -329,7 +328,7 @@ export function ProgressOverview() {
         <CardHeader>
           <h2 className="text-xl font-black text-ink">Ringkasan Progress Kelas</h2>
           <p className="text-sm text-slate-600">
-            Data kelas berasal dari `/admin/reports/progress/classes`.
+            Bandingkan progress modul dan kuis antar kelas dari filter yang sama.
           </p>
         </CardHeader>
         <CardContent>
