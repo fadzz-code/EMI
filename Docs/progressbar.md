@@ -17,9 +17,9 @@
 
 ## 2. Current Snapshot
 
-Current focus: speaking end-to-end manual QA after browser audio upload validation was fixed.
+Current focus: speaking end-to-end manual QA after Laravel and Python browser audio upload validation fixes.
 
-Last known local HEAD: `79bbbe9 fix: accept browser speaking audio uploads`.
+Last known local HEAD before this task: `a926cb9 docs: add reusable project handover and progress tracker`.
 Remote may be behind local if user has not pushed.
 
 High-level status:
@@ -179,6 +179,7 @@ High-level status:
 - [x] Web teacher review.
 - [x] Fix `validation.mimetypes` browser upload issue.
 - [x] Audio upload MIME acceptance for safe browser formats.
+- [x] Python accepts safe browser WebM/Opus MIME variants.
 - [x] No frontend direct call to Python service.
 - [ ] Manual QA end-to-end.
 - [ ] Status polling tuning after manual QA if needed.
@@ -215,6 +216,7 @@ High-level status:
 - [x] Current reusable project handover exists.
 - [x] Reusable progressbar exists.
 - [x] AI workflow protocol exists.
+- [x] `Docs/Progress.md` replaced by `Docs/progressbar.md`.
 - [ ] Keep route inventory current after speaking route additions.
 - [ ] Refresh stale legacy docs if they become active planning references.
 
@@ -238,6 +240,7 @@ High-level status:
 - [ ] Confirm speaking status progression with `QUEUE_CONNECTION=database` and real queue worker.
 - [ ] Confirm teacher feedback appears correctly for student after review.
 - [ ] Confirm no `validation.mimetypes` error after `79bbbe9` in real browsers.
+- [ ] Confirm no Python `Jenis audio tidak didukung.` error after browser WebM/Opus MIME fix.
 - [ ] Confirm Python model first-download behavior is acceptable for local/prod setup.
 - [ ] Review known composer audit advisories for `guzzlehttp/guzzle` and `guzzlehttp/psr7`; do not modify dependencies unless user asks.
 

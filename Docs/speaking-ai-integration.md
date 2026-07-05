@@ -60,6 +60,8 @@ POST /predict
 
 Stable success includes `engine`, `model`, `target`, `transcription`, `score`, `alignment`, and `warnings`.
 
+Safe browser uploads include `audio/webm`, `video/webm`, WebM/Opus content type parameters, WAV, MP3, MP4/M4A, OGG, and `application/octet-stream` only with a safe audio extension.
+
 Stable error:
 
 ```json
@@ -107,7 +109,7 @@ Laravel `.env.example` keys:
 
 ```env
 SPEAKING_AI_ENABLED=false
-SPEAKING_AI_BASE_URL=http://127.0.0.1:8000
+SPEAKING_AI_BASE_URL=http://127.0.0.1:8001
 SPEAKING_AI_TIMEOUT_SECONDS=60
 SPEAKING_MAX_AUDIO_MB=5
 SPEAKING_MAX_DURATION_SECONDS=30
@@ -120,10 +122,10 @@ cd Emi-Speaking-AI
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-uvicorn main:app --host 127.0.0.1 --port 8000
+uvicorn main:app --host 127.0.0.1 --port 8001
 ```
 
-The Hugging Face model may download on first run.
+The Hugging Face model may download on first run. Browser WebM/Opus conversion requires `ffmpeg` available on PATH.
 
 ## Production Notes
 

@@ -100,7 +100,7 @@ EMI/
 │   ├── 03-API-Specification.md
 │   ├── 04-Development-Plan.md
 │   ├── 05-Project-Handover.md
-│   └── Progress.md
+│   └── progressbar.md
 └── Emi-Backend/
 ```
 

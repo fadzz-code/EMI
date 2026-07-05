@@ -13,10 +13,10 @@ pip install -r requirements.txt
 ## Run locally
 
 ```bash
-uvicorn main:app --host 127.0.0.1 --port 8000
+uvicorn main:app --host 127.0.0.1 --port 8001
 ```
 
-The Wav2Vec2 model may download on first run.
+The Wav2Vec2 model may download on first run. Browser WebM/Opus conversion requires `ffmpeg` available on PATH.
 
 ## Endpoints
 
@@ -28,7 +28,7 @@ POST /predict
 Sample request:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/predict \
+curl -X POST http://127.0.0.1:8001/predict \
   -F "target_text=Ari nggiro" \
   -F "file=@sample.wav;type=audio/wav"
 ```
@@ -37,7 +37,7 @@ curl -X POST http://127.0.0.1:8000/predict \
 
 `SPEAKING_AI_MAX_FILE_SIZE_MB` defaults to `5`.
 
-Supported uploads include WAV, WebM, MP3, MP4, and M4A. `application/octet-stream` is accepted only with a safe audio extension.
+Supported uploads include WAV, WebM/Opus (`audio/webm` or `video/webm`), MP3, MP4, M4A, and OGG. `application/octet-stream` is accepted only with a safe audio extension.
 
 ## Contract
 

@@ -1,4 +1,5 @@
 import os
+import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -9,14 +10,16 @@ from fastapi.responses import JSONResponse
 ENGINE = "wav2vec2-indonesian-levenshtein"
 MODEL_NAME = os.getenv("SPEAKING_AI_MODEL", "indonesian-nlp/wav2vec2-large-xlsr-indonesian")
 MAX_FILE_SIZE_BYTES = int(os.getenv("SPEAKING_AI_MAX_FILE_SIZE_MB", "5")) * 1024 * 1024
-SAFE_EXTENSIONS = {".wav", ".webm", ".mp3", ".mp4", ".m4a"}
+SAFE_EXTENSIONS = {".wav", ".webm", ".mp3", ".mp4", ".m4a", ".mpeg", ".mpga", ".ogg", ".oga"}
 SAFE_CONTENT_TYPES = {
     "audio/wav",
     "audio/x-wav",
     "audio/webm",
+    "video/webm",
     "audio/mpeg",
     "audio/mp4",
     "audio/m4a",
+    "audio/ogg",
 }
 WARNING = "Model is Indonesian STT; Mekongga pronunciation scoring is approximate."
 
@@ -30,13 +33,38 @@ def error_response(message: str, code: str, status_code: int) -> JSONResponse:
 
 def validate_upload(file: UploadFile) -> None:
     suffix = Path(file.filename or "").suffix.lower()
-    content_type = (file.content_type or "").lower()
+    content_type = (file.content_type or "").lower().split(";", 1)[0].strip()
 
     if content_type == "application/octet-stream" and suffix in SAFE_EXTENSIONS:
         return
 
     if content_type not in SAFE_CONTENT_TYPES:
         raise HTTPException(status_code=422, detail="Jenis audio tidak didukung.")
+
+
+def prepare_audio_for_transcription(path: str) -> tuple[str, str | None]:
+    suffix = Path(path).suffix.lower()
+    if suffix == ".wav":
+        return path, None
+
+    wav_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+    wav_path = wav_file.name
+    wav_file.close()
+
+    try:
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", path, "-ac", "1", "-ar", "16000", wav_path],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return wav_path, wav_path
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        try:
+            os.remove(wav_path)
+        except FileNotFoundError:
+            pass
+        return path, None
 
 
 def levenshtein_score(target: str, transcription: str) -> tuple[float, dict[str, int]]:
@@ -113,6 +141,7 @@ async def predict(target_text: str = Form(...), file: UploadFile = File(...)) ->
         suffix = ".wav"
 
     temp_path = None
+    converted_path = None
 
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
@@ -124,7 +153,8 @@ async def predict(target_text: str = Form(...), file: UploadFile = File(...)) ->
                     raise HTTPException(status_code=422, detail="Ukuran audio melebihi batas.")
                 temp_file.write(chunk)
 
-        transcription = transcribe(temp_path)
+        transcription_path, converted_path = prepare_audio_for_transcription(temp_path)
+        transcription = transcribe(transcription_path)
         score, alignment = levenshtein_score(target_text, transcription)
 
         return JSONResponse({
@@ -142,8 +172,9 @@ async def predict(target_text: str = Form(...), file: UploadFile = File(...)) ->
         return error_response(str(exc), "SPEAKING_AI_ERROR", 500)
     finally:
         await file.close()
-        if temp_path:
-            try:
-                os.remove(temp_path)
-            except FileNotFoundError:
-                pass
+        for path in [converted_path, temp_path]:
+            if path:
+                try:
+                    os.remove(path)
+                except FileNotFoundError:
+                    pass
