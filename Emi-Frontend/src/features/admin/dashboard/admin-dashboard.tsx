@@ -4,14 +4,12 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 
 import {
-  Alert,
   Card,
   CardContent,
   CardHeader,
   EmptyState,
   ErrorState,
   LoadingState,
-  StatsCard,
 } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
@@ -96,9 +94,9 @@ function DashboardStat({
   return (
     <div
       className={cn(
-        "rounded-[var(--radius-card)] border-2 border-border bg-surface p-4 shadow-emi",
-        tone === "warning" && "bg-danger-muted text-danger",
-        tone === "success" && "bg-green-50",
+        "rounded-[var(--radius-card)] border-2 border-border bg-surface p-4 shadow-emi flex flex-col justify-between",
+        tone === "warning" && "bg-danger-muted text-danger border-danger/20",
+        tone === "success" && "bg-green-50 border-green-200",
       )}
     >
       <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">{label}</p>
@@ -204,29 +202,21 @@ export function AdminDashboard() {
 
   return (
     <div className="grid gap-6">
-      <section className="relative overflow-hidden rounded-[var(--radius-card)] border-2 border-border bg-accent p-6 shadow-emi md:p-8">
-        <div className="absolute -right-10 bottom-0 size-40 rounded-full border-2 border-border bg-primary opacity-60 blur-sm" />
-        <div className="absolute -left-8 -top-8 size-28 rounded-full border-2 border-border bg-success opacity-50 blur-sm" />
-        <div className="relative max-w-3xl">
-          <p className="text-xs font-black uppercase tracking-[0.12em] text-accent-foreground">
-            Beranda Admin
+      <section className="flex flex-col gap-2">
+        <p className="text-sm font-black uppercase tracking-[0.08em] text-muted">
+          Beranda Admin
+        </p>
+        <h1 className="text-3xl font-black leading-tight text-ink md:text-4xl">
+          Halo, {user?.full_name ?? "Admin"}!
+        </h1>
+        <p className="text-base font-semibold leading-6 text-muted max-w-3xl">
+          Pantau data sekolah, kelas, akun, materi, kuis, dan progress dari Laravel API.
+        </p>
+        {summary?.generated_at ? (
+          <p className="text-xs font-bold text-muted">
+            Update terakhir: {formatDateTime(summary.generated_at)}
           </p>
-          <h1 className="mt-3 text-3xl font-black leading-tight text-accent-foreground md:text-5xl">
-            Elearning Mekongga Indonesia
-          </h1>
-          <p className="mt-3 text-lg font-bold text-accent-foreground">
-            Halo, {user?.full_name ?? "Admin"}!
-          </p>
-          <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-accent-foreground md:text-base">
-            Pantau data sekolah, kelas, akun, materi, kuis, dan progress dari Laravel API.
-            Dashboard ini tidak memakai angka dummy.
-          </p>
-          {summary?.generated_at ? (
-            <p className="mt-4 inline-flex rounded-full border border-border bg-surface px-3 py-1 text-xs font-black text-ink">
-              Data diperbarui {formatDateTime(summary.generated_at)}
-            </p>
-          ) : null}
-        </div>
+        ) : null}
       </section>
 
       {summaryQuery.isLoading ? <LoadingState title="Memuat dashboard admin" /> : null}
@@ -247,37 +237,37 @@ export function AdminDashboard() {
             />
           ) : null}
 
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <DashboardStat
-              helper={`${formatNumber(summary.overview.active_teachers)} guru aktif`}
-              label="Total Siswa"
+              helper="Siswa teregistrasi"
+              label="Siswa"
               value={formatNumber(summary.overview.active_students)}
             />
             <DashboardStat
-              helper={`${formatNumber(summary.overview.active_schools)} sekolah aktif`}
-              label="Total Kelas"
+              helper="Guru teregistrasi"
+              label="Guru"
+              value={formatNumber(summary.overview.active_teachers)}
+            />
+            <DashboardStat
+              helper="Sekolah terdaftar"
+              label="Sekolah"
+              value={formatNumber(summary.overview.active_schools)}
+            />
+            <DashboardStat
+              helper="Kelas aktif"
+              label="Kelas"
               value={formatNumber(summary.overview.active_classes)}
             />
             <DashboardStat
-              helper="Permintaan registrasi guru/siswa yang perlu ditinjau."
-              label="Akun Menunggu"
+              helper="Butuh review"
+              label="Persetujuan"
               tone={summary.overview.pending_registration_requests > 0 ? "warning" : "success"}
               value={formatNumber(summary.overview.pending_registration_requests)}
             />
             <DashboardStat
-              helper={`${formatNumber(summary.learning.students_with_learning_activity)} siswa sudah mulai belajar`}
-              label="Progress Modul"
-              value={formatPercent(summary.learning.average_learning_progress_percent)}
-            />
-            <DashboardStat
-              helper={`${formatNumber(summary.learning.completed_modules)} penyelesaian modul tercatat`}
-              label="Modul Selesai"
-              value={formatNumber(summary.learning.completed_modules)}
-            />
-            <DashboardStat
-              helper={`${formatPercent(summary.quizzes.participation_rate_percent)} partisipasi kuis`}
-              label="Rata-rata Kuis"
-              value={formatPercent(summary.quizzes.average_score_percent)}
+              helper="Submission kuis"
+              label="Kuis"
+              value={formatNumber(summary.quizzes.submitted_attempts)}
             />
           </section>
 
@@ -286,9 +276,9 @@ export function AdminDashboard() {
               <CardHeader>
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <h2 className="text-xl font-black text-ink">Tindakan Cepat</h2>
+                    <h2 className="text-xl font-black text-ink">Aksi Cepat</h2>
                     <p className="mt-1 text-sm font-semibold text-muted">
-                      Jalur cepat ke fitur admin yang sudah aktif.
+                      Jalur cepat ke fitur admin utama.
                     </p>
                   </div>
                   {summary.overview.pending_registration_requests > 0 ? (
@@ -299,7 +289,7 @@ export function AdminDashboard() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2">
                   {quickActions.map((action) => (
                     <QuickActionCard action={action} key={action.href} />
                   ))}
@@ -311,13 +301,13 @@ export function AdminDashboard() {
               <CardHeader>
                 <h2 className="text-xl font-black text-ink">Sinyal Operasional</h2>
                 <p className="mt-1 text-sm font-semibold text-muted">
-                  Status ringkas dari data summary backend.
+                  Status ringkas operasional sistem.
                 </p>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-3">
                   <OperationalSignal
-                    description="Pendaftaran baru tidak disembunyikan sebagai angka demo; buka daftar persetujuan untuk meninjau."
+                    description="Pendaftaran baru yang butuh persetujuan manual."
                     href="/admin/approvals"
                     label="Persetujuan akun"
                     status={
@@ -328,51 +318,22 @@ export function AdminDashboard() {
                     tone={summary.overview.pending_registration_requests > 0 ? "warning" : "success"}
                   />
                   <OperationalSignal
-                    description={`${formatNumber(summary.learning.students_with_learning_activity)} siswa punya aktivitas belajar. Rata-rata progress modul ${formatPercent(summary.learning.average_learning_progress_percent)}.`}
+                    description="Data progress pembelajaran dan partisipasi aktif."
                     href="/admin/progress"
                     label="Progress belajar"
                     status={formatPercent(summary.learning.average_learning_progress_percent)}
                     tone={summary.learning.students_with_learning_activity > 0 ? "success" : "neutral"}
                   />
                   <OperationalSignal
-                    description={`${formatNumber(summary.quizzes.submitted_attempts)} attempt submitted dan ${formatNumber(summary.quizzes.final_attempts)} attempt final tercatat.`}
+                    description="Data penyelesaian materi kuis."
                     href="/admin/progress"
                     label="Aktivitas kuis"
                     status={formatPercent(summary.quizzes.participation_rate_percent)}
                     tone={summary.quizzes.submitted_attempts > 0 ? "success" : "neutral"}
                   />
-                  <OperationalSignal
-                    description="Speaking tetap diposisikan sebagai AI-assisted initial scoring dengan guru sebagai reviewer."
-                    label="Laporan speaking admin"
-                    status={summary.capabilities.speaking_reports ? "Tersedia" : "Belum tersedia"}
-                    tone={summary.capabilities.speaking_reports ? "success" : "neutral"}
-                  />
                 </div>
               </CardContent>
             </Card>
-          </section>
-
-          <Alert tone="info">
-            Data dashboard diambil dari endpoint existing <strong>/admin/dashboard/summary</strong>.
-            Jika ada angka 0 atau status belum tersedia, itu mencerminkan response backend saat ini.
-          </Alert>
-
-          <section className="grid gap-4 md:grid-cols-3">
-            <StatsCard
-              helper="Sekolah aktif dari summary backend"
-              label="Sekolah"
-              value={formatNumber(summary.overview.active_schools)}
-            />
-            <StatsCard
-              helper="Guru aktif dari summary backend"
-              label="Guru"
-              value={formatNumber(summary.overview.active_teachers)}
-            />
-            <StatsCard
-              helper={`${formatNumber(summary.quizzes.expired_attempts)} expired, ${formatNumber(summary.quizzes.in_progress_attempts)} berjalan`}
-              label="Attempt Kuis"
-              value={formatNumber(summary.quizzes.final_attempts)}
-            />
           </section>
         </>
       ) : null}
