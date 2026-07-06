@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronDown } from "lucide-react";
 
 import { isActiveNavItem, type NavItem } from "@/lib/routes";
 import { cn } from "@/lib/utils";
@@ -30,28 +31,32 @@ export function MobileRoleNavigation({
 }) {
   return (
     <>
-      <details className="border-b-2 border-border bg-paper px-4 py-3 lg:hidden">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 py-2 text-sm font-black text-ink shadow-emi">
+      <details className="group border-b-2 border-border bg-paper px-4 py-3 lg:hidden">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-ink shadow-emi transition-colors hover:bg-surface-muted">
           <span>Menu navigasi</span>
-          <span aria-hidden="true" className="text-lg leading-none">
-            +
-          </span>
+          <ChevronDown className="size-5 transition-transform duration-200 group-open:rotate-180" strokeWidth={3} />
         </summary>
         <nav aria-label="Menu navigasi lengkap" className="mt-4 grid gap-2">
           {items.map((item) => {
             const isActive = isActiveNavItem(activePath, item.href);
+            const Icon = item.icon;
 
             return (
               <Link
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex min-h-11 items-center justify-between gap-3 rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 py-2 text-sm font-black text-ink",
-                  isActive && "bg-accent text-accent-foreground shadow-emi",
+                  "flex min-h-11 items-center justify-between gap-3 rounded-[var(--radius-control)] border-2 border-transparent bg-surface px-3 py-2 text-sm font-black transition-all",
+                  isActive 
+                    ? "border-border bg-accent text-accent-foreground shadow-emi" 
+                    : "text-muted hover:border-border/50 hover:bg-surface-muted hover:text-ink"
                 )}
                 href={item.href}
                 key={item.href}
               >
-                <span className="min-w-0 truncate">{item.label}</span>
+                <span className="flex items-center gap-3 min-w-0 truncate">
+                  {Icon && <Icon className={cn("size-5 shrink-0", isActive ? "text-primary" : "text-muted")} strokeWidth={isActive ? 3 : 2} />}
+                  <span className="truncate">{item.label}</span>
+                </span>
                 {item.status === "next" ? <Badge>Segera</Badge> : null}
               </Link>
             );
@@ -67,15 +72,16 @@ export function MobileRoleNavigation({
           {primaryItems.map((item) => {
             const isActive = isActiveNavItem(activePath, item.href);
             const label = item.shortLabel ?? item.label;
+            const Icon = item.icon;
 
             return (
               <Link
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex min-h-14 flex-col items-center justify-center gap-1 rounded-full border-2 border-transparent px-2 py-1 text-center text-[11px] font-black leading-tight text-muted transition",
+                  "flex min-h-14 flex-col items-center justify-center gap-1 rounded-[16px] border-2 border-transparent px-2 py-1 text-center text-[10px] font-black leading-tight transition",
                   isActive
                     ? "border-border bg-accent text-accent-foreground shadow-[2px_2px_0_var(--border)]"
-                    : "hover:border-border hover:bg-surface-muted",
+                    : "text-muted hover:bg-surface-muted",
                 )}
                 href={item.href}
                 key={item.href}
@@ -83,11 +89,15 @@ export function MobileRoleNavigation({
                 <span
                   aria-hidden="true"
                   className={cn(
-                    "flex size-6 items-center justify-center rounded-full border-2 border-border bg-surface text-[10px] leading-none",
-                    isActive && "bg-primary text-primary-foreground",
+                    "flex size-6 items-center justify-center rounded-full transition-colors",
+                    isActive ? "text-primary" : "text-muted"
                   )}
                 >
-                  {getNavMarker(label)}
+                  {Icon ? (
+                    <Icon className="size-5" strokeWidth={isActive ? 3 : 2} />
+                  ) : (
+                    getNavMarker(label)
+                  )}
                 </span>
                 <span className="max-w-full truncate">{label}</span>
               </Link>

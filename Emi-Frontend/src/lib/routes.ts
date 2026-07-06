@@ -1,3 +1,20 @@
+import {
+  Users,
+  School,
+  BookOpen,
+  LibraryBig,
+  BrainCircuit,
+  MessageSquare,
+  Mic,
+  Globe,
+  Settings,
+  LayoutDashboard,
+  UserCheck,
+  FileText,
+  User,
+  TrendingUp,
+} from "lucide-react";
+
 import type { UserRole } from "./roles";
 
 export type NavItem = {
@@ -5,6 +22,7 @@ export type NavItem = {
   href: string;
   shortLabel?: string;
   status?: "ready" | "next";
+  icon?: React.ElementType;
 };
 
 export const publicRoutes = {
@@ -42,39 +60,39 @@ export const teacherRoutes = {
 
 export const roleNavItems: Record<UserRole, NavItem[]> = {
   admin: [
-    { label: "Beranda", href: "/admin/dashboard", shortLabel: "Beranda", status: "ready" },
-    { label: "Persetujuan", href: "/admin/approvals", status: "ready" },
-    { label: "Sekolah & Kelas", href: "/admin/schools-classes", status: "ready" },
-    { label: "Guru & Siswa", href: "/admin/users", status: "ready" },
-    { label: "Kamus", href: "/admin/dictionary", status: "ready" },
-    { label: "Basis AI", href: "/admin/knowledge-base", status: "ready" },
-    { label: "Modul", href: "/admin/modules", status: "ready" },
-    { label: "Kuis", href: "/admin/quizzes", status: "ready" },
-    { label: "Budaya Mekongga", href: "/admin/culture/templates", status: "ready" },
-    { label: "Progress", href: "/admin/progress", status: "ready" },
-    { label: "Pengaturan", href: "/admin/settings", status: "ready" },
+    { label: "Beranda", href: "/admin/dashboard", shortLabel: "Beranda", status: "ready", icon: LayoutDashboard },
+    { label: "Persetujuan", href: "/admin/approvals", status: "ready", icon: UserCheck },
+    { label: "Sekolah & Kelas", href: "/admin/schools-classes", status: "ready", icon: School },
+    { label: "Guru & Siswa", href: "/admin/users", status: "ready", icon: Users },
+    { label: "Kamus", href: "/admin/dictionary", status: "ready", icon: LibraryBig },
+    { label: "Basis AI", href: "/admin/knowledge-base", status: "ready", icon: BrainCircuit },
+    { label: "Modul", href: "/admin/modules", status: "ready", icon: BookOpen },
+    { label: "Kuis", href: "/admin/quizzes", status: "ready", icon: FileText },
+    { label: "Budaya Mekongga", href: "/admin/culture/templates", status: "ready", icon: Globe },
+    { label: "Progress", href: "/admin/progress", status: "ready", icon: TrendingUp },
+    { label: "Pengaturan", href: "/admin/settings", status: "ready", icon: Settings },
   ],
   teacher: [
-    { label: "Beranda", href: teacherRoutes.dashboard, shortLabel: "Beranda", status: "ready" },
-    { label: "Kelas", href: teacherRoutes.classes, status: "ready" },
-    { label: "Siswa", href: teacherRoutes.students, status: "ready" },
-    { label: "Progress", href: teacherRoutes.progressReport, status: "ready" },
-    { label: "Modul", href: teacherRoutes.modules, status: "ready" },
-    { label: "Kuis", href: teacherRoutes.quizzes, status: "ready" },
-    { label: "Budaya Mekongga", href: teacherRoutes.culture, status: "ready" },
-    { label: "Hasil Speaking", href: teacherRoutes.speakingResults, shortLabel: "Speaking", status: "ready" },
-    { label: "Profil", href: teacherRoutes.profile, status: "ready" },
+    { label: "Beranda", href: teacherRoutes.dashboard, shortLabel: "Beranda", status: "ready", icon: LayoutDashboard },
+    { label: "Kelas", href: teacherRoutes.classes, status: "ready", icon: School },
+    { label: "Siswa", href: teacherRoutes.students, status: "ready", icon: Users },
+    { label: "Progress", href: teacherRoutes.progressReport, status: "ready", icon: TrendingUp },
+    { label: "Modul", href: teacherRoutes.modules, status: "ready", icon: BookOpen },
+    { label: "Kuis", href: teacherRoutes.quizzes, status: "ready", icon: FileText },
+    { label: "Budaya Mekongga", href: teacherRoutes.culture, status: "ready", icon: Globe },
+    { label: "Hasil Speaking", href: teacherRoutes.speakingResults, shortLabel: "Speaking", status: "ready", icon: Mic },
+    { label: "Profil", href: teacherRoutes.profile, status: "ready", icon: User },
   ],
   student: [
-    { label: "Beranda", href: "/student/dashboard", shortLabel: "Beranda", status: "ready" },
-    { label: "Modul Belajar", href: "/student/modules", status: "ready" },
-    { label: "Kamus", href: "/student/dictionary", status: "ready" },
-    { label: "Latihan Speaking", href: "/student/speaking", shortLabel: "Speaking", status: "ready" },
-    { label: "Kuis", href: "/student/quizzes", status: "ready" },
-    { label: "Budaya Mekongga", href: "/student/culture", status: "ready" },
-    { label: "Chatbot AI", href: "/student/chatbot", shortLabel: "Chatbot", status: "ready" },
-    { label: "Progres Belajar", href: "/student/progress", status: "ready" },
-    { label: "Profil", href: "/student/profile", status: "ready" },
+    { label: "Beranda", href: "/student/dashboard", shortLabel: "Beranda", status: "ready", icon: LayoutDashboard },
+    { label: "Modul Belajar", href: "/student/modules", status: "ready", icon: BookOpen },
+    { label: "Kamus", href: "/student/dictionary", status: "ready", icon: LibraryBig },
+    { label: "Latihan Speaking", href: "/student/speaking", shortLabel: "Speaking", status: "ready", icon: Mic },
+    { label: "Kuis", href: "/student/quizzes", status: "ready", icon: FileText },
+    { label: "Budaya Mekongga", href: "/student/culture", status: "ready", icon: Globe },
+    { label: "Chatbot AI", href: "/student/chatbot", shortLabel: "Chatbot", status: "ready", icon: MessageSquare },
+    { label: "Progres Belajar", href: "/student/progress", status: "ready", icon: TrendingUp },
+    { label: "Profil", href: "/student/profile", status: "ready", icon: User },
   ],
 };
 

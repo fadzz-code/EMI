@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 
 import { isActiveNavItem, type NavItem } from "@/lib/routes";
 import { cn } from "@/lib/utils";
@@ -20,31 +21,40 @@ export function Sidebar({
     <nav
       aria-label={label}
       className={cn(
-        "rounded-[var(--radius-card)] border-2 border-border bg-surface p-3 shadow-emi",
+        "rounded-[var(--radius-card)] border-2 border-border bg-surface p-3 shadow-emi flex flex-col gap-2",
         className,
       )}
     >
-      <div className="mb-3 border-b-2 border-border px-2 pb-3">
-        <p className="text-xs font-black uppercase tracking-[0.08em] text-muted-foreground">
+      <div className="mb-2 px-3 pb-2 border-b-2 border-border/50">
+        <p className="text-[10px] font-black uppercase tracking-widest text-muted">
           Menu EMI
         </p>
       </div>
-      <div className="grid gap-2">
+      <div className="flex flex-col gap-1.5">
       {items.map((item) => {
         const isActive = isActiveNavItem(activePath, item.href);
+        const Icon = item.icon;
 
         return (
           <Link
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "flex min-h-11 items-center justify-between gap-3 rounded-[var(--radius-control)] border-2 border-transparent bg-surface px-3 py-2 text-sm font-black text-ink transition hover:border-border hover:bg-surface-muted",
-              isActive && "border-border bg-accent text-accent-foreground shadow-emi",
+              "group flex min-h-11 items-center justify-between gap-3 rounded-[var(--radius-control)] border-2 border-transparent bg-transparent px-3 py-2 text-sm font-black transition-all",
+              isActive 
+                ? "border-border bg-accent text-accent-foreground shadow-[2px_2px_0px_0px_var(--border)]" 
+                : "text-muted hover:border-border/30 hover:bg-surface-muted hover:text-ink"
             )}
             href={item.href}
             key={item.href}
           >
-            <span className="min-w-0 truncate">{item.label}</span>
-            {item.status === "next" ? <Badge>Segera</Badge> : null}
+            <span className="flex items-center gap-3 min-w-0 truncate">
+              {Icon && <Icon className={cn("size-5 shrink-0", isActive ? "text-primary" : "text-muted group-hover:text-ink")} strokeWidth={isActive ? 3 : 2} />}
+              <span className="truncate">{item.label}</span>
+            </span>
+            <div className="flex items-center gap-2">
+              {item.status === "next" ? <Badge>Segera</Badge> : null}
+              {isActive && <ChevronRight className="size-4 text-primary" strokeWidth={3} />}
+            </div>
           </Link>
         );
       })}

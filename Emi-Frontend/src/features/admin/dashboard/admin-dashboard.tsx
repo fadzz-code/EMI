@@ -2,6 +2,17 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { 
+  UserCheck, 
+  School, 
+  LibraryBig, 
+  BrainCircuit, 
+  BookOpen, 
+  Globe, 
+  Activity,
+  AlertCircle,
+  CheckCircle2
+} from "lucide-react";
 
 import {
   Card,
@@ -25,42 +36,42 @@ const quickActions = [
   {
     href: "/admin/approvals",
     label: "Persetujuan Akun",
-    marker: "PA",
+    icon: UserCheck,
     tone: "primary",
     description: "Tinjau pendaftaran guru dan siswa.",
   },
   {
     href: "/admin/schools-classes",
     label: "Kelola Kelas",
-    marker: "KK",
+    icon: School,
     tone: "surface",
     description: "Sekolah, kelas, guru, dan anggota.",
   },
   {
     href: "/admin/dictionary/import",
     label: "Import Kamus",
-    marker: "IK",
+    icon: LibraryBig,
     tone: "surface",
     description: "CSV dan ZIP audio kosakata.",
   },
   {
     href: "/admin/knowledge-base",
     label: "Basis AI/RAG",
-    marker: "AI",
+    icon: BrainCircuit,
     tone: "dark",
     description: "Kelola knowledge manual, link, dan PDF.",
   },
   {
     href: "/admin/modules",
     label: "Modul",
-    marker: "MO",
+    icon: BookOpen,
     tone: "surface",
     description: "Template materi dan apply ke kelas.",
   },
   {
     href: "/admin/culture/templates",
     label: "Budaya Mekongga",
-    marker: "BM",
+    icon: Globe,
     tone: "surface",
     description: "Konten budaya untuk kelas dan siswa.",
   },
@@ -111,10 +122,11 @@ function QuickActionCard({
 }: {
   action: (typeof quickActions)[number];
 }) {
+  const Icon = action.icon;
   return (
     <Link
       className={cn(
-        "flex min-h-32 flex-col justify-between rounded-[var(--radius-card)] border-2 border-border p-4 shadow-emi transition hover:-translate-y-0.5",
+        "group flex min-h-32 flex-col justify-between rounded-[var(--radius-card)] border-2 border-border p-4 transition-all hover:-translate-y-1 hover:shadow-emi",
         action.tone === "primary" && "bg-primary text-primary-foreground",
         action.tone === "surface" && "bg-surface text-ink",
         action.tone === "dark" && "bg-ink text-paper",
@@ -124,19 +136,21 @@ function QuickActionCard({
       <span
         aria-hidden="true"
         className={cn(
-          "flex size-11 items-center justify-center rounded-full border-2 border-border bg-surface text-xs font-black text-ink shadow-[2px_2px_0_var(--border)]",
-          action.tone === "primary" && "bg-surface text-primary-foreground",
-          action.tone === "dark" && "bg-surface text-ink",
+          "flex size-11 items-center justify-center rounded-full border-2 border-transparent transition-colors",
+          action.tone === "primary" && "bg-primary-foreground/20 text-primary-foreground",
+          action.tone === "surface" && "bg-accent/50 text-accent-foreground group-hover:bg-accent",
+          action.tone === "dark" && "bg-paper/20 text-paper",
         )}
       >
-        {action.marker}
+        <Icon className="size-5" strokeWidth={2.5} />
       </span>
-      <span>
+      <span className="mt-4">
         <span className="block text-sm font-black">{action.label}</span>
         <span
           className={cn(
             "mt-1 block text-xs font-semibold leading-5",
             action.tone === "dark" ? "text-paper/80" : "text-muted",
+            action.tone === "primary" && "text-primary-foreground/80",
           )}
         >
           {action.description}
@@ -162,17 +176,29 @@ function OperationalSignal({
   const content = (
     <div
       className={cn(
-        "rounded-[var(--radius-control)] border-2 border-transparent bg-surface-muted p-4",
-        tone === "warning" && "bg-danger-muted",
-        tone === "success" && "bg-green-50",
+        "group rounded-[var(--radius-control)] border-2 p-4 transition-colors",
+        tone === "warning" ? "border-danger/20 bg-danger-muted" : 
+        tone === "success" ? "border-green-200 bg-green-50" : 
+        "border-transparent bg-surface-muted",
+        href && "hover:border-border hover:shadow-[2px_2px_0px_0px_var(--border)]"
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-black text-ink">{label}</p>
-          <p className="mt-1 text-sm leading-6 text-muted">{description}</p>
+        <div className="flex items-start gap-3">
+          {tone === "warning" && <AlertCircle className="size-5 shrink-0 text-danger mt-0.5" />}
+          {tone === "success" && <CheckCircle2 className="size-5 shrink-0 text-green-600 mt-0.5" />}
+          {tone === "neutral" && <Activity className="size-5 shrink-0 text-muted mt-0.5" />}
+          <div>
+            <p className="text-sm font-black text-ink">{label}</p>
+            <p className="mt-1 text-sm leading-6 text-muted">{description}</p>
+          </div>
         </div>
-        <span className="shrink-0 rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-black text-ink">
+        <span className={cn(
+          "shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider",
+          tone === "warning" ? "border-danger/30 bg-danger/10 text-danger" : 
+          tone === "success" ? "border-green-300 bg-green-100 text-green-800" : 
+          "border-border bg-surface text-ink"
+        )}>
           {status}
         </span>
       </div>
@@ -184,7 +210,7 @@ function OperationalSignal({
   }
 
   return (
-    <Link className="block transition hover:-translate-y-0.5" href={href}>
+    <Link className="block" href={href}>
       {content}
     </Link>
   );
@@ -267,6 +293,7 @@ export function AdminDashboard() {
             <DashboardStat
               helper="Submission kuis"
               label="Kuis"
+              tone={summary.quizzes.submitted_attempts > 0 ? "success" : "default"}
               value={formatNumber(summary.quizzes.submitted_attempts)}
             />
           </section>
