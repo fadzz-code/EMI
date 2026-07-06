@@ -205,12 +205,25 @@ export type StudentQuizResultsReport = {
 
 export type SpeakingAttemptStatus = "pending" | "processing" | "completed" | "failed" | "reviewed" | string;
 
+export type SpeakingReferenceAudio = {
+  id: string;
+  url?: string | null;
+  content_url?: string | null;
+  mime_type?: string | null;
+  original_name?: string | null;
+  file_name?: string | null;
+  name?: string | null;
+  visibility?: string | null;
+};
+
 export type SpeakingExercise = {
   id: string;
   title: string;
   prompt_text?: string | null;
   target_text: string;
   target_translation?: string | null;
+  reference_audio_media_id?: string | null;
+  reference_audio?: SpeakingReferenceAudio | null;
   language_code?: string | null;
   difficulty?: string | null;
   status?: string | null;

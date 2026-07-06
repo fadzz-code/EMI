@@ -44,6 +44,14 @@ function statusTone(status?: string): "yellow" | "blue" | "orange" {
   return "yellow";
 }
 
+function referenceAudioUrl(exercise: SpeakingExercise | null) {
+  return exercise?.reference_audio?.url ?? exercise?.reference_audio?.content_url ?? null;
+}
+
+function referenceAudioName(exercise: SpeakingExercise | null) {
+  return exercise?.reference_audio?.original_name ?? exercise?.reference_audio?.file_name ?? exercise?.reference_audio?.name ?? "Audio contoh";
+}
+
 export function StudentSpeaking() {
   const { token } = useAuth();
   const [exercises, setExercises] = useState<SpeakingExercise[]>([]);
@@ -54,6 +62,7 @@ export function StudentSpeaking() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [recordedFile, setRecordedFile] = useState<File | null>(null);
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
+  const [referenceAudioError, setReferenceAudioError] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -177,7 +186,10 @@ export function StudentSpeaking() {
                       ? "border-border bg-accent text-accent-foreground shadow-[2px_2px_0_var(--border)]"
                       : "border-transparent bg-surface-muted text-ink hover:border-border hover:shadow-[2px_2px_0_var(--border)]",
                   )}
-                  onClick={() => setSelectedExercise(exercise)}
+                  onClick={() => {
+                    setSelectedExercise(exercise);
+                    setReferenceAudioError(false);
+                  }}
                   type="button"
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -211,13 +223,36 @@ export function StudentSpeaking() {
                     <p className="mt-1 text-xs font-semibold text-muted">Pahami target kalimat.</p>
                   </div>
                   <div className="rounded-2xl border-2 border-transparent bg-surface p-4">
-                    <p className="text-sm font-black text-ink">2. Rekam</p>
-                    <p className="mt-1 text-xs font-semibold text-muted">Ucapkan dengan jelas.</p>
+                    <p className="text-sm font-black text-ink">2. Dengarkan</p>
+                    <p className="mt-1 text-xs font-semibold text-muted">Ikuti contoh Suara Asli.</p>
                   </div>
                   <div className="rounded-2xl border-2 border-transparent bg-surface p-4">
-                    <p className="text-sm font-black text-ink">3. Kirim</p>
-                    <p className="mt-1 text-xs font-semibold text-muted">AI memberi skor awal.</p>
+                    <p className="text-sm font-black text-ink">3. Rekam</p>
+                    <p className="mt-1 text-xs font-semibold text-muted">Ucapkan dengan jelas.</p>
                   </div>
+                </div>
+
+                <div className="rounded-[var(--radius-card)] border-2 border-border bg-surface p-4 shadow-[2px_2px_0_var(--border)]">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-lg font-black text-ink">Suara Asli</p>
+                      <p className="mt-1 text-sm font-semibold text-muted">Dengarkan contoh pengucapan sebelum merekam suaramu.</p>
+                    </div>
+                    <Badge tone="blue">Contoh</Badge>
+                  </div>
+                  {referenceAudioUrl(selectedExercise) ? (
+                    <div className="grid gap-2">
+                      <audio className="w-full" controls onError={() => setReferenceAudioError(true)} src={referenceAudioUrl(selectedExercise) ?? undefined}>
+                        Audio belum dapat diputar. Coba muat ulang halaman.
+                      </audio>
+                      <p className="text-xs font-bold text-muted">{referenceAudioName(selectedExercise)}</p>
+                      {referenceAudioError ? <p className="text-xs font-black text-danger">Audio belum dapat diputar. Coba muat ulang halaman.</p> : null}
+                    </div>
+                  ) : (
+                    <p className="rounded-2xl bg-surface-muted p-3 text-sm font-semibold leading-6 text-muted">
+                      Audio contoh belum tersedia untuk latihan ini. Kamu tetap bisa membaca target bacaan lalu merekam suaramu.
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-col items-center gap-4 rounded-[var(--radius-card)] border-2 border-border bg-paper p-6 shadow-[2px_2px_0_var(--border)]">
