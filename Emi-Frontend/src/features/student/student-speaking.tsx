@@ -45,7 +45,11 @@ function statusTone(status?: string): "yellow" | "blue" | "orange" {
 }
 
 function referenceAudioUrl(exercise: SpeakingExercise | null) {
-  return exercise?.reference_audio?.url ?? exercise?.reference_audio?.content_url ?? null;
+  return exercise?.reference_audio?.url
+    ?? exercise?.reference_audio?.content_url
+    ?? exercise?.reference_audio?.public_url
+    ?? exercise?.reference_audio?.file_url
+    ?? null;
 }
 
 function referenceAudioName(exercise: SpeakingExercise | null) {

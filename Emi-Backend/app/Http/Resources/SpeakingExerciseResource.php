@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\MediaAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -24,9 +25,10 @@ class SpeakingExerciseResource extends JsonResource
             'metadata' => $this->metadata,
             'reference_audio' => $this->whenLoaded('referenceAudio', fn () => [
                 'id' => $this->referenceAudio?->id,
-                'original_name' => $this->referenceAudio?->original_name,
+                'url' => $this->referenceAudio?->isPublic() ? app(MediaAccessService::class)->publicUrl($this->referenceAudio) : null,
                 'mime_type' => $this->referenceAudio?->mime_type,
-                'url' => $this->referenceAudio?->url,
+                'file_name' => $this->referenceAudio?->original_name,
+                'original_name' => $this->referenceAudio?->original_name,
                 'visibility' => $this->referenceAudio?->visibility,
             ]),
             'classroom' => $this->whenLoaded('classroom', fn () => [

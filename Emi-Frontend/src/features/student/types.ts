@@ -209,6 +209,8 @@ export type SpeakingReferenceAudio = {
   id: string;
   url?: string | null;
   content_url?: string | null;
+  public_url?: string | null;
+  file_url?: string | null;
   mime_type?: string | null;
   original_name?: string | null;
   file_name?: string | null;
