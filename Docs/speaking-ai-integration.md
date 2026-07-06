@@ -42,7 +42,7 @@ GET /api/v1/teacher/speaking/attempts/{attempt}
 PATCH /api/v1/teacher/speaking/attempts/{attempt}/feedback
 ```
 
-Teacher-created speaking exercises are class-scoped. The teacher must be actively assigned to the selected class, `created_by_id` is set server-side, and archive changes status to `archived` instead of deleting the row. Students still see published global exercises plus published exercises for their assigned class.
+Teacher-created speaking exercises are class-scoped. The teacher must be actively assigned to the selected class, `created_by_id` is set server-side, and archive changes status to `archived` instead of deleting the row. The teacher web UI exposes target management at `/teacher/speaking/exercises`. Students still see published global exercises plus published exercises for their assigned class.
 
 Teacher feedback payload:
 

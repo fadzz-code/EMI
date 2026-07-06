@@ -233,6 +233,29 @@ export type TeacherQuizReport = {
   }>;
 };
 
+export type TeacherSpeakingExercise = SpeakingExercise & {
+  classroom_id?: string | null;
+  created_by_id?: string | null;
+  metadata?: Record<string, unknown> | null;
+  classroom?: {
+    id?: string;
+    name?: string;
+    school?: { id?: string; name?: string } | null;
+  } | null;
+  created_by?: { id?: string; full_name?: string | null } | null;
+};
+
+export type TeacherSpeakingExercisePayload = {
+  classroom_id: string;
+  title: string;
+  target_text: string;
+  prompt_text?: string | null;
+  target_translation?: string | null;
+  language_code?: string | null;
+  difficulty?: string | null;
+  status?: "draft" | "published";
+};
+
 export type TeacherSpeakingAttempt = SpeakingAttempt & {
   exercise?: SpeakingExercise | null;
   student?: { id: string; full_name?: string | null; email?: string | null } | null;

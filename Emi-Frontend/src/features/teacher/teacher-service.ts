@@ -17,6 +17,8 @@ import type {
   TeacherQuizReport,
   TeacherUserProfile,
   TeacherSpeakingAttempt,
+  TeacherSpeakingExercise,
+  TeacherSpeakingExercisePayload,
   SpeakingFeedbackRequest,
 } from "./types";
 
@@ -393,6 +395,37 @@ export const teacherService = {
     }
 
     return response.data.url;
+  },
+
+  async speakingExercises(token: string, filters: { classroom_id?: string; status?: string } = {}) {
+    const response = await apiClient.get<TeacherSpeakingExercise[]>("/teacher/speaking/exercises", {
+      token,
+      query: {
+        per_page: 100,
+        classroom_id: filters.classroom_id,
+        status: filters.status,
+      },
+    });
+
+    return paginated(response.data, response.meta);
+  },
+
+  async createSpeakingExercise(token: string, payload: TeacherSpeakingExercisePayload) {
+    const response = await apiClient.post<TeacherSpeakingExercise>("/teacher/speaking/exercises", payload, { token });
+    if (!response.data) throw new Error("Target speaking tidak tersedia.");
+    return response.data;
+  },
+
+  async updateSpeakingExercise(token: string, exerciseId: string, payload: TeacherSpeakingExercisePayload) {
+    const response = await apiClient.patch<TeacherSpeakingExercise>(`/teacher/speaking/exercises/${exerciseId}`, payload, { token });
+    if (!response.data) throw new Error("Target speaking tidak tersedia.");
+    return response.data;
+  },
+
+  async archiveSpeakingExercise(token: string, exerciseId: string) {
+    const response = await apiClient.patch<TeacherSpeakingExercise>(`/teacher/speaking/exercises/${exerciseId}/archive`, {}, { token });
+    if (!response.data) throw new Error("Target speaking tidak tersedia.");
+    return response.data;
   },
 
   async speakingAttempts(token: string) {

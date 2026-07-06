@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   UserCheck,
   FileText,
+  ListChecks,
   User,
   TrendingUp,
 } from "lucide-react";
@@ -44,6 +45,7 @@ export const teacherRoutes = {
   modules: "/teacher/modules",
   quizzes: "/teacher/quizzes",
   culture: "/teacher/culture",
+  speakingExercises: "/teacher/speaking/exercises",
   speakingResults: "/teacher/speaking/results",
   media: "/teacher/media",
   quizBuilder: (classQuizId: string) => `/teacher/quizzes/${classQuizId}/builder`,
@@ -80,6 +82,7 @@ export const roleNavItems: Record<UserRole, NavItem[]> = {
     { label: "Modul", href: teacherRoutes.modules, status: "ready", icon: BookOpen },
     { label: "Kuis", href: teacherRoutes.quizzes, status: "ready", icon: FileText },
     { label: "Budaya Mekongga", href: teacherRoutes.culture, status: "ready", icon: Globe },
+    { label: "Target Speaking", href: teacherRoutes.speakingExercises, shortLabel: "Target", status: "ready", icon: ListChecks },
     { label: "Hasil Speaking", href: teacherRoutes.speakingResults, shortLabel: "Speaking", status: "ready", icon: Mic },
     { label: "Profil", href: teacherRoutes.profile, status: "ready", icon: User },
   ],
