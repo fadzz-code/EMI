@@ -68,6 +68,7 @@ EMI/
 │   ├── ai-workflow-protocol.md
 │   ├── backend-api-mobile-readiness-handover.md
 │   ├── api-v1-route-inventory.md
+│   ├── demo-readiness-audit.md
 │   └── speaking-ai-integration.md
 ├── Emi-Backend/
 │   ├── app/Http/Controllers/Api
@@ -136,7 +137,15 @@ cd /d "D:\!Kerjaan\EMI\Emi-Backend"
 php artisan db:seed --class=DevDemoDataSeeder
 ```
 
-## 8. Role-Based Feature Summary
+## 8. Demo Readiness Snapshot
+
+Latest demo readiness audit: `Docs/demo-readiness-audit.md`.
+
+Current score: 8.5/10 — demo-ready with operational checklist.
+
+Guided demo has no confirmed P0 blockers if Laravel backend, Next frontend, Python Speaking AI, queue worker, FFmpeg, storage/media URLs, and seeded demo accounts are ready. Speaking Template + Reference Audio + Teacher Customization + Student Practice E2E is manually confirmed. Unknown broader browser flows should not be marked passed until a dedicated Chrome/manual QA pass is run.
+
+## 9. Role-Based Feature Summary
 
 | Role | Feature | Status | Notes |
 |---|---|---|---|
@@ -175,19 +184,19 @@ php artisan db:seed --class=DevDemoDataSeeder
 | Student | Profile | Mostly Done | Profile page exists. |
 | Future Mobile | Student app | Not Started | Should use Laravel API; no separate backend. |
 
-## 9. Admin Features
+## 10. Admin Features
 
 Admin web is mostly OK. It includes dashboard, approvals, school/class management, users, module templates, quiz templates, dictionary, dictionary import, culture templates/global culture, Basis AI knowledge base, PDF RAG import, settings, and progress/report pages.
 
-## 10. Teacher Features
+## 11. Teacher Features
 
 Teacher web is mostly OK. It includes dashboard, classes, class students, class modules/lessons, class quizzes, quiz results, class culture, media, progress reports, speaking results/review, and profile.
 
-## 11. Student Features
+## 12. Student Features
 
 Student web is mostly OK. It includes dashboard, modules, lessons, dictionary, dictionary detail, quizzes, quiz attempts, quiz results, culture, chatbot, progress, profile, speaking practice, and speaking results.
 
-## 12. Basis AI / RAG Current State
+## 13. Basis AI / RAG Current State
 
 Basis AI/RAG is demo-ready.
 
@@ -219,7 +228,7 @@ php artisan ai:knowledge:embed --force
 
 Do not include real API keys in docs, prompts, commits, or logs.
 
-## 13. Dictionary Current State
+## 14. Dictionary Current State
 
 Dictionary is mostly done:
 
@@ -232,7 +241,7 @@ Dictionary is mostly done:
 - Duplicate handling strategies.
 - Dictionary retriever is prioritized in chatbot flow.
 
-## 14. Module/Lesson/Quiz Current State
+## 15. Module/Lesson/Quiz Current State
 
 Modules and lessons are mostly done:
 
@@ -249,7 +258,7 @@ Quizzes are mostly done:
 - Auto grading and reports.
 - Result visibility rules.
 
-## 15. Culture Content Current State
+## 16. Culture Content Current State
 
 Culture content is mostly done:
 
@@ -260,7 +269,7 @@ Culture content is mostly done:
 - Student culture feed.
 - Media-backed culture content.
 
-## 16. Speaking Current State
+## 17. Speaking Current State
 
 Speaking is integrated end-to-end and has passed manual QA for the siswa + guru flow.
 
@@ -310,7 +319,7 @@ Local speaking QA checklist:
 17. Confirm student can see status/feedback/result.
 ```
 
-## 17. Mobile Readiness Summary
+## 18. Mobile Readiness Summary
 
 Laravel API is the backend for future mobile. A separate backend is not needed now.
 
@@ -328,7 +337,7 @@ See also:
 - `Docs/backend-api-mobile-readiness-handover.md`
 - `Docs/api-v1-route-inventory.md`
 
-## 18. Current Known Issues
+## 19. Current Known Issues
 
 - Python Speaking AI is approximate because it uses Indonesian STT, not a dedicated Mekongga phonetic model.
 - Production process management for queue worker and Python AI service still needs setup.
@@ -337,18 +346,18 @@ See also:
 
 The earlier `validation.mimetypes` speaking issue should not be listed as unresolved when local HEAD includes `79bbbe9 fix: accept browser speaking audio uploads` or a later equivalent fix.
 
-## 19. Current Verification Status
+## 20. Current Verification Status
 
 Recent known verification:
 
-- Full backend test suite passed after speaking MIME fix: 177 tests.
-- Frontend lint passed with existing `<img>` warnings.
-- Frontend build passed.
+- Demo readiness audit verification passed: frontend lint passed with 4 existing `<img>` warnings, frontend build passed, and backend test suite passed with 186 tests / 1209 assertions.
+- Composer audit reports known medium advisories in `guzzlehttp/guzzle` and `guzzlehttp/psr7`; do not modify dependencies unless requested.
+- Root `git diff --check` should be rerun after documentation updates.
 - Required route inventory should be regenerated with `php artisan route:list --path=api/v1` when API docs are updated.
 
 Always trust current command output over this section if it differs.
 
-## 20. Safe Development Rules
+## 21. Safe Development Rules
 
 - Run `git status --short` before every task.
 - Stop if unrelated dirty source files exist.
@@ -362,14 +371,15 @@ Always trust current command output over this section if it differs.
 - Do not change behavior during documentation-only tasks.
 - If task changes project status, update `Docs/progressbar.md` in the same commit when safe.
 
-## 21. Recommended Next Steps
+## 22. Recommended Next Steps
 
-1. Start Mobile MVP planning from `Docs/backend-api-mobile-readiness-handover.md` and `Docs/api-v1-route-inventory.md`.
-2. Update `Docs/api-v1-route-inventory.md` speaking section if route inventory docs are needed for mobile planning.
-3. Polish Basis AI citation display and admin embedding workflow if required by user/client.
-4. Prepare production process management for queue worker and Python Speaking AI.
+1. Run the guided demo script from `Docs/demo-readiness-audit.md` in Chrome laptop 100% zoom with seeded data.
+2. Fix only P0/P1 issues found during real browser demo QA.
+3. Start Mobile MVP planning from `Docs/backend-api-mobile-readiness-handover.md` and `Docs/api-v1-route-inventory.md` after demo hardening.
+4. Polish Basis AI citation display and admin embedding workflow if required by user/client.
+5. Prepare production process management for queue worker and Python Speaking AI.
 
-## 22. How To Continue From A New GPT Chat
+## 23. How To Continue From A New GPT Chat
 
 In a new GPT chat or AI session:
 

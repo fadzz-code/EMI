@@ -17,7 +17,7 @@
 
 ## 2. Current Snapshot
 
-Current focus: Mobile MVP planning after full speaking siswa + guru manual QA passed.
+Current focus: Demo hardening after Speaking Template + Reference Audio E2E passed; mobile MVP remains later.
 
 Last known local HEAD before this task: `cb0ea23 docs: record speaking qa ffmpeg setup`.
 Remote may be behind local if user has not pushed.
@@ -237,6 +237,7 @@ High-level status:
 - [x] API v1 route inventory exists.
 - [x] Speaking AI integration doc exists.
 - [x] Current reusable project handover exists.
+- [x] Demo readiness audit exists in `Docs/demo-readiness-audit.md`; current score is 8.5/10 with no confirmed P0 blockers for guided demo if required services are running.
 - [x] Reusable progressbar exists.
 - [x] AI workflow protocol exists.
 - [x] `Docs/Progress.md` replaced by `Docs/progressbar.md`.
