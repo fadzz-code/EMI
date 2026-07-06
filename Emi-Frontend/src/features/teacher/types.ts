@@ -233,6 +233,13 @@ export type TeacherQuizReport = {
   }>;
 };
 
+export type TeacherSpeakingTemplate = SpeakingExercise & {
+  classroom_id?: null;
+  created_by_id?: string | null;
+  metadata?: Record<string, unknown> | null;
+  created_by?: { id?: string; full_name?: string | null } | null;
+};
+
 export type TeacherSpeakingExercise = SpeakingExercise & {
   classroom_id?: string | null;
   created_by_id?: string | null;
@@ -246,6 +253,7 @@ export type TeacherSpeakingExercise = SpeakingExercise & {
 };
 
 export type TeacherSpeakingExercisePayload = {
+  template_exercise_id?: string | null;
   classroom_id: string;
   title: string;
   target_text: string;

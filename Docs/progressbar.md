@@ -107,6 +107,7 @@ High-level status:
 - [x] Admin speaking exercise management UI for creating/editing global target bacaan with audio upload; follow-up fixed reference audio upload validation, modal error placement, and safe Hapus/archive UX.
 - [x] Student speaking practice UI update to display "Suara Asli" audio player when reference audio is available.
 - [x] Teacher can list published admin speaking templates and create class-scoped speaking exercises from templates with copied reference audio.
+- [x] Teacher speaking exercise UI can select published admin templates, auto-fill fields, and show template reference audio before saving.
 - [x] Profile.
 - [x] Media page.
 - [x] Verify teacher speaking review with real student attempt.

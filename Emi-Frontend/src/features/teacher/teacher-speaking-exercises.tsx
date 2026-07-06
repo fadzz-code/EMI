@@ -3,14 +3,15 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { ListChecks, Pencil, Plus, Archive } from "lucide-react";
 
-import { Alert, Badge, Button, Card, CardContent, EmptyState, ErrorState, FormField, Input, LoadingState, Modal, Select, Textarea } from "@/components/ui";
+import { Alert, AudioPlayer, Badge, Button, Card, CardContent, EmptyState, ErrorState, FormField, Input, LoadingState, Modal, Select, Textarea } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { teacherService } from "./teacher-service";
-import type { TeacherClass, TeacherSpeakingExercise, TeacherSpeakingExercisePayload } from "./types";
+import type { TeacherClass, TeacherSpeakingExercise, TeacherSpeakingExercisePayload, TeacherSpeakingTemplate } from "./types";
 
 type FormState = {
+  template_exercise_id: string;
   classroom_id: string;
   title: string;
   target_text: string;
@@ -21,6 +22,7 @@ type FormState = {
 };
 
 const defaultForm: FormState = {
+  template_exercise_id: "",
   classroom_id: "",
   title: "",
   target_text: "",
@@ -46,6 +48,7 @@ function statusLabel(status?: string | null) {
 
 function toForm(exercise: TeacherSpeakingExercise, fallbackClassId: string): FormState {
   return {
+    template_exercise_id: "",
     classroom_id: exercise.classroom_id ?? fallbackClassId,
     title: exercise.title ?? "",
     target_text: exercise.target_text ?? "",
@@ -56,8 +59,9 @@ function toForm(exercise: TeacherSpeakingExercise, fallbackClassId: string): For
   };
 }
 
-function toPayload(form: FormState): TeacherSpeakingExercisePayload {
+function toPayload(form: FormState, includeTemplate = false): TeacherSpeakingExercisePayload {
   return {
+    ...(includeTemplate && form.template_exercise_id ? { template_exercise_id: form.template_exercise_id } : {}),
     classroom_id: form.classroom_id,
     title: form.title.trim(),
     target_text: form.target_text.trim(),
@@ -73,17 +77,22 @@ export function TeacherSpeakingExercises() {
   const { token } = useAuth();
   const [classes, setClasses] = useState<TeacherClass[]>([]);
   const [exercises, setExercises] = useState<TeacherSpeakingExercise[]>([]);
+  const [templates, setTemplates] = useState<TeacherSpeakingTemplate[]>([]);
   const [selectedClassId, setSelectedClassId] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [editingExercise, setEditingExercise] = useState<TeacherSpeakingExercise | null>(null);
   const [form, setForm] = useState<FormState>(defaultForm);
   const [isLoading, setIsLoading] = useState(true);
+  const [isTemplateLoading, setIsTemplateLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [templateError, setTemplateError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
   const classNameById = useMemo(() => new Map(classes.map((item) => [item.id, item.name])), [classes]);
+  const selectedTemplate = useMemo(() => templates.find((item) => item.id === form.template_exercise_id) ?? null, [form.template_exercise_id, templates]);
+  const previewAudio = selectedTemplate?.reference_audio ?? editingExercise?.reference_audio ?? null;
   const onlyClass = classes.length === 1 ? classes[0] : null;
   const hasNoClass = !isLoading && classes.length === 0;
 
@@ -93,18 +102,28 @@ export function TeacherSpeakingExercises() {
     Promise.all([
       teacherService.classes(token),
       teacherService.speakingExercises(token),
-    ]).then(([classResult, exerciseResult]) => {
+      teacherService.speakingTemplates(token),
+    ]).then(([classResult, exerciseResult, templateResult]) => {
       if (ignore) return;
       const classItems = classResult.items;
       setClasses(classItems);
       setExercises(exerciseResult.items);
+      setTemplates(templateResult.items);
       setSelectedClassId((current) => current || classItems[0]?.id || "");
       setForm((current) => ({ ...current, classroom_id: current.classroom_id || classItems[0]?.id || "" }));
       setError(null);
+      setTemplateError(null);
     }).catch((err) => {
-      if (!ignore) setError(getFirstApiError(err));
+      if (!ignore) {
+        const message = getFirstApiError(err);
+        setError(message);
+        setTemplateError(message);
+      }
     }).finally(() => {
-      if (!ignore) setIsLoading(false);
+      if (!ignore) {
+        setIsLoading(false);
+        setIsTemplateLoading(false);
+      }
     });
 
     return () => {
@@ -116,20 +135,27 @@ export function TeacherSpeakingExercises() {
     if (!token) return;
     setIsLoading(true);
     try {
-      const [classResult, exerciseResult] = await Promise.all([
+      setIsTemplateLoading(true);
+      const [classResult, exerciseResult, templateResult] = await Promise.all([
         teacherService.classes(token),
         teacherService.speakingExercises(token),
+        teacherService.speakingTemplates(token),
       ]);
       const classItems = classResult.items;
       setClasses(classItems);
       setExercises(exerciseResult.items);
+      setTemplates(templateResult.items);
       setSelectedClassId((current) => current || classItems[0]?.id || "");
       setForm((current) => ({ ...current, classroom_id: current.classroom_id || classItems[0]?.id || "" }));
       setError(null);
+      setTemplateError(null);
     } catch (err) {
-      setError(getFirstApiError(err));
+      const message = getFirstApiError(err);
+      setError(message);
+      setTemplateError(message);
     } finally {
       setIsLoading(false);
+      setIsTemplateLoading(false);
     }
   }
 
@@ -156,6 +182,26 @@ export function TeacherSpeakingExercises() {
     setModalOpen(true);
   }
 
+  function selectTemplate(templateId: string) {
+    const template = templates.find((item) => item.id === templateId);
+
+    if (!template) {
+      setForm((current) => ({ ...current, template_exercise_id: "" }));
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      template_exercise_id: template.id,
+      title: template.title ?? "",
+      target_text: template.target_text ?? "",
+      target_translation: template.target_translation ?? "",
+      prompt_text: template.prompt_text ?? "",
+      difficulty: template.difficulty ?? "beginner",
+      status: current.status || "draft",
+    }));
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!token) return;
@@ -165,7 +211,7 @@ export function TeacherSpeakingExercises() {
         await teacherService.updateSpeakingExercise(token, editingExercise.id, toPayload(form));
         setMessage("Target speaking berhasil diperbarui.");
       } else {
-        await teacherService.createSpeakingExercise(token, toPayload(form));
+        await teacherService.createSpeakingExercise(token, toPayload(form, true));
         setMessage("Target speaking berhasil dibuat.");
       }
       setModalOpen(false);
@@ -302,6 +348,36 @@ export function TeacherSpeakingExercises() {
               </Select>
             </FormField>
           )}
+          {!editingExercise ? (
+            <section className="rounded-2xl border-2 border-border bg-surface-muted p-4">
+              <FormField label="Gunakan Template Admin">
+                <Select disabled={isTemplateLoading || Boolean(templateError)} onChange={(event) => selectTemplate(event.target.value)} value={form.template_exercise_id}>
+                  <option value="">Buat manual tanpa template</option>
+                  {templates.map((template) => (
+                    <option key={template.id} value={template.id}>{template.title}</option>
+                  ))}
+                </Select>
+              </FormField>
+              {isTemplateLoading ? <p className="mt-2 text-sm font-bold text-muted">Memuat template admin...</p> : null}
+              {!isTemplateLoading && !templateError && templates.length === 0 ? (
+                <p className="mt-2 text-sm font-bold text-muted">Belum ada template admin yang dipublikasikan. Guru tetap bisa membuat target manual.</p>
+              ) : null}
+              {templateError ? <Alert tone="error">Template admin gagal dimuat: {templateError}</Alert> : null}
+              {selectedTemplate ? (
+                <div className="mt-3 rounded-xl border-2 border-border bg-surface p-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-muted">Preview template</p>
+                  <p className="mt-1 text-sm font-black text-ink">{selectedTemplate.target_text}</p>
+                  {selectedTemplate.target_translation ? <p className="mt-1 text-xs font-semibold text-muted">{selectedTemplate.target_translation}</p> : null}
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+          {previewAudio ? (
+            <section className="rounded-2xl border-2 border-border bg-surface-muted p-4">
+              <p className="text-sm font-black text-ink">Suara Asli tersedia dari {selectedTemplate ? "template admin" : "target speaking ini"}.</p>
+              {previewAudio.url ? <div className="mt-3"><AudioPlayer src={previewAudio.url} title="Suara Asli" /></div> : null}
+            </section>
+          ) : null}
           <FormField label="Judul latihan">
             <Input onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} required value={form.title} />
           </FormField>

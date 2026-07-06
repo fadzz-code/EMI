@@ -19,6 +19,7 @@ import type {
   TeacherSpeakingAttempt,
   TeacherSpeakingExercise,
   TeacherSpeakingExercisePayload,
+  TeacherSpeakingTemplate,
   SpeakingFeedbackRequest,
 } from "./types";
 
@@ -395,6 +396,15 @@ export const teacherService = {
     }
 
     return response.data.url;
+  },
+
+  async speakingTemplates(token: string) {
+    const response = await apiClient.get<TeacherSpeakingTemplate[]>("/teacher/speaking/templates", {
+      token,
+      query: { per_page: 100 },
+    });
+
+    return paginated(response.data, response.meta);
   },
 
   async speakingExercises(token: string, filters: { classroom_id?: string; status?: string } = {}) {
