@@ -44,7 +44,7 @@ PATCH /api/v1/teacher/speaking/attempts/{attempt}/feedback
 
 Teacher-created speaking exercises are class-scoped. The teacher must be actively assigned to the selected class, `created_by_id` is set server-side, and archive changes status to `archived` instead of deleting the row. The teacher web UI exposes target management at `/teacher/speaking/exercises`. Students still see published global exercises plus published exercises for their assigned class.
 
-Admin-created speaking exercises are global (template). Admin can optionally include a `reference_audio_media_id` referencing a `media_files` upload (ideally public visibility). If available, the `referenceAudio` metadata and URL are included in the student and teacher endpoints to allow native speaker comparison/playback.
+Admin-created speaking exercises are global (template). Admin can optionally include a `reference_audio_media_id` referencing a `media_files` upload with `purpose=speaking_reference_audio` and `visibility=public`. The admin web UI at `/admin/speaking/exercises` can list, create, edit, archive, and replace reference audio for global templates. If available, the `referenceAudio` metadata and URL are included in the student and teacher endpoints to allow native speaker comparison/playback.
 
 Teacher feedback payload:
 

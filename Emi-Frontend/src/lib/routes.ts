@@ -70,6 +70,7 @@ export const roleNavItems: Record<UserRole, NavItem[]> = {
     { label: "Basis AI", href: "/admin/knowledge-base", status: "ready", icon: BrainCircuit },
     { label: "Modul", href: "/admin/modules", status: "ready", icon: BookOpen },
     { label: "Kuis", href: "/admin/quizzes", status: "ready", icon: FileText },
+    { label: "Template Speaking", href: "/admin/speaking/exercises", shortLabel: "Speaking", status: "ready", icon: ListChecks },
     { label: "Budaya Mekongga", href: "/admin/culture/templates", status: "ready", icon: Globe },
     { label: "Progress", href: "/admin/progress", status: "ready", icon: TrendingUp },
     { label: "Pengaturan", href: "/admin/settings", status: "ready", icon: Settings },

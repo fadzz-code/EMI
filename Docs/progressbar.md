@@ -104,7 +104,7 @@ High-level status:
 - [x] Teacher speaking exercise management API: class-scoped create/list/show/update/archive backend endpoints with assigned-class validation.
 - [x] Teacher speaking exercise management UI: guru can list, create, edit, publish/draft, and archive target bacaan per assigned class.
 - [x] Admin speaking exercise management API: global/template create/list/show/update/archive endpoints with reference audio support via `media_files`.
-- [ ] Admin speaking exercise management UI for creating/editing global target bacaan with audio upload.
+- [x] Admin speaking exercise management UI for creating/editing global target bacaan with audio upload.
 - [ ] Student speaking practice UI update to display "Suara Asli" audio player when reference audio is available.
 - [x] Profile.
 - [x] Media page.
