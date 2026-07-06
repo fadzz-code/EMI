@@ -108,6 +108,7 @@ High-level status:
 - [x] Student speaking practice UI update to display "Suara Asli" audio player when reference audio is available.
 - [x] Teacher can list published admin speaking templates and create class-scoped speaking exercises from templates with copied reference audio.
 - [x] Teacher speaking exercise UI can select published admin templates, auto-fill fields, and show template reference audio before saving.
+- [x] Speaking Template + Reference Audio + Teacher Customization + Student Practice E2E manual QA passed: admin publishes template with Suara Asli, teacher customizes/publishes to own class, student plays Suara Asli/records/submits, AI analysis appears, teacher reviews, and student sees feedback.
 - [x] Profile.
 - [x] Media page.
 - [x] Verify teacher speaking review with real student attempt.
@@ -203,6 +204,7 @@ High-level status:
 - [x] Python validates ffmpeg conversion output before transcription.
 - [x] No frontend direct call to Python service.
 - [x] Manual QA end-to-end passed for siswa record/submit, AI analysis, guru playback/review, and siswa feedback display. Local run used WinGet FFmpeg with `SPEAKING_AI_FFMPEG_PATH` when PATH lookup failed.
+- [x] Speaking template reference audio E2E passed: admin template + Suara Asli audio, teacher template selection/customization/publish to assigned class, student Suara Asli playback/record/submit, AI analysis, teacher review, and student feedback display.
 - [x] Status polling reaches completed in manual QA.
 - [x] Teacher feedback verify from student side.
 - [ ] Python service hardening for production.
@@ -266,6 +268,7 @@ High-level status:
 ## 14. Known Bugs / QA Issues
 
 - [x] Full siswa + guru speaking manual QA completed: student submit, AI analysis, teacher playback/review, and student feedback display passed.
+- [x] Speaking Template + Reference Audio + Teacher Customization + Student Practice E2E passed in manual QA.
 - [x] Confirm speaking status progression reaches completed with `QUEUE_CONNECTION=database` and real queue worker for student AI-analysis flow.
 - [x] Confirm teacher feedback appears correctly for student after review.
 - [x] Confirm no `validation.mimetypes` error after `79bbbe9` in real browsers.

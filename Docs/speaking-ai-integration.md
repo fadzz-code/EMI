@@ -154,6 +154,17 @@ python -m uvicorn main:app --host 127.0.0.1 --port 8001
 
 Recent manual QA evidence: full siswa + guru speaking flow passed. Student browser recording submission completed AI analysis locally after `SPEAKING_AI_FFMPEG_PATH` pointed to the WinGet FFmpeg executable; teacher could play the audio and submit score/feedback; student could see teacher feedback.
 
+Recent Speaking Template + Reference Audio E2E manual QA also passed:
+
+1. Admin created and published a global speaking template with Suara Asli reference audio.
+2. Teacher selected the admin template, the form auto-filled, teacher customized fields, and published it to the teacher's assigned class.
+3. Student opened the class target, played Suara Asli, recorded audio, and submitted the attempt.
+4. AI-assisted analysis appeared for the attempt.
+5. Teacher reviewed the attempt and submitted manual feedback.
+6. Student saw the teacher feedback.
+
+This remains AI-assisted initial scoring only. Teacher review is final feedback; do not treat the current AI as authoritative Mekongga phonetic assessment.
+
 ## Troubleshooting
 
 - `ffmpeg tidak ditemukan untuk konversi audio browser`: set `SPEAKING_AI_FFMPEG_PATH` in the same terminal before running Uvicorn.
@@ -180,6 +191,7 @@ Recent manual QA evidence: full siswa + guru speaking flow passed. Student brows
 - Student submit + AI analysis: passed.
 - Teacher playback and review submission: passed.
 - Student feedback display after teacher review: passed.
+- Speaking Template + Reference Audio + Teacher Customization + Student Practice E2E: passed.
 - Speaking remains AI-assisted initial scoring plus teacher manual review, not final authoritative Mekongga phonetic assessment.
 
 ## Recommended Next Batch

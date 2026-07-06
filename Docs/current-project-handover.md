@@ -285,6 +285,7 @@ Important notes:
 - Teacher review remains important and should be treated as authoritative correction.
 - Audio is stored as private media; raw binary is not stored in DB.
 - Manual QA passed for student recording submit, AI score/transcription, teacher audio playback/review, and student feedback display.
+- Speaking Template + Reference Audio + Teacher Customization + Student Practice E2E manual QA passed: admin creates/publishes a global template with Suara Asli audio, teacher selects the admin template and customizes/publishes it to an assigned class, student plays Suara Asli then records/submits, AI-assisted analysis appears, teacher reviews, and student sees teacher feedback.
 - Local browser WebM/Opus analysis requires FFmpeg available to Python; WinGet installs may require `SPEAKING_AI_FFMPEG_PATH`.
 
 Local speaking QA checklist:
@@ -294,16 +295,19 @@ Local speaking QA checklist:
 2. Run Laravel backend on 127.0.0.1:8000.
 3. Run queue worker if QUEUE_CONNECTION=database.
 4. Run Next frontend.
-5. Login siswa.
-6. Open Latihan Speaking.
-7. Record audio.
-8. Submit.
-9. Confirm no validation.mimetypes error.
-10. Confirm attempt progresses pending/processing/completed or failed with clear AI error.
-11. Login guru.
-12. Open speaking results.
-13. Review attempt and submit teacher feedback.
-14. Confirm student can see status/feedback/result.
+5. Optional template E2E: login admin, create/publish global speaking template, and upload Suara Asli reference audio.
+6. Optional template E2E: login guru, select the admin template, confirm auto-fill, customize fields, and publish to the teacher's assigned class.
+7. Login siswa.
+8. Open Latihan Speaking.
+9. Confirm target appears and Suara Asli can be played when reference audio exists.
+10. Record audio.
+11. Submit.
+12. Confirm no validation.mimetypes error.
+13. Confirm attempt progresses pending/processing/completed or failed with clear AI error.
+14. Login guru.
+15. Open speaking results.
+16. Review attempt and submit teacher feedback.
+17. Confirm student can see status/feedback/result.
 ```
 
 ## 17. Mobile Readiness Summary
