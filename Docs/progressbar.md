@@ -105,6 +105,7 @@ High-level status:
 - [x] Media page.
 - [x] Verify teacher speaking review with real student attempt.
 - [x] Batch 5 guru screens polish completed for dashboard, class/student/progress views, modules/quizzes/results, culture/media/profile copy, and speaking review hierarchy without backend/API/Python changes.
+- [x] Unify teacher dashboard layout, hero greeting, and add action cards/progress list to match Figma desktop.
 - [ ] Teacher follow-up polish if requested: deeper module/lesson editor form layout, shared confirm dialogs for destructive quiz/culture actions, and browser responsive QA across edited guru screens.
 - [ ] Remaining teacher QA pass.
 
