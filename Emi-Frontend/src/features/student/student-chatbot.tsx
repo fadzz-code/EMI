@@ -1,11 +1,13 @@
 "use client";
 
 import { type FormEvent, useState } from "react";
+import { SendHorizontal, Sparkles } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 
-import { Alert, Badge, Button, Card, CardContent, CardHeader, PageHeader, Textarea } from "@/components/ui";
+import { Alert, Badge, Button, Textarea } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
 
 import { studentService } from "./student-service";
 import type { ChatbotSource, StudentChatbotResponse } from "./types";
@@ -132,184 +134,163 @@ export function StudentChatbot() {
   const isPending = sendMutation.isPending;
 
   return (
-    <div className="grid gap-6">
-      <PageHeader
-        badge="Basis AI"
-        description="Ajukan pertanyaan berdasarkan Basis AI yang sudah dipublish admin."
-        title="Chatbot AI"
-      />
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-black text-ink">Asisten Belajar EMI</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                Chatbot menjawab berdasarkan referensi Basis AI EMI. Jika referensi belum tersedia, chatbot akan memberi tahu bahwa jawaban belum ditemukan.
-              </p>
-            </div>
-            <Badge tone="blue">Aktif</Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-2xl border-2 border-ink bg-blue-50 p-4 text-sm font-bold leading-6 text-blue-950">
-            Jawaban berasal dari pengetahuan yang sudah dipublish admin, bukan dari AI bebas tanpa sumber.
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <h2 className="text-xl font-black text-ink">Contoh pertanyaan</h2>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {suggestedQuestions.map((question) => (
-              <button
-                className="rounded-full border-2 border-ink bg-white px-4 py-2 text-sm font-black text-ink hover:bg-yellow-100 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={isPending}
-                key={question}
-                onClick={() => sendQuestion(question)}
-                type="button"
-              >
-                {question}
-              </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
+    <div className="mx-auto flex min-h-[calc(100vh-12rem)] max-w-4xl flex-col overflow-hidden rounded-[var(--radius-card)] border-2 border-border bg-[var(--color-paper)] shadow-emi lg:min-h-[calc(100vh-10rem)]">
+      <header className="shrink-0 border-b-2 border-border bg-surface px-4 py-4 sm:px-5">
+        <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-xl font-black text-ink">Percakapan</h2>
-            <p className="mt-1 text-sm text-slate-600">
-              Mulai percakapan dengan menanyakan hal yang tersedia di Basis AI EMI.
+            <div className="flex items-center gap-2">
+              <span className="flex size-9 items-center justify-center rounded-full border-2 border-border bg-accent text-accent-foreground shadow-[2px_2px_0_var(--border)]">
+                <Sparkles className="size-4" strokeWidth={3} />
+              </span>
+              <div>
+                <p className="text-lg font-black text-ink">Chatbot AI EMI</p>
+                <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Basis pengetahuan</p>
+              </div>
+            </div>
+            <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-muted">
+              Tanyakan materi Bahasa Mekongga. EMI akan menjawab berdasarkan basis pengetahuan yang tersedia dan menampilkan referensi jika cocok.
             </p>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4">
-            {formError ? <Alert tone="error">{formError}</Alert> : null}
-            {apiError ? <Alert tone="error">{apiError}</Alert> : null}
+          <Badge tone="blue">Aktif</Badge>
+        </div>
+      </header>
 
-            <div className="grid min-h-72 gap-4 rounded-2xl border-2 border-ink bg-slate-50 p-4">
-              {messages.length === 0 ? (
-                <div className="flex min-h-56 items-center justify-center rounded-xl border-2 border-dashed border-ink bg-white p-6 text-center">
-                  <div>
-                    <p className="text-lg font-black text-ink">Mulai percakapan</p>
-                    <p className="mt-2 max-w-md text-sm leading-6 text-slate-600">
-                      Mulai percakapan dengan menanyakan hal yang tersedia di Basis AI EMI. Agar jawaban lebih tepat, tuliskan pertanyaan dengan kata kunci yang jelas.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid gap-4">
-                  {messages.map((chat) => {
-                    const referenceOpen = expandedReferences.has(chat.id);
-                    const canShowReference = chat.role === "assistant" && chat.matched && chat.source;
-                    const isFallback = chat.role === "assistant" && !chat.matched && chat.content === fallbackAnswer;
+      <div className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_1px_1px,rgba(29,27,23,0.08)_1px,transparent_0)] [background-size:18px_18px] p-4 sm:p-5">
+        <div className="grid gap-4">
+          {formError ? <Alert tone="error">{formError}</Alert> : null}
+          {apiError ? <Alert tone="error">{apiError}</Alert> : null}
 
-                    return (
-                      <div
-                        className={chat.role === "user" ? "flex justify-end" : "flex justify-start"}
-                        key={chat.id}
-                      >
-                        <div
-                          className={
-                            chat.role === "user"
-                              ? "max-w-3xl rounded-2xl border-2 border-ink bg-yellow-200 p-4 text-sm font-bold leading-6 text-ink shadow-brutal"
-                              : "max-w-3xl rounded-2xl border-2 border-ink bg-white p-4 text-sm leading-6 text-slate-800 shadow-brutal"
-                          }
-                        >
-                          <p className="whitespace-pre-wrap">{displayAnswer(chat.content)}</p>
-                          {chat.role === "assistant" ? (
-                            <div className="mt-4 grid gap-2">
-                              {chat.matched ? (
-                                <p className="text-xs font-bold text-slate-500">
-                                  Jawaban berdasarkan Basis AI EMI
-                                </p>
-                              ) : null}
-                              {isFallback ? (
-                                <p className="rounded-xl border-2 border-dashed border-ink bg-orange-50 p-3 text-xs font-bold leading-5 text-orange-950">
-                                  Coba gunakan kata kunci yang lebih spesifik atau tanyakan topik yang tersedia di Basis AI EMI.
-                                </p>
-                              ) : null}
-                              {canShowReference ? (
-                                <div className="grid gap-2">
-                                  <button
-                                    className="w-fit text-xs font-black text-blue-700 underline hover:text-blue-900"
-                                    onClick={() => toggleReference(chat.id)}
-                                    type="button"
-                                  >
-                                    {referenceOpen ? "Sembunyikan referensi" : "Lihat referensi"}
-                                  </button>
-                                  {referenceOpen ? (
-                                    <div className="rounded-xl border-2 border-ink bg-blue-50 p-3 text-xs leading-5 text-blue-950">
-                                      <p className="font-black">{chat.source?.title}</p>
-                                      <p>Kategori: {chat.source?.category ?? "Umum"}</p>
-                                      <p>Jenis sumber: {sourceTypeLabel(chat.source?.source_type)}</p>
-                                      {chat.source?.source_url ? (
-                                        <a
-                                          className="mt-2 inline-flex rounded-lg border-2 border-ink bg-white px-3 py-1 font-black text-blue-800 underline hover:bg-yellow-100"
-                                          href={chat.source.source_url}
-                                          rel="noreferrer noopener"
-                                          target="_blank"
-                                        >
-                                          {sourceLinkLabel(chat.source.source_type)}
-                                        </a>
-                                      ) : null}
-                                    </div>
-                                  ) : null}
-                                </div>
+          {messages.length === 0 ? (
+            <div className="flex justify-start">
+              <div className="max-w-[85%] rounded-[18px] rounded-bl-[4px] border-2 border-border bg-surface p-4 text-sm font-semibold leading-6 text-ink shadow-[2px_2px_0_var(--border)] sm:max-w-[70%]">
+                <p className="font-black">Halo! Mau belajar apa hari ini?</p>
+                <p className="mt-2 text-muted">
+                  Kamu bisa bertanya tentang kosakata, budaya, atau materi Bahasa Mekongga.
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          {messages.map((chat) => {
+            const referenceOpen = expandedReferences.has(chat.id);
+            const canShowReference = chat.role === "assistant" && chat.matched && chat.source;
+            const isFallback = chat.role === "assistant" && !chat.matched && chat.content === fallbackAnswer;
+            const isUser = chat.role === "user";
+
+            return (
+              <div className={isUser ? "flex justify-end" : "flex justify-start"} key={chat.id}>
+                <div
+                  className={cn(
+                    "max-w-[86%] border-2 border-border p-4 text-sm leading-6 shadow-[2px_2px_0_var(--border)] sm:max-w-[72%]",
+                    isUser
+                      ? "rounded-[18px] rounded-br-[4px] bg-accent font-bold text-accent-foreground"
+                      : "rounded-[18px] rounded-bl-[4px] bg-surface font-semibold text-ink",
+                  )}
+                >
+                  <p className="whitespace-pre-wrap">{displayAnswer(chat.content)}</p>
+
+                  {chat.role === "assistant" ? (
+                    <div className="mt-3 grid gap-2">
+                      {chat.matched ? (
+                        <span className="w-fit rounded-full border border-border bg-paper px-3 py-1 text-[11px] font-black uppercase tracking-[0.06em] text-ink">
+                          Referensi tersedia
+                        </span>
+                      ) : null}
+
+                      {isFallback ? (
+                        <p className="rounded-xl border-2 border-dashed border-border bg-orange-50 p-3 text-xs font-bold leading-5 text-orange-950">
+                          Coba gunakan kata kunci yang lebih spesifik atau tanyakan topik yang tersedia di Basis AI EMI.
+                        </p>
+                      ) : null}
+
+                      {canShowReference ? (
+                        <div className="grid gap-2">
+                          <button
+                            className="w-fit rounded-full border border-border bg-paper px-3 py-1 text-xs font-black text-ink underline-offset-2 hover:bg-accent/30"
+                            onClick={() => toggleReference(chat.id)}
+                            type="button"
+                          >
+                            {referenceOpen ? "Sembunyikan sumber" : `Sumber: ${chat.source?.title ?? "Basis AI"}`}
+                          </button>
+                          {referenceOpen ? (
+                            <div className="rounded-xl border-2 border-border bg-paper p-3 text-xs leading-5 text-ink">
+                              <p className="font-black">{chat.source?.title}</p>
+                              <p>Kategori: {chat.source?.category ?? "Umum"}</p>
+                              <p>Jenis sumber: {sourceTypeLabel(chat.source?.source_type)}</p>
+                              {chat.source?.source_url ? (
+                                <a
+                                  className="mt-2 inline-flex rounded-lg border-2 border-border bg-surface px-3 py-1 font-black text-ink underline hover:bg-accent/30"
+                                  href={chat.source.source_url}
+                                  rel="noreferrer noopener"
+                                  target="_blank"
+                                >
+                                  {sourceLinkLabel(chat.source.source_type)}
+                                </a>
                               ) : null}
                             </div>
                           ) : null}
                         </div>
-                      </div>
-                    );
-                  })}
-                  {isPending ? (
-                    <div className="flex justify-start">
-                      <div className="rounded-2xl border-2 border-ink bg-white p-4 text-sm font-bold text-slate-700 shadow-brutal">
-                        Mengirim pertanyaan ke Basis AI...
-                      </div>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
-              )}
-            </div>
-
-            <div className="rounded-xl border-2 border-dashed border-ink bg-white p-3 text-xs font-bold leading-5 text-slate-600">
-              Jawaban berasal dari Basis AI yang dipublish admin. PDF atau link sumber hanya dapat dijawab jika isi pentingnya sudah dimasukkan ke Konten Pengetahuan.
-            </div>
-
-            <form className="grid gap-3" onSubmit={submit}>
-              <Textarea
-                className="min-h-28"
-                disabled={isPending}
-                onChange={(event) => setMessage(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-                    sendQuestion(message);
-                  }
-                }}
-                placeholder="Tanyakan sesuatu tentang Bahasa Mekongga, budaya, modul, atau materi yang tersedia..."
-                value={message}
-              />
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs font-bold text-slate-500">
-                  Tekan Enter untuk kirim, Shift+Enter untuk baris baru.
-                </p>
-                <Button disabled={isPending} type="submit">
-                  {isPending ? "Mengirim..." : "Kirim"}
-                </Button>
               </div>
-            </form>
+            );
+          })}
+
+          {isPending ? (
+            <div className="flex justify-start">
+              <div className="rounded-[18px] rounded-bl-[4px] border-2 border-border bg-surface p-4 text-sm font-bold text-muted shadow-[2px_2px_0_var(--border)]">
+                EMI sedang mencari jawaban...
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <form className="shrink-0 border-t-2 border-border bg-surface p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:p-4" onSubmit={submit}>
+        <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+          {suggestedQuestions.map((question) => (
+            <button
+              className="shrink-0 rounded-full border-2 border-border bg-paper px-4 py-2 text-xs font-black text-ink shadow-[1px_1px_0_var(--border)] hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isPending}
+              key={question}
+              onClick={() => sendQuestion(question)}
+              type="button"
+            >
+              {question}
+            </button>
+          ))}
+        </div>
+
+        <div className="rounded-2xl border-2 border-border bg-paper p-2 shadow-[2px_2px_0_var(--border)]">
+          <Textarea
+            className="min-h-20 border-0 bg-transparent shadow-none focus-visible:ring-0"
+            disabled={isPending}
+            onChange={(event) => setMessage(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                sendQuestion(message);
+              }
+            }}
+            placeholder="Tanyakan materi, kosakata, atau budaya Mekongga..."
+            value={message}
+          />
+          <div className="mt-2 flex items-center justify-between gap-3 border-t border-border/20 pt-2">
+            <p className="text-[11px] font-bold text-muted">
+              Enter kirim, Shift+Enter baris baru.
+            </p>
+            <Button aria-label="Kirim pertanyaan" className="size-11 rounded-full p-0" disabled={isPending} type="submit">
+              <SendHorizontal className="size-5" strokeWidth={3} />
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        <p className="mt-3 text-[11px] font-bold leading-5 text-muted">
+          Jawaban berasal dari Basis AI yang dipublish admin. AI bisa keliru; cek referensi saat tersedia.
+        </p>
+      </form>
     </div>
   );
 }
