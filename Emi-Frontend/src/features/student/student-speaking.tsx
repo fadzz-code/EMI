@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { LoaderCircle, Mic, Play, Square, UploadCloud } from "lucide-react";
 
-import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, PageHeader } from "@/components/ui";
+import { Alert, Badge, Button, Card, CardContent, EmptyState } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { ApiError, getFirstApiError } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
 
 import { studentService } from "./student-service";
 import type { SpeakingAttempt, SpeakingExercise } from "./types";
@@ -34,6 +36,12 @@ function speakingErrorMessage(error: unknown) {
   }
 
   return message;
+}
+
+function statusTone(status?: string): "yellow" | "blue" | "orange" {
+  if (status === "failed") return "orange";
+  if (status === "reviewed" || status === "completed") return "blue";
+  return "yellow";
 }
 
 export function StudentSpeaking() {
@@ -136,26 +144,49 @@ export function StudentSpeaking() {
   }
 
   return (
-    <div className="grid gap-6">
-      <PageHeader badge="AI-assisted" description="Latih pelafalan Bahasa Mekongga dengan skor awal AI dan tinjauan guru." title="Latihan Speaking" />
+    <div className="mx-auto grid max-w-5xl gap-6 pb-24 lg:pb-0">
+      <section className="flex flex-col gap-2">
+        <p className="text-sm font-black uppercase tracking-[0.08em] text-muted">Latihan Speaking</p>
+        <h1 className="text-3xl font-black leading-tight text-ink md:text-4xl">Latih pelafalan Mekongga</h1>
+        <p className="max-w-3xl text-sm font-semibold leading-6 text-muted">
+          Rekam bacaanmu, kirim ke EMI, lalu lihat skor awal AI dan tinjauan guru saat tersedia.
+        </p>
+      </section>
+
       {error ? <Alert tone="error">{error}</Alert> : null}
 
-      <section className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
-        <Card>
-          <CardHeader><h2 className="text-xl font-black text-ink">Pilih Latihan</h2></CardHeader>
+      <section className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
+        <Card className="h-fit">
           <CardContent>
-            {isLoading ? <p className="text-sm font-bold text-slate-600">Memuat latihan...</p> : null}
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-black text-ink">Pilih latihan</h2>
+                <p className="mt-1 text-sm font-semibold text-muted">Target bacaan dari guru.</p>
+              </div>
+              <Badge tone="yellow">AI-assisted</Badge>
+            </div>
+            {isLoading ? <p className="text-sm font-bold text-muted">Memuat latihan...</p> : null}
             {!isLoading && exercises.length === 0 ? <EmptyState title="Belum ada latihan speaking" description="Latihan yang dipublish guru akan muncul di sini." /> : null}
             <div className="grid gap-3">
               {exercises.map((exercise) => (
-                <button key={exercise.id} className={`rounded-xl border-2 border-ink p-4 text-left shadow-brutal ${selectedExercise?.id === exercise.id ? "bg-yellow-200" : "bg-white hover:bg-yellow-50"}`} onClick={() => setSelectedExercise(exercise)} type="button">
+                <button
+                  key={exercise.id}
+                  className={cn(
+                    "rounded-[var(--radius-card)] border-2 p-4 text-left transition-all",
+                    selectedExercise?.id === exercise.id
+                      ? "border-border bg-accent text-accent-foreground shadow-[2px_2px_0_var(--border)]"
+                      : "border-transparent bg-surface-muted text-ink hover:border-border hover:shadow-[2px_2px_0_var(--border)]",
+                  )}
+                  onClick={() => setSelectedExercise(exercise)}
+                  type="button"
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-black text-ink">{exercise.title}</p>
-                      <p className="mt-1 text-sm font-bold text-slate-700">{exercise.target_text}</p>
-                      {exercise.target_translation ? <p className="mt-1 text-xs text-slate-500">{exercise.target_translation}</p> : null}
+                      <p className="font-black">{exercise.title}</p>
+                      <p className="mt-1 text-sm font-bold">{exercise.target_text}</p>
+                      {exercise.target_translation ? <p className="mt-1 text-xs opacity-80">{exercise.target_translation}</p> : null}
                     </div>
-                    <Badge tone="blue">{exercise.difficulty ?? "Latihan"}</Badge>
+                    <Badge tone="yellow">{exercise.difficulty ?? "Latihan"}</Badge>
                   </div>
                 </button>
               ))}
@@ -163,23 +194,82 @@ export function StudentSpeaking() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader><h2 className="text-xl font-black text-ink">Rekam dan Kirim</h2></CardHeader>
+        <Card className="overflow-hidden bg-[var(--color-primary-muted)]">
           <CardContent>
             {selectedExercise ? (
-              <div className="grid gap-4">
-                <div className="rounded-xl border-2 border-ink bg-blue-50 p-4">
-                  <p className="text-xs font-black uppercase text-blue-700">Target bacaan</p>
-                  <p className="mt-2 text-2xl font-black text-ink">{selectedExercise.target_text}</p>
-                  {selectedExercise.prompt_text ? <p className="mt-2 text-sm text-slate-700">{selectedExercise.prompt_text}</p> : null}
+              <div className="grid gap-5">
+                <div className="rounded-[var(--radius-card)] border-2 border-border bg-surface p-5 text-center shadow-[2px_2px_0_var(--border)]">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-muted">Target bacaan</p>
+                  <p className="mt-3 text-3xl font-black leading-tight text-ink md:text-4xl">{selectedExercise.target_text}</p>
+                  {selectedExercise.target_translation ? <p className="mt-2 text-sm font-bold text-muted">{selectedExercise.target_translation}</p> : null}
+                  {selectedExercise.prompt_text ? <p className="mt-3 text-sm font-semibold leading-6 text-muted">{selectedExercise.prompt_text}</p> : null}
                 </div>
-                <div className="flex flex-wrap gap-3">
-                  <Button disabled={isRecording} onClick={startRecording} type="button">Mulai Rekam</Button>
-                  <Button disabled={!isRecording} onClick={stopRecording} type="button" variant="secondary">Stop Rekam</Button>
-                  <Button disabled={!recordedFile || isSubmitting || isRecording} onClick={submitAttempt} type="button" variant="secondary">{isSubmitting ? "Mengirim..." : "Kirim Audio"}</Button>
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border-2 border-transparent bg-surface p-4">
+                    <p className="text-sm font-black text-ink">1. Baca</p>
+                    <p className="mt-1 text-xs font-semibold text-muted">Pahami target kalimat.</p>
+                  </div>
+                  <div className="rounded-2xl border-2 border-transparent bg-surface p-4">
+                    <p className="text-sm font-black text-ink">2. Rekam</p>
+                    <p className="mt-1 text-xs font-semibold text-muted">Ucapkan dengan jelas.</p>
+                  </div>
+                  <div className="rounded-2xl border-2 border-transparent bg-surface p-4">
+                    <p className="text-sm font-black text-ink">3. Kirim</p>
+                    <p className="mt-1 text-xs font-semibold text-muted">AI memberi skor awal.</p>
+                  </div>
                 </div>
-                {recordedUrl ? <audio className="w-full" controls src={recordedUrl} /> : null}
-                <Alert tone="info">Analisis AI sedang diproses. Pastikan queue worker berjalan pada mode database queue.</Alert>
+
+                <div className="flex flex-col items-center gap-4 rounded-[var(--radius-card)] border-2 border-border bg-paper p-6 shadow-[2px_2px_0_var(--border)]">
+                  <button
+                    aria-label={isRecording ? "Stop rekaman" : "Mulai rekaman"}
+                    className={cn(
+                      "flex size-28 items-center justify-center rounded-full border-4 border-border text-ink shadow-emi transition-transform hover:-translate-y-1 disabled:cursor-not-allowed disabled:opacity-50",
+                      isRecording ? "bg-danger-muted text-danger" : "bg-accent text-accent-foreground",
+                    )}
+                    disabled={isSubmitting}
+                    onClick={isRecording ? stopRecording : startRecording}
+                    type="button"
+                  >
+                    {isRecording ? <Square className="size-10" strokeWidth={3} /> : <Mic className="size-12" strokeWidth={3} />}
+                  </button>
+                  <div className="text-center">
+                    <p className="text-lg font-black text-ink">{isRecording ? "Sedang merekam..." : recordedFile ? "Rekaman siap dikirim" : "Tekan untuk mulai rekam"}</p>
+                    <p className="mt-1 text-xs font-bold text-muted">Pastikan mikrofon aktif dan suara terdengar jelas.</p>
+                  </div>
+                  <div className="flex h-10 w-full max-w-sm items-center justify-center gap-1 rounded-full bg-surface px-4">
+                    {Array.from({ length: 18 }).map((_, index) => (
+                      <span
+                        className={cn("w-1 rounded-full bg-primary", isRecording ? "animate-pulse" : "opacity-40")}
+                        key={index}
+                        style={{ height: `${8 + (index % 5) * 5}px` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {recordedUrl ? (
+                  <div className="rounded-[var(--radius-card)] border-2 border-border bg-surface p-4 shadow-[2px_2px_0_var(--border)]">
+                    <div className="mb-3 flex items-center gap-2">
+                      <Play className="size-5 text-primary" strokeWidth={3} />
+                      <p className="font-black text-ink">Preview audio</p>
+                    </div>
+                    <audio className="w-full" controls src={recordedUrl} />
+                  </div>
+                ) : null}
+
+                <div className="grid gap-3 rounded-[var(--radius-card)] border-2 border-border bg-surface p-4 shadow-[2px_2px_0_var(--border)]">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="font-black text-ink">Kirim untuk dianalisis</p>
+                      <p className="mt-1 text-xs font-bold text-muted">Skor AI adalah penilaian awal. Guru tetap dapat meninjau dan memberi umpan balik.</p>
+                    </div>
+                    <Button disabled={!recordedFile || isSubmitting || isRecording} onClick={submitAttempt} type="button">
+                      {isSubmitting ? <LoaderCircle className="mr-2 size-4 animate-spin" /> : <UploadCloud className="mr-2 size-4" />}
+                      {isSubmitting ? "Mengirim" : "Kirim audio"}
+                    </Button>
+                  </div>
+                </div>
               </div>
             ) : <EmptyState title="Pilih latihan dahulu" description="Pilih salah satu target bacaan untuk mulai merekam." />}
           </CardContent>
@@ -188,20 +278,18 @@ export function StudentSpeaking() {
 
       {activeAttempt ? (
         <Card>
-          <CardHeader>
+          <CardContent>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-black text-ink">Hasil Percobaan Terakhir</h2>
-              <Badge tone={activeAttempt.status === "failed" ? "orange" : activeAttempt.status === "reviewed" ? "blue" : "yellow"}>{statusLabel(activeAttempt.status)}</Badge>
+              <Badge tone={statusTone(activeAttempt.status)}>{statusLabel(activeAttempt.status)}</Badge>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4"><p className="text-xs font-black uppercase text-slate-500">Skor awal AI</p><p className="mt-1 text-2xl font-black text-ink">{score(activeAttempt.ai_score)}</p></div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4"><p className="text-xs font-black uppercase text-slate-500">Skor guru</p><p className="mt-1 text-2xl font-black text-ink">{score(activeAttempt.teacher_score)}</p></div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="rounded-xl border-2 border-transparent bg-surface-muted p-4"><p className="text-xs font-black uppercase text-muted">Skor awal AI</p><p className="mt-1 text-2xl font-black text-ink">{score(activeAttempt.ai_score)}</p></div>
+              <div className="rounded-xl border-2 border-transparent bg-surface-muted p-4"><p className="text-xs font-black uppercase text-muted">Skor guru</p><p className="mt-1 text-2xl font-black text-ink">{score(activeAttempt.teacher_score)}</p></div>
             </div>
             {activeAttempt.ai_transcription ? <p className="mt-4 text-sm leading-6"><span className="font-black">Transkripsi AI:</span> {activeAttempt.ai_transcription}</p> : null}
             {activeAttempt.ai_error ? <Alert tone="error">AI gagal menganalisis: {activeAttempt.ai_error}</Alert> : null}
-            {activeAttempt.teacher_feedback ? <Alert tone="success">Feedback guru: {activeAttempt.teacher_feedback}</Alert> : <p className="mt-4 text-sm font-bold text-slate-600">Menunggu tinjauan guru.</p>}
+            {activeAttempt.teacher_feedback ? <Alert tone="success">Feedback guru: {activeAttempt.teacher_feedback}</Alert> : <p className="mt-4 text-sm font-bold text-muted">Menunggu tinjauan guru.</p>}
           </CardContent>
         </Card>
       ) : null}
@@ -209,8 +297,8 @@ export function StudentSpeaking() {
       <Card>
         <CardContent>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div><h2 className="text-xl font-black text-ink">Riwayat latihan speaking</h2><p className="mt-2 text-sm text-slate-600">Lihat status, skor awal AI, dan feedback guru dari percobaan sebelumnya.</p></div>
-            <Link className="inline-flex min-h-12 items-center justify-center rounded-xl border-2 border-ink bg-blue-600 px-4 py-2 text-sm font-black text-white shadow-brutal hover:bg-blue-700" href="/student/speaking/results">Lihat Hasil Speaking</Link>
+            <div><h2 className="text-xl font-black text-ink">Riwayat latihan speaking</h2><p className="mt-2 text-sm font-semibold text-muted">Lihat status, skor awal AI, dan feedback guru dari percobaan sebelumnya.</p></div>
+            <Link className="inline-flex min-h-12 items-center justify-center rounded-xl border-2 border-border bg-primary px-4 py-2 text-sm font-black text-primary-foreground shadow-emi hover:-translate-y-0.5" href="/student/speaking/results">Lihat Hasil Speaking</Link>
           </div>
         </CardContent>
       </Card>
