@@ -23,9 +23,17 @@ class StoreTeacherSpeakingExerciseRequest extends FormRequest
                     ->where('teacher_id', $this->user()?->id)
                     ->where('is_active', true),
             ],
-            'title' => ['required', 'string', 'max:255'],
+            'template_exercise_id' => [
+                'nullable',
+                'uuid',
+                Rule::exists('speaking_exercises', 'id')
+                    ->where('status', 'published')
+                    ->whereNull('classroom_id')
+                    ->whereNull('deleted_at'),
+            ],
+            'title' => [Rule::requiredIf(fn () => ! $this->filled('template_exercise_id')), 'string', 'max:255'],
             'prompt_text' => ['nullable', 'string', 'max:5000'],
-            'target_text' => ['required', 'string', 'max:5000'],
+            'target_text' => [Rule::requiredIf(fn () => ! $this->filled('template_exercise_id')), 'string', 'max:5000'],
             'target_translation' => ['nullable', 'string', 'max:5000'],
             'language_code' => ['nullable', 'string', 'max:20'],
             'difficulty' => ['nullable', 'string', 'max:50'],

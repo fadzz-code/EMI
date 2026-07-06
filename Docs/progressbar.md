@@ -106,6 +106,7 @@ High-level status:
 - [x] Admin speaking exercise management API: global/template create/list/show/update/archive endpoints with reference audio support via `media_files`.
 - [x] Admin speaking exercise management UI for creating/editing global target bacaan with audio upload; follow-up fixed reference audio upload validation, modal error placement, and safe Hapus/archive UX.
 - [x] Student speaking practice UI update to display "Suara Asli" audio player when reference audio is available.
+- [x] Teacher can list published admin speaking templates and create class-scoped speaking exercises from templates with copied reference audio.
 - [x] Profile.
 - [x] Media page.
 - [x] Verify teacher speaking review with real student attempt.
@@ -244,7 +245,7 @@ High-level status:
 - [x] Batch 4 admin dashboard P0 polish completed in Next.js: dashboard now uses existing Laravel summary API data, demo-safe copy, loading/error/empty states, quick admin actions, and operational signals without backend/API changes.
 - [x] Batch 5 guru screens polish completed in Next.js: Figma-aligned dashboard hero/stats, speaking review status hierarchy, progress mobile cards, student search, non-technical guru copy, and media-route clarification without changing API contracts.
 - [x] Batch 6 siswa screens polish completed in Next.js: visible dashboard hero/quick actions, module progress bars, lesson journey cards, quiz/result hierarchy, dictionary detail readability, and culture content cards without changing API contracts.
-- [ ] Keep route inventory current after speaking route additions.
+- [x] Keep route inventory current after speaking route additions.
 - [ ] Refresh stale legacy docs if they become active planning references.
 
 ## 13. Deployment / Production Readiness

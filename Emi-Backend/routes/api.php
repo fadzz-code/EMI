@@ -267,6 +267,7 @@ Route::prefix('v1')->group(function () {
         Route::get('dashboard/summary', [TeacherDashboardController::class, 'summary']);
         Route::get('reports/progress/students', [TeacherProgressReportController::class, 'students']);
         Route::get('reports/quiz-results', [TeacherQuizResultReportController::class, 'index']);
+        Route::get('speaking/templates', [TeacherSpeakingExerciseController::class, 'templates']);
         Route::get('speaking/exercises', [TeacherSpeakingExerciseController::class, 'index']);
         Route::post('speaking/exercises', [TeacherSpeakingExerciseController::class, 'store']);
         Route::get('speaking/exercises/{exercise}', [TeacherSpeakingExerciseController::class, 'show']);

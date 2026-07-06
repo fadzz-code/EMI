@@ -21,7 +21,7 @@ class TeacherSpeakingExerciseController extends Controller
         $classroomId = $request->query('classroom_id');
 
         $exercises = SpeakingExercise::query()
-            ->with(['classroom.school', 'creator'])
+            ->with(['referenceAudio', 'classroom.school', 'creator'])
             ->whereIn('classroom_id', $classIds)
             ->when($status, fn ($query) => $query->where('status', $status))
             ->when($classroomId, fn ($query) => $query->where('classroom_id', $classroomId))
@@ -35,16 +35,54 @@ class TeacherSpeakingExerciseController extends Controller
         );
     }
 
+    public function templates(Request $request): JsonResponse
+    {
+        $perPage = (int) ($request->query('per_page') ?? 15);
+
+        $templates = SpeakingExercise::query()
+            ->with(['referenceAudio', 'creator'])
+            ->whereNull('classroom_id')
+            ->published()
+            ->latest()
+            ->paginate($perPage);
+
+        return ApiResponse::paginated(
+            'Data template speaking berhasil diambil.',
+            $templates,
+            SpeakingExerciseResource::collection($templates->getCollection())->resolve(),
+        );
+    }
+
     public function store(StoreTeacherSpeakingExerciseRequest $request): JsonResponse
     {
         $data = $request->validated();
+        $template = isset($data['template_exercise_id'])
+            ? SpeakingExercise::query()->whereNull('classroom_id')->published()->findOrFail($data['template_exercise_id'])
+            : null;
+
+        unset($data['template_exercise_id']);
+
+        if ($template) {
+            $data = array_merge([
+                'title' => $template->title,
+                'prompt_text' => $template->prompt_text,
+                'target_text' => $template->target_text,
+                'target_translation' => $template->target_translation,
+                'reference_audio_media_id' => $template->reference_audio_media_id,
+                'language_code' => $template->language_code,
+                'difficulty' => $template->difficulty,
+                'status' => 'draft',
+                'metadata' => $template->metadata,
+            ], $data);
+        }
+
         $data['created_by_id'] = $request->user()->id;
         $data['status'] = $data['status'] ?? 'draft';
         $data['language_code'] = $data['language_code'] ?? 'mekongga';
 
         $exercise = SpeakingExercise::query()->create($data);
 
-        return ApiResponse::success('Target speaking berhasil dibuat.', new SpeakingExerciseResource($exercise->load(['classroom.school', 'creator'])), 201);
+        return ApiResponse::success('Target speaking berhasil dibuat.', new SpeakingExerciseResource($exercise->load(['referenceAudio', 'classroom.school', 'creator'])), 201);
     }
 
     public function show(Request $request, SpeakingExercise $exercise): JsonResponse
@@ -60,6 +98,8 @@ class TeacherSpeakingExerciseController extends Controller
 
         $data = $request->validated();
         unset($data['created_by_id']);
+        unset($data['template_exercise_id']);
+        unset($data['reference_audio_media_id']);
 
         $exercise->update($data);
 

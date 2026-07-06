@@ -13,6 +13,7 @@ use App\Services\SpeakingAiClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Sanctum\Sanctum;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -255,6 +256,108 @@ class SpeakingPracticeAiTest extends TestCase
             ->assertJsonPath('data.status', 'archived');
     }
 
+    public function test_teacher_can_list_published_global_speaking_templates_only(): void
+    {
+        [, $teacher] = $this->classroomUsers();
+        $published = $this->globalExercise(['title' => 'Template terbit']);
+        $this->globalExercise(['title' => 'Template draft', 'status' => 'draft']);
+        $this->globalExercise(['title' => 'Template arsip', 'status' => 'archived']);
+
+        $this->withToken($this->tokenFor($teacher))->getJson('/api/v1/teacher/speaking/templates')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $published->id)
+            ->assertJsonCount(1, 'data');
+    }
+
+    public function test_teacher_can_create_class_exercise_from_template_with_overrides_and_reference_audio(): void
+    {
+        [, $teacher, $class] = $this->classroomUsers();
+        $admin = User::factory()->admin()->create();
+        $media = MediaFile::factory()->create([
+            'uploaded_by' => $admin->id,
+            'purpose' => 'speaking_reference_audio',
+            'visibility' => 'public',
+        ]);
+        $template = $this->globalExercise([
+            'title' => 'Judul template',
+            'target_text' => 'Teks template',
+            'target_translation' => 'Terjemahan template',
+            'prompt_text' => 'Prompt template',
+            'difficulty' => 'sedang',
+            'reference_audio_media_id' => $media->id,
+        ]);
+
+        $created = $this->withToken($this->tokenFor($teacher))->postJson('/api/v1/teacher/speaking/exercises', [
+            'template_exercise_id' => $template->id,
+            'classroom_id' => $class->id,
+            'title' => 'Judul override',
+            'prompt_text' => 'Prompt override',
+            'difficulty' => 'mudah',
+            'status' => 'published',
+        ])->assertCreated()
+            ->assertJsonPath('data.classroom_id', $class->id)
+            ->assertJsonPath('data.created_by_id', $teacher->id)
+            ->assertJsonPath('data.title', 'Judul override')
+            ->assertJsonPath('data.target_text', 'Teks template')
+            ->assertJsonPath('data.target_translation', 'Terjemahan template')
+            ->assertJsonPath('data.prompt_text', 'Prompt override')
+            ->assertJsonPath('data.difficulty', 'mudah')
+            ->assertJsonPath('data.status', 'published')
+            ->assertJsonPath('data.reference_audio_media_id', $media->id)
+            ->json('data');
+
+        $this->assertDatabaseHas('speaking_exercises', [
+            'id' => $created['id'],
+            'classroom_id' => $class->id,
+            'created_by_id' => $teacher->id,
+            'reference_audio_media_id' => $media->id,
+        ]);
+    }
+
+    public function test_teacher_cannot_use_draft_template_or_unassigned_class(): void
+    {
+        [, $teacher] = $this->classroomUsers();
+        $otherClass = SchoolClass::factory()->create();
+        $draft = $this->globalExercise(['status' => 'draft']);
+
+        $this->withToken($this->tokenFor($teacher))->postJson('/api/v1/teacher/speaking/exercises', [
+            'template_exercise_id' => $draft->id,
+            'classroom_id' => $otherClass->id,
+        ])->assertUnprocessable();
+
+        $published = $this->globalExercise();
+
+        $this->withToken($this->tokenFor($teacher))->postJson('/api/v1/teacher/speaking/exercises', [
+            'template_exercise_id' => $published->id,
+            'classroom_id' => $otherClass->id,
+        ])->assertUnprocessable();
+    }
+
+    public function test_student_sees_template_created_class_exercise_with_reference_audio(): void
+    {
+        [$student, $teacher, $class] = $this->classroomUsers();
+        $admin = User::factory()->admin()->create();
+        $media = MediaFile::factory()->create([
+            'uploaded_by' => $admin->id,
+            'purpose' => 'speaking_reference_audio',
+            'visibility' => 'public',
+        ]);
+        $template = $this->globalExercise(['reference_audio_media_id' => $media->id]);
+
+        $created = $this->withToken($this->tokenFor($teacher))->postJson('/api/v1/teacher/speaking/exercises', [
+            'template_exercise_id' => $template->id,
+            'classroom_id' => $class->id,
+            'status' => 'published',
+        ])->assertCreated()->json('data');
+
+        Sanctum::actingAs($student);
+
+        $this->getJson('/api/v1/student/speaking/exercises')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $created['id']])
+            ->assertJsonFragment(['reference_audio_media_id' => $media->id]);
+    }
+
     public function test_student_resource_includes_reference_audio(): void
     {
         [$student, , $class] = $this->classroomUsers();
@@ -295,6 +398,7 @@ class SpeakingPracticeAiTest extends TestCase
         $routes = collect(app('router')->getRoutes())->map(fn ($route) => $route->uri())->all();
 
         $this->assertContains('api/v1/student/speaking/exercises', $routes);
+        $this->assertContains('api/v1/teacher/speaking/templates', $routes);
         $this->assertContains('api/v1/teacher/speaking/exercises', $routes);
         $this->assertContains('api/v1/teacher/speaking/exercises/{exercise}/archive', $routes);
         $this->assertContains('api/v1/teacher/speaking/attempts', $routes);
@@ -319,6 +423,20 @@ class SpeakingPracticeAiTest extends TestCase
             'target_text' => $attributes['target_text'] ?? 'Ari nggiro',
             'prompt_text' => 'Latihan demo',
             'classroom_id' => $class->id,
+            'status' => $attributes['status'] ?? 'published',
+        ]);
+    }
+
+    private function globalExercise(array $attributes = []): SpeakingExercise
+    {
+        return SpeakingExercise::query()->create([
+            'title' => $attributes['title'] ?? 'Template speaking',
+            'target_text' => $attributes['target_text'] ?? 'Ari nggiro',
+            'target_translation' => $attributes['target_translation'] ?? null,
+            'prompt_text' => $attributes['prompt_text'] ?? 'Latihan template',
+            'difficulty' => $attributes['difficulty'] ?? 'mudah',
+            'reference_audio_media_id' => $attributes['reference_audio_media_id'] ?? null,
+            'classroom_id' => null,
             'status' => $attributes['status'] ?? 'published',
         ]);
     }

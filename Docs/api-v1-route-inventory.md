@@ -164,8 +164,9 @@ Auth notation:
 | GET | `/student/speaking/attempts` | `StudentSpeakingController@attempts` | Student | Student speaking attempt history | High | Own attempts only. |
 | GET | `/student/speaking/attempts/{attempt}` | `StudentSpeakingController@showAttempt` | Student | Speaking attempt detail | High | Own attempt only. |
 | POST | `/student/speaking/exercises/{exercise}/attempts` | `StudentSpeakingController@storeAttempt` | Student | Submit speaking recording | High | Stores private audio, triggers AI-assisted initial scoring. |
+| GET | `/teacher/speaking/templates` | `TeacherSpeakingExerciseController@templates` | Teacher | Published admin/global speaking template list | Later | Published global exercises only; includes reference audio metadata. |
 | GET | `/teacher/speaking/exercises` | `TeacherSpeakingExerciseController@index` | Teacher | Teacher speaking target list | Later | Class-scoped to active teacher assignments. |
-| POST | `/teacher/speaking/exercises` | `TeacherSpeakingExerciseController@store` | Teacher | Create class speaking target | Later | `created_by_id` is server-side; teacher cannot create global targets. |
+| POST | `/teacher/speaking/exercises` | `TeacherSpeakingExerciseController@store` | Teacher | Create class speaking target | Later | `created_by_id` is server-side; teacher cannot create global targets. Optional `template_exercise_id` copies published global template fields and `reference_audio_media_id`; teacher cannot directly set/upload reference audio. |
 | GET | `/teacher/speaking/exercises/{exercise}` | `TeacherSpeakingExerciseController@show` | Teacher | Speaking target detail | Later | Assigned active class only. |
 | PUT/PATCH | `/teacher/speaking/exercises/{exercise}` | `TeacherSpeakingExerciseController@update` | Teacher | Update speaking target | Later | New `classroom_id`, if changed, must be assigned active class. |
 | PATCH | `/teacher/speaking/exercises/{exercise}/archive` | `TeacherSpeakingExerciseController@archive` | Teacher | Archive speaking target | Later | No hard delete; status becomes `archived`. |
