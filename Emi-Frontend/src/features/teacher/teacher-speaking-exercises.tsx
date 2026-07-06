@@ -84,6 +84,8 @@ export function TeacherSpeakingExercises() {
   const [modalOpen, setModalOpen] = useState(false);
 
   const classNameById = useMemo(() => new Map(classes.map((item) => [item.id, item.name])), [classes]);
+  const onlyClass = classes.length === 1 ? classes[0] : null;
+  const hasNoClass = !isLoading && classes.length === 0;
 
   useEffect(() => {
     if (!token) return;
@@ -199,7 +201,7 @@ export function TeacherSpeakingExercises() {
         <p className="text-sm font-black uppercase tracking-[0.08em] text-muted">Kelola Target Speaking</p>
         <h1 className="text-3xl font-black leading-tight text-ink md:text-4xl">Target bacaan per kelas</h1>
         <p className="max-w-3xl text-sm font-semibold leading-6 text-muted">
-          Buat target bacaan Mekongga untuk kelas yang Anda ajar. Target published akan muncul di latihan speaking siswa kelas tersebut.
+          Guru mengelola target bacaan untuk kelas aktifnya sendiri. Target yang dipublikasikan akan muncul di latihan speaking siswa kelas Anda.
         </p>
       </section>
 
@@ -210,13 +212,19 @@ export function TeacherSpeakingExercises() {
         <CardContent>
           <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
             <div className="grid gap-3 md:grid-cols-2">
-              <FormField label="Filter kelas">
-                <Select onChange={(event) => void applyFilters(event.target.value, statusFilter)} value={selectedClassId}>
-                  <option value="">Semua kelas</option>
-                  {classes.map((item) => (
-                    <option key={item.id} value={item.id}>{item.name}</option>
-                  ))}
-                </Select>
+              <FormField label={onlyClass ? "Kelas Anda" : "Kelas yang Anda ajar"}>
+                {onlyClass ? (
+                  <div className="min-h-11 rounded-[var(--radius-control)] border-2 border-border bg-surface-muted px-3 py-2 text-sm font-black text-ink">
+                    {onlyClass.name}
+                  </div>
+                ) : (
+                  <Select onChange={(event) => void applyFilters(event.target.value, statusFilter)} value={selectedClassId}>
+                    <option value="">Semua kelas</option>
+                    {classes.map((item) => (
+                      <option key={item.id} value={item.id}>{item.name}</option>
+                    ))}
+                  </Select>
+                )}
               </FormField>
               <FormField label="Filter status">
                 <Select onChange={(event) => void applyFilters(selectedClassId, event.target.value)} value={statusFilter}>
@@ -227,7 +235,7 @@ export function TeacherSpeakingExercises() {
                 </Select>
               </FormField>
             </div>
-            <Button onClick={openCreate} type="button">
+            <Button disabled={hasNoClass} onClick={openCreate} type="button">
               <Plus className="mr-2 size-4" /> Tambah Target
             </Button>
           </div>
@@ -235,8 +243,11 @@ export function TeacherSpeakingExercises() {
       </Card>
 
       {isLoading ? <LoadingState title="Memuat target speaking" /> : null}
-      {!isLoading && exercises.length === 0 ? (
-        <EmptyState description="Buat target speaking pertama untuk kelas yang Anda ajar." title="Belum ada target speaking" />
+      {hasNoClass ? (
+        <EmptyState description="Anda belum memiliki kelas aktif. Hubungi admin agar dapat membuat target speaking." title="Belum ada kelas aktif" />
+      ) : null}
+      {!isLoading && !hasNoClass && exercises.length === 0 ? (
+        <EmptyState description="Buat target speaking pertama untuk kelas Anda." title="Belum ada target speaking" />
       ) : null}
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -272,17 +283,25 @@ export function TeacherSpeakingExercises() {
         ))}
       </section>
 
-      <Modal onClose={() => setModalOpen(false)} open={modalOpen} title={editingExercise ? "Edit Target Speaking" : "Tambah Target Speaking"}>
-        <form className="grid gap-4" onSubmit={submit}>
-          <Alert tone="info">Target ini akan muncul untuk siswa di kelas yang dipilih setelah dipublikasikan.</Alert>
-          <FormField label="Kelas">
-            <Select onChange={(event) => setForm((current) => ({ ...current, classroom_id: event.target.value }))} required value={form.classroom_id}>
-              <option value="">Pilih kelas</option>
-              {classes.map((item) => (
-                <option key={item.id} value={item.id}>{item.name}</option>
-              ))}
-            </Select>
-          </FormField>
+      <Modal className="max-w-2xl" onClose={() => setModalOpen(false)} open={modalOpen} title={editingExercise ? "Edit Target Speaking" : "Tambah Target Speaking"}>
+        <form className="flex flex-col gap-4" onSubmit={submit}>
+          <Alert tone="info">Target ini akan muncul untuk siswa di kelas {onlyClass ? "Anda" : "yang Anda ajar"} setelah dipublikasikan.</Alert>
+          {onlyClass ? (
+            <FormField label="Kelas Anda">
+              <div className="min-h-11 rounded-[var(--radius-control)] border-2 border-border bg-surface-muted px-3 py-2 text-sm font-black text-ink">
+                {onlyClass.name}
+              </div>
+            </FormField>
+          ) : (
+            <FormField label="Kelas yang Anda ajar">
+              <Select onChange={(event) => setForm((current) => ({ ...current, classroom_id: event.target.value }))} required value={form.classroom_id}>
+                <option value="">Pilih kelas</option>
+                {classes.map((item) => (
+                  <option key={item.id} value={item.id}>{item.name}</option>
+                ))}
+              </Select>
+            </FormField>
+          )}
           <FormField label="Judul latihan">
             <Input onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} required value={form.title} />
           </FormField>
@@ -310,7 +329,9 @@ export function TeacherSpeakingExercises() {
               </Select>
             </FormField>
           </div>
-          <Button disabled={isSubmitting} type="submit">{isSubmitting ? "Menyimpan..." : editingExercise ? "Simpan Perubahan" : "Buat Target"}</Button>
+          <div className="sticky bottom-0 mt-2 bg-surface pt-2">
+            <Button className="w-full" disabled={isSubmitting} type="submit">{isSubmitting ? "Menyimpan..." : editingExercise ? "Simpan Perubahan" : "Buat Target"}</Button>
+          </div>
         </form>
       </Modal>
     </div>
