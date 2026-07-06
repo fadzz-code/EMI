@@ -101,6 +101,8 @@ High-level status:
 - [x] Culture management.
 - [x] Speaking result review page.
 - [x] Teacher speaking manual feedback API/UI.
+- [x] Teacher speaking exercise management API: class-scoped create/list/show/update/archive backend endpoints with assigned-class validation.
+- [ ] Teacher speaking exercise management UI for creating/editing target bacaan per class.
 - [x] Profile.
 - [x] Media page.
 - [x] Verify teacher speaking review with real student attempt.

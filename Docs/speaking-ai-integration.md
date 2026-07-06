@@ -32,10 +32,17 @@ POST /api/v1/student/speaking/exercises/{exercise}/attempts
 Teacher:
 
 ```text
+GET /api/v1/teacher/speaking/exercises
+POST /api/v1/teacher/speaking/exercises
+GET /api/v1/teacher/speaking/exercises/{exercise}
+PUT/PATCH /api/v1/teacher/speaking/exercises/{exercise}
+PATCH /api/v1/teacher/speaking/exercises/{exercise}/archive
 GET /api/v1/teacher/speaking/attempts
 GET /api/v1/teacher/speaking/attempts/{attempt}
 PATCH /api/v1/teacher/speaking/attempts/{attempt}/feedback
 ```
+
+Teacher-created speaking exercises are class-scoped. The teacher must be actively assigned to the selected class, `created_by_id` is set server-side, and archive changes status to `archived` instead of deleting the row. Students still see published global exercises plus published exercises for their assigned class.
 
 Teacher feedback payload:
 

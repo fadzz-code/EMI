@@ -159,10 +159,22 @@ Auth notation:
 
 | Method | Path | Controller/action | Auth/role | Purpose | Mobile relevance | Notes |
 |---|---|---|---|---|---|---|
-| POST | `/media` | `MediaController@store` | Auth | Upload media, including `speaking_recording` | Partial | Only generic private recording upload exists. |
+| GET | `/student/speaking/exercises` | `StudentSpeakingController@exercises` | Student | List published global + assigned class speaking targets | High | Student visibility remains global published plus assigned class published. |
+| GET | `/student/speaking/exercises/{exercise}` | `StudentSpeakingController@showExercise` | Student | Speaking target detail | High | Scoped by student class/global visibility. |
+| GET | `/student/speaking/attempts` | `StudentSpeakingController@attempts` | Student | Student speaking attempt history | High | Own attempts only. |
+| GET | `/student/speaking/attempts/{attempt}` | `StudentSpeakingController@showAttempt` | Student | Speaking attempt detail | High | Own attempt only. |
+| POST | `/student/speaking/exercises/{exercise}/attempts` | `StudentSpeakingController@storeAttempt` | Student | Submit speaking recording | High | Stores private audio, triggers AI-assisted initial scoring. |
+| GET | `/teacher/speaking/exercises` | `TeacherSpeakingExerciseController@index` | Teacher | Teacher speaking target list | Later | Class-scoped to active teacher assignments. |
+| POST | `/teacher/speaking/exercises` | `TeacherSpeakingExerciseController@store` | Teacher | Create class speaking target | Later | `created_by_id` is server-side; teacher cannot create global targets. |
+| GET | `/teacher/speaking/exercises/{exercise}` | `TeacherSpeakingExerciseController@show` | Teacher | Speaking target detail | Later | Assigned active class only. |
+| PUT/PATCH | `/teacher/speaking/exercises/{exercise}` | `TeacherSpeakingExerciseController@update` | Teacher | Update speaking target | Later | New `classroom_id`, if changed, must be assigned active class. |
+| PATCH | `/teacher/speaking/exercises/{exercise}/archive` | `TeacherSpeakingExerciseController@archive` | Teacher | Archive speaking target | Later | No hard delete; status becomes `archived`. |
+| GET | `/teacher/speaking/attempts` | `TeacherSpeakingController@attempts` | Teacher | Review speaking attempts | Later | Attempts for active assigned classes. |
+| GET | `/teacher/speaking/attempts/{attempt}` | `TeacherSpeakingController@showAttempt` | Teacher | Speaking attempt detail | Later | Scoped by active class assignment. |
+| PATCH | `/teacher/speaking/attempts/{attempt}/feedback` | `TeacherSpeakingController@feedback` | Teacher | Save teacher review | Later | Teacher final feedback remains separate from AI initial score. |
+| POST | `/media` | `MediaController@store` | Auth | Upload media, including `speaking_recording` | Partial | Generic private media upload. |
 | GET | `/media/{id}` | `MediaController@show` | Auth | Media metadata | Partial | Protected by policy. |
 | POST | `/media/{id}/temporary-url` | `MediaController@temporaryUrl` | Auth | Private media access URL | Partial | Useful for playback if authorized. |
-| None found | Dedicated speaking attempt/result routes | N/A | N/A | No | Student speaking practice and teacher results are not mobile-ready. |
 
 ## Basis AI / Knowledge
 

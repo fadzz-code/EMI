@@ -47,6 +47,7 @@ use App\Http\Controllers\Api\TeacherDashboardController;
 use App\Http\Controllers\Api\TeacherProgressReportController;
 use App\Http\Controllers\Api\TeacherQuizResultReportController;
 use App\Http\Controllers\Api\TeacherSpeakingController;
+use App\Http\Controllers\Api\TeacherSpeakingExerciseController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -258,6 +259,11 @@ Route::prefix('v1')->group(function () {
         Route::get('dashboard/summary', [TeacherDashboardController::class, 'summary']);
         Route::get('reports/progress/students', [TeacherProgressReportController::class, 'students']);
         Route::get('reports/quiz-results', [TeacherQuizResultReportController::class, 'index']);
+        Route::get('speaking/exercises', [TeacherSpeakingExerciseController::class, 'index']);
+        Route::post('speaking/exercises', [TeacherSpeakingExerciseController::class, 'store']);
+        Route::get('speaking/exercises/{exercise}', [TeacherSpeakingExerciseController::class, 'show']);
+        Route::match(['put', 'patch'], 'speaking/exercises/{exercise}', [TeacherSpeakingExerciseController::class, 'update']);
+        Route::patch('speaking/exercises/{exercise}/archive', [TeacherSpeakingExerciseController::class, 'archive']);
         Route::get('speaking/attempts', [TeacherSpeakingController::class, 'attempts']);
         Route::get('speaking/attempts/{attempt}', [TeacherSpeakingController::class, 'showAttempt']);
         Route::patch('speaking/attempts/{attempt}/feedback', [TeacherSpeakingController::class, 'feedback']);

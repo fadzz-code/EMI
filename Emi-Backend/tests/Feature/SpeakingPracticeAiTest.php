@@ -156,6 +156,70 @@ class SpeakingPracticeAiTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_teacher_can_manage_speaking_exercises_for_assigned_class(): void
+    {
+        [, $teacher, $class] = $this->classroomUsers();
+        $existing = $this->exercise($class, ['title' => 'Target lama']);
+
+        $this->withToken($this->tokenFor($teacher))->getJson('/api/v1/teacher/speaking/exercises')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $existing->id);
+
+        $created = $this->withToken($this->tokenFor($teacher))->postJson('/api/v1/teacher/speaking/exercises', [
+            'classroom_id' => $class->id,
+            'title' => 'Salam baru',
+            'target_text' => 'Ari nggiro lako',
+            'prompt_text' => 'Baca dengan jelas.',
+            'target_translation' => 'Selamat pagi semua',
+            'difficulty' => 'mudah',
+            'status' => 'published',
+        ])->assertCreated()
+            ->assertJsonPath('data.classroom_id', $class->id)
+            ->assertJsonPath('data.created_by_id', $teacher->id)
+            ->assertJsonPath('data.title', 'Salam baru')
+            ->json('data');
+
+        $this->withToken($this->tokenFor($teacher))->patchJson('/api/v1/teacher/speaking/exercises/'.$created['id'], [
+            'title' => 'Salam diperbarui',
+            'target_text' => 'Ari nggiro lako EMI',
+        ])->assertOk()
+            ->assertJsonPath('data.title', 'Salam diperbarui');
+
+        $this->withToken($this->tokenFor($teacher))->patchJson('/api/v1/teacher/speaking/exercises/'.$created['id'].'/archive')
+            ->assertOk()
+            ->assertJsonPath('data.status', 'archived');
+    }
+
+    public function test_teacher_cannot_manage_speaking_exercises_for_unassigned_class(): void
+    {
+        [, $teacher] = $this->classroomUsers();
+        $otherClass = SchoolClass::factory()->create();
+        $otherExercise = $this->exercise($otherClass);
+
+        $this->withToken($this->tokenFor($teacher))->postJson('/api/v1/teacher/speaking/exercises', [
+            'classroom_id' => $otherClass->id,
+            'title' => 'Tidak boleh',
+            'target_text' => 'Target lain',
+            'status' => 'published',
+        ])->assertUnprocessable();
+
+        $this->withToken($this->tokenFor($teacher))->patchJson('/api/v1/teacher/speaking/exercises/'.$otherExercise->id, [
+            'title' => 'Tidak boleh update',
+        ])->assertForbidden();
+    }
+
+    public function test_student_sees_published_class_exercise_but_not_archived_exercise(): void
+    {
+        [$student, , $class] = $this->classroomUsers();
+        $published = $this->exercise($class, ['title' => 'Published target']);
+        $this->exercise($class, ['title' => 'Archived target', 'status' => 'archived']);
+
+        $this->withToken($this->tokenFor($student))->getJson('/api/v1/student/speaking/exercises')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $published->id)
+            ->assertJsonCount(1, 'data');
+    }
+
     public function test_validation_rejects_oversized_or_invalid_audio(): void
     {
         Storage::fake('local');
@@ -177,6 +241,8 @@ class SpeakingPracticeAiTest extends TestCase
         $routes = collect(app('router')->getRoutes())->map(fn ($route) => $route->uri())->all();
 
         $this->assertContains('api/v1/student/speaking/exercises', $routes);
+        $this->assertContains('api/v1/teacher/speaking/exercises', $routes);
+        $this->assertContains('api/v1/teacher/speaking/exercises/{exercise}/archive', $routes);
         $this->assertContains('api/v1/teacher/speaking/attempts', $routes);
     }
 
