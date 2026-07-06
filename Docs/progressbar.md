@@ -130,6 +130,7 @@ High-level status:
 - [x] Speaking practice real-browser student submit and AI-analysis QA.
 - [x] Speaking results show AI score/transcription for real student attempt.
 - [x] Batch 6 siswa screens polish completed for dashboard, module/lesson learning flow, quiz list/detail/result, dictionary list/detail, culture feed readability, and light chatbot/speaking entry cards from dashboard without backend/API/Python changes.
+- [x] Unify student dashboard layout, warm hero greeting, and add action cards/progress list to match Figma desktop.
 - [ ] Student follow-up polish if requested: progress/profile visual hierarchy, quiz attempt custom confirmation/status polish, detailed chatbot/speaking UI polish in Batch 7, and browser responsive QA across edited siswa screens.
 - [ ] Remaining student QA pass.
 
