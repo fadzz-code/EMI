@@ -19,6 +19,7 @@ return [
         'document',
         'audio',
         'speaking_recording',
+        'speaking_reference_audio',
     ],
 
     'visibilities' => [
@@ -74,6 +75,15 @@ return [
             'audio/ogg',
             'audio/webm',
             'video/webm',
+        ],
+        'speaking_reference_audio' => [
+            'audio/mpeg',
+            'audio/wav',
+            'audio/x-wav',
+            'audio/mp4',
+            'audio/m4a',
+            'audio/ogg',
+            'audio/webm',
         ],
     ],
 

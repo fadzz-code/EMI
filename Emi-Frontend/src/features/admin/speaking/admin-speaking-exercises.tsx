@@ -1,7 +1,7 @@
 "use client";
 
 import { type ChangeEvent, type FormEvent, useEffect, useState } from "react";
-import { Archive, Headphones, Pencil, Plus } from "lucide-react";
+import { Headphones, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { Alert, Badge, Button, Card, CardContent, EmptyState, ErrorState, FormField, Input, LoadingState, Modal, Select, Textarea } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -75,6 +75,9 @@ export function AdminSpeakingExercises() {
   const [editingExercise, setEditingExercise] = useState<AdminSpeakingExercise | null>(null);
   const [form, setForm] = useState<FormState>(defaultForm);
   const [audioName, setAudioName] = useState("");
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [audioError, setAudioError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -87,7 +90,7 @@ export function AdminSpeakingExercises() {
     let ignore = false;
     adminSpeakingService.exercises(token).then((result) => {
       if (ignore) return;
-      setExercises(result.items);
+      setExercises(result.items.filter((item) => item.status !== "archived"));
       setError(null);
     }).catch((err) => {
       if (!ignore) setError(getFirstApiError(err));
@@ -105,7 +108,7 @@ export function AdminSpeakingExercises() {
     setIsLoading(true);
     try {
       const result = await adminSpeakingService.exercises(token, { status: status || undefined });
-      setExercises(result.items);
+      setExercises(status ? result.items : result.items.filter((item) => item.status !== "archived"));
       setError(null);
     } catch (err) {
       setError(getFirstApiError(err));
@@ -118,6 +121,9 @@ export function AdminSpeakingExercises() {
     setEditingExercise(null);
     setForm(defaultForm);
     setAudioName("");
+    setAudioFile(null);
+    setModalError(null);
+    setAudioError(null);
     setModalOpen(true);
   }
 
@@ -125,41 +131,54 @@ export function AdminSpeakingExercises() {
     setEditingExercise(exercise);
     setForm(toForm(exercise));
     setAudioName(exercise.reference_audio?.original_name ?? "");
+    setAudioFile(null);
+    setModalError(null);
+    setAudioError(null);
     setModalOpen(true);
   }
 
-  async function uploadAudio(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!token || !file) return;
-    setIsUploading(true);
-    try {
-      const media = await adminSpeakingService.uploadReferenceAudio(token, file);
-      setForm((current) => ({ ...current, reference_audio_media_id: media.id }));
-      setAudioName(media.original_name ?? file.name);
-      setMessage("Audio penutur asli berhasil diunggah.");
-    } catch (err) {
-      setError(getFirstApiError(err));
-    } finally {
-      setIsUploading(false);
-    }
+  function chooseAudio(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    setAudioFile(file);
+    setAudioName(file?.name ?? editingExercise?.reference_audio?.original_name ?? "");
+    setAudioError(null);
+    setModalError(null);
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!token) return;
     setIsSubmitting(true);
+    setModalError(null);
+    setAudioError(null);
     try {
+      let payload = toPayload(form);
+      if (audioFile) {
+        setIsUploading(true);
+        try {
+          const media = await adminSpeakingService.uploadReferenceAudio(token, audioFile);
+          payload = { ...payload, reference_audio_media_id: media.id };
+        } catch (err) {
+          const message = getFirstApiError(err);
+          setAudioError(message);
+          setModalError("Audio penutur asli gagal diunggah. Template belum disimpan.");
+          return;
+        } finally {
+          setIsUploading(false);
+        }
+      }
+
       if (editingExercise) {
-        await adminSpeakingService.updateExercise(token, editingExercise.id, toPayload(form));
+        await adminSpeakingService.updateExercise(token, editingExercise.id, payload);
         setMessage("Template speaking berhasil diperbarui.");
       } else {
-        await adminSpeakingService.createExercise(token, toPayload(form));
+        await adminSpeakingService.createExercise(token, payload);
         setMessage("Template speaking berhasil dibuat.");
       }
       setModalOpen(false);
       await loadExercises();
     } catch (err) {
-      setError(getFirstApiError(err));
+      setModalError(getFirstApiError(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -167,10 +186,10 @@ export function AdminSpeakingExercises() {
 
   async function archiveExercise(exercise: AdminSpeakingExercise) {
     if (!token) return;
-    if (!window.confirm(`Arsipkan template speaking "${exercise.title}"?`)) return;
+    if (!window.confirm("Hapus template ini dari daftar? Data akan diarsipkan dan tidak tampil untuk siswa.")) return;
     try {
       await adminSpeakingService.archiveExercise(token, exercise.id);
-      setMessage("Template speaking berhasil diarsipkan.");
+      setMessage("Template speaking berhasil dihapus dari daftar.");
       await loadExercises();
     } catch (err) {
       setError(getFirstApiError(err));
@@ -192,7 +211,7 @@ export function AdminSpeakingExercises() {
         </p>
       </section>
 
-      {error ? <ErrorState description={error} onRetry={() => void loadExercises()} title="Gagal memuat template speaking" /> : null}
+      {error && !modalOpen ? <ErrorState description={error} onRetry={() => void loadExercises()} title="Gagal memuat template speaking" /> : null}
       {message ? <Alert tone="success">{message}</Alert> : null}
 
       <Card>
@@ -251,7 +270,7 @@ export function AdminSpeakingExercises() {
                 </Button>
                 {exercise.status !== "archived" ? (
                   <Button onClick={() => void archiveExercise(exercise)} type="button" variant="ghost">
-                    <Archive className="mr-2 size-4" /> Arsipkan
+                    <Trash2 className="mr-2 size-4" /> Hapus
                   </Button>
                 ) : null}
               </div>
@@ -262,6 +281,7 @@ export function AdminSpeakingExercises() {
 
       <Modal className="max-w-2xl" onClose={() => setModalOpen(false)} open={modalOpen} title={editingExercise ? "Edit Template Speaking" : "Tambah Template Speaking"}>
         <form className="flex min-h-0 flex-col gap-4" onSubmit={submit}>
+          {modalError ? <Alert tone="error">{modalError}</Alert> : null}
           <Alert tone="info">Audio ini akan digunakan sebagai contoh Suara Asli untuk siswa.</Alert>
           <FormField label="Judul latihan">
             <Input onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} required value={form.title} />
@@ -291,7 +311,7 @@ export function AdminSpeakingExercises() {
             </FormField>
           </div>
           <FormField label="Upload audio penutur asli">
-            <Input accept="audio/*" disabled={isUploading} onChange={(event) => void uploadAudio(event)} type="file" />
+            <Input accept="audio/*" disabled={isUploading || isSubmitting} onChange={chooseAudio} type="file" />
             {audioName || editingExercise?.reference_audio?.url ? (
               <div className="mt-3 rounded-xl border-2 border-border bg-surface-muted p-3">
                 <p className="text-sm font-black text-ink">{audioName || "Audio lama"}</p>
@@ -299,6 +319,7 @@ export function AdminSpeakingExercises() {
                 <p className="mt-1 text-xs font-bold text-muted">Boleh unggah ulang untuk mengganti audio.</p>
               </div>
             ) : null}
+            {audioError ? <p className="mt-2 text-sm font-black text-danger">{audioError}</p> : null}
             {isUploading ? <p className="mt-2 text-sm font-bold text-muted">Mengunggah audio...</p> : null}
           </FormField>
           <div className="sticky bottom-0 mt-2 flex gap-2 border-t-2 border-border bg-surface pt-3">
