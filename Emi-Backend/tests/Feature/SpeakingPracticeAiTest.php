@@ -220,6 +220,60 @@ class SpeakingPracticeAiTest extends TestCase
             ->assertJsonCount(1, 'data');
     }
 
+    public function test_admin_can_manage_global_speaking_exercises_with_reference_audio(): void
+    {
+        [$student, $teacher, $class] = $this->classroomUsers();
+        $admin = User::query()->where('role', 'admin')->firstOrFail();
+        $media = MediaFile::factory()->create([
+            'uploaded_by' => $admin->id,
+            'purpose' => 'speaking_reference_audio',
+            'visibility' => 'public',
+        ]);
+
+        $created = $this->withToken($this->tokenFor($admin))->postJson('/api/v1/admin/speaking/exercises', [
+            'title' => 'Global Target',
+            'target_text' => 'Baca ini',
+            'reference_audio_media_id' => $media->id,
+            'status' => 'published',
+        ])->assertCreated()
+            ->assertJsonPath('data.classroom_id', null)
+            ->assertJsonPath('data.reference_audio_media_id', $media->id)
+            ->assertJsonPath('data.reference_audio.id', $media->id)
+            ->json('data');
+
+        $this->withToken($this->tokenFor($admin))->getJson('/api/v1/admin/speaking/exercises')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $created['id']);
+
+        $this->withToken($this->tokenFor($admin))->patchJson('/api/v1/admin/speaking/exercises/'.$created['id'], [
+            'title' => 'Global Target Updated',
+        ])->assertOk()
+            ->assertJsonPath('data.title', 'Global Target Updated');
+
+        $this->withToken($this->tokenFor($admin))->patchJson('/api/v1/admin/speaking/exercises/'.$created['id'].'/archive')
+            ->assertOk()
+            ->assertJsonPath('data.status', 'archived');
+    }
+
+    public function test_student_resource_includes_reference_audio(): void
+    {
+        [$student, , $class] = $this->classroomUsers();
+        $admin = User::factory()->admin()->create();
+        $media = MediaFile::factory()->create([
+            'uploaded_by' => $admin->id,
+            'purpose' => 'speaking_reference_audio',
+            'visibility' => 'public',
+        ]);
+
+        $published = $this->exercise($class, ['title' => 'With audio']);
+        $published->forceFill(['reference_audio_media_id' => $media->id])->save();
+
+        $this->withToken($this->tokenFor($student))->getJson('/api/v1/student/speaking/exercises')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $published->id)
+            ->assertJsonPath('data.0.reference_audio.id', $media->id);
+    }
+
     public function test_validation_rejects_oversized_or_invalid_audio(): void
     {
         Storage::fake('local');
@@ -248,7 +302,7 @@ class SpeakingPracticeAiTest extends TestCase
 
     private function classroomUsers(): array
     {
-        $admin = User::factory()->admin()->create();
+        $admin = User::query()->where('role', 'admin')->first() ?? User::factory()->admin()->create();
         $teacher = User::factory()->teacher()->approved()->create();
         $student = User::factory()->student()->approved()->create();
         $class = SchoolClass::factory()->create();

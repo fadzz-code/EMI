@@ -18,6 +18,7 @@ class SpeakingExercise extends Model
         'prompt_text',
         'target_text',
         'target_translation',
+        'reference_audio_media_id',
         'language_code',
         'difficulty',
         'lesson_id',
@@ -54,6 +55,11 @@ class SpeakingExercise extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_id');
+    }
+
+    public function referenceAudio(): BelongsTo
+    {
+        return $this->belongsTo(MediaFile::class, 'reference_audio_media_id');
     }
 
     public function attempts(): HasMany

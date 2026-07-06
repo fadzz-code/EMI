@@ -21,6 +21,7 @@ class StudentSpeakingController extends Controller
         $user = request()->user();
         $classIds = $user->studentClassMemberships()->where('is_active', true)->pluck('class_id');
         $exercises = SpeakingExercise::query()
+            ->with(['referenceAudio'])
             ->published()
             ->where(fn ($query) => $query->whereNull('classroom_id')->orWhereIn('classroom_id', $classIds))
             ->orderBy('created_at')
@@ -33,7 +34,7 @@ class StudentSpeakingController extends Controller
     {
         abort_unless($this->attemptService->studentCanAccessExercise(request()->user(), $exercise), 403);
 
-        return ApiResponse::success('Detail latihan speaking berhasil diambil.', new SpeakingExerciseResource($exercise));
+        return ApiResponse::success('Detail latihan speaking berhasil diambil.', new SpeakingExerciseResource($exercise->load(['referenceAudio'])));
     }
 
     public function attempts(): JsonResponse

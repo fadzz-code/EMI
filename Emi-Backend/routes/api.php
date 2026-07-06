@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\AdminQuizResultReportController;
 use App\Http\Controllers\Api\AdminQuizTemplateController;
 use App\Http\Controllers\Api\AdminQuizTemplateQuestionController;
 use App\Http\Controllers\Api\AdminRegistrationRequestController;
+use App\Http\Controllers\Api\AdminSpeakingExerciseController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AvatarController;
 use App\Http\Controllers\Api\ClassAssignmentController;
@@ -81,6 +82,13 @@ Route::prefix('v1')->group(function () {
         Route::get('registration-requests/{id}', [AdminRegistrationRequestController::class, 'show']);
         Route::post('registration-requests/{id}/approve', [AdminRegistrationRequestController::class, 'approve']);
         Route::post('registration-requests/{id}/reject', [AdminRegistrationRequestController::class, 'reject']);
+
+        Route::get('speaking/exercises', [AdminSpeakingExerciseController::class, 'index']);
+        Route::post('speaking/exercises', [AdminSpeakingExerciseController::class, 'store']);
+        Route::get('speaking/exercises/{exercise}', [AdminSpeakingExerciseController::class, 'show']);
+        Route::match(['put', 'patch'], 'speaking/exercises/{exercise}', [AdminSpeakingExerciseController::class, 'update']);
+        Route::patch('speaking/exercises/{exercise}/archive', [AdminSpeakingExerciseController::class, 'archive']);
+
         Route::get('dashboard/summary', [AdminDashboardController::class, 'summary']);
         Route::get('reports/progress/schools', [AdminProgressReportController::class, 'schools']);
         Route::get('reports/progress/classes', [AdminProgressReportController::class, 'classes']);
