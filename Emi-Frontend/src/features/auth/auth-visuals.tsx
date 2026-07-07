@@ -1,6 +1,9 @@
-import Link from "next/link";
-import type { ReactNode } from "react";
+"use client";
 
+import Link from "next/link";
+import { useEffect, useState, type ReactNode } from "react";
+
+import { settingsService } from "@/features/admin/settings/settings-service";
 import { env } from "@/lib/env";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +15,14 @@ export const LOGIN_HERO_CONFIG = {
 };
 
 export function LoginLearningPanel() {
+  const [branding, setBranding] = useState<{ enabled?: boolean; image_url?: string | null } | null>(null);
+  const activeBanner = Boolean(branding?.enabled && branding.image_url);
+  const imageUrl = activeBanner ? branding?.image_url : LOGIN_HERO_CONFIG.imageUrl;
+
+  useEffect(() => {
+    settingsService.publicBranding().then(setBranding).catch(() => setBranding(null));
+  }, []);
+
   return (
     <section className="relative hidden min-h-[500px] flex-col border-l-4 border-ink bg-[#ffd167] p-8 lg:flex lg:p-12">
       {/* Decorative Accent: Top Right Orange Quarter Circle */}
@@ -25,19 +36,19 @@ export function LoginLearningPanel() {
         {/* Main Hero Image Area */}
         <div className="relative mt-8 flex w-full max-w-[400px] flex-1 flex-col justify-center">
           <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[16px] border-4 border-ink bg-[#fcf9f8] shadow-[8px_8px_0_var(--color-ink)]">
-            {LOGIN_HERO_CONFIG.imageUrl ? (
+            {imageUrl ? (
               <img
                 alt="EMI E-Learning Hero"
                 className="absolute inset-0 h-full w-full object-cover text-sm text-slate-500"
-                src={LOGIN_HERO_CONFIG.imageUrl}
-                /* Alt text acts as a native fallback message if image fails to load */
+                src={imageUrl}
               />
             ) : (
               <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center">
-                <span className="mb-2 text-3xl">🖼️</span>
+                <span className="mb-2 text-3xl">IMG</span>
                 <span className="text-sm font-bold text-slate-500">Gambar Hero Belum Dikonfigurasi</span>
               </div>
             )}
+
           </div>
         </div>
 

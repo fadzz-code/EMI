@@ -79,7 +79,7 @@ export function LoginForm() {
             <Input
               autoComplete="email"
               className="min-h-12 rounded-[8px] border-4 border-ink bg-[#fcf9f8] text-base focus:ring-[#ffd167]"
-              placeholder="guru@emi.test"
+              placeholder="Masukkan email"
               type="email"
               {...register("email")}
             />
@@ -88,7 +88,7 @@ export function LoginForm() {
             <Input
               autoComplete="current-password"
               className="min-h-12 rounded-[8px] border-4 border-ink bg-[#fcf9f8] text-base focus:ring-[#ffd167]"
-              placeholder="•••••••••••"
+              placeholder="Masukkan kata sandi"
               type="password"
               {...register("password")}
             />

@@ -1,18 +1,9 @@
 "use client";
 
-import { type FormEvent, useRef, useState } from "react";
+import { type FormEvent, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import {
-  Alert,
-  Badge,
-  Button,
-  ErrorState,
-  FormField,
-  Input,
-  LoadingState,
-  Textarea,
-} from "@/components/ui";
+import { Alert, Badge, Button, ErrorState, FormField, Input, LoadingState } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
@@ -20,117 +11,48 @@ import { settingsService } from "./settings-service";
 import { SettingsSectionCard } from "./settings-section-card";
 import { roleLabel } from "./settings-utils";
 
-type ProfileForm = {
-  full_name: string;
-  phone: string;
-};
-
 const disabledFieldClass = "bg-slate-100 text-slate-500";
 
 function getInitials(name?: string) {
-  return (
-    name
-      ?.split(" ")
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join("") || "AD"
-  );
-}
-
-function DisabledInput({ value = "Belum tersedia" }: { value?: string }) {
-  return <Input className={disabledFieldClass} disabled value={value} />;
-}
-
-function DisabledTextarea({ value = "Belum tersedia" }: { value?: string }) {
-  return <Textarea className={disabledFieldClass} disabled value={value} />;
-}
-
-function SettingsToggle({
-  label,
-  checked = false,
-  helper,
-}: {
-  label: string;
-  checked?: boolean;
-  helper?: string;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-4 rounded-lg border-2 border-ink bg-white p-4">
-      <div>
-        <p className="text-sm font-black text-ink">{label}</p>
-        {helper ? <p className="mt-1 text-xs leading-5 text-slate-600">{helper}</p> : null}
-      </div>
-      <label className="relative inline-flex cursor-not-allowed items-center">
-        <input checked={checked} className="peer sr-only" disabled readOnly type="checkbox" />
-        <span className="h-7 w-12 rounded-full border-2 border-ink bg-slate-200 transition peer-checked:bg-blue-500" />
-        <span className="absolute left-1 h-5 w-5 rounded-full border-2 border-ink bg-white transition peer-checked:translate-x-5" />
-      </label>
-    </div>
-  );
-}
-
-function PanelNote({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="rounded-lg border-2 border-dashed border-ink bg-slate-50 px-4 py-3 text-xs font-semibold leading-5 text-slate-600">
-      {children}
-    </p>
-  );
+  return name?.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "AD";
 }
 
 export function SettingsPage() {
   const { token, refreshUser } = useAuth();
   const queryClient = useQueryClient();
-  const formRef = useRef<HTMLFormElement>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [profileNameError, setProfileNameError] = useState<string | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
 
-  const userQuery = useQuery({
-    queryKey: ["admin", "settings", "profile"],
-    queryFn: () => settingsService.currentUser(token ?? ""),
-    enabled: Boolean(token),
-  });
+  const userQuery = useQuery({ queryKey: ["admin", "settings", "profile"], queryFn: () => settingsService.currentUser(token ?? ""), enabled: Boolean(token) });
+  const settingsQuery = useQuery({ queryKey: ["admin", "settings"], queryFn: () => settingsService.settings(token ?? ""), enabled: Boolean(token) });
 
-  const updateProfileMutation = useMutation({
-    mutationFn: (payload: ProfileForm) =>
-      settingsService.updateProfile(token ?? "", {
-        full_name: payload.full_name.trim(),
-        phone: payload.phone.trim() || null,
-      }),
-    onSuccess: async (user) => {
-      setSuccessMessage(`Pengaturan profil ${user.full_name} berhasil disimpan.`);
+  const invalidate = async (message: string) => {
+    setSuccessMessage(message);
+    await queryClient.invalidateQueries({ queryKey: ["admin", "settings"] });
+  };
+
+  const profileMutation = useMutation({
+    mutationFn: (payload: { full_name: string; phone: string | null }) => settingsService.updateProfile(token ?? "", payload),
+    onSuccess: async () => {
+      setSuccessMessage("Profil admin berhasil disimpan.");
       await queryClient.invalidateQueries({ queryKey: ["admin", "settings", "profile"] });
       await refreshUser();
     },
   });
+  const appMutation = useMutation({ mutationFn: (payload: Parameters<typeof settingsService.updateApplication>[1]) => settingsService.updateApplication(token ?? "", payload), onSuccess: () => invalidate("Pengaturan aplikasi berhasil disimpan.") });
+  const bannerMutation = useMutation({ mutationFn: (payload: FormData) => settingsService.updateBanner(token ?? "", payload), onSuccess: () => invalidate("Banner login berhasil disimpan.") });
+  const securityMutation = useMutation({ mutationFn: (payload: Parameters<typeof settingsService.updateSecurity>[1]) => settingsService.updateSecurity(token ?? "", payload), onSuccess: () => invalidate("Preferensi keamanan berhasil disimpan.") });
+  const passwordMutation = useMutation({ mutationFn: (payload: Parameters<typeof settingsService.updatePassword>[1]) => settingsService.updatePassword(token ?? "", payload), onSuccess: () => setSuccessMessage("Password berhasil diperbarui.") });
 
   const user = userQuery.data;
+  const settings = settingsQuery.data;
+  const error = userQuery.error || settingsQuery.error || profileMutation.error || appMutation.error || bannerMutation.error || securityMutation.error || passwordMutation.error;
+  const loading = userQuery.isLoading || settingsQuery.isLoading;
 
-  function submitSettings(event: FormEvent<HTMLFormElement>) {
+  function formData(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSuccessMessage(null);
-    setProfileNameError(null);
-    updateProfileMutation.reset();
-
-    const data = new FormData(event.currentTarget);
-    const payload = {
-      full_name: String(data.get("full_name") ?? "").trim(),
-      phone: String(data.get("phone") ?? "").trim(),
-    };
-
-    if (!payload.full_name) {
-      setProfileNameError("Nama lengkap wajib diisi.");
-      return;
-    }
-
-    updateProfileMutation.mutate(payload);
-  }
-
-  function cancelChanges() {
-    formRef.current?.reset();
-    setSuccessMessage(null);
-    setProfileNameError(null);
-    updateProfileMutation.reset();
+    return new FormData(event.currentTarget);
   }
 
   return (
@@ -139,180 +61,96 @@ export function SettingsPage() {
         <div>
           <Badge tone="yellow">ADMIN-19</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">Pengaturan Sistem</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            Atur preferensi dasar sistem EMI.
-          </p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Atur preferensi dasar sistem EMI.</p>
         </div>
         <Badge tone="neutral">Functional-first</Badge>
       </header>
-
-      <Alert tone="info">
-        Pengaturan sistem penuh belum tersedia. Field konfigurasi ditampilkan read-only,
-        sementara data profil admin tetap bisa disimpan.
-      </Alert>
-
       {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
-      {updateProfileMutation.error ? (
-        <Alert tone="error">{getFirstApiError(updateProfileMutation.error)}</Alert>
-      ) : null}
+      {error ? <Alert tone="error">{getFirstApiError(error)}</Alert> : null}
+      {loading ? <LoadingState title="Memuat pengaturan sistem" /> : null}
+      {userQuery.isError || settingsQuery.isError ? <ErrorState description={getFirstApiError(error)} onRetry={() => { void userQuery.refetch(); void settingsQuery.refetch(); }} title="Gagal memuat pengaturan" /> : null}
 
-      {userQuery.isLoading ? <LoadingState title="Memuat pengaturan sistem" /> : null}
-      {userQuery.isError ? (
-        <ErrorState
-          description={getFirstApiError(userQuery.error)}
-          onRetry={() => void userQuery.refetch()}
-          title="Gagal memuat pengaturan"
-        />
-      ) : null}
-
-      {!userQuery.isLoading && !userQuery.isError ? (
-        <form
-          className="grid gap-6"
-          key={`${user?.id ?? "settings"}-${user?.full_name ?? ""}-${user?.phone ?? ""}`}
-          onSubmit={submitSettings}
-          ref={formRef}
-        >
-          <SettingsSectionCard
-            badge="Read-only"
-            description="Konfigurasi aplikasi belum bisa disimpan dari layar ini."
-            title="Pengaturan Aplikasi"
-          >
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField label="Nama Aplikasi">
-                <DisabledInput />
-              </FormField>
-              <FormField label="Subtitle / Slogan">
-                <DisabledInput />
-              </FormField>
-              <FormField label="Tahun Ajaran Aktif">
-                <DisabledInput />
-              </FormField>
-              <FormField label="Zona Waktu">
-                <DisabledInput />
-              </FormField>
-            </div>
+      {!loading && user && settings ? (
+        <div className="grid gap-6">
+          <SettingsSectionCard badge="Bisa disimpan" description="Konfigurasi aplikasi tersimpan di database." title="Pengaturan Aplikasi">
+            <form className="grid gap-4 md:grid-cols-2" onSubmit={(event) => {
+              const data = formData(event);
+              appMutation.mutate({ name: String(data.get("name") ?? ""), subtitle: String(data.get("subtitle") ?? ""), active_academic_year: String(data.get("active_academic_year") ?? ""), timezone: String(data.get("timezone") ?? "") });
+            }}>
+              <FormField label="Nama Aplikasi"><Input defaultValue={settings.application.name} name="name" required /></FormField>
+              <FormField label="Subtitle / Slogan"><Input defaultValue={settings.application.subtitle} name="subtitle" /></FormField>
+              <FormField label="Tahun Ajaran Aktif"><Input defaultValue={settings.application.active_academic_year} name="active_academic_year" required /></FormField>
+              <FormField label="Zona Waktu"><Input defaultValue={settings.application.timezone} name="timezone" required /></FormField>
+              <Button className="md:col-span-2" disabled={appMutation.isPending} type="submit">{appMutation.isPending ? "Menyimpan..." : "Simpan Pengaturan Aplikasi"}</Button>
+            </form>
           </SettingsSectionCard>
 
-          <SettingsSectionCard
-            badge="Bisa disimpan"
-            description="Nama dan telepon admin dapat diperbarui. Email kantor tetap read-only."
-            title="Profil Admin"
-          >
-            {user ? (
-              <div className="grid gap-5 lg:grid-cols-[260px_1fr]">
-                <div className="rounded-lg border-2 border-ink bg-yellow-100 p-5">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-ink bg-white text-2xl font-black text-ink shadow-brutal">
-                    {getInitials(user.full_name)}
-                  </div>
-                  <h2 className="mt-4 text-lg font-black text-ink">{user.full_name}</h2>
-                  <p className="mt-1 text-sm font-semibold text-slate-600">{user.email}</p>
-                  <Badge className="mt-4" tone="blue">
-                    {roleLabel(user.role)}
-                  </Badge>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FormField error={profileNameError ?? undefined} label="Nama Lengkap">
-                    <Input defaultValue={user.full_name} name="full_name" required />
-                  </FormField>
-                  <FormField label="Email Kantor">
-                    <Input className={disabledFieldClass} disabled value={user.email} />
-                  </FormField>
-                  <FormField label="Telepon Admin">
-                    <Input
-                      defaultValue={user.phone ?? ""}
-                      name="phone"
-                      placeholder="Belum diisi"
-                    />
-                  </FormField>
-                  <FormField label="Status Akun">
-                    <Input className={disabledFieldClass} disabled value={user.status} />
-                  </FormField>
-                </div>
+          <SettingsSectionCard badge="Bisa disimpan" description="Nama dan telepon admin dapat diperbarui. Email tetap read-only." title="Profil Admin">
+            <form className="grid gap-5 lg:grid-cols-[260px_1fr]" onSubmit={(event) => {
+              const data = formData(event);
+              profileMutation.mutate({ full_name: String(data.get("full_name") ?? "").trim(), phone: String(data.get("phone") ?? "").trim() || null });
+            }}>
+              <div className="rounded-lg border-2 border-ink bg-yellow-100 p-5">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-ink bg-white text-2xl font-black text-ink shadow-brutal">{getInitials(user.full_name)}</div>
+                <h2 className="mt-4 text-lg font-black text-ink">{user.full_name}</h2>
+                <p className="mt-1 text-sm font-semibold text-slate-600">{user.email}</p>
+                <Badge className="mt-4" tone="blue">{roleLabel(user.role)}</Badge>
               </div>
-            ) : (
-              <PanelNote>Profil admin belum tersedia.</PanelNote>
-            )}
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField label="Nama Lengkap"><Input defaultValue={user.full_name} name="full_name" required /></FormField>
+                <FormField label="Email Kantor"><Input className={disabledFieldClass} disabled value={user.email} /></FormField>
+                <FormField label="Telepon Admin"><Input defaultValue={user.phone ?? ""} name="phone" placeholder="Belum diisi" /></FormField>
+                <FormField label="Status Akun"><Input className={disabledFieldClass} disabled value={user.status} /></FormField>
+                <Button className="md:col-span-2" disabled={profileMutation.isPending} type="submit">{profileMutation.isPending ? "Menyimpan..." : "Simpan Profil"}</Button>
+              </div>
+            </form>
           </SettingsSectionCard>
 
-          <SettingsSectionCard
-            badge="Belum tersedia"
-            description="Banner login belum bisa diunggah atau disimpan dari layar ini."
-            title="Pengaturan Banner Login"
-          >
-            <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
+          <SettingsSectionCard badge="Bisa disimpan" description="Banner login dapat diunggah dan diaktifkan." title="Pengaturan Banner Login">
+            <form className="grid gap-5 lg:grid-cols-[320px_1fr]" onSubmit={(event) => {
+              const data = formData(event);
+              data.set("enabled", data.get("enabled") ? "1" : "0");
+              bannerMutation.mutate(data);
+            }}>
               <div className="rounded-lg border-2 border-ink bg-blue-50 p-5">
                 <p className="text-xs font-black uppercase text-slate-500">Preview banner</p>
-                <div className="mt-3 rounded-lg border-2 border-dashed border-ink bg-white p-6">
-                  <p className="text-lg font-black text-ink">Belum tersedia</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    Preview akan aktif setelah konfigurasi banner login tersedia.
-                  </p>
+                <div className="mt-3 overflow-hidden rounded-lg border-2 border-dashed border-ink bg-white p-4">
+                  {bannerPreview || settings.banner.image_url ? <img alt="Preview banner login" className="max-h-40 w-full rounded object-cover" src={bannerPreview ?? settings.banner.image_url ?? ""} /> : <p className="text-sm font-bold text-slate-500">Banner belum diunggah.</p>}
                 </div>
-                <Button className="mt-4 w-full" disabled variant="ghost">
-                  Upload Banner Baru
-                </Button>
+                <Input className="mt-4" name="file" onChange={(event) => setBannerPreview(event.target.files?.[0] ? URL.createObjectURL(event.target.files[0]) : null)} type="file" />
               </div>
-
               <div className="grid gap-4">
-                <FormField label="Judul Banner">
-                  <DisabledInput />
-                </FormField>
-                <FormField label="Sub-teks Banner">
-                  <DisabledTextarea />
-                </FormField>
-                <SettingsToggle
-                  helper="Toggle belum aktif karena konfigurasi banner belum tersedia."
-                  label="Aktifkan Banner"
-                />
-                <PanelNote>
-                  Riwayat banner belum tersedia. Versi banner dan audit perubahannya belum dapat ditampilkan.
-                </PanelNote>
+                <label className="flex items-center gap-3 text-sm font-black text-ink"><input defaultChecked={settings.banner.enabled} name="enabled" type="checkbox" /> Aktifkan Banner</label>
+                <Button disabled={bannerMutation.isPending} type="submit">{bannerMutation.isPending ? "Menyimpan..." : "Simpan Banner"}</Button>
+                <div className="grid gap-2 text-xs font-semibold text-slate-600">
+                  {settings.activity_logs.map((log) => <p key={log.id}>{new Date(log.created_at).toLocaleString("id-ID")} · {log.admin} · {log.title} · {log.status ? "aktif" : "nonaktif"}</p>)}
+                </div>
               </div>
-            </div>
+            </form>
           </SettingsSectionCard>
 
-          <SettingsSectionCard
-            badge="Terbatas"
-            description="Aksi keamanan sistem belum tersedia sebagai pengaturan tersimpan."
-            title="Keamanan"
-          >
-            <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-              <div className="grid gap-3">
-                <Button disabled variant="ghost">
-                  Ubah Password Sistem / Admin
-                </Button>
-                <Button disabled variant="ghost">
-                  Log Aktivitas Admin
-                </Button>
-              </div>
-              <div className="grid gap-3">
-                <SettingsToggle
-                  helper="Preferensi notifikasi login belum tersedia."
-                  label="Peringatan Login Baru"
-                />
-                <SettingsToggle
-                  helper="Preferensi email laporan belum tersedia."
-                  label="Email Laporan Mingguan"
-                />
-              </div>
+          <SettingsSectionCard badge="Bisa disimpan" description="Password dan preferensi keamanan admin." title="Keamanan">
+            <div className="grid gap-5 lg:grid-cols-2">
+              <form className="grid gap-3" onSubmit={(event) => {
+                const data = formData(event);
+                passwordMutation.mutate({ current_password: String(data.get("current_password") ?? ""), password: String(data.get("password") ?? ""), password_confirmation: String(data.get("password_confirmation") ?? "") });
+              }}>
+                <Input name="current_password" placeholder="Password lama" type="password" required />
+                <Input name="password" placeholder="Password baru" type="password" required />
+                <Input name="password_confirmation" placeholder="Konfirmasi password baru" type="password" required />
+                <Button disabled={passwordMutation.isPending} type="submit">Ubah Password</Button>
+              </form>
+              <form className="grid gap-3" onSubmit={(event) => {
+                const data = formData(event);
+                securityMutation.mutate({ new_login_alert: Boolean(data.get("new_login_alert")), weekly_report_email: Boolean(data.get("weekly_report_email")) });
+              }}>
+                <label className="flex items-center gap-3 text-sm font-black text-ink"><input defaultChecked={settings.security.new_login_alert} name="new_login_alert" type="checkbox" /> Peringatan Login Baru</label>
+                <label className="flex items-center gap-3 text-sm font-black text-ink"><input defaultChecked={settings.security.weekly_report_email} name="weekly_report_email" type="checkbox" /> Email Laporan Mingguan</label>
+                <Button disabled={securityMutation.isPending} type="submit">Simpan Keamanan</Button>
+              </form>
             </div>
           </SettingsSectionCard>
-
-          <div className="flex flex-col-reverse gap-3 rounded-lg border-2 border-ink bg-white p-4 shadow-brutal sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs font-semibold leading-5 text-slate-600">
-              Tombol simpan hanya mengirim field profil admin yang sudah didukung.
-            </p>
-            <div className="flex gap-3">
-              <Button onClick={cancelChanges} type="button" variant="ghost">
-                Batalkan
-              </Button>
-              <Button disabled={updateProfileMutation.isPending || !user} type="submit">
-                {updateProfileMutation.isPending ? "Menyimpan..." : "Simpan Pengaturan"}
-              </Button>
-            </div>
-          </div>
-        </form>
+        </div>
       ) : null}
     </div>
   );

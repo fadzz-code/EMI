@@ -20,6 +20,7 @@ return [
         'audio',
         'speaking_recording',
         'speaking_reference_audio',
+        'login_banner',
     ],
 
     'visibilities' => [
@@ -84,6 +85,11 @@ return [
             'audio/m4a',
             'audio/ogg',
             'audio/webm',
+        ],
+        'login_banner' => [
+            'image/jpeg',
+            'image/png',
+            'image/webp',
         ],
     ],
 

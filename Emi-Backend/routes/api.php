@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\AdminQuizResultReportController;
 use App\Http\Controllers\Api\AdminQuizTemplateController;
 use App\Http\Controllers\Api\AdminQuizTemplateQuestionController;
 use App\Http\Controllers\Api\AdminRegistrationRequestController;
+use App\Http\Controllers\Api\AdminSettingsController;
 use App\Http\Controllers\Api\AdminSpeakingExerciseController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AvatarController;
@@ -56,6 +57,7 @@ Route::prefix('v1')->group(function () {
     Route::prefix('public')->group(function () {
         Route::get('schools', [PublicLookupController::class, 'schools']);
         Route::get('schools/{school_id}/classes', [PublicLookupController::class, 'classes']);
+        Route::get('login-branding', [AdminSettingsController::class, 'branding']);
         Route::get('media/{id}/content', [MediaController::class, 'publicContent']);
     });
 
@@ -78,6 +80,10 @@ Route::prefix('v1')->group(function () {
         ->middleware('signed:relative');
 
     Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
+        Route::get('settings', [AdminSettingsController::class, 'show']);
+        Route::put('settings/application', [AdminSettingsController::class, 'updateApplication']);
+        Route::post('settings/banner', [AdminSettingsController::class, 'updateBanner']);
+        Route::put('settings/security', [AdminSettingsController::class, 'updateSecurity']);
         Route::get('registration-requests', [AdminRegistrationRequestController::class, 'index']);
         Route::get('registration-requests/{id}', [AdminRegistrationRequestController::class, 'show']);
         Route::post('registration-requests/{id}/approve', [AdminRegistrationRequestController::class, 'approve']);
