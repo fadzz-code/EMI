@@ -267,6 +267,13 @@ export type DictionaryAudio = {
   mime_type: string;
 };
 
+export type DictionarySentenceExample = {
+  id: string;
+  kode?: string | null;
+  contoh_mekongga: string;
+  contoh_indonesia: string;
+};
+
 export type DictionaryEntry = {
   id: string;
   category_id?: string | null;
@@ -276,6 +283,7 @@ export type DictionaryEntry = {
   mekongga: string;
   example_mekongga?: string | null;
   example_indonesia?: string | null;
+  sentence_examples?: DictionarySentenceExample[];
   audio?: DictionaryAudio | null;
   status?: string;
   created_at?: string | null;

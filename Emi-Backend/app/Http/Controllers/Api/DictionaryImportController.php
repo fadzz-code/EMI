@@ -24,15 +24,32 @@ class DictionaryImportController extends Controller
         private readonly DictionaryImportService $importService,
     ) {}
 
-    public function template(): StreamedResponse
+    public function template(string $import_type = 'vocabulary'): StreamedResponse
     {
         Gate::authorize('create', DictionaryImportJob::class);
-        $header = implode(',', config('dictionary.csv_header'));
+        abort_unless(in_array($import_type, ['vocabulary', 'sentence_examples'], true), 404);
+        $header = implode(',', config("dictionary.csv_headers.{$import_type}"));
+        $examples = $import_type === 'sentence_examples'
+            ? [
+                '1,inoi monga kade,saya sedang makan nasi',
+                '2,air i laika,air di rumah',
+                '3,ari nggiro,selamat pagi',
+            ]
+            : [
+                '1,makan,eat,monga,Verba,',
+                '2,air,water,air,Nomina,',
+                '3,selamat,hello,ari,Sapaan,',
+            ];
+        $filename = $import_type === 'sentence_examples'
+            ? 'template-contoh-kalimat-bahasa-mekongga.csv'
+            : 'template-kata-bahasa-mekongga.csv';
 
-        return response()->streamDownload(function () use ($header): void {
+        return response()->streamDownload(function () use ($header, $examples): void {
             echo $header."\n";
-            echo "makan,eat,monga,Verba,inoi monga kade,saya sedang makan nasi,\n";
-        }, 'template_import_kamus_emi.csv', [
+            foreach ($examples as $example) {
+                echo $example."\n";
+            }
+        }, $filename, [
             'Content-Type' => 'text/csv; charset=UTF-8',
             'X-Content-Type-Options' => 'nosniff',
         ]);
@@ -46,6 +63,7 @@ class DictionaryImportController extends Controller
             $request->file('csv_file'),
             $request->file('audio_zip'),
             $request->validated('duplicate_strategy') ?? 'skip',
+            $request->validated('import_type') ?? 'vocabulary',
             $request,
         );
 

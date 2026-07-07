@@ -18,6 +18,7 @@ class DictionaryImportJob extends Model
         'uploaded_by',
         'status',
         'duplicate_strategy',
+        'import_type',
         'csv_disk',
         'csv_path',
         'csv_original_name',

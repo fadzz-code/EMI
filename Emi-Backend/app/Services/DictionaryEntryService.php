@@ -102,9 +102,12 @@ class DictionaryEntryService
         $indonesia = $this->normalizer->normalizeDisplay($data['indonesia']) ?? '';
         $english = $this->normalizer->normalizeDisplay($data['english']) ?? '';
         $mekongga = $this->normalizer->normalizeDisplay($data['mekongga']) ?? '';
+        $code = $this->normalizer->normalizeDisplay($data['code'] ?? null);
 
         return [
             'category_id' => $data['category_id'],
+            'code' => $code,
+            'code_normalized' => $code ? $this->normalizer->normalize($code) : null,
             'indonesia' => $indonesia,
             'english' => $english,
             'mekongga' => $mekongga,

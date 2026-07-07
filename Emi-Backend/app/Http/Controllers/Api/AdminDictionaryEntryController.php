@@ -59,7 +59,7 @@ class AdminDictionaryEntryController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $entry = DictionaryEntry::query()->with(['category', 'audioMedia'])->findOrFail($id);
+        $entry = DictionaryEntry::query()->with(['category', 'audioMedia', 'sentenceExamples'])->findOrFail($id);
         Gate::authorize('view', $entry);
 
         return ApiResponse::success('Detail entri kamus berhasil diambil.', new DictionaryEntryResource($entry));

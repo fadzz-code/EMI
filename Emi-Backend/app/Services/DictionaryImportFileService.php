@@ -47,9 +47,10 @@ class DictionaryImportFileService
         return Storage::disk($disk)->path($path);
     }
 
-    public function parseCsv(string $path): array
+    public function parseCsv(string $path, string $importType): array
     {
         $this->validateUtf8($path);
+        $expectedHeader = config("dictionary.csv_headers.{$importType}");
 
         $file = new SplFileObject($path, 'rb');
         $file->setFlags(SplFileObject::READ_CSV | SplFileObject::SKIP_EMPTY);
@@ -70,7 +71,7 @@ class DictionaryImportFileService
             if ($header === null) {
                 $row[0] = isset($row[0]) ? preg_replace('/^\xEF\xBB\xBF/', '', (string) $row[0]) : '';
                 $header = $row;
-                $this->validateHeader($header);
+                $this->validateHeader($header, $expectedHeader, $importType);
 
                 continue;
             }
@@ -79,13 +80,13 @@ class DictionaryImportFileService
                 continue;
             }
 
-            if (count($row) !== count(config('dictionary.csv_header'))) {
-                throw new ApiException('Format CSV tidak valid.', 'INVALID_CSV_HEADER', 422);
+            if (count($row) !== count($expectedHeader)) {
+                throw new ApiException($this->templateErrorMessage($importType), 'INVALID_CSV_HEADER', 422);
             }
 
             $rows[] = [
                 'row_number' => $rowNumber,
-                'data' => array_combine(config('dictionary.csv_header'), $row),
+                'data' => array_combine($expectedHeader, $row),
             ];
 
             if (count($rows) > (int) config('dictionary.max_rows')) {
@@ -219,14 +220,20 @@ class DictionaryImportFileService
         }
     }
 
-    private function validateHeader(array $header): void
+    private function validateHeader(array $header, array $expected, string $importType): void
     {
-        $expected = config('dictionary.csv_header');
         $header = array_map(fn ($value) => trim((string) $value), $header);
 
         if ($header !== $expected) {
-            throw new ApiException('Header CSV tidak sesuai template resmi.', 'INVALID_CSV_HEADER', 422);
+            throw new ApiException($this->templateErrorMessage($importType), 'INVALID_CSV_HEADER', 422);
         }
+    }
+
+    private function templateErrorMessage(string $importType): string
+    {
+        return $importType === 'sentence_examples'
+            ? 'Template CSV tidak sesuai. Gunakan template Contoh Kalimat.'
+            : 'Template CSV tidak sesuai. Gunakan template Kosakata.';
     }
 
     private function validateZipEntryName(string $name): void

@@ -6,6 +6,7 @@ use App\Jobs\ProcessDictionaryImport;
 use App\Models\DictionaryCategory;
 use App\Models\DictionaryEntry;
 use App\Models\DictionaryImportJob;
+use App\Models\DictionarySentenceExample;
 use App\Models\MediaFile;
 use App\Models\User;
 use App\Services\DictionaryImportProcessingService;
@@ -209,16 +210,16 @@ class Phase5DictionaryImportTest extends TestCase
 
         config(['dictionary.max_rows' => 1]);
         $this->withToken($this->tokenFor($admin))->post('/api/v1/admin/dictionary/imports/preview', [
-            'csv_file' => $this->csvFile($this->validCsv()."lari,run,lumaa,Verba,,,\n"),
+            'csv_file' => $this->csvFile($this->validCsv()."2,lari,run,lumaa,Verba,\n"),
         ])->assertUnprocessable()->assertJsonPath('code', 'CSV_ROW_LIMIT_EXCEEDED');
         config(['dictionary.max_rows' => 10000]);
 
-        $csv = "\xEF\xBB\xBF".implode(',', config('dictionary.csv_header'))."\n"
-            ."makan,eat,monga,Verba,contoh,contoh,monga.mp3\n"
-            .",drink,mokale,Verba,,,missing.mp3\n"
-            ."tidur,sleep,moleo,TidakAda,,,\n"
-            ."minum,drink,mokale,Verba,,,\n"
-            ."makan,eat,monga,Verba,,,\n";
+        $csv = "\xEF\xBB\xBF".implode(',', config('dictionary.csv_headers.vocabulary'))."\n"
+            ."1,makan,eat,monga,Verba,monga.mp3\n"
+            ."2,,drink,mokale,Verba,missing.mp3\n"
+            ."3,tidur,sleep,moleo,TidakAda,\n"
+            ."4,minum,drink,mokale,Verba,\n"
+            ."5,makan,eat,monga,Verba,\n";
         $response = $this->withToken($this->tokenFor($admin))->post('/api/v1/admin/dictionary/imports/preview', [
             'csv_file' => $this->csvFile($csv),
             'audio_zip' => $this->zipFile(['monga.mp3' => $this->mp3Content(), 'unused.mp3' => $this->mp3Content()]),
@@ -236,6 +237,135 @@ class Phase5DictionaryImportTest extends TestCase
         $this->assertDatabaseHas('dictionary_import_errors', ['code' => 'CATEGORY_NOT_FOUND']);
         $this->assertDatabaseHas('dictionary_import_errors', ['code' => 'DICTIONARY_DUPLICATE']);
         $this->assertDatabaseHas('audit_logs', ['action' => 'dictionary.import_previewed']);
+    }
+
+    public function test_client_templates_are_strictly_separated_and_download_headers_match(): void
+    {
+        Queue::fake();
+        $admin = User::factory()->admin()->create();
+        DictionaryCategory::factory()->create(['name' => 'Verba', 'slug' => 'verba', 'created_by' => $admin->id]);
+
+        $vocabularyHeader = 'kode,indonesia,english,mekongga,kategori,audio_filename';
+        $sentenceHeader = 'kode,contoh_mekongga,contoh_indonesia';
+
+        $this->withToken($this->tokenFor($admin))->get('/api/v1/admin/dictionary/imports/vocabulary/template')
+            ->assertOk()
+            ->assertStreamedContent($vocabularyHeader."\n1,makan,eat,monga,Verba,\n2,air,water,air,Nomina,\n3,selamat,hello,ari,Sapaan,\n");
+
+        $this->withToken($this->tokenFor($admin))->get('/api/v1/admin/dictionary/imports/sentence_examples/template')
+            ->assertOk()
+            ->assertStreamedContent($sentenceHeader."\n1,inoi monga kade,saya sedang makan nasi\n2,air i laika,air di rumah\n3,ari nggiro,selamat pagi\n");
+
+        $vocabularyJob = $this->previewAndQueue($admin, $this->validCsv(''), 'skip');
+        app(DictionaryImportProcessingService::class)->process($vocabularyJob->id);
+
+        $sentenceJobId = $this->withToken($this->tokenFor($admin))->post('/api/v1/admin/dictionary/imports/preview', [
+            'import_type' => 'sentence_examples',
+            'csv_file' => $this->csvFile($this->sentenceCsv()),
+        ])->assertCreated()
+            ->assertJsonPath('data.import_type', 'sentence_examples')
+            ->assertJsonPath('data.summary.valid_rows', 1)
+            ->json('data.id');
+
+        $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/dictionary/imports/{$sentenceJobId}/confirm")->assertStatus(202);
+        app(DictionaryImportProcessingService::class)->process($sentenceJobId);
+        $this->assertSame(1, DictionarySentenceExample::query()->where('example_mekongga', 'inoi monga kade')->count());
+
+        $this->withToken($this->tokenFor($admin))->post('/api/v1/admin/dictionary/imports/preview', [
+            'import_type' => 'vocabulary',
+            'csv_file' => $this->csvFile($this->sentenceCsv()),
+        ])->assertUnprocessable()
+            ->assertJsonPath('message', 'Template CSV tidak sesuai. Gunakan template Kosakata.');
+
+        $this->withToken($this->tokenFor($admin))->post('/api/v1/admin/dictionary/imports/preview', [
+            'import_type' => 'sentence_examples',
+            'csv_file' => $this->csvFile($this->validCsv('')),
+        ])->assertUnprocessable()
+            ->assertJsonPath('message', 'Template CSV tidak sesuai. Gunakan template Contoh Kalimat.');
+
+        $this->withToken($this->tokenFor($admin))->post('/api/v1/admin/dictionary/imports/preview', [
+            'import_type' => 'vocabulary',
+            'csv_file' => $this->csvFile($vocabularyHeader.",extra\n1,makan,eat,monga,Verba,,x\n"),
+        ])->assertUnprocessable();
+
+        $this->withToken($this->tokenFor($admin))->post('/api/v1/admin/dictionary/imports/preview', [
+            'import_type' => 'sentence_examples',
+            'csv_file' => $this->csvFile('contoh_mekongga,kode,contoh_indonesia'."\ninoi monga kade,1,saya sedang makan nasi\n"),
+        ])->assertUnprocessable();
+    }
+
+    public function test_system_sentence_template_upload_uses_sentence_import_type(): void
+    {
+        Queue::fake();
+        $admin = User::factory()->admin()->create();
+        foreach (['Verba', 'Nomina', 'Sapaan'] as $name) {
+            DictionaryCategory::factory()->create(['name' => $name, 'slug' => str($name)->lower()->toString(), 'created_by' => $admin->id]);
+        }
+
+        $vocabularyCsv = implode(',', config('dictionary.csv_headers.vocabulary'))."\n"
+            ."1,makan,eat,monga,Verba,\n"
+            ."2,air,water,air,Nomina,\n"
+            ."3,selamat,hello,ari,Sapaan,\n";
+        $vocabularyJob = $this->previewAndQueue($admin, $vocabularyCsv, 'skip');
+        app(DictionaryImportProcessingService::class)->process($vocabularyJob->id);
+
+        $sentenceCsv = implode(',', config('dictionary.csv_headers.sentence_examples'))."\n"
+            ."1,inoi monga kade,saya sedang makan nasi\n"
+            ."2,air i laika,air di rumah\n"
+            ."3,ari nggiro,selamat pagi\n";
+
+        $this->withToken($this->tokenFor($admin))->post('/api/v1/admin/dictionary/imports/preview', [
+            'import_type' => 'sentence_examples',
+            'csv_file' => $this->csvFile($sentenceCsv),
+        ])->assertCreated()
+            ->assertJsonPath('data.import_type', 'sentence_examples')
+            ->assertJsonPath('data.summary.valid_rows', 3);
+    }
+
+    public function test_sentence_examples_attach_to_existing_dictionary_entry_by_code_and_show_in_detail(): void
+    {
+        Queue::fake();
+        $admin = User::factory()->admin()->create();
+        $student = User::factory()->student()->approved()->create();
+        DictionaryCategory::factory()->create(['name' => 'Sapaan', 'slug' => 'sapaan', 'created_by' => $admin->id]);
+
+        $vocabularyJob = $this->previewAndQueue($admin, implode(',', config('dictionary.csv_headers.vocabulary'))."\nARI,selamat,hello,ari,Sapaan,\n", 'skip');
+        app(DictionaryImportProcessingService::class)->process($vocabularyJob->id);
+        $entry = DictionaryEntry::query()->where('code', 'ARI')->firstOrFail();
+
+        $sentenceCsv = implode(',', config('dictionary.csv_headers.sentence_examples'))."\n"
+            ."ARI,Ari nggiro,Selamat pagi\n"
+            ."ARI,Ari mbule,Selamat kembali\n";
+        $sentenceJob = $this->previewAndQueue($admin, $sentenceCsv, 'skip', 'sentence_examples');
+        app(DictionaryImportProcessingService::class)->process($sentenceJob->id);
+
+        $this->assertSame(1, DictionaryEntry::query()->where('code', 'ARI')->count());
+        $this->assertSame(2, DictionarySentenceExample::query()->where('dictionary_entry_id', $entry->id)->count());
+
+        $this->withToken($this->tokenFor($student))->getJson("/api/v1/dictionary/{$entry->id}")
+            ->assertOk()
+            ->assertJsonCount(2, 'data.sentence_examples')
+            ->assertJsonFragment(['contoh_mekongga' => 'Ari nggiro', 'contoh_indonesia' => 'Selamat pagi'])
+            ->assertJsonFragment(['contoh_mekongga' => 'Ari mbule', 'contoh_indonesia' => 'Selamat kembali']);
+    }
+
+    public function test_sentence_example_import_with_unknown_code_is_invalid_and_does_not_create_entry(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->withToken($this->tokenFor($admin))->post('/api/v1/admin/dictionary/imports/preview', [
+            'import_type' => 'sentence_examples',
+            'csv_file' => $this->csvFile($this->sentenceCsv('TIDAKADA')),
+        ])->assertCreated()
+            ->assertJsonPath('data.summary.valid_rows', 0)
+            ->assertJsonPath('data.summary.invalid_rows', 1);
+
+        $this->assertDatabaseHas('dictionary_import_errors', [
+            'field' => 'kode',
+            'code' => 'CODE_NOT_FOUND',
+            'message' => 'Kode tidak ditemukan di kosakata. Import kosakata terlebih dahulu.',
+        ]);
+        $this->assertSame(0, DictionaryEntry::query()->count());
     }
 
     public function test_valid_csv_without_audio_zip_can_be_confirmed_and_imported_with_audio_warning(): void
@@ -293,8 +423,8 @@ class Phase5DictionaryImportTest extends TestCase
         $admin = User::factory()->admin()->create();
         DictionaryCategory::factory()->create(['name' => 'Verba', 'slug' => 'verba', 'created_by' => $admin->id]);
 
-        $csv = implode(',', config('dictionary.csv_header'))."\n"
-            .",eat,monga,Verba,,,monga.mp3\n";
+        $csv = implode(',', config('dictionary.csv_headers.vocabulary'))."\n"
+            ."1,,eat,monga,Verba,monga.mp3\n";
 
         $response = $this->withToken($this->tokenFor($admin))->post('/api/v1/admin/dictionary/imports/preview', [
             'csv_file' => $this->csvFile($csv),
@@ -403,11 +533,12 @@ class Phase5DictionaryImportTest extends TestCase
             ->assertJsonPath('code', 'IMPORT_HAS_NO_VALID_ROWS');
     }
 
-    private function previewAndQueue(User $admin, string $csv, string $strategy): DictionaryImportJob
+    private function previewAndQueue(User $admin, string $csv, string $strategy, string $importType = 'vocabulary'): DictionaryImportJob
     {
         $jobId = $this->withToken($this->tokenFor($admin))->post('/api/v1/admin/dictionary/imports/preview', [
             'csv_file' => $this->csvFile($csv),
             'duplicate_strategy' => $strategy,
+            'import_type' => $importType,
         ])->assertCreated()->json('data.id');
 
         $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/dictionary/imports/{$jobId}/confirm")->assertStatus(202);
@@ -438,10 +569,16 @@ class Phase5DictionaryImportTest extends TestCase
         return MediaFile::query()->findOrFail($response->json('data.id'));
     }
 
-    private function validCsv(string $audioFilename = 'monga.mp3', string $category = 'Verba'): string
+    private function validCsv(string $audioFilename = 'monga.mp3', string $category = 'Verba', string $code = '1'): string
     {
-        return implode(',', config('dictionary.csv_header'))."\n"
-            ."makan,eat,monga,{$category},inoi monga kade,saya sedang makan nasi,{$audioFilename}\n";
+        return implode(',', config('dictionary.csv_headers.vocabulary'))."\n"
+            ."{$code},makan,eat,monga,{$category},{$audioFilename}\n";
+    }
+
+    private function sentenceCsv(string $code = '1'): string
+    {
+        return implode(',', config('dictionary.csv_headers.sentence_examples'))."\n"
+            ."{$code},inoi monga kade,saya sedang makan nasi\n";
     }
 
     private function csvFile(string $content): UploadedFile

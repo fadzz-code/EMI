@@ -109,6 +109,7 @@ Route::prefix('v1')->group(function () {
         Route::put('dictionary/entries/{id}', [AdminDictionaryEntryController::class, 'update']);
         Route::delete('dictionary/entries/{id}', [AdminDictionaryEntryController::class, 'destroy']);
         Route::get('dictionary/imports/template', [DictionaryImportController::class, 'template']);
+        Route::get('dictionary/imports/{import_type}/template', [DictionaryImportController::class, 'template']);
         Route::post('dictionary/imports/preview', [DictionaryImportController::class, 'preview']);
         Route::get('dictionary/imports', [DictionaryImportController::class, 'index']);
         Route::get('dictionary/imports/{id}', [DictionaryImportController::class, 'show']);

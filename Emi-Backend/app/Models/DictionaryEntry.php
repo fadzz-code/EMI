@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class DictionaryEntry extends Model
@@ -17,6 +18,8 @@ class DictionaryEntry extends Model
 
     protected $fillable = [
         'category_id',
+        'code',
+        'code_normalized',
         'indonesia',
         'english',
         'mekongga',
@@ -62,6 +65,11 @@ class DictionaryEntry extends Model
     public function sourceImportJob(): BelongsTo
     {
         return $this->belongsTo(DictionaryImportJob::class, 'source_import_job_id');
+    }
+
+    public function sentenceExamples(): HasMany
+    {
+        return $this->hasMany(DictionarySentenceExample::class, 'dictionary_entry_id')->orderBy('created_at')->orderBy('id');
     }
 
     public function scopeActive(Builder $query): Builder

@@ -138,9 +138,18 @@ export function DictionaryDetail({ entryId }: { entryId: string }) {
               <CardHeader>
                 <h2 className="text-xl font-black text-ink">Contoh Kalimat</h2>
               </CardHeader>
-              <CardContent className="grid gap-4">
-                <DetailItem label="Mekongga" value={entry.example_mekongga} />
-                <DetailItem label="Indonesia" value={entry.example_indonesia} />
+              <CardContent className="grid gap-3">
+                {(entry.sentence_examples ?? []).length > 0 ? (
+                  entry.sentence_examples?.map((example, index) => (
+                    <div key={example.id} className="rounded-lg border-2 border-ink bg-white p-4">
+                      <p className="text-xs font-black uppercase text-slate-500">Contoh {index + 1}</p>
+                      <p className="mt-2 text-sm font-bold text-ink">Mekongga: {example.contoh_mekongga}</p>
+                      <p className="mt-1 text-sm font-bold text-slate-600">Indonesia: {example.contoh_indonesia}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="rounded-lg border-2 border-dashed border-ink bg-white p-4 text-sm font-bold text-slate-600">Belum ada contoh kalimat.</p>
+                )}
               </CardContent>
             </Card>
 

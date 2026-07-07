@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\DictionaryCategory;
 use App\Models\DictionaryEntry;
 use App\Models\DictionaryImportError;
+use App\Models\DictionarySentenceExample;
 use App\Models\DictionaryImportJob;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ class DictionaryImportPreviewService
         private readonly DictionaryNormalizer $normalizer,
     ) {}
 
-    public function preview(User $admin, UploadedFile $csvFile, ?UploadedFile $audioZip, string $duplicateStrategy, Request $request): DictionaryImportJob
+    public function preview(User $admin, UploadedFile $csvFile, ?UploadedFile $audioZip, string $duplicateStrategy, string $importType, Request $request): DictionaryImportJob
     {
         $jobId = (string) Str::uuid();
         $csv = $this->fileService->storeUploadedFile($csvFile, $jobId, 'source.csv');
@@ -30,6 +31,7 @@ class DictionaryImportPreviewService
             'uploaded_by' => $admin->id,
             'status' => 'previewing',
             'duplicate_strategy' => $duplicateStrategy,
+            'import_type' => $importType,
             'csv_disk' => $csv['disk'],
             'csv_path' => $csv['path'],
             'csv_original_name' => $csv['original_name'],
@@ -70,8 +72,10 @@ class DictionaryImportPreviewService
         $zip = $this->fileService->extractZipAudio($zipPath);
 
         try {
-            $rows = $this->fileService->parseCsv($csvPath);
-            $analysis = $this->analyzeRows($job, $rows, $zip['files']);
+            $rows = $this->fileService->parseCsv($csvPath, $job->import_type);
+            $analysis = $job->import_type === 'sentence_examples'
+                ? $this->analyzeSentenceRows($job, $rows)
+                : $this->analyzeVocabularyRows($job, $rows, $zip['files']);
 
             if ($persistErrors) {
                 DictionaryImportError::query()->where('import_job_id', $job->id)->delete();
@@ -93,7 +97,7 @@ class DictionaryImportPreviewService
         }
     }
 
-    private function analyzeRows(DictionaryImportJob $job, array $rows, array $zipFiles): array
+    private function analyzeVocabularyRows(DictionaryImportJob $job, array $rows, array $zipFiles): array
     {
         $categories = DictionaryCategory::query()
             ->active()
@@ -118,7 +122,7 @@ class DictionaryImportPreviewService
             ];
             $tripleKey = implode('|', $triple);
 
-            foreach (['indonesia', 'english', 'mekongga', 'kategori'] as $field) {
+            foreach (['kode', 'indonesia', 'english', 'mekongga', 'kategori'] as $field) {
                 if (($data[$field] ?? '') === '') {
                     $rowErrors[] = $this->error($row['row_number'], $field, 'REQUIRED', "Kolom {$field} wajib diisi.", $data);
                 }
@@ -216,6 +220,108 @@ class DictionaryImportPreviewService
                 'audio_missing' => count(array_filter($errors, fn ($error) => $error['code'] === 'AUDIO_FILE_NOT_FOUND')),
                 'unused_audio_files' => count($unusedAudio),
                 'warning_count' => count($unusedAudio) + count(array_filter($errors, fn ($error) => in_array($error['code'], ['CSV_DUPLICATE_SKIPPED', 'AUDIO_FILE_NOT_FOUND'], true))),
+                'sample_rows' => $sampleRows,
+                'sample_errors' => $sampleErrors,
+            ],
+        ];
+    }
+
+    private function analyzeSentenceRows(DictionaryImportJob $job, array $rows): array
+    {
+        $seen = [];
+        $validRows = [];
+        $errors = [];
+        $sampleRows = [];
+        $sampleErrors = [];
+        $duplicateRows = 0;
+        $dbDuplicates = 0;
+
+        foreach ($rows as $row) {
+            $data = $this->cleanRow($row['data']);
+            $rowErrors = [];
+
+            foreach (['kode', 'contoh_mekongga', 'contoh_indonesia'] as $field) {
+                if (($data[$field] ?? '') === '') {
+                    $rowErrors[] = $this->error($row['row_number'], $field, 'REQUIRED', "Kolom {$field} wajib diisi.", $data);
+                }
+            }
+
+            $pair = [
+                $this->normalizer->normalize($data['contoh_mekongga']),
+                $this->normalizer->normalize($data['contoh_indonesia']),
+            ];
+            $pairKey = implode('|', $pair);
+
+            if (isset($seen[$pairKey])) {
+                $duplicateRows++;
+
+                if ($job->duplicate_strategy === 'reject') {
+                    $rowErrors[] = $this->error($row['row_number'], null, 'SENTENCE_DUPLICATE', 'Contoh kalimat duplikat ditemukan dalam CSV.', $data);
+                } else {
+                    $rowErrors[] = $this->error($row['row_number'], null, 'CSV_DUPLICATE_SKIPPED', 'Duplikat dalam CSV dilewati secara deterministik.', $data, false);
+                }
+            }
+
+            $entry = DictionaryEntry::query()
+                ->where('code_normalized', $this->normalizer->normalize($data['kode'] ?? ''))
+                ->first();
+
+            if (($data['kode'] ?? '') !== '' && ! $entry) {
+                $rowErrors[] = $this->error($row['row_number'], 'kode', 'CODE_NOT_FOUND', 'Kode tidak ditemukan di kosakata. Import kosakata terlebih dahulu.', $data);
+            }
+
+            $existing = DictionarySentenceExample::query()
+                ->where('dictionary_entry_id', $entry?->id)
+                ->where('example_mekongga_normalized', $pair[0])
+                ->where('example_indonesia_normalized', $pair[1])
+                ->first();
+
+            if ($existing) {
+                $dbDuplicates++;
+
+                if ($job->duplicate_strategy === 'reject') {
+                    $rowErrors[] = $this->error($row['row_number'], null, 'SENTENCE_DUPLICATE', 'Contoh kalimat sudah ada.', $data);
+                }
+            }
+
+            $fatalRowErrors = array_filter($rowErrors, fn ($error) => $error['is_error']);
+
+            foreach ($rowErrors as $error) {
+                $errors[] = collect($error)->except('is_error')->all();
+                if (count($sampleErrors) < config('dictionary.sample_limit')) {
+                    $sampleErrors[] = collect($error)->except('is_error')->all();
+                }
+            }
+
+            if ($fatalRowErrors === []) {
+                $seen[$pairKey] = true;
+                $validRows[] = [
+                    'row_number' => $row['row_number'],
+                    'data' => $data,
+                    'pair_key' => $pairKey,
+                    'entry_id' => $entry?->id,
+                    'existing_id' => $existing?->id,
+                ];
+
+                if (count($sampleRows) < config('dictionary.sample_limit')) {
+                    $sampleRows[] = $data;
+                }
+            }
+        }
+
+        return [
+            'valid_rows' => $validRows,
+            'errors' => $errors,
+            'summary' => [
+                'total_rows' => count($rows),
+                'valid_rows' => count($validRows),
+                'invalid_rows' => count($rows) - count($validRows),
+                'new_rows' => count(array_filter($validRows, fn ($row) => $row['existing_id'] === null)),
+                'duplicate_rows' => $duplicateRows + $dbDuplicates,
+                'audio_referenced' => 0,
+                'audio_missing' => 0,
+                'unused_audio_files' => 0,
+                'warning_count' => count(array_filter($errors, fn ($error) => $error['code'] === 'CSV_DUPLICATE_SKIPPED')),
                 'sample_rows' => $sampleRows,
                 'sample_errors' => $sampleErrors,
             ],

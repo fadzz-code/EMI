@@ -52,7 +52,7 @@ class DictionaryController extends Controller
     public function show(string $id): JsonResponse
     {
         $entry = DictionaryEntry::query()
-            ->with(['category', 'audioMedia'])
+            ->with(['category', 'audioMedia', 'sentenceExamples'])
             ->active()
             ->whereHas('category', fn ($query) => $query->active())
             ->findOrFail($id);

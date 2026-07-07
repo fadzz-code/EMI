@@ -13,6 +13,7 @@ class DictionaryImportJobResource extends JsonResource
             'id' => $this->id,
             'status' => $this->status,
             'duplicate_strategy' => $this->duplicate_strategy,
+            'import_type' => $this->import_type,
             'csv_original_name' => $this->csv_original_name,
             'csv_size_bytes' => $this->csv_size_bytes,
             'audio_zip_original_name' => $this->audio_zip_original_name,

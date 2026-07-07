@@ -35,7 +35,7 @@ import {
   importStatusLabel,
   statusTone,
 } from "./dictionary-utils";
-import type { DictionaryImportJob, DuplicateStrategy } from "./types";
+import type { DictionaryImportJob, DictionaryImportType, DuplicateStrategy } from "./types";
 
 function numberValue(value?: number | null) {
   return String(value ?? 0);
@@ -50,6 +50,7 @@ function summaryValue(job: DictionaryImportJob | null, key: string) {
 export function DictionaryImport() {
   const { token } = useAuth();
   const queryClient = useQueryClient();
+  const [importType, setImportType] = useState<DictionaryImportType>("vocabulary");
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [audioZip, setAudioZip] = useState<File | null>(null);
   const [duplicateStrategy, setDuplicateStrategy] = useState<DuplicateStrategy>("skip");
@@ -86,8 +87,9 @@ export function DictionaryImport() {
 
       return dictionaryService.previewImport(token ?? "", {
         csvFile,
-        audioZip,
+        audioZip: importType === "vocabulary" ? audioZip : null,
         duplicateStrategy,
+        importType,
       });
     },
     onSuccess: async (job) => {
@@ -109,12 +111,12 @@ export function DictionaryImport() {
   });
 
   const templateMutation = useMutation({
-    mutationFn: () => dictionaryService.downloadTemplate(token ?? ""),
-    onSuccess: (blob) => {
+    mutationFn: (type: DictionaryImportType) => dictionaryService.downloadTemplate(token ?? "", type),
+    onSuccess: (blob, type) => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "emi-dictionary-template.csv";
+      link.download = type === "sentence_examples" ? "template-contoh-kalimat-bahasa-mekongga.csv" : "template-kata-bahasa-mekongga.csv";
       link.click();
       URL.revokeObjectURL(url);
     },
@@ -142,13 +144,7 @@ export function DictionaryImport() {
             jika ringkasan baris valid sudah sesuai.
           </p>
         </div>
-        <Button
-          disabled={templateMutation.isPending}
-          onClick={() => templateMutation.mutate()}
-          variant="secondary"
-        >
-          Download Template CSV
-        </Button>
+
       </header>
 
       {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
@@ -161,6 +157,41 @@ export function DictionaryImport() {
           </CardHeader>
           <CardContent>
             <form className="grid gap-4" onSubmit={submitPreview}>
+              <div className="grid gap-4 md:grid-cols-2">
+                {([
+                  ["vocabulary", "Import Kosakata", "Untuk data kata utama dan ZIP audio opsional."],
+                  ["sentence_examples", "Import Contoh Kalimat", "Untuk menempelkan banyak contoh kalimat ke kode kosakata yang sudah ada."],
+                ] as const).map(([type, title, description]) => (
+                  <div key={type} className={`flex h-full flex-col rounded-xl border-2 p-4 ${importType === type ? "border-ink bg-yellow-100" : "border-border bg-white"}`}>
+                    <button
+                      className="block w-full text-left"
+                      onClick={() => {
+                        setImportType(type);
+                        setCsvFile(null);
+                        setAudioZip(null);
+                      }}
+                      type="button"
+                    >
+                      <p className="text-lg font-black text-ink">{title}</p>
+                      <p className="mt-1 text-xs font-bold leading-5 text-slate-600">{description}</p>
+                    </button>
+                    <Button
+                      className="mt-auto w-full"
+                      disabled={templateMutation.isPending}
+                      onClick={() => {
+                        setImportType(type);
+                        setCsvFile(null);
+                        setAudioZip(null);
+                        templateMutation.mutate(type);
+                      }}
+                      type="button"
+                      variant="secondary"
+                    >
+                      Download Template {type === "vocabulary" ? "Kosakata" : "Contoh Kalimat"}
+                    </Button>
+                  </div>
+                ))}
+              </div>
               <FormField label="File CSV">
                 <UploadComponent
                   accept=".csv,text/csv"
@@ -176,22 +207,28 @@ export function DictionaryImport() {
                 />
               ) : null}
 
-              <FormField label="ZIP audio (opsional)">
-                <UploadComponent
-                  accept=".zip,application/zip,application/x-zip-compressed"
-                  onChange={(event) => setAudioZip(event.target.files?.[0] ?? null)}
-                />
-                <p className="mt-2 text-xs font-bold leading-5 text-slate-600">
-                  ZIP audio bersifat opsional. Jika tidak diunggah, data kata tetap bisa diimpor tanpa audio. Jika ingin menyertakan audio, pastikan nama file di CSV sama persis dengan nama file di ZIP.
-                </p>
-              </FormField>
-              {audioZip ? (
-                <FilePreview
-                  name={audioZip.name}
-                  size={formatBytes(audioZip.size)}
-                  type="ZIP"
-                />
-              ) : null}
+              {importType === "vocabulary" ? (
+                <>
+                  <FormField label="ZIP audio (opsional)">
+                    <UploadComponent
+                      accept=".zip,application/zip,application/x-zip-compressed"
+                      onChange={(event) => setAudioZip(event.target.files?.[0] ?? null)}
+                    />
+                    <p className="mt-2 text-xs font-bold leading-5 text-slate-600">
+                      ZIP audio bersifat opsional untuk Kosakata. Jika tidak diunggah, data kata tetap bisa diimpor tanpa audio. Jika ingin menyertakan audio, pastikan nama file di CSV sama persis dengan nama file di ZIP.
+                    </p>
+                  </FormField>
+                  {audioZip ? (
+                    <FilePreview
+                      name={audioZip.name}
+                      size={formatBytes(audioZip.size)}
+                      type="ZIP"
+                    />
+                  ) : null}
+                </>
+              ) : (
+                <Alert tone="info">Import Contoh Kalimat hanya memakai CSV sesuai template client dan tidak memakai ZIP audio.</Alert>
+              )}
 
               <FormField label="Strategi duplikat">
                 <Select
@@ -243,6 +280,7 @@ export function DictionaryImport() {
                 <div className="grid gap-3 rounded-lg border-2 border-ink bg-white p-4 text-sm font-bold text-ink md:grid-cols-2">
                   <p>CSV: {selectedJob.csv_original_name ?? "-"} ({formatBytes(selectedJob.csv_size_bytes)})</p>
                   <p>ZIP: {selectedJob.audio_zip_original_name ?? "-"} ({formatBytes(selectedJob.audio_zip_size_bytes)})</p>
+                  <p>Jenis: {selectedJob.import_type === "sentence_examples" ? "Contoh Kalimat" : "Kosakata"}</p>
                   <p>Strategi: {duplicateStrategyLabel(selectedJob.duplicate_strategy)}</p>
                   <p>Dibuat: {formatDateTime(selectedJob.created_at)}</p>
                   <p>Ditambahkan: {numberValue(selectedJob.inserted_rows)}</p>

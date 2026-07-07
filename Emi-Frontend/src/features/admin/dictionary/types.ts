@@ -29,6 +29,13 @@ export type DictionaryAudio = {
   mime_type: string;
 };
 
+export type DictionarySentenceExample = {
+  id: string;
+  kode?: string | null;
+  contoh_mekongga: string;
+  contoh_indonesia: string;
+};
+
 export type DictionaryEntry = {
   id: string;
   category_id: string;
@@ -38,6 +45,7 @@ export type DictionaryEntry = {
   mekongga: string;
   example_mekongga?: string | null;
   example_indonesia?: string | null;
+  sentence_examples?: DictionarySentenceExample[];
   audio?: DictionaryAudio | null;
   status: DictionaryStatus;
   created_at?: string | null;
@@ -56,6 +64,8 @@ export type MediaFile = {
   created_at?: string | null;
 };
 
+export type DictionaryImportType = "vocabulary" | "sentence_examples";
+
 export type DictionaryImportSummary = {
   total_rows?: number;
   valid_rows?: number;
@@ -72,6 +82,7 @@ export type DictionaryImportJob = {
   id: string;
   status: DictionaryImportStatus;
   duplicate_strategy: DuplicateStrategy;
+  import_type?: DictionaryImportType;
   csv_original_name?: string | null;
   csv_size_bytes?: number | null;
   audio_zip_original_name?: string | null;

@@ -78,10 +78,19 @@ export function StudentDictionaryDetail({ entryId }: { entryId: string }) {
               <h2 className="text-xl font-black text-ink">Contoh Kalimat</h2>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                <DetailRow label="Contoh Kalimat Mekongga" value={entry.example_mekongga} />
-                <DetailRow label="Arti Contoh Kalimat Indonesia" value={entry.example_indonesia} />
-              </div>
+              {(entry.sentence_examples ?? []).length > 0 ? (
+                <div className="grid gap-4">
+                  {entry.sentence_examples?.map((example, index) => (
+                    <div key={example.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                      <p className="text-xs font-black uppercase text-slate-500">Contoh {index + 1}</p>
+                      <p className="mt-2 text-lg font-black text-ink">Mekongga: {example.contoh_mekongga}</p>
+                      <p className="mt-1 text-sm font-bold text-slate-600">Indonesia: {example.contoh_indonesia}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-sm font-bold text-slate-600">Belum ada contoh kalimat.</p>
+              )}
             </CardContent>
           </Card>
 

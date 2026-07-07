@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\ApiException;
 use App\Models\DictionaryEntry;
 use App\Models\DictionaryImportJob;
+use App\Models\DictionarySentenceExample;
 use App\Models\MediaFile;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -45,6 +46,11 @@ class DictionaryImportProcessingService
 
             $job = $job->refresh();
             $analysis = $this->previewService->analyzeJob($job, false);
+
+            if ($job->import_type === 'sentence_examples') {
+                return $this->processSentenceExamples($job, $actor, $analysis);
+            }
+
             $mediaByFilename = [];
             $inserted = 0;
             $updated = 0;
@@ -71,11 +77,12 @@ class DictionaryImportProcessingService
 
                         $payload = [
                             'category_id' => $row['category_id'],
+                            'code' => $data['kode'],
                             'indonesia' => $data['indonesia'],
                             'english' => $data['english'],
                             'mekongga' => $data['mekongga'],
-                            'example_mekongga' => $data['contoh_mekongga'] ?: null,
-                            'example_indonesia' => $data['contoh_indonesia'] ?: null,
+                            'example_mekongga' => null,
+                            'example_indonesia' => null,
                             'audio_media_id' => $audioMediaId,
                             'status' => 'active',
                         ];
@@ -149,6 +156,83 @@ class DictionaryImportProcessingService
                 $this->fileService->cleanupDirectory($analysis['zip_temp_dir'] ?? null);
             }
         }
+    }
+
+    private function processSentenceExamples(DictionaryImportJob $job, $actor, array $analysis): DictionaryImportJob
+    {
+        $inserted = 0;
+        $updated = 0;
+        $skipped = 0;
+        $processedPairs = [];
+        $chunkSize = max(1, (int) config('dictionary.chunk_size'));
+
+        foreach (array_chunk($analysis['rows'], $chunkSize) as $chunk) {
+            DB::transaction(function () use ($chunk, $job, $actor, &$inserted, &$updated, &$skipped, &$processedPairs): void {
+                foreach ($chunk as $row) {
+                    if (isset($processedPairs[$row['pair_key']])) {
+                        $skipped++;
+
+                        continue;
+                    }
+
+                    $processedPairs[$row['pair_key']] = true;
+                    $data = $row['data'];
+                    $existing = DictionarySentenceExample::query()->whereKey($row['existing_id'])->first();
+                    $payload = [
+                        'dictionary_entry_id' => $row['entry_id'],
+                        'code' => $data['kode'],
+                        'example_mekongga' => $data['contoh_mekongga'],
+                        'example_indonesia' => $data['contoh_indonesia'],
+                        'example_mekongga_normalized' => app(DictionaryNormalizer::class)->normalize($data['contoh_mekongga']),
+                        'example_indonesia_normalized' => app(DictionaryNormalizer::class)->normalize($data['contoh_indonesia']),
+                        'status' => 'active',
+                    ];
+
+                    if ($existing && $job->duplicate_strategy === 'skip') {
+                        $skipped++;
+
+                        continue;
+                    }
+
+                    if ($existing && $job->duplicate_strategy === 'update') {
+                        $existing->fill($payload + [
+                            'updated_by' => $actor->id,
+                            'source_import_job_id' => $job->id,
+                        ])->save();
+                        $updated++;
+
+                        continue;
+                    }
+
+                    if (! $existing) {
+                        DictionarySentenceExample::query()->create($payload + [
+                            'created_by' => $actor->id,
+                            'source_import_job_id' => $job->id,
+                        ]);
+                        $inserted++;
+                    }
+                }
+            });
+        }
+
+        $status = $job->invalid_rows > 0 ? 'completed_with_errors' : 'completed';
+        $job->forceFill([
+            'status' => $status,
+            'inserted_rows' => $inserted,
+            'updated_rows' => $updated,
+            'skipped_rows' => $skipped,
+            'completed_at' => now(),
+        ])->save();
+
+        $this->auditLogService->record(
+            $status === 'completed' ? 'dictionary.import_completed' : 'dictionary.import_completed_with_errors',
+            $job,
+            $actor,
+            null,
+            $job->only(['status', 'inserted_rows', 'updated_rows', 'skipped_rows']),
+        );
+
+        return $job->refresh();
     }
 
     private function createAudioMedia(DictionaryImportJob $job, $actor, string $filename, string $path): string

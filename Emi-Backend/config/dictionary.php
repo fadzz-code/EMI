@@ -9,13 +9,19 @@ return [
     'max_uncompressed_kb' => (int) env('DICTIONARY_IMPORT_MAX_UNCOMPRESSED_KB', 512000),
     'chunk_size' => (int) env('DICTIONARY_IMPORT_CHUNK_SIZE', 500),
     'sample_limit' => 20,
-    'csv_header' => [
-        'indonesia',
-        'english',
-        'mekongga',
-        'kategori',
-        'contoh_mekongga',
-        'contoh_indonesia',
-        'audio_filename',
+    'csv_headers' => [
+        'vocabulary' => [
+            'kode',
+            'indonesia',
+            'english',
+            'mekongga',
+            'kategori',
+            'audio_filename',
+        ],
+        'sentence_examples' => [
+            'kode',
+            'contoh_mekongga',
+            'contoh_indonesia',
+        ],
     ],
 ];
