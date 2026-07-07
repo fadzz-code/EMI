@@ -27,7 +27,7 @@ Jangan membagikan password demo kepada orang lain.
 3. Klik Masuk.
 4. Sistem akan membuka dashboard siswa.
 
-[Screenshot: Halaman Login Siswa]
+![Screenshot: Halaman Login Siswa](assets/screenshots/shared/login.png)
 
 ## 4. Ringkasan Alur Belajar Siswa
 
@@ -66,7 +66,7 @@ Alur belajar sederhana:
 - Hasil yang diharapkan: Siswa tahu kegiatan belajar yang perlu dilanjutkan.
 - Catatan penting: Jika kelas belum muncul, hubungi guru atau admin.
 - Placeholder screenshot:
-  [Screenshot: Dashboard Siswa]
+  ![Screenshot: Dashboard Siswa](assets/screenshots/siswa/siswa-01-dashboard.png)
 
 ### Modul Belajar
 
@@ -86,7 +86,7 @@ Alur belajar sederhana:
 - Hasil yang diharapkan: Siswa dapat memilih modul belajar.
 - Catatan penting: Modul yang belum diterbitkan guru tidak terlihat oleh siswa.
 - Placeholder screenshot:
-  [Screenshot: Modul Belajar]
+  ![Screenshot: Modul Belajar](assets/screenshots/siswa/siswa-02-modul-belajar.png)
 
 ### Detail Modul
 
@@ -156,7 +156,7 @@ Alur belajar sederhana:
 - Hasil yang diharapkan: Siswa menemukan arti kata yang dicari.
 - Catatan penting: Jika kata belum ada, tanyakan kepada guru.
 - Placeholder screenshot:
-  [Screenshot: Kamus]
+  ![Screenshot: Kamus](assets/screenshots/siswa/siswa-05-kamus.png)
 
 ### Detail Kamus
 
@@ -206,7 +206,7 @@ Alur belajar sederhana:
 - Hasil yang diharapkan: Rekaman speaking terkirim untuk dinilai atau ditinjau.
 - Catatan penting: Latihan speaking membutuhkan mikrofon dan koneksi internet stabil.
 - Placeholder screenshot:
-  [Screenshot: Latihan Speaking]
+  ![Screenshot: Latihan Speaking](assets/screenshots/siswa/siswa-07-latihan-speaking.png)
 
 ### Hasil Speaking
 
@@ -251,7 +251,7 @@ Alur belajar sederhana:
 - Hasil yang diharapkan: Siswa dapat memilih kuis yang tersedia.
 - Catatan penting: Kuis bisa memiliki jadwal dan batas percobaan.
 - Placeholder screenshot:
-  [Screenshot: Kuis]
+  ![Screenshot: Kuis](assets/screenshots/siswa/siswa-09-kuis.png)
 
 ### Detail Kuis
 
@@ -366,7 +366,7 @@ Alur belajar sederhana:
 - Hasil yang diharapkan: Siswa mendapat bantuan belajar.
 - Catatan penting: Chatbot membantu belajar, tetapi arahan guru tetap utama.
 - Placeholder screenshot:
-  [Screenshot: Chatbot AI]
+  ![Screenshot: Chatbot AI](assets/screenshots/siswa/siswa-14-chatbot-ai.png)
 
 ### Progress Belajar
 
@@ -389,7 +389,7 @@ Alur belajar sederhana:
 - Hasil yang diharapkan: Siswa tahu bagian mana yang sudah selesai dan belum selesai.
 - Catatan penting: Progress bisa butuh waktu untuk berubah setelah belajar.
 - Placeholder screenshot:
-  [Screenshot: Progress Belajar]
+  ![Screenshot: Progress Belajar](assets/screenshots/siswa/siswa-15-progress-belajar.png)
 
 ### Profil Siswa
 
@@ -413,7 +413,7 @@ Alur belajar sederhana:
 - Hasil yang diharapkan: Profil siswa sesuai data terbaru.
 - Catatan penting: Email dan status biasanya hanya bisa dilihat. Ubah password tidak terlihat di halaman profil siswa.
 - Placeholder screenshot:
-  [Screenshot: Profil Siswa]
+  ![Screenshot: Profil Siswa](assets/screenshots/siswa/siswa-16-profil.png)
 
 ## 6. FAQ Siswa
 

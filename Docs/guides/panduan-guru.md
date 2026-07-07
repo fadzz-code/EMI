@@ -25,7 +25,7 @@ Jangan membagikan password demo di dokumen umum, chat grup terbuka, atau media y
 3. Klik Masuk.
 4. Sistem akan membuka dashboard guru.
 
-[Screenshot: Halaman Login Guru]
+![Screenshot: Halaman Login Guru](assets/screenshots/shared/login.png)
 
 ## 4. Ringkasan Alur Kerja Guru
 
@@ -63,7 +63,7 @@ Alur sederhana penggunaan guru:
 - Hasil yang diharapkan: Guru melihat gambaran umum kegiatan kelas.
 - Catatan penting: Jika kelas kosong, hubungi admin agar akun guru ditugaskan ke kelas.
 - Placeholder screenshot:
-  [Screenshot: Dashboard Guru]
+  ![Screenshot: Dashboard Guru](assets/screenshots/guru/guru-01-dashboard.png)
 
 ### Kelas Guru
 
@@ -86,7 +86,7 @@ Alur sederhana penggunaan guru:
 - Hasil yang diharapkan: Guru dapat memilih kelas yang akan dikelola.
 - Catatan penting: Guru hanya dapat melihat kelas yang ditugaskan oleh admin.
 - Placeholder screenshot:
-  [Screenshot: Kelas Guru]
+  ![Screenshot: Kelas Guru](assets/screenshots/guru/guru-02-kelas.png)
 
 ### Detail Kelas Guru
 
@@ -233,7 +233,7 @@ Alur sederhana penggunaan guru:
 - Hasil yang diharapkan: Guru dapat menemukan siswa lintas kelas yang diajar.
 - Catatan penting: Guru hanya melihat siswa dari kelasnya sendiri.
 - Placeholder screenshot:
-  [Screenshot: Siswa Guru]
+  ![Screenshot: Siswa Guru](assets/screenshots/guru/guru-08-siswa-guru.png)
 
 ### Detail Siswa Guru
 
@@ -277,7 +277,7 @@ Alur sederhana penggunaan guru:
 - Hasil yang diharapkan: Guru dapat memantau hasil belajar siswa.
 - Catatan penting: Data progress hanya muncul jika siswa sudah mulai belajar atau mengerjakan kuis.
 - Placeholder screenshot:
-  [Screenshot: Laporan Progress Guru]
+  ![Screenshot: Laporan Progress Guru](assets/screenshots/guru/guru-10-laporan-progress.png)
 
 ### Modul Guru
 
@@ -301,7 +301,7 @@ Alur sederhana penggunaan guru:
 - Hasil yang diharapkan: Guru dapat mengelola modul lintas kelas dari satu tempat.
 - Catatan penting: Menu Media Guru mungkin diarahkan ke halaman modul ini.
 - Placeholder screenshot:
-  [Screenshot: Modul Guru]
+  ![Screenshot: Modul Guru](assets/screenshots/guru/guru-11-modul.png)
 
 ### Edit Modul Guru
 
@@ -376,7 +376,7 @@ Alur sederhana penggunaan guru:
 - Hasil yang diharapkan: Guru dapat membuat dan mengelola kuis kelas.
 - Catatan penting: Jika tidak ada kelas, tombol buat kuis mungkin tidak aktif.
 - Placeholder screenshot:
-  [Screenshot: Kuis Guru]
+  ![Screenshot: Kuis Guru](assets/screenshots/guru/guru-14-kuis.png)
 
 ### Builder Kuis Guru
 
@@ -481,7 +481,7 @@ Alur sederhana penggunaan guru:
 - Hasil yang diharapkan: Siswa dapat melihat dan mengerjakan latihan speaking.
 - Catatan penting: Draft dari admin sebaiknya tidak dipakai. Teks dan audio speaking perlu divalidasi narasumber.
 - Placeholder screenshot:
-  [Screenshot: Target Speaking Guru]
+  ![Screenshot: Target Speaking Guru](assets/screenshots/guru/guru-18-target-speaking.png)
 
 ### Hasil Speaking Guru
 
@@ -506,7 +506,7 @@ Alur sederhana penggunaan guru:
 - Hasil yang diharapkan: Siswa mendapatkan masukan dari guru atas latihan speaking.
 - Catatan penting: Guru hanya dapat meninjau speaking siswa dari kelasnya sendiri.
 - Placeholder screenshot:
-  [Screenshot: Hasil Speaking Guru]
+  ![Screenshot: Hasil Speaking Guru](assets/screenshots/guru/guru-19-hasil-speaking.png)
 
 ### Media Guru
 
@@ -550,7 +550,7 @@ Alur sederhana penggunaan guru:
 - Hasil yang diharapkan: Profil guru tersimpan sesuai data terbaru.
 - Catatan penting: Email dan status biasanya hanya bisa dilihat. Ubah password tidak terlihat di halaman profil guru.
 - Placeholder screenshot:
-  [Screenshot: Profil Guru]
+  ![Screenshot: Profil Guru](assets/screenshots/guru/guru-21-profil.png)
 
 ## 6. FAQ Guru
 

@@ -23,7 +23,7 @@ Jangan membagikan password demo di dokumen umum, chat grup terbuka, atau media y
 3. Klik Masuk.
 4. Sistem akan membuka dashboard admin.
 
-[Screenshot: Halaman Login]
+![Screenshot: Halaman Login](assets/screenshots/shared/login.png)
 
 ## 4. Ringkasan Alur Kerja Admin
 
@@ -60,7 +60,7 @@ Alur sederhana penggunaan admin:
 - Hasil yang diharapkan: Admin melihat gambaran umum sistem.
 - Catatan penting: Jika data kosong, pastikan sekolah, kelas, guru, siswa, dan progres demo sudah tersedia.
 - Placeholder screenshot:
-  [Screenshot: Dashboard Admin]
+  ![Screenshot: Dashboard Admin](assets/screenshots/admin/admin-01-dashboard.png)
 
 ### Persetujuan Akun
 
@@ -84,7 +84,7 @@ Alur sederhana penggunaan admin:
 - Hasil yang diharapkan: Akun yang valid disetujui dan akun yang tidak valid ditolak.
 - Catatan penting: Setujui akun hanya jika identitas dan kelas tujuan sudah benar.
 - Placeholder screenshot:
-  [Screenshot: Persetujuan Akun]
+  ![Screenshot: Persetujuan Akun](assets/screenshots/admin/admin-02-persetujuan-akun.png)
 
 ### Detail Persetujuan
 
@@ -133,7 +133,7 @@ Alur sederhana penggunaan admin:
 - Hasil yang diharapkan: Data sekolah dan kelas tersimpan rapi.
 - Catatan penting: Sekolah atau kelas yang masih dipakai mungkin tidak bisa dihapus langsung.
 - Placeholder screenshot:
-  [Screenshot: Sekolah & Kelas]
+  ![Screenshot: Sekolah & Kelas](assets/screenshots/admin/admin-04-sekolah-kelas.png)
 
 ### Detail Kelas
 
@@ -183,7 +183,7 @@ Alur sederhana penggunaan admin:
 - Hasil yang diharapkan: Data akun guru dan siswa selalu benar dan terbaru.
 - Catatan penting: Hati-hati saat menonaktifkan akun, karena pengguna mungkin tidak bisa login lagi.
 - Placeholder screenshot:
-  [Screenshot: Guru & Siswa]
+  ![Screenshot: Guru & Siswa](assets/screenshots/admin/admin-06-guru-siswa.png)
 
 ### Detail User
 
@@ -235,7 +235,7 @@ Alur sederhana penggunaan admin:
 - Hasil yang diharapkan: Kata kamus dapat dipakai sebagai bahan belajar siswa.
 - Catatan penting: Kosakata dan contoh kalimat bahasa daerah perlu divalidasi narasumber.
 - Placeholder screenshot:
-  [Screenshot: Kamus]
+  ![Screenshot: Kamus](assets/screenshots/admin/admin-08-kamus.png)
 
 ### Detail Kamus
 
@@ -314,7 +314,7 @@ Alur sederhana penggunaan admin:
 - Hasil yang diharapkan: Chatbot memiliki bahan jawaban yang benar dan siap dipakai.
 - Catatan penting: Hanya pengetahuan yang diterbitkan yang dipakai chatbot. Materi budaya atau bahasa harus direview dulu.
 - Placeholder screenshot:
-  [Screenshot: Basis AI]
+  ![Screenshot: Basis AI](assets/screenshots/admin/admin-11-basis-ai.png)
 
 ### Detail Basis AI
 
@@ -365,7 +365,7 @@ Alur sederhana penggunaan admin:
 - Hasil yang diharapkan: Template modul siap dipakai guru atau kelas.
 - Catatan penting: Modul perlu diterbitkan sebelum digunakan secara luas.
 - Placeholder screenshot:
-  [Screenshot: Modul]
+  ![Screenshot: Modul](assets/screenshots/admin/admin-13-modul.png)
 
 ### Edit Modul
 
@@ -419,7 +419,7 @@ Alur sederhana penggunaan admin:
 - Hasil yang diharapkan: Template kuis siap diisi soal dan digunakan.
 - Catatan penting: Kuis yang sudah diterapkan ke kelas mungkin memiliki batasan perubahan.
 - Placeholder screenshot:
-  [Screenshot: Kuis]
+  ![Screenshot: Kuis](assets/screenshots/admin/admin-15-kuis.png)
 
 ### Builder Kuis
 
@@ -523,7 +523,7 @@ Alur sederhana penggunaan admin:
 - Hasil yang diharapkan: Admin dapat memantau perkembangan belajar.
 - Catatan penting: Data progres tergantung aktivitas siswa di modul, kuis, dan latihan.
 - Placeholder screenshot:
-  [Screenshot: Progress Admin]
+  ![Screenshot: Progress Admin](assets/screenshots/admin/admin-19-progress-admin.png)
 
 ### Detail Progress Kelas
 
@@ -600,7 +600,7 @@ Alur sederhana penggunaan admin:
 - Hasil yang diharapkan: Pengaturan sistem tersimpan dan tampilan login sesuai kebutuhan sekolah.
 - Catatan penting: Email dan status admin mungkin hanya bisa dilihat, bukan diubah. Toggle email mingguan mungkin hanya menyimpan pilihan, bukan mengirim email sungguhan.
 - Placeholder screenshot:
-  [Screenshot: Pengaturan Admin]
+  ![Screenshot: Pengaturan Admin](assets/screenshots/admin/admin-22-pengaturan-admin.png)
 
 ## 6. FAQ Admin
 
