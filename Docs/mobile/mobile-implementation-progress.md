@@ -61,7 +61,6 @@
 ## Yang belum selesai
 
 - Login production manual dengan akun demo.
-- Detail modul penuh sampai lesson selesai.
 - Kamus, kuis, progress lengkap.
 - Chatbot, budaya, speaking.
 - Guru mobile.
@@ -80,6 +79,21 @@ Status: Selesai sebagian.
 - UI mengikuti token Figma yang terbaca: background `#FFF9F2`/`#FEF8F1`, surface `#FFFFFF`, border `#1D1B17`, primary `#FF8A3D`, secondary `#FDD758`, success `#5BBE5D`, card radius `12`, hard shadow `4px 4px 0`, app bar height `64`, bottom nav 5 item.
 - Verifikasi: `flutter pub get` berhasil, `dart format .` berhasil, `flutter test` lulus 11 tests, `flutter run -d emulator-5554 --dart-define=APP_ENV=production --dart-define=API_BASE_URL=https://api.emi-kolaka.id` build/install/run berhasil lalu koneksi CLI terputus.
 - Manual login production belum dilakukan karena kredensial harus diisi langsung di emulator.
+
+## Update fase Detail Modul dan Lesson
+
+Status: Selesai.
+
+- Figma MCP berhasil membaca frame `SCREEN 4 — Detail Materi` node `1:4637` dari file `Untitled`, file key `oMA2sYbh2B7cgzGJINNiar`, canvas `MOBILE EMI`.
+- Detail modul siswa memakai endpoint nyata `GET /api/v1/student/modules/{id}`.
+- Detail lesson siswa memakai endpoint nyata `GET /api/v1/class-lessons/{id}`.
+- URL konten/media lesson memakai endpoint nyata `GET /api/v1/class-lessons/{id}/content-url`.
+- Penyelesaian lesson memakai endpoint nyata `PATCH /api/v1/student/lessons/{id}/progress` dengan `status=completed` dan `progress_percent=100`.
+- Route Flutter ditambah: `/student/modules/:moduleId` dan `/student/lessons/:lessonId`.
+- UI mengikuti token Figma yang terbaca: card putih border `#1D1B17`, header kuning `#FDD758`, media area `#FFDBC9`, radius `8/12`, shadow `4px 4px 0` dan `2px 2px 0`, app bar 64, bottom nav aktif Modul.
+- Verifikasi: `flutter pub get` berhasil, `dart format .` berhasil, `flutter analyze` clean, `flutter test` lulus 15 tests.
+- Emulator: `flutter run -d emulator-5554 --dart-define=APP_ENV=production --dart-define=API_BASE_URL=https://api.emi-kolaka.id` build/install/run berhasil; CLI timeout karena tetap attach, bukan crash. `adb devices` mendeteksi `emulator-5554`, `adb shell pidof id.emikolaka.emi_mobile` mengembalikan PID `7587`.
+- Manual login dan penyelesaian lesson data production belum diuji karena kredensial harus diisi langsung di emulator.
 
 ## Blocker
 

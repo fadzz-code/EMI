@@ -63,6 +63,12 @@ Update verifikasi fase Dashboard/Modul:
 - Component/frame terbaca: `Header - TopAppBar`, `BottomNavBar (Mobile)`, `Section - Hero Card`, `Section - Stats Grid`, `Section - Lanjutkan Belajar Specific Module`, `Section - Menu Cepat`, `Search Bar`, `Filter Chips`, `Statistics Cards`, `Card 1/2/3`.
 - Variables/styles terbaca: Plus Jakarta Sans 12/700 nav label, Plus Jakarta Sans 18/700 dashboard heading, Plus Jakarta Sans 18/600 module heading, Plus Jakarta Sans 16/800 app bar title; fill `#FEF8F1`, `#FFF9F2`, `#FFFFFF`, `#1D1B17`, `#FF8A3D`, `#FDD758`, `#5BBE5D`, `#564338`, `#004910`; shadow `4px 4px 0px 0px rgba(29, 27, 23, 1)`; app bar height `64`; page padding `16`; hero padding `24`; card radius `12`; hero radius `16`; bottom nav active pill `9999`.
 
+Update verifikasi fase Detail Modul/Lesson:
+
+- Detail Modul/Detail Lesson mobile memakai frame `SCREEN 4 — Detail Materi`, node `1:4637`.
+- Component/frame terbaca: `Header - TopAppBar`, `Breadcrumbs & Badge`, `Article - Main Content Card`, `Header Card Area`, `Illustration`, `Audio Player`, `Section - Sub-lessons List`, `Navigation Buttons`, `BottomNavBar`.
+- Variables/styles tambahan terbaca: Plus Jakarta Sans 18/600 heading, Plus Jakarta Sans 14/500 body, Plus Jakarta Sans 12/700 button; fill `#FFDBC9`, `#E7E2DB`, `#F3EDE6`, `#9A4600`, `#682D00`; shadow small `2px 2px 0px 0px rgba(29, 27, 23, 1)`; main padding `96px 16px 2.62px`; section gap `24`; card/header padding `16`; lesson row padding `12`; button padding `12px 24px`; media height `192`; radius `8` for lesson/card inner blocks.
+
 Jika akses Figma MCP kembali tersedia, audit berikutnya wajib membaca ulang node screen prioritas dan memperbarui dokumen ini.
 
 ## 4. Status Desain yang Tersedia

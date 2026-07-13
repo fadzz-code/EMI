@@ -72,6 +72,14 @@ lib/
     profile/
 ```
 
+## Route Siswa
+
+- `/student/dashboard`
+- `/student/modules`
+- `/student/modules/:moduleId`
+- `/student/lessons/:lessonId`
+- `/student/profile`
+
 ## Aturan Keamanan
 
 - Token disimpan melalui `flutter_secure_storage`.
@@ -93,6 +101,9 @@ lib/
 - Login.
 - Dashboard siswa data nyata.
 - Daftar modul siswa.
+- Detail modul siswa.
+- Detail lesson siswa.
+- Penyelesaian lesson.
 - Profil siswa foundation.
 - Unsupported role.
 - Tests dasar.

@@ -23,3 +23,21 @@ final studentModuleListProvider = FutureProvider.autoDispose
           .watch(studentModuleRepositoryProvider)
           .list(search: query.search, status: query.status),
     );
+
+final studentModuleDetailProvider = FutureProvider.autoDispose
+    .family<StudentModule, String>(
+      (ref, moduleId) =>
+          ref.watch(studentModuleRepositoryProvider).detail(moduleId),
+    );
+
+final studentLessonDetailProvider = FutureProvider.autoDispose
+    .family<StudentLesson, String>(
+      (ref, lessonId) =>
+          ref.watch(studentModuleRepositoryProvider).lesson(lessonId),
+    );
+
+final studentLessonContentProvider = FutureProvider.autoDispose
+    .family<LessonContent?, String>(
+      (ref, lessonId) =>
+          ref.watch(studentModuleRepositoryProvider).lessonContent(lessonId),
+    );

@@ -156,7 +156,11 @@ Rekomendasi umum: Admin penuh tetap web-first untuk MVP mobile. Hampir semua end
 
 - `GET /api/v1/student/dashboard/summary` terverifikasi lewat backend: controller `StudentDashboardController::summary`, role `student`, response `class`, `empty_state`, `learning`, `quizzes`, `upcoming_deadlines`, `recent_activity`, `capabilities`, `speaking_summary`, `generated_at`.
 - `GET /api/v1/student/modules` terverifikasi lewat backend: controller `StudentModuleController::index`, resource `StudentModuleResource`, role `student`, filter `search`, `status`, `page`, `per_page`, `sort_by`, `sort_direction`, pagination `meta`.
-- `GET /api/v1/student/modules/{id}` tersedia untuk detail berikutnya; detail penuh belum diimplementasikan pada fase ini.
+- `GET /api/v1/student/modules/{id}` terverifikasi untuk detail modul: controller `StudentModuleController::show`, resource `StudentModuleResource`, memuat `lessons` published urut `sort_order`, response `id`, `title`, `description`, `status`, `sort_order`, `progress`, `lessons`.
+- `GET /api/v1/class-lessons/{id}` terverifikasi untuk detail lesson: controller `ClassLessonController::show`, resource `ClassLessonResource`, auth scoped via policy/Gate, response `content_type`, `content_body` untuk text, `external_url` untuk video/link, `media` metadata.
+- `GET /api/v1/class-lessons/{id}/content-url` terverifikasi untuk URL konten/media lesson: controller `ClassLessonController::contentUrl`, service `LessonContentAccessService`.
+- `PATCH /api/v1/student/lessons/{id}/progress` terverifikasi untuk penyelesaian lesson: controller `StudentProgressController::updateLesson`, request `UpdateLessonProgressRequest`, body `status`, `progress_percent`, response `LessonProgressResource`.
+- `POST /api/v1/student/modules/{id}/start` tersedia untuk mulai modul, tetapi fase ini tidak memicu otomatis agar tidak mengubah progress tanpa aksi eksplisit user.
 - Media lesson di module detail hanya mengirim metadata `id`, `mime_type`, `visibility`; URL konten harus lewat `GET /api/v1/class-lessons/{id}/content-url` atau media endpoint terkait.
 
 ## Gap API Paling Penting
