@@ -80,6 +80,8 @@ lib/
 - `/student/lessons/:lessonId`
 - `/student/dictionary`
 - `/student/dictionary/:entryId`
+- `/student/quizzes`
+- `/student/quizzes/:quizId`
 - `/student/profile`
 
 ## Dependency Tambahan
@@ -113,14 +115,16 @@ lib/
 - Daftar kamus siswa.
 - Detail kamus siswa.
 - Audio kosakata.
+- Daftar kuis siswa.
+- Detail kuis siswa.
 - Profil siswa foundation.
 - Unsupported role.
 - Tests dasar.
 
 ## Fitur Belum
 
-- Modul belajar lengkap.
-- Kuis.
+- Attempt dan submit kuis.
+- Hasil kuis penuh.
 - Progress lengkap.
 - Chatbot.
 - Budaya.

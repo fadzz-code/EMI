@@ -11,6 +11,8 @@ import '../../features/modules/presentation/student_lesson_detail_screen.dart';
 import '../../features/modules/presentation/student_module_detail_screen.dart';
 import '../../features/modules/presentation/student_modules_screen.dart';
 import '../../features/profile/presentation/student_profile_screen.dart';
+import '../../features/quizzes/presentation/student_quiz_detail_screen.dart';
+import '../../features/quizzes/presentation/student_quizzes_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import 'router_refresh_stream.dart';
 import 'unsupported_role_screen.dart';
@@ -72,6 +74,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/student/dictionary/:entryId',
         builder: (_, state) => DictionaryDetailScreen(
           entryId: state.pathParameters['entryId'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/student/quizzes',
+        builder: (_, _) => const StudentQuizzesScreen(),
+      ),
+      GoRoute(
+        path: '/student/quizzes/:quizId',
+        builder: (_, state) => StudentQuizDetailScreen(
+          quizId: state.pathParameters['quizId'] ?? '',
         ),
       ),
       GoRoute(

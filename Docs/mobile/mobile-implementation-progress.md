@@ -122,9 +122,23 @@ Status: Selesai.
 - Kotlin cache warning tidak relevan dengan buffering API/UI karena warning terjadi saat Gradle compile package audio; aplikasi tetap build/install/run dan masalah loading berasal dari lifecycle provider Flutter.
 - Fitur Kuis diblokir: Figma MCP terkena `429` saat membaca frame Kuis, sehingga implementasi UI Kuis dihentikan sesuai batasan tugas.
 
+## Update fase Daftar Kuis dan Detail Kuis
+
+Status: Selesai sebagian.
+
+- Figma MCP dicoba satu kali untuk file `Untitled`, file key `oMA2sYbh2B7cgzGJINNiar`, node `109:415`; hasil gagal `403 Forbidden` dengan body `{"status":403,"err":"Invalid token"}`.
+- Mode desain memakai fallback dari `Docs/mobile/desain.md` dan referensi node sebelumnya: Dashboard `1:4221`, Daftar Modul `1:4473`, Detail Materi `1:4637`, Daftar Kamus `1:6283`, Detail Kamus `1:4968`; frame kuis `SCREEN 10 — Kuis & LKPD` node historis `109:415` belum terbaca ulang.
+- Daftar kuis siswa memakai endpoint nyata `GET /api/v1/student/quizzes` dengan filter `availability` dan pull-to-refresh.
+- Detail kuis siswa memakai endpoint nyata `GET /api/v1/student/quizzes/{id}`.
+- Status kuis ditampilkan dari field backend nyata: `open_at`, `close_at`, `can_start`, `submitted_attempts_count`, `latest_submitted_at`.
+- Jadwal, durasi, jumlah soal, attempt, dan nilai terbaik ditampilkan hanya jika field tersedia dari response.
+- Route Flutter ditambah: `/student/quizzes` dan `/student/quizzes/:quizId`.
+- Pengerjaan, penyimpanan jawaban, submit, dan hasil attempt penuh belum dibuat pada fase ini sesuai batasan scope.
+- Verifikasi awal: `dart format .` berhasil, `flutter analyze` clean, `flutter test` lulus 23 tests.
+
 ## Blocker
 
-- Figma API rate limit 429 masih memblokir typography exact, logo, icon library, dan component set detail.
+- Figma API rate limit 429/akses token tidak valid masih memblokir typography exact, logo, icon library, component set detail, dan frame kuis aktual.
 - Manual production login membutuhkan kredensial demo dari pengelola.
 - Native assets dependency tetap terdeteksi dari `jni`/`jni_flutter`, tetapi NDK Clang blocker sudah tidak muncul pada Flutter 3.44.6.
 

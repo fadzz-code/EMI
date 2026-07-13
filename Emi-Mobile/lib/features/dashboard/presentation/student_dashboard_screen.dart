@@ -54,6 +54,7 @@ class StudentDashboardScreen extends ConsumerWidget {
     if (index == 0) context.go('/student/dashboard');
     if (index == 1) context.go('/student/modules');
     if (index == 2) context.go('/student/dictionary');
+    if (index == 3) context.go('/student/quizzes');
     if (index == 4) context.go('/student/profile');
   }
 }

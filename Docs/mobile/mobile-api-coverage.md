@@ -174,6 +174,16 @@ Rekomendasi umum: Admin penuh tetap web-first untuk MVP mobile. Hampir semua end
 - Audio memakai field `audio.id`, `audio.url`, `audio.mime_type`; URL berasal dari `MediaAccessService::publicUrl($audio)` sehingga Flutter memakai URL backend yang dikirim resource, tanpa membangun URL sendiri.
 - Tidak ada endpoint kategori publik terpisah untuk siswa; filter kategori memakai `category_id` yang tersedia dari item list/detail yang sudah dikirim API.
 
+## Verifikasi Fase Kuis Siswa
+
+- `GET /api/v1/student/quizzes` terverifikasi untuk daftar kuis: controller `StudentQuizController::index`, request `ListStudentQuizzesRequest`, resource `StudentQuizResource`, role `student`.
+- Query didukung: `search`, `availability` (`open`, `not_open`, `closed`), `page`, `per_page`, `sort_by` (`open_at`, `close_at`, `created_at`, `title`), `sort_direction`.
+- Pagination memakai `meta` dari `ApiResponse::paginated`.
+- `GET /api/v1/student/quizzes/{id}` terverifikasi untuk detail kuis: controller `StudentQuizController::show`, resource `StudentQuizResource`, scope akses via `QuizAccessService::studentCanAccessQuiz`.
+- Response field terverifikasi: `id`, `class_id`, `title`, `description`, `instructions`, `duration_minutes`, `max_attempts`, `show_result`, `open_at`, `close_at`, `questions_count`, `attempts_count`, `used_attempts`, `submitted_attempts_count`, `remaining_attempts`, `attempt_limit_reached`, `can_start`, `latest_score_points`, `latest_max_points`, `latest_score_normalized`, `latest_score_percent`, `best_score_percent`, `latest_submitted_at`, `questions`.
+- Status tersedia/terkunci/ditutup diturunkan dari `open_at`, `close_at`, `can_start`, `attempt_limit_reached`; status selesai diturunkan dari `submitted_attempts_count`/`latest_submitted_at`.
+- Start attempt tersedia lewat `POST /api/v1/class-quizzes/{id}/attempts`, tetapi belum dipakai pada fase daftar/detail agar pengerjaan dan submit kuis tidak masuk scope.
+
 ## Gap API Paling Penting
 
 1. Speaking list siswa dan hasil speaking belum paginated; aman untuk demo kecil, berisiko jika data besar.
