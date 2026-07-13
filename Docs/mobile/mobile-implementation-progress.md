@@ -249,6 +249,19 @@ Status: Selesai sebagian.
 - Emulator smoke memakai debug production dart-define: build/install/launch berhasil, app hidup PID `11046`, logcat 200 baris terakhir tidak memuat `FATAL EXCEPTION`/`AndroidRuntime` untuk app.
 - Manual QA masih Needs manual verification: login production, semua flow data backend, permission microphone setelah login, picker cancel/avatar, speaking submit AI, media private, dan perangkat fisik.
 
+## Update release signing workflow
+
+Status: Terblokir signing.
+
+- Audit aman signing dilakukan tanpa mencetak credential.
+- `Emi-Mobile/android/key.properties` tidak ada.
+- Tidak ditemukan keystore lokal `*.jks` atau `*.keystore` di `Emi-Mobile/android`.
+- Environment variable signing umum (`ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `KEYSTORE_PATH`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`) tidak tersedia.
+- Gradle release config sudah mendukung `android/key.properties` jika tersedia, dengan property `storeFile`, `storePassword`, `keyAlias`, `keyPassword`; jika tidak tersedia, release build tetap unsigned dan tidak memakai debug key.
+- `.gitignore` memastikan `android/key.properties`, `android/local.properties`, `android/app/*.jks`, `android/app/*.keystore`, dan build output tidak masuk Git.
+- Karena signing tidak tersedia, signed APK dan AAB tidak dibuild, signed APK tidak diinstall ke emulator, dan smoke test signed release tidak dilakukan.
+- Status release signing: `BLOCKED_BY_SIGNING` sampai pengelola menyediakan keystore dan `android/key.properties` lokal.
+
 ## Blocker
 
 - Figma API rate limit 429/akses token tidak valid masih memblokir typography exact, logo, icon library, component set detail, frame progress, dan frame profil aktual.

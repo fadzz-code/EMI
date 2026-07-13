@@ -51,7 +51,24 @@ AAB release hanya dijalankan jika signing aman tersedia di `android/key.properti
 flutter build appbundle --release --dart-define=APP_ENV=production --dart-define=API_BASE_URL=https://api.emi-kolaka.id
 ```
 
-`android/key.properties`, `*.jks`, dan `*.keystore` tidak boleh dicommit. Jika signing belum tersedia, APK release bisa terbangun unsigned dan tidak bisa diinstall ke perangkat.
+Signing file lokal yang diharapkan:
+
+```text
+Emi-Mobile/android/key.properties
+```
+
+Property yang wajib ada, tanpa menyimpan nilainya di Git:
+
+```properties
+storeFile=<path-ke-keystore-lokal>
+storePassword=<password-keystore>
+keyAlias=<alias-key>
+keyPassword=<password-key>
+```
+
+Lokasi keystore lokal yang disarankan: `Emi-Mobile/android/app/upload-keystore.jks` atau path aman di luar repo. File yang wajib tetap ignored: `android/key.properties`, `android/app/*.jks`, `android/app/*.keystore`, `build/`, `local.properties`.
+
+Jika signing belum tersedia, APK release bisa terbangun unsigned dan tidak bisa diinstall ke perangkat; AAB/Play-ready build berstatus `BLOCKED_BY_SIGNING`.
 
 ## Analyze
 
