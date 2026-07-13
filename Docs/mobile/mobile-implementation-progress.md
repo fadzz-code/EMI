@@ -136,6 +136,23 @@ Status: Selesai sebagian.
 - Pengerjaan, penyimpanan jawaban, submit, dan hasil attempt penuh belum dibuat pada fase ini sesuai batasan scope.
 - Verifikasi awal: `dart format .` berhasil, `flutter analyze` clean, `flutter test` lulus 23 tests.
 
+## Update fase Attempt, Submit, dan Hasil Kuis
+
+Status: Selesai sebagian.
+
+- Figma MCP dicoba satu kali untuk file `Untitled`, file key `oMA2sYbh2B7cgzGJINNiar`, node `109:617`; hasil gagal `403 Forbidden` dengan body `{"status":403,"err":"Invalid token"}`.
+- Mode desain memakai fallback dari `Docs/mobile/desain.md`, referensi node sebelumnya `1:4221`, `1:4473`, `1:4637`, `1:6283`, `1:4968`, dan node historis kuis `109:415`, `109:617`, `109:719`.
+- Start/resume attempt memakai endpoint nyata `POST /api/v1/class-quizzes/{id}/attempts`.
+- Load result/detail attempt memakai endpoint nyata `GET /api/v1/quiz-attempts/{id}`.
+- Simpan jawaban memakai endpoint nyata `PUT /api/v1/quiz-attempts/{id}/answers/{question_id}`.
+- Submit memakai endpoint nyata `POST /api/v1/quiz-attempts/{id}/submit` dengan header `Idempotency-Key`.
+- Tipe soal yang didukung UI: `multiple_choice` via `selected_option_id` dan isian/short answer via `answer_text`.
+- Timer ditampilkan dari `expires_at` backend jika tersedia.
+- Back handling memberi konfirmasi keluar saat attempt masih `in_progress`.
+- Hasil menampilkan nilai hanya jika backend mengirim field result sesuai `show_result`; jika tidak, UI menampilkan status tanpa membuat nilai lokal.
+- Gap backend: resume layar pengerjaan penuh harus lewat start endpoint karena `GET /api/v1/quiz-attempts/{id}` tidak memuat `classQuiz.questions.options`.
+- Verifikasi awal: `dart format .` berhasil, `flutter analyze` clean, `flutter test` lulus 24 tests.
+
 ## Blocker
 
 - Figma API rate limit 429/akses token tidak valid masih memblokir typography exact, logo, icon library, component set detail, dan frame kuis aktual.

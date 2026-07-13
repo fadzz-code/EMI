@@ -35,3 +35,9 @@ final studentQuizDetailProvider = FutureProvider.autoDispose
     .family<StudentQuiz, String>(
       (ref, quizId) => ref.watch(studentQuizRepositoryProvider).detail(quizId),
     );
+
+final quizAttemptProvider = FutureProvider.autoDispose
+    .family<QuizAttempt, String>(
+      (ref, attemptId) =>
+          ref.watch(studentQuizRepositoryProvider).attempt(attemptId),
+    );

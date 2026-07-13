@@ -82,6 +82,7 @@ lib/
 - `/student/dictionary/:entryId`
 - `/student/quizzes`
 - `/student/quizzes/:quizId`
+- `/student/quizzes/:quizId/attempt`
 - `/student/profile`
 
 ## Dependency Tambahan
@@ -117,14 +118,15 @@ lib/
 - Audio kosakata.
 - Daftar kuis siswa.
 - Detail kuis siswa.
+- Attempt kuis siswa.
+- Simpan jawaban kuis.
+- Submit dan hasil kuis.
 - Profil siswa foundation.
 - Unsupported role.
 - Tests dasar.
 
 ## Fitur Belum
 
-- Attempt dan submit kuis.
-- Hasil kuis penuh.
 - Progress lengkap.
 - Chatbot.
 - Budaya.

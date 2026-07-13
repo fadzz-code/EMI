@@ -182,7 +182,14 @@ Rekomendasi umum: Admin penuh tetap web-first untuk MVP mobile. Hampir semua end
 - `GET /api/v1/student/quizzes/{id}` terverifikasi untuk detail kuis: controller `StudentQuizController::show`, resource `StudentQuizResource`, scope akses via `QuizAccessService::studentCanAccessQuiz`.
 - Response field terverifikasi: `id`, `class_id`, `title`, `description`, `instructions`, `duration_minutes`, `max_attempts`, `show_result`, `open_at`, `close_at`, `questions_count`, `attempts_count`, `used_attempts`, `submitted_attempts_count`, `remaining_attempts`, `attempt_limit_reached`, `can_start`, `latest_score_points`, `latest_max_points`, `latest_score_normalized`, `latest_score_percent`, `best_score_percent`, `latest_submitted_at`, `questions`.
 - Status tersedia/terkunci/ditutup diturunkan dari `open_at`, `close_at`, `can_start`, `attempt_limit_reached`; status selesai diturunkan dari `submitted_attempts_count`/`latest_submitted_at`.
-- Start attempt tersedia lewat `POST /api/v1/class-quizzes/{id}/attempts`, tetapi belum dipakai pada fase daftar/detail agar pengerjaan dan submit kuis tidak masuk scope.
+- Start/resume attempt memakai `POST /api/v1/class-quizzes/{id}/attempts`, role `student`, controller `QuizAttemptController::start`, service `QuizAttemptService::start`; jika ada attempt `in_progress` belum kedaluwarsa, backend mengembalikan attempt yang sama beserta `classQuiz.questions.options` dan `answers`.
+- Detail/result attempt memakai `GET /api/v1/quiz-attempts/{id}`, controller `QuizAttemptController::show`, policy `QuizAttemptPolicy::view`, response `QuizAttemptResource` dengan `class_quiz` dan `answers`.
+- Simpan jawaban memakai `PUT /api/v1/quiz-attempts/{id}/answers/{question_id}`, request `SaveQuizAnswerRequest`; body `selected_option_id` untuk `multiple_choice`, `answer_text` untuk selain `multiple_choice`; service menolak soal di luar kuis, option invalid, attempt selesai, dan attempt kedaluwarsa.
+- Submit memakai `POST /api/v1/quiz-attempts/{id}/submit` dengan header wajib `Idempotency-Key` 16-128 karakter dari `SubmitQuizAttemptRequest`; key sama aman diulang, key beda setelah submit menghasilkan `ATTEMPT_ALREADY_SUBMITTED` 409.
+- Tipe soal terverifikasi dari resource/service: `multiple_choice` dan isian/short answer berbasis `answer_text`; pilihan memakai `options[].id`, `option_text`, `order_number`.
+- Hasil/nilai dikirim dari `QuizAttemptResource` hanya jika `class_quiz.show_result` mengizinkan: `score_points`, `max_points`, `score_percent`, `correct_count`, `incorrect_count`, `unanswered_count`, serta field result di answers.
+- Timer/durasi memakai `expires_at` attempt dari backend; backend membatasi dengan `duration_minutes` dan `close_at`, lalu attempt expired difinalisasi sebagai `expired`.
+- Gap: `GET /api/v1/quiz-attempts/{id}` tidak memuat `classQuiz.questions.options`; resume layar pengerjaan mobile harus memakai start endpoint pada quiz yang sama untuk memperoleh soal + jawaban aktif.
 
 ## Gap API Paling Penting
 

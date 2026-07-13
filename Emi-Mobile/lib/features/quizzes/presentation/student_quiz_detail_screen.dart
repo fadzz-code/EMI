@@ -110,11 +110,13 @@ class StudentQuizDetailScreen extends ConsumerWidget {
               ),
               const SizedBox(height: EmiSpacing.lg),
               ElevatedButton.icon(
-                onPressed: null,
+                onPressed: item.canStart
+                    ? () => context.go('/student/quizzes/${item.id}/attempt')
+                    : null,
                 icon: const Icon(Icons.play_arrow),
                 label: Text(
                   item.canStart
-                      ? 'Mulai kuis belum masuk fase ini'
+                      ? 'Mulai / lanjut kuis'
                       : 'Kuis belum dapat dimulai',
                 ),
               ),
