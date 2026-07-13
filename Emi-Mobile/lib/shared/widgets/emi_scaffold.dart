@@ -89,20 +89,7 @@ class _StudentDrawer extends StatelessWidget {
               padding: const EdgeInsets.all(EmiSpacing.md),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: EmiColors.secondary,
-                    backgroundImage: user?.avatarUrl == null
-                        ? null
-                        : NetworkImage(user!.avatarUrl!),
-                    child: user?.avatarUrl == null
-                        ? Text(
-                            (user?.fullName.isNotEmpty ?? false)
-                                ? user!.fullName.characters.first
-                                : '?',
-                          )
-                        : null,
-                  ),
+                  _DrawerAvatar(user: user),
                   const SizedBox(width: EmiSpacing.md),
                   Expanded(
                     child: Column(
@@ -147,6 +134,38 @@ class _StudentDrawer extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _DrawerAvatar extends StatelessWidget {
+  const _DrawerAvatar({required this.user});
+
+  final SessionUser? user;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = Text(
+      (user?.fullName.isNotEmpty ?? false)
+          ? user!.fullName.characters.first
+          : '?',
+    );
+    final avatarUrl = user?.avatarUrl?.trim();
+
+    return CircleAvatar(
+      radius: 28,
+      backgroundColor: EmiColors.secondary,
+      child: avatarUrl == null || avatarUrl.isEmpty
+          ? fallback
+          : ClipOval(
+              child: Image.network(
+                avatarUrl,
+                width: 56,
+                height: 56,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => Center(child: fallback),
+              ),
+            ),
     );
   }
 }

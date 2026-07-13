@@ -23,6 +23,7 @@ class _StudentCultureListScreenState
   var _items = <CultureItem>[];
   var _hasNextPage = false;
   var _loadingMore = false;
+  final _loadedPages = <int>{};
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +37,7 @@ class _StudentCultureListScreenState
           setState(() {
             _page = 1;
             _items = [];
+            _loadedPages.clear();
             _hasNextPage = false;
           });
           ref.invalidate(cultureListProvider(query));
@@ -63,18 +65,18 @@ class _StudentCultureListScreenState
                 ),
           data: (data) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!mounted) return;
-              final nextItems = _page == 1
-                  ? data.items
-                  : [..._items, ...data.items];
-              if (_items.length != nextItems.length ||
-                  _hasNextPage != data.hasNextPage) {
-                setState(() {
-                  _items = nextItems;
-                  _hasNextPage = data.hasNextPage;
-                  _loadingMore = false;
-                });
-              }
+              if (!mounted || _loadedPages.contains(data.currentPage)) return;
+              final byId = <String, CultureItem>{
+                if (data.currentPage != 1)
+                  for (final item in _items) item.id: item,
+                for (final item in data.items) item.id: item,
+              };
+              setState(() {
+                _items = byId.values.toList();
+                _loadedPages.add(data.currentPage);
+                _hasNextPage = data.hasNextPage;
+                _loadingMore = false;
+              });
             });
             final visibleItems = _page == 1 ? data.items : _items;
             return _CultureList(

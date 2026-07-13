@@ -408,12 +408,12 @@ class _NetworkAvatar extends StatelessWidget {
           ? user!.fullName.characters.first
           : '?',
     );
-    final avatarUrl = user?.avatarUrl;
+    final avatarUrl = user?.avatarUrl?.trim();
 
     return CircleAvatar(
       radius: 36,
       backgroundColor: EmiColors.secondary,
-      child: avatarUrl == null
+      child: avatarUrl == null || avatarUrl.isEmpty
           ? fallback
           : ClipOval(
               child: Image.network(

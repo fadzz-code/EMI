@@ -108,6 +108,7 @@ class SpeakingRecorderController extends StateNotifier<SpeakingRecorderState> {
   @override
   void dispose() {
     _timer?.cancel();
+    unawaited(_recorder.stop().catchError((_) => null));
     _recorder.dispose();
     super.dispose();
   }

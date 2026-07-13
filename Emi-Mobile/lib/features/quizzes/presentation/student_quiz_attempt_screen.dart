@@ -26,6 +26,8 @@ class _StudentQuizAttemptScreenState
   bool _loading = true;
   bool _saving = false;
   bool _submitting = false;
+  bool _confirmingSubmit = false;
+  String? _submitKey;
   Object? _error;
   final _selectedOptions = <String, String>{};
   final _textAnswers = <String, TextEditingController>{};
@@ -210,6 +212,8 @@ class _StudentQuizAttemptScreenState
   }
 
   Future<void> _submit() async {
+    if (_submitting || _confirmingSubmit) return;
+    setState(() => _confirmingSubmit = true);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -229,18 +233,22 @@ class _StudentQuizAttemptScreenState
         ],
       ),
     );
+    if (!mounted) return;
+    setState(() => _confirmingSubmit = false);
     if (confirmed != true || _submitting) return;
-    final saved = await _saveCurrent();
-    if (!saved || _attempt == null) return;
-
     setState(() => _submitting = true);
+    final saved = await _saveCurrent();
+    if (!saved || _attempt == null) {
+      if (mounted) setState(() => _submitting = false);
+      return;
+    }
+
+    final attemptId = _attempt!.id;
+    _submitKey ??= _idempotencyKey(attemptId);
     try {
       final result = await ref
           .read(studentQuizRepositoryProvider)
-          .submitAttempt(
-            attemptId: _attempt!.id,
-            idempotencyKey: _idempotencyKey(_attempt!.id),
-          );
+          .submitAttempt(attemptId: attemptId, idempotencyKey: _submitKey!);
       _timer?.cancel();
       setState(() {
         _attempt = result;

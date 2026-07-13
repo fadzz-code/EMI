@@ -37,6 +37,22 @@ Production wajib HTTPS.
 flutter devices
 ```
 
+## Build Release
+
+APK release production:
+
+```bash
+flutter build apk --release --dart-define=APP_ENV=production --dart-define=API_BASE_URL=https://api.emi-kolaka.id
+```
+
+AAB release hanya dijalankan jika signing aman tersedia di `android/key.properties` dan keystore lokal tidak dilacak Git:
+
+```bash
+flutter build appbundle --release --dart-define=APP_ENV=production --dart-define=API_BASE_URL=https://api.emi-kolaka.id
+```
+
+`android/key.properties`, `*.jks`, dan `*.keystore` tidak boleh dicommit. Jika signing belum tersedia, APK release bisa terbangun unsigned dan tidak bisa diinstall ke perangkat.
+
 ## Analyze
 
 ```bash
@@ -151,6 +167,29 @@ lib/
 
 - Guru mobile.
 - Admin mobile.
+
+## Known Gaps Release
+
+- Signing release belum tersedia di repo; AAB/Play-ready build butuh keystore dari pengelola.
+- Launcher icon, adaptive icon, splash, dan logo masih temporary/default karena Figma MCP 403.
+- Manual production login dan data nyata butuh kredensial siswa.
+- Speaking list/attempt belum paginated dari backend.
+- Media private perlu verifikasi temporary URL di Android.
+
+## Manual QA Checklist
+
+- Install dan launch app production.
+- Splash lalu login page tampil tanpa crash.
+- Login akun siswa production.
+- Buka bottom nav: Beranda, Modul, Kamus, Kuis, Profil.
+- Buka sidebar: Progress, Chatbot, Budaya, Speaking.
+- Verifikasi Modul/Lesson/Progress lesson.
+- Verifikasi Kamus audio.
+- Verifikasi Kuis attempt/submit/result.
+- Verifikasi Profil edit/password/avatar, termasuk picker cancel.
+- Verifikasi Chatbot dan Budaya data nyata.
+- Verifikasi Speaking: izin mikrofon, record, preview, submit, status AI, feedback guru.
+- Cek tidak ada overflow, loading tanpa akhir, route ganda, atau crash.
 
 ## Catatan Desain
 

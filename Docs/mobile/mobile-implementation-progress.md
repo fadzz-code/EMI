@@ -233,6 +233,22 @@ Status: Selesai sebagian.
 - Emulator production: `flutter run -d emulator-5554 --dart-define=APP_ENV=production --dart-define=API_BASE_URL=https://api.emi-kolaka.id` build debug APK, install, dan app berjalan; command timeout karena Flutter CLI attach. PID app terdeteksi `10878`.
 - Manual production login, buka sidebar Speaking, rekam mikrofon, submit data production, audio referensi nyata, dan hasil AI nyata masih Needs manual verification karena kredensial demo/data production tidak tersedia.
 
+## Update release readiness Android
+
+Status: Selesai sebagian.
+
+- Figma MCP dicoba satu kali untuk file `Untitled`, file key `oMA2sYbh2B7cgzGJINNiar`, node `109:158`; hasil gagal `403 Forbidden` dengan body `{"status":403,"err":"Invalid token"}`. Mode desain tetap fallback existing; `Docs/mobile/desain.md` tidak diubah.
+- Audit Android: applicationId `id.emikolaka.emi_mobile`, app name `EMI Mobile`, version `1.0.0+1`, compileSdk/targetSdk dari Flutter 3.44.6, minSdk dari Flutter default, permission `INTERNET` dan `RECORD_AUDIO`, production API default `https://api.emi-kolaka.id/api/v1`, debug banner off, cleartext tidak diaktifkan untuk production, launcher icon/splash masih Flutter default/temporary.
+- Signing release dibuat aman: `android/key.properties` opsional dan di-ignore; jika tidak ada signing config, release APK dibangun unsigned dan tidak memakai debug key. Tidak ada keystore/password/token/local.properties/build output yang distage.
+- Regression audit memperbaiki bug nyata: 401 sekarang mengubah auth state ke unauthenticated, pagination Budaya tidak menggandakan item page yang sama, double-submit kuis dicegah dengan guard dialog/submitting dan idempotency key stabil per attempt, recorder speaking dihentikan saat dispose, avatar drawer/profil fallback aman untuk URL kosong/gagal.
+- Gap yang tidak diubah: detail Budaya deep-link tetap bergantung cache/list karena backend tidak punya endpoint detail siswa; release signing belum tersedia; adaptive icon/logo final belum tersedia dari Figma.
+- Verifikasi: `flutter pub get` berhasil, `dart format .` berhasil, `flutter analyze` clean, `flutter test` lulus 47 tests.
+- Build APK release production: `flutter build apk --release --dart-define=APP_ENV=production --dart-define=API_BASE_URL=https://api.emi-kolaka.id` berhasil membuat `Emi-Mobile/build/app/outputs/flutter-apk/app-release.apk` ukuran 55,264,426 bytes (52.7 MB). Kotlin incremental cache warning muncul karena package di drive C dan project di drive D, tetapi build selesai.
+- Install release APK ke emulator gagal karena unsigned: `INSTALL_PARSE_FAILED_NO_CERTIFICATES`. Ini expected selama signing release belum tersedia.
+- AAB release tidak dijalankan karena `android/key.properties`/keystore signing tidak tersedia dan tidak boleh membuat signing key baru.
+- Emulator smoke memakai debug production dart-define: build/install/launch berhasil, app hidup PID `11046`, logcat 200 baris terakhir tidak memuat `FATAL EXCEPTION`/`AndroidRuntime` untuk app.
+- Manual QA masih Needs manual verification: login production, semua flow data backend, permission microphone setelah login, picker cancel/avatar, speaking submit AI, media private, dan perangkat fisik.
+
 ## Blocker
 
 - Figma API rate limit 429/akses token tidak valid masih memblokir typography exact, logo, icon library, component set detail, frame progress, dan frame profil aktual.

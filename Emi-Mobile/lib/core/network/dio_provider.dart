@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/providers.dart';
 import '../storage/providers.dart';
+import 'session_invalidation_provider.dart';
 
 final dioProvider = Provider<Dio>((ref) {
   final environment = ref.watch(appEnvironmentProvider);
@@ -32,6 +33,7 @@ final dioProvider = Provider<Dio>((ref) {
       onError: (error, handler) async {
         if (error.response?.statusCode == 401) {
           await tokenStorage.clearSession();
+          ref.read(sessionInvalidationProvider.notifier).state++;
         }
         handler.next(error);
       },

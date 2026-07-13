@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_error.dart';
+import '../../../core/network/session_invalidation_provider.dart';
 import '../data/auth_providers.dart';
 import '../domain/auth_repository.dart';
 import '../domain/session_user.dart';
@@ -8,7 +9,11 @@ import 'auth_state.dart';
 
 final authControllerProvider = StateNotifierProvider<AuthController, AuthState>(
   (ref) {
-    return AuthController(ref.watch(authRepositoryProvider));
+    final controller = AuthController(ref.watch(authRepositoryProvider));
+    ref.listen<int>(sessionInvalidationProvider, (_, _) {
+      controller.invalidateSession();
+    });
+    return controller;
   },
 );
 
@@ -108,6 +113,10 @@ class AuthController extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     await _repository.logout();
+    state = const AuthState.unauthenticated();
+  }
+
+  void invalidateSession() {
     state = const AuthState.unauthenticated();
   }
 
