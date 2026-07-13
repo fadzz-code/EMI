@@ -213,6 +213,15 @@ Rekomendasi umum: Admin penuh tetap web-first untuk MVP mobile. Hampir semua end
 - Route lama di audit/web doc `POST /student/chatbot/message` adalah stale; route aktif adalah plural `/student/chatbot/messages`.
 - Chatbot mencari kamus lebih dulu, lalu Basis AI published knowledge/chunks, lalu fallback default jika tidak ada match. Flutter hanya memanggil Laravel dan tidak mengakses service AI langsung.
 
+## Verifikasi Fase Budaya Siswa
+
+- Route aktif budaya siswa adalah `GET /api/v1/student/culture`, berada di group `auth:sanctum` + `role:student`, controller `StudentCultureItemController::index`.
+- Tidak ada endpoint detail budaya khusus untuk siswa. Detail mobile memakai item dari list/cache; deep link dapat mencari item dari list pertama, tetapi kontrak backend utama tetap list.
+- Query didukung: `class_id` opsional jika class id termasuk kelas aktif siswa, `page`, dan `per_page`. Tidak ditemukan search, kategori, atau filter status khusus untuk siswa.
+- Response paginated melalui `ApiResponse::paginated`, resource `ClassCultureItemResource`: `id`, `class_id`, `title`, `description`, `content_type`, `media_id`, `external_url`, `thumbnail_media_id`, `display_order`, `status`, `published_at`, `media`, `school_class`, `created_at`, `updated_at`.
+- Media budaya memakai `media.url` jika public dari `MediaFileResource`; jika media private maka URL null. `external_url` tersedia untuk link/video/youtube. Flutter tidak membangun URL sendiri.
+- Akses siswa dibatasi kelas aktif via `CultureAccessService::studentClassIds`, item `published`, class active, dan school active. Jika siswa tidak punya kelas aktif, response sukses dengan data kosong.
+
 ## Gap API Paling Penting
 
 1. Speaking list siswa dan hasil speaking belum paginated; aman untuk demo kecil, berisiko jika data besar.

@@ -199,6 +199,22 @@ Status: Selesai sebagian.
 - Emulator production: `flutter run -d emulator-5554 --dart-define=APP_ENV=production --dart-define=API_BASE_URL=https://api.emi-kolaka.id` build debug APK, install, dan app berjalan; command timeout karena Flutter CLI attach. PID app terdeteksi `10131`.
 - Manual production login dan kirim pesan chatbot belum dilakukan karena kredensial demo tidak tersedia; navigasi/input/keyboard/pesan production perlu verifikasi manual dengan akun siswa.
 
+## Update navigasi Siswa dan Budaya Mekongga
+
+Status: Selesai sebagian.
+
+- Figma MCP dicoba satu kali untuk file `Untitled`, file key `oMA2sYbh2B7cgzGJINNiar`, node Budaya `109:871`; hasil gagal `403 Forbidden` dengan body `{"status":403,"err":"Invalid token"}`.
+- Mode desain memakai fallback dari `Docs/mobile/desain.md`, pola AppBar/bottom nav existing, dan gaya neobrutalism; `Docs/mobile/desain.md` tidak diubah karena tidak ada data Figma baru.
+- Bottom navigation tetap lima item: Beranda, Modul, Kamus, Kuis, Profil. Progress, Chatbot, dan Budaya tidak ditambahkan ke bottom navigation.
+- `EmiScaffold` menjadi student shell reusable dengan hamburger AppBar, drawer kiri, header pengguna, dan menu sidebar: Progress Belajar `/student/progress`, Chatbot `/student/chatbot`, Budaya Mekongga `/student/culture`.
+- Drawer menutup sebelum navigasi, memberi selected state sesuai route aktif, Android back menutup drawer lebih dulu, dan menghindari route ganda saat item aktif ditekan.
+- Audit backend Budaya menemukan route aktif `GET /api/v1/student/culture` dengan auth Sanctum dan role `student`; query didukung `class_id`, `page`, `per_page`; response paginated berisi `ClassCultureItemResource` dengan media public URL dari backend.
+- Tidak ada endpoint detail Budaya khusus siswa, search, kategori, atau filter lain untuk siswa; detail mobile memakai data list/cache dan tidak membuat endpoint palsu.
+- Flutter menambah daftar Budaya, detail Budaya, pagination load more, pull-to-refresh, loading/empty/error/retry, media image dari URL backend, fallback URL untuk audio/video/pdf/link, dan route `/student/culture/:cultureId`.
+- Verifikasi: `flutter pub get` berhasil, `dart format .` berhasil, `flutter analyze` clean, `flutter test` lulus 41 tests.
+- Emulator production: `flutter run -d emulator-5554 --dart-define=APP_ENV=production --dart-define=API_BASE_URL=https://api.emi-kolaka.id` build debug APK, install, dan app berjalan; command timeout karena Flutter CLI attach. PID app terdeteksi `10379`.
+- Manual production login, buka drawer, navigasi Progress/Chatbot/Budaya, dan data Budaya nyata belum dilakukan karena kredensial demo tidak tersedia; perlu manual verification dengan akun siswa.
+
 ## Blocker
 
 - Figma API rate limit 429/akses token tidak valid masih memblokir typography exact, logo, icon library, component set detail, frame progress, dan frame profil aktual.

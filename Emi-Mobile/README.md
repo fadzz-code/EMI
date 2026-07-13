@@ -85,6 +85,8 @@ lib/
 - `/student/quizzes/:quizId/attempt`
 - `/student/progress`
 - `/student/chatbot`
+- `/student/culture`
+- `/student/culture/:cultureId`
 - `/student/profile`
 
 ## Dependency Tambahan
@@ -130,12 +132,13 @@ lib/
 - Ganti password.
 - Upload dan hapus avatar.
 - Chatbot siswa.
+- Sidebar navigasi siswa.
+- Daftar dan detail Budaya Mekongga.
 - Unsupported role.
 - Tests dasar.
 
 ## Fitur Belum
 
-- Budaya.
 - Speaking.
 - Guru mobile.
 - Admin mobile.

@@ -5,6 +5,9 @@ import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/auth_state.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/chatbot/presentation/student_chatbot_screen.dart';
+import '../../features/culture/data/culture_models.dart';
+import '../../features/culture/presentation/student_culture_detail_screen.dart';
+import '../../features/culture/presentation/student_culture_list_screen.dart';
 import '../../features/dashboard/presentation/student_dashboard_screen.dart';
 import '../../features/dictionary/presentation/dictionary_detail_screen.dart';
 import '../../features/dictionary/presentation/dictionary_list_screen.dart';
@@ -102,6 +105,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/student/chatbot',
         builder: (_, _) => const StudentChatbotScreen(),
+      ),
+      GoRoute(
+        path: '/student/culture',
+        builder: (_, _) => const StudentCultureListScreen(),
+      ),
+      GoRoute(
+        path: '/student/culture/:cultureId',
+        builder: (_, state) => StudentCultureDetailScreen(
+          cultureId: state.pathParameters['cultureId'] ?? '',
+          item: state.extra is CultureItem ? state.extra as CultureItem : null,
+        ),
       ),
       GoRoute(
         path: '/student/profile',
