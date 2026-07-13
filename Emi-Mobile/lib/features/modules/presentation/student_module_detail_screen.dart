@@ -62,6 +62,7 @@ class StudentModuleDetailScreen extends ConsumerWidget {
   void _go(BuildContext context, int index) {
     if (index == 0) context.go('/student/dashboard');
     if (index == 1) context.go('/student/modules');
+    if (index == 2) context.go('/student/dictionary');
     if (index == 4) context.go('/student/profile');
   }
 }

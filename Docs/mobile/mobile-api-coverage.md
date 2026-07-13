@@ -163,6 +163,17 @@ Rekomendasi umum: Admin penuh tetap web-first untuk MVP mobile. Hampir semua end
 - `POST /api/v1/student/modules/{id}/start` tersedia untuk mulai modul, tetapi fase ini tidak memicu otomatis agar tidak mengubah progress tanpa aksi eksplisit user.
 - Media lesson di module detail hanya mengirim metadata `id`, `mime_type`, `visibility`; URL konten harus lewat `GET /api/v1/class-lessons/{id}/content-url` atau media endpoint terkait.
 
+## Verifikasi Fase Kamus
+
+- `GET /api/v1/dictionary` terverifikasi untuk daftar kamus: controller `DictionaryController::index`, request `ListDictionaryRequest`, resource `DictionaryEntryResource`.
+- Query didukung: `search`, `language` (`all`, `indonesia`, `english`, `mekongga`), `category_id`, `letter`, `page`, `per_page`, `sort_by`, `sort_direction`.
+- Pagination memakai `meta` dari `ApiResponse::paginated`.
+- Detail kamus memakai `GET /api/v1/dictionary/{id}` dan memuat `category`, `audioMedia`, `sentenceExamples`.
+- Response field terverifikasi: `id`, `category`, `category_id`, `indonesia`, `english`, `mekongga`, `example_mekongga`, `example_indonesia`, `sentence_examples`, `audio`, `status`, `created_at`, `updated_at`.
+- `sentence_examples` memakai field `id`, `kode`, `contoh_mekongga`, `contoh_indonesia`.
+- Audio memakai field `audio.id`, `audio.url`, `audio.mime_type`; URL berasal dari `MediaAccessService::publicUrl($audio)` sehingga Flutter memakai URL backend yang dikirim resource, tanpa membangun URL sendiri.
+- Tidak ada endpoint kategori publik terpisah untuk siswa; filter kategori memakai `category_id` yang tersedia dari item list/detail yang sudah dikirim API.
+
 ## Gap API Paling Penting
 
 1. Speaking list siswa dan hasil speaking belum paginated; aman untuk demo kecil, berisiko jika data besar.

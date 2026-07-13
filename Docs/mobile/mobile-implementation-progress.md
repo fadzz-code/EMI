@@ -61,7 +61,7 @@
 ## Yang belum selesai
 
 - Login production manual dengan akun demo.
-- Kamus, kuis, progress lengkap.
+- Kuis dan progress lengkap.
 - Chatbot, budaya, speaking.
 - Guru mobile.
 - Admin mobile.
@@ -94,6 +94,22 @@ Status: Selesai.
 - Verifikasi: `flutter pub get` berhasil, `dart format .` berhasil, `flutter analyze` clean, `flutter test` lulus 15 tests.
 - Emulator: `flutter run -d emulator-5554 --dart-define=APP_ENV=production --dart-define=API_BASE_URL=https://api.emi-kolaka.id` build/install/run berhasil; CLI timeout karena tetap attach, bukan crash. `adb devices` mendeteksi `emulator-5554`, `adb shell pidof id.emikolaka.emi_mobile` mengembalikan PID `7587`.
 - Manual login dan penyelesaian lesson data production belum diuji karena kredensial harus diisi langsung di emulator.
+
+## Update fase Kamus dan Audio
+
+Status: Selesai.
+
+- Figma MCP berhasil membaca `SCREEN 6 — Kamus Mekongga` node `1:6283` dan `SCREEN 7 — Detail Kata Kamus` node `1:4968` dari file `Untitled`, file key `oMA2sYbh2B7cgzGJINNiar`, canvas `MOBILE EMI`.
+- Daftar kamus memakai endpoint nyata `GET /api/v1/dictionary`.
+- Detail kamus memakai endpoint nyata `GET /api/v1/dictionary/{id}`.
+- Search memakai query `search` dengan debounce 400ms.
+- Filter kategori memakai query `category_id` dari kategori yang tersedia di response item.
+- Audio memakai `audio.url` dari `DictionaryEntryResource`; package `just_audio` ditambahkan untuk play/pause/dispose.
+- Route Flutter ditambah: `/student/dictionary` dan `/student/dictionary/:entryId`.
+- UI mengikuti token Figma yang terbaca: search bar, chips, word card, hero word card, audio card biru, examples card kuning, bottom nav aktif Kamus, border tebal, radius 12, hard shadow.
+- Verifikasi: `flutter pub get` berhasil, `dart format .` berhasil, `flutter analyze` clean, `flutter test` lulus 18 tests.
+- Emulator: `flutter run -d emulator-5554 --dart-define=APP_ENV=production --dart-define=API_BASE_URL=https://api.emi-kolaka.id` sempat menampilkan error cache incremental Kotlin dari package audio di drive berbeda, lalu build debug APK berhasil, install berhasil, app berjalan; CLI lost connection setelah attach. `adb devices` mendeteksi `emulator-5554`, `adb shell pidof id.emikolaka.emi_mobile` mengembalikan PID `8041`.
+- Manual login, pencarian data production, dan audio nyata belum diuji karena kredensial harus diisi langsung di emulator.
 
 ## Blocker
 

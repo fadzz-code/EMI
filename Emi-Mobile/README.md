@@ -78,7 +78,13 @@ lib/
 - `/student/modules`
 - `/student/modules/:moduleId`
 - `/student/lessons/:lessonId`
+- `/student/dictionary`
+- `/student/dictionary/:entryId`
 - `/student/profile`
+
+## Dependency Tambahan
+
+- `just_audio`: pemutaran audio kosakata dari URL backend.
 
 ## Aturan Keamanan
 
@@ -104,6 +110,9 @@ lib/
 - Detail modul siswa.
 - Detail lesson siswa.
 - Penyelesaian lesson.
+- Daftar kamus siswa.
+- Detail kamus siswa.
+- Audio kosakata.
 - Profil siswa foundation.
 - Unsupported role.
 - Tests dasar.
@@ -111,7 +120,6 @@ lib/
 ## Fitur Belum
 
 - Modul belajar lengkap.
-- Kamus.
 - Kuis.
 - Progress lengkap.
 - Chatbot.

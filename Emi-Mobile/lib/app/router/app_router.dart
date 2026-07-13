@@ -5,6 +5,8 @@ import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/auth_state.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/dashboard/presentation/student_dashboard_screen.dart';
+import '../../features/dictionary/presentation/dictionary_detail_screen.dart';
+import '../../features/dictionary/presentation/dictionary_list_screen.dart';
 import '../../features/modules/presentation/student_lesson_detail_screen.dart';
 import '../../features/modules/presentation/student_module_detail_screen.dart';
 import '../../features/modules/presentation/student_modules_screen.dart';
@@ -60,6 +62,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => StudentLessonDetailScreen(
           lessonId: state.pathParameters['lessonId'] ?? '',
           moduleId: state.extra as String?,
+        ),
+      ),
+      GoRoute(
+        path: '/student/dictionary',
+        builder: (_, _) => const DictionaryListScreen(),
+      ),
+      GoRoute(
+        path: '/student/dictionary/:entryId',
+        builder: (_, state) => DictionaryDetailScreen(
+          entryId: state.pathParameters['entryId'] ?? '',
         ),
       ),
       GoRoute(

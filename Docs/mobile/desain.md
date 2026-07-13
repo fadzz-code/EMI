@@ -69,6 +69,13 @@ Update verifikasi fase Detail Modul/Lesson:
 - Component/frame terbaca: `Header - TopAppBar`, `Breadcrumbs & Badge`, `Article - Main Content Card`, `Header Card Area`, `Illustration`, `Audio Player`, `Section - Sub-lessons List`, `Navigation Buttons`, `BottomNavBar`.
 - Variables/styles tambahan terbaca: Plus Jakarta Sans 18/600 heading, Plus Jakarta Sans 14/500 body, Plus Jakarta Sans 12/700 button; fill `#FFDBC9`, `#E7E2DB`, `#F3EDE6`, `#9A4600`, `#682D00`; shadow small `2px 2px 0px 0px rgba(29, 27, 23, 1)`; main padding `96px 16px 2.62px`; section gap `24`; card/header padding `16`; lesson row padding `12`; button padding `12px 24px`; media height `192`; radius `8` for lesson/card inner blocks.
 
+Update verifikasi fase Kamus:
+
+- Daftar Kamus mobile memakai frame `SCREEN 6 — Kamus Mekongga`, node `1:6283`.
+- Detail Kamus mobile memakai frame `SCREEN 7 — Detail Kata Kamus`, node `1:4968`.
+- Component/frame terbaca: `Search Bar`, `Filter Chips`, `Dictionary List Grid`, `Article - Word Card`, `Load More Button`, `Hero Word Card`, `Audio Player Card`, `Examples Section`, `Tips Section`, `Related Words`, `BottomNavBar` active Kamus.
+- Variables/styles tambahan terbaca: Plus Jakarta Sans 32/800 heading, 24/800 app bar greeting, 18/600 search/load more, 16/500 body, 16/700 examples, 14/500 example translation, 12/700 nav/audio time; fill `#81D4FA`, `#FFD95A`, `#FFE081`, `#94F990`, `#FFDBC9`, `#5BBE5D`, `#9A4600`, `#682D00`; card padding `16/24`; search padding `13px 12px 13.19px 32px`; card radius `12`; chip radius `9999`; shadow `4px 4px 0px rgba(0,0,0,1)`.
+
 Jika akses Figma MCP kembali tersedia, audit berikutnya wajib membaca ulang node screen prioritas dan memperbarui dokumen ini.
 
 ## 4. Status Desain yang Tersedia
