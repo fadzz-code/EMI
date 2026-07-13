@@ -144,6 +144,29 @@ Rekomendasi umum: Admin penuh tetap web-first untuk MVP mobile. Hampir semua end
 | Admin | Settings | App/security/banner | `/api/v1/admin/settings`, `/settings/application`, `/settings/banner`, `/settings/security` | GET/PUT/POST | Admin | Banner upload multipart | Tidak | Ready with adjustment | Risiko setting production dari HP | Tetap web kecuali read-only. |
 | Admin | Profile/password | Profil admin | `/api/v1/auth/me`, `/api/v1/auth/password` | GET/PATCH/PUT | Auth | Avatar opsional | Tidak | Ready | Tidak ada | Jika admin mobile ada, hanya profile dasar. |
 
+## Verifikasi Admin Mobile Core
+
+Mode desain: Fallback, karena Figma MCP untuk Admin mobile node `105:4` gagal `403 Invalid token`.
+
+| Fitur Admin | Endpoint utama | Status |
+|---|---|---|
+| Dashboard summary | `GET /api/v1/admin/dashboard/summary` | READY |
+| Current admin | `GET /api/v1/auth/me` | READY_WITH_ADJUSTMENT |
+| Pengguna/role/siswa/guru | `GET /api/v1/users`, `GET /api/v1/users/{id}`, `PATCH /api/v1/users/{id}/status`; role via filter `role` | READY_WITH_ADJUSTMENT; roles endpoint dedicated MISSING |
+| Kelas/sekolah | `/api/v1/schools`, `/api/v1/classes`, assignment teacher/student | READY_WITH_ADJUSTMENT |
+| Modul/Lesson | `/api/v1/admin/module-templates`, `/api/v1/admin/module-templates/{id}/lessons`, shared class module/lesson endpoints | READY_WITH_ADJUSTMENT |
+| Kamus | `/api/v1/admin/dictionary/categories`, `/api/v1/admin/dictionary/entries` | READY |
+| Kuis/soal/pilihan | `/api/v1/admin/quiz-templates`, `/api/v1/admin/quiz-templates/{id}/questions`, `/api/v1/admin/quiz-template-questions/{id}` | READY |
+| Budaya | `/api/v1/admin/culture/items`, `/api/v1/admin/culture-templates` | READY_WITH_ADJUSTMENT |
+| Speaking template/exercise | `/api/v1/admin/speaking/exercises` | READY_WITH_ADJUSTMENT |
+| Speaking attempt/feedback | teacher/student attempt endpoints only | WEB_ONLY for Admin; admin feedback endpoint MISSING |
+| Laporan | `/api/v1/admin/reports/progress/*`, `/api/v1/admin/reports/quiz-results` | READY |
+| Media | `/api/v1/media`, `/api/v1/media/{id}`, `/api/v1/media/{id}/temporary-url` | READY_WITH_ADJUSTMENT; media library list MISSING |
+| Settings | `/api/v1/admin/settings`, `/application`, `/banner`, `/security` | READY_WITH_ADJUSTMENT |
+| Import/AI/PDF/export | dictionary import, AI knowledge, PDF extraction, CSV export | WEB_ONLY for mobile core |
+
+Implementasi Flutter core saat ini memakai endpoint read/list/detail yang READY/READY_WITH_ADJUSTMENT tanpa membuat data lokal palsu; operasi destruktif/CRUD form panjang tetap belum diaktifkan di mobile core.
+
 ## Endpoint Missing atau Perlu Rekomendasi Baru
 
 | Area | Endpoint yang dicari | Status | Catatan | Rekomendasi |

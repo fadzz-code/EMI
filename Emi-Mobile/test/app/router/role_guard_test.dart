@@ -15,6 +15,19 @@ void main() {
     expect(user.role, UserRole.unknown);
   });
 
+  test('admin role is supported by mobile auth state', () {
+    const user = SessionUser(
+      id: '1',
+      fullName: 'Admin',
+      email: 'admin@example.test',
+      role: UserRole.admin,
+      status: 'approved',
+    );
+
+    const state = AuthState(status: AuthStatus.authenticated, user: user);
+    expect(state.user?.role, UserRole.admin);
+  });
+
   test('auth state supports unsupported role', () {
     const user = SessionUser(
       id: '1',

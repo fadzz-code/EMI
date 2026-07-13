@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/admin/data/admin_providers.dart';
+import '../../features/admin/presentation/admin_screens.dart';
+import '../../features/auth/domain/session_user.dart';
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/auth_state.dart';
 import '../../features/auth/presentation/login_screen.dart';
@@ -42,8 +45,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return location == '/unsupported-role' ? null : '/unsupported-role';
       }
       if (auth.status == AuthStatus.authenticated) {
+        final home = auth.user?.role == UserRole.admin
+            ? '/admin/dashboard'
+            : '/student/dashboard';
         if (location == '/login' || location == '/splash' || location == '/') {
-          return '/student/dashboard';
+          return home;
+        }
+        if (location.startsWith('/admin') &&
+            auth.user?.role != UserRole.admin) {
+          return home;
+        }
+        if (location.startsWith('/student') &&
+            auth.user?.role == UserRole.admin) {
+          return home;
         }
       }
       return null;
@@ -133,6 +147,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/student/profile',
         builder: (_, _) => const StudentProfileScreen(),
       ),
+      GoRoute(
+        path: '/admin/dashboard',
+        builder: (_, _) => const AdminDashboardScreen(),
+      ),
+      for (final feature in AdminFeature.values) ...[
+        GoRoute(
+          path: feature.route,
+          builder: (_, _) => AdminListScreen(feature: feature),
+        ),
+        GoRoute(
+          path: '${feature.route}/:id',
+          builder: (_, state) => AdminDetailScreen(
+            feature: feature,
+            id: state.pathParameters['id'] ?? '',
+          ),
+        ),
+      ],
       GoRoute(
         path: '/unsupported-role',
         builder: (_, _) => const UnsupportedRoleScreen(),

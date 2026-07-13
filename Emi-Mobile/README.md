@@ -105,6 +105,28 @@ lib/
     profile/
 ```
 
+## Route Admin
+
+- `/admin/dashboard`
+- `/admin/users`
+- `/admin/users/:id`
+- `/admin/classes`
+- `/admin/classes/:id`
+- `/admin/modules`
+- `/admin/modules/:id`
+- `/admin/dictionary`
+- `/admin/dictionary/:id`
+- `/admin/quizzes`
+- `/admin/quizzes/:id`
+- `/admin/culture`
+- `/admin/culture/:id`
+- `/admin/speaking`
+- `/admin/speaking/:id`
+- `/admin/reports`
+- `/admin/reports/:id`
+- `/admin/settings`
+- `/admin/settings/:id`
+
 ## Route Siswa
 
 - `/student/dashboard`
@@ -152,7 +174,8 @@ lib/
 - Secure token storage abstraction.
 - Auth login/current user/logout.
 - Session persistence.
-- Role guard siswa.
+- Role guard siswa dan Admin.
+- Admin Shell, Dashboard Admin, sidebar Admin, dan list/detail read-only fitur inti Admin.
 - Splash.
 - Login.
 - Dashboard siswa data nyata.
@@ -183,7 +206,7 @@ lib/
 ## Fitur Belum
 
 - Guru mobile.
-- Admin mobile.
+- Admin CRUD form panjang/destruktif, import, export, media library list, dan speaking feedback khusus Admin.
 
 ## Known Gaps Release
 

@@ -121,7 +121,7 @@ class AuthController extends StateNotifier<AuthState> {
   }
 
   AuthState _stateForUser(SessionUser user) {
-    if (user.role == UserRole.student) {
+    if (user.role == UserRole.student || user.role == UserRole.admin) {
       return AuthState(status: AuthStatus.authenticated, user: user);
     }
     return AuthState(status: AuthStatus.unsupportedRole, user: user);

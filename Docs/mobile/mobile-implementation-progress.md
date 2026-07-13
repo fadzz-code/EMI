@@ -290,8 +290,26 @@ Status: Belum complete.
 | Budaya list/detail | NEEDS USER DATA | Endpoint/UI ada; detail mobile dari cache/list karena backend tidak punya endpoint detail siswa. |
 | Speaking full flow | BLOCKED/NEEDS USER DATA | Fix private media playback dibuat; tetap perlu exercise production, izin mic, upload, queue/AI running, status pending/processing/completed/failed, feedback/history. |
 
+## Update Admin mobile core
+
+Status: Selesai sebagian.
+
+- Figma MCP dicoba satu kali untuk Admin mobile node `105:4`; hasil gagal `403 Invalid token`. Mode desain: fallback memakai `Docs/mobile/desain.md`, referensi Admin tercatat, dan komponen neobrutalism existing.
+- Audit backend Admin dilakukan pada routes/controllers/resources/requests/policies/services. Endpoint READY dipakai tanpa mengarang kontrak.
+- Auth role guard diperluas: Admin masuk `/admin/dashboard`; Admin tidak masuk route siswa; role selain Admin/Siswa tetap unsupported.
+- Admin Shell dibuat tanpa bottom navigation, memakai AppBar + drawer/sidebar dengan header avatar, nama, email, role, active menu, close-before-navigate, no duplicate route, dan logout.
+- Menu Admin terpusat: Dashboard, Pengguna, Kelas, Modul, Kamus, Kuis, Budaya, Speaking, Laporan, Pengaturan.
+- Dashboard Admin memakai `GET /api/v1/admin/dashboard/summary` dan hanya menampilkan metrik yang dikirim backend.
+- Fitur list/detail read-only dibuat untuk endpoint inti: users, classes, module templates, dictionary entries, quiz templates, culture items, speaking exercises, progress reports, settings. CRUD destruktif/form panjang belum diaktifkan di mobile core.
+- Manual login Admin production dilakukan user langsung di emulator; password tidak dikirim ke chat. App berjalan di `emulator-5554`; logcat tidak menemukan crash fatal atau token/password tercetak. Pembukaan setiap menu/data nyata masih perlu verifikasi manual lanjutan karena UI dump Flutter tidak memberi bukti teks detail.
+- Verifikasi: `flutter pub get` berhasil, `dart format .` berhasil, `flutter analyze` clean, `flutter test` lulus 51 tests.
+
 ## Blocker
 
+- Manual E2E penuh Admin masih butuh verifikasi data production per menu dan izin melakukan aksi CRUD aman.
+- Admin speaking attempt/feedback dedicated endpoint tidak tersedia; feedback speaking hanya teacher endpoint.
+- Media library list endpoint tidak tersedia; media Admin hanya upload/detail/temporary-url/delete.
+- Roles endpoint dedicated tidak tersedia; role hanya via user field/filter.
 - Manual E2E penuh masih butuh data siswa production yang boleh diubah: modul/lesson, kuis aktif PG+isian, avatar test, chatbot prompt, speaking exercise, queue/AI, dan feedback guru.
 - Figma API rate limit 429/akses token tidak valid masih memblokir typography exact, logo, icon library, component set detail, frame progress, dan frame profil aktual.
 - Manual production login membutuhkan kredensial demo dari pengelola.

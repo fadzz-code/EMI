@@ -118,10 +118,12 @@ lib/
     teacher_modules/
     teacher_quizzes/
     teacher_speaking/
-    admin_dashboard/
-    admin_users/
-    admin_content/
+    admin/
+      data/
+      presentation/
 ```
+
+Admin mobile memakai prefix route `/admin`, `AdminShell` tanpa bottom navigation, drawer/sidebar dari konfigurasi fitur terpusat, dan tetap memakai Dio/Riverpod/auth interceptor yang sama.
 
 ## Prinsip Implementasi
 
