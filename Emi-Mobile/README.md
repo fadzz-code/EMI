@@ -89,6 +89,7 @@ lib/
 ## Dependency Tambahan
 
 - `just_audio`: pemutaran audio kosakata dari URL backend.
+- `image_picker`: pemilihan avatar dari galeri Android memakai picker sistem.
 
 ## Aturan Keamanan
 
@@ -126,12 +127,12 @@ lib/
 - Profil siswa data nyata.
 - Edit profil.
 - Ganti password.
+- Upload dan hapus avatar.
 - Unsupported role.
 - Tests dasar.
 
 ## Fitur Belum
 
-- Upload avatar.
 - Chatbot.
 - Budaya.
 - Speaking.

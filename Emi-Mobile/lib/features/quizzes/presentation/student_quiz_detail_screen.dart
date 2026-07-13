@@ -122,7 +122,9 @@ class StudentQuizDetailScreen extends ConsumerWidget {
               ),
               const SizedBox(height: EmiSpacing.md),
               OutlinedButton.icon(
-                onPressed: () => context.pop(),
+                onPressed: () => context.canPop()
+                    ? context.pop()
+                    : context.go('/student/quizzes'),
                 icon: const Icon(Icons.arrow_back),
                 label: const Text('Kembali'),
               ),

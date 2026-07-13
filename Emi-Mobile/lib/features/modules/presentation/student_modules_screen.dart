@@ -237,7 +237,10 @@ class _ModuleCard extends StatelessWidget {
                   ],
                   const SizedBox(height: EmiSpacing.md),
                   LinearProgressIndicator(
-                    value: module.progress.progressPercent / 100,
+                    value: (module.progress.progressPercent / 100).clamp(
+                      0.0,
+                      1.0,
+                    ),
                   ),
                   const SizedBox(height: EmiSpacing.xs),
                   Text('${module.progress.progressPercent}% selesai'),

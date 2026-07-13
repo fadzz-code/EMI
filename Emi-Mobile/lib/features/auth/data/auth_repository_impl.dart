@@ -99,6 +99,36 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<SessionUser> uploadAvatar({
+    required String path,
+    required String fileName,
+    void Function(int sent, int total)? onSendProgress,
+  }) async {
+    try {
+      final user = await _remoteDataSource.uploadAvatar(
+        path: path,
+        fileName: fileName,
+        onSendProgress: onSendProgress,
+      );
+      _validateUser(user);
+      return user;
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  @override
+  Future<SessionUser> deleteAvatar() async {
+    try {
+      final user = await _remoteDataSource.deleteAvatar();
+      _validateUser(user);
+      return user;
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  @override
   Future<void> logout() async {
     try {
       await _remoteDataSource.logout();

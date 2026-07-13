@@ -1,12 +1,16 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
 import '../../auth/domain/session_user.dart';
 import '../../auth/presentation/auth_controller.dart';
+import 'avatar_validator.dart';
 
 class StudentProfileScreen extends ConsumerStatefulWidget {
   const StudentProfileScreen({super.key});
@@ -17,6 +21,10 @@ class StudentProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
+  final _avatarValidator = const AvatarValidator();
+  final _picker = ImagePicker();
+  XFile? _avatarPreview;
+  double? _avatarProgress;
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _currentPasswordController = TextEditingController();
@@ -49,7 +57,16 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
             EmiCard(child: Text(auth.error!.message)),
             const SizedBox(height: EmiSpacing.md),
           ],
-          _ProfileHeader(user: user),
+          _ProfileHeader(
+            user: user,
+            previewPath: _avatarPreview?.path,
+            progress: _avatarProgress,
+            isBusy: auth.isLoading,
+            onPick: user == null || auth.isLoading ? null : _pickAvatar,
+            onDelete: user == null || user.avatarUrl == null || auth.isLoading
+                ? null
+                : _confirmDeleteAvatar,
+          ),
           const SizedBox(height: EmiSpacing.lg),
           EmiCard(
             child: Column(
@@ -104,6 +121,76 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
     if (index == 2) context.go('/student/dictionary');
     if (index == 3) context.go('/student/quizzes');
     if (index == 4) context.go('/student/profile');
+  }
+
+  Future<void> _pickAvatar() async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    if (picked == null) return;
+
+    final result = _avatarValidator.validate(
+      fileName: picked.name,
+      sizeBytes: await picked.length(),
+    );
+    if (!result.isValid) {
+      _snack(result.message!);
+      return;
+    }
+
+    setState(() {
+      _avatarPreview = picked;
+      _avatarProgress = 0;
+    });
+    await ref
+        .read(authControllerProvider.notifier)
+        .uploadAvatar(
+          path: picked.path,
+          fileName: picked.name,
+          onSendProgress: (sent, total) {
+            if (!mounted || total <= 0) return;
+            setState(() => _avatarProgress = sent / total);
+          },
+        );
+    if (!mounted) return;
+    if (ref.read(authControllerProvider).error == null) {
+      setState(() {
+        _avatarPreview = null;
+        _avatarProgress = null;
+      });
+      _snack('Avatar diperbarui.');
+    } else {
+      setState(() => _avatarProgress = null);
+    }
+  }
+
+  Future<void> _confirmDeleteAvatar() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Avatar'),
+        content: const Text('Avatar profil akan dihapus.'),
+        actions: [
+          TextButton(
+            onPressed: () => context.pop(false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => context.pop(true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => _avatarProgress = 0);
+    await ref.read(authControllerProvider.notifier).deleteAvatar();
+    if (!mounted) return;
+    setState(() {
+      _avatarPreview = null;
+      _avatarProgress = null;
+    });
+    if (ref.read(authControllerProvider).error == null) {
+      _snack('Avatar dihapus.');
+    }
   }
 
   Future<void> _showEditProfile(SessionUser user) async {
@@ -227,44 +314,116 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
 }
 
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.user});
+  const _ProfileHeader({
+    required this.user,
+    required this.previewPath,
+    required this.progress,
+    required this.isBusy,
+    required this.onPick,
+    required this.onDelete,
+  });
+
+  final SessionUser? user;
+  final String? previewPath;
+  final double? progress;
+  final bool isBusy;
+  final VoidCallback? onPick;
+  final VoidCallback? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final avatar = previewPath == null
+        ? _NetworkAvatar(user: user)
+        : CircleAvatar(
+            radius: 36,
+            backgroundImage: FileImage(File(previewPath!)),
+          );
+
+    return EmiCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  avatar,
+                  if (progress != null)
+                    SizedBox(
+                      width: 72,
+                      height: 72,
+                      child: CircularProgressIndicator(value: progress),
+                    ),
+                ],
+              ),
+              const SizedBox(width: EmiSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user?.fullName ?? '-',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    Text(user?.email ?? '-'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: EmiSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: isBusy ? null : onPick,
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: const Text('Pilih Avatar'),
+                ),
+              ),
+              const SizedBox(width: EmiSpacing.sm),
+              OutlinedButton.icon(
+                onPressed: isBusy ? null : onDelete,
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Hapus'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NetworkAvatar extends StatelessWidget {
+  const _NetworkAvatar({required this.user});
 
   final SessionUser? user;
 
   @override
   Widget build(BuildContext context) {
-    return EmiCard(
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 36,
-            backgroundColor: EmiColors.secondary,
-            backgroundImage: user?.avatarUrl == null
-                ? null
-                : NetworkImage(user!.avatarUrl!),
-            child: user?.avatarUrl == null
-                ? Text(
-                    (user?.fullName.isNotEmpty ?? false)
-                        ? user!.fullName.characters.first
-                        : '?',
-                  )
-                : null,
-          ),
-          const SizedBox(width: EmiSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  user?.fullName ?? '-',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                Text(user?.email ?? '-'),
-              ],
+    final fallback = Text(
+      (user?.fullName.isNotEmpty ?? false)
+          ? user!.fullName.characters.first
+          : '?',
+    );
+    final avatarUrl = user?.avatarUrl;
+
+    return CircleAvatar(
+      radius: 36,
+      backgroundColor: EmiColors.secondary,
+      child: avatarUrl == null
+          ? fallback
+          : ClipOval(
+              child: Image.network(
+                avatarUrl,
+                width: 72,
+                height: 72,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => Center(child: fallback),
+              ),
             ),
-          ),
-        ],
-      ),
     );
   }
 }

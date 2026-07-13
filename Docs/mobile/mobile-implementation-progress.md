@@ -170,6 +170,21 @@ Status: Selesai sebagian.
 - Route Flutter ditambah: `/student/progress`.
 - Verifikasi awal: `dart format .` berhasil, `flutter analyze` clean, `flutter test` lulus 26 tests.
 
+## Update avatar dan hardening MVP Siswa
+
+Status: Selesai sebagian.
+
+- Figma MCP dicoba satu kali untuk file `Untitled`, file key `oMA2sYbh2B7cgzGJINNiar`, node profil `109:1328`; hasil gagal `403 Forbidden` dengan body `{"status":403,"err":"Invalid token"}`.
+- Mode desain memakai fallback dari `Docs/mobile/desain.md` dan komponen profil existing; `Docs/mobile/desain.md` tidak diubah karena tidak ada data Figma baru.
+- Kontrak avatar backend terverifikasi dari route/controller/request/service/resource: `POST /api/v1/auth/me/avatar`, `DELETE /api/v1/auth/me/avatar`, multipart field `avatar`, public media, response `UserResource.avatar.id/url`.
+- Tipe avatar diterima backend: `image/jpeg`, `image/png`, `image/webp`; batas ukuran `MEDIA_MAX_IMAGE_KB` default 5120 KB.
+- Flutter memakai `image_picker` untuk galeri, validasi ekstensi `jpg/jpeg/png/webp` dan ukuran 5 MB sebelum upload, preview lokal, progress upload Dio multipart, double-submit prevention via `auth.isLoading`, error validation ramah, refresh current user dari response upload/delete, dan fallback avatar jika URL null/gagal dimuat.
+- Hapus avatar memakai dialog konfirmasi dan endpoint `DELETE /auth/me/avatar`.
+- Audit stabilitas MVP memperbaiki bug nyata: progress bar dashboard/modul di-clamp 0..1, back detail kuis aman untuk deep link, `setState` async attempt kuis diberi guard `mounted`, error audio kamus diberi guard `mounted`, token lokal dibersihkan saat API mengembalikan 401.
+- Verifikasi: `flutter pub get` berhasil, `dart format .` berhasil, `flutter analyze` clean, `flutter test` lulus 29 tests.
+- Emulator production: `flutter run -d emulator-5554 --dart-define=APP_ENV=production --dart-define=API_BASE_URL=https://api.emi-kolaka.id` build debug APK, install, dan app berjalan; command timeout karena Flutter CLI attach. PID app terdeteksi `9923`.
+- Manual production login dan upload/delete avatar ke API production belum dilakukan karena kredensial demo tidak tersedia; picker/cancel/preview perlu verifikasi manual dengan akun siswa.
+
 ## Blocker
 
 - Figma API rate limit 429/akses token tidak valid masih memblokir typography exact, logo, icon library, component set detail, frame progress, dan frame profil aktual.

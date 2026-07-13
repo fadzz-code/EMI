@@ -16,10 +16,20 @@ class FakeAuthRepository implements AuthRepository {
   }) async => throw UnimplementedError();
 
   @override
+  Future<SessionUser> deleteAvatar() async => throw UnimplementedError();
+
+  @override
   Future<void> logout() async {}
 
   @override
   Future<SessionUser?> restoreSession() async => null;
+
+  @override
+  Future<SessionUser> uploadAvatar({
+    required String path,
+    required String fileName,
+    void Function(int sent, int total)? onSendProgress,
+  }) async => throw UnimplementedError();
 
   @override
   Future<SessionUser> updatePassword({

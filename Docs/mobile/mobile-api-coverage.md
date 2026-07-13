@@ -200,7 +200,7 @@ Rekomendasi umum: Admin penuh tetap web-first untuk MVP mobile. Hampir semua end
 - `GET /api/v1/auth/me` terverifikasi untuk profil; response `UserResource` berisi `id`, `full_name`, `email`, `phone`, `avatar.id/url`, `role`, `status`, `active_school`, `active_class`, `active_membership`.
 - `PATCH /api/v1/auth/me` terverifikasi untuk edit profil; request `UpdateProfileRequest` menerima `full_name` dan `phone`.
 - `PUT /api/v1/auth/password` terverifikasi untuk ganti password; request `UpdatePasswordRequest` menerima `current_password`, `password`, dan `password_confirmation`.
-- `POST /api/v1/auth/me/avatar` dan `DELETE /api/v1/auth/me/avatar` tersedia dengan field multipart `avatar`, tetapi Flutter belum mengaktifkan upload avatar karena belum ada package picker dan belum diuji kontrak file Android.
+- `POST /api/v1/auth/me/avatar` dan `DELETE /api/v1/auth/me/avatar` terverifikasi untuk avatar. Upload memakai multipart field `avatar`; request `UploadAvatarRequest` mewajibkan file dan ukuran maksimal `config('media.max_kb.image')` default 5120 KB; `MediaUploadService` menerima MIME `image/jpeg`, `image/png`, `image/webp`, memaksa visibility `public`, menyimpan purpose `avatar`, dan response `UserResource` mengembalikan `avatar.id` serta `avatar.url`. Flutter sudah mengaktifkan picker galeri dan validasi client sesuai kontrak; upload/delete production masih Needs manual verification karena kredensial demo tidak tersedia.
 - `POST /api/v1/auth/logout` terverifikasi; mobile tetap menghapus token lokal walau request logout gagal.
 
 ## Gap API Paling Penting

@@ -109,6 +109,7 @@ class _StudentQuizAttemptScreenState
       final attempt = await ref
           .read(studentQuizRepositoryProvider)
           .startAttempt(widget.quizId);
+      if (!mounted) return;
       _hydrate(attempt);
       setState(() {
         _attempt = attempt;
@@ -116,6 +117,7 @@ class _StudentQuizAttemptScreenState
       });
       _startTimer(attempt);
     } catch (error) {
+      if (!mounted) return;
       setState(() {
         _error = error;
         _loading = false;

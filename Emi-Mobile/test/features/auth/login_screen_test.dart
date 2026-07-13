@@ -17,10 +17,20 @@ class FakeAuthRepository implements AuthRepository {
   }) async => _student;
 
   @override
+  Future<SessionUser> deleteAvatar() async => _student;
+
+  @override
   Future<void> logout() async {}
 
   @override
   Future<SessionUser?> restoreSession() async => null;
+
+  @override
+  Future<SessionUser> uploadAvatar({
+    required String path,
+    required String fileName,
+    void Function(int sent, int total)? onSendProgress,
+  }) async => _student;
 
   @override
   Future<SessionUser> updatePassword({

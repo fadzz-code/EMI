@@ -190,7 +190,7 @@ class _DictionaryAudioPlayerState extends State<DictionaryAudioPlayer> {
         await _player.play();
       }
     } catch (error) {
-      setState(() => _error = 'Audio gagal diputar.');
+      if (mounted) setState(() => _error = 'Audio gagal diputar.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }

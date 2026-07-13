@@ -78,6 +78,34 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
+  Future<void> uploadAvatar({
+    required String path,
+    required String fileName,
+    void Function(int sent, int total)? onSendProgress,
+  }) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final user = await _repository.uploadAvatar(
+        path: path,
+        fileName: fileName,
+        onSendProgress: onSendProgress,
+      );
+      state = _stateForUser(user);
+    } catch (error) {
+      state = state.copyWith(isLoading: false, error: _asAppError(error));
+    }
+  }
+
+  Future<void> deleteAvatar() async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final user = await _repository.deleteAvatar();
+      state = _stateForUser(user);
+    } catch (error) {
+      state = state.copyWith(isLoading: false, error: _asAppError(error));
+    }
+  }
+
   Future<void> logout() async {
     await _repository.logout();
     state = const AuthState.unauthenticated();

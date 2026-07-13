@@ -29,6 +29,12 @@ final dioProvider = Provider<Dio>((ref) {
         }
         handler.next(options);
       },
+      onError: (error, handler) async {
+        if (error.response?.statusCode == 401) {
+          await tokenStorage.clearSession();
+        }
+        handler.next(error);
+      },
     ),
   );
 

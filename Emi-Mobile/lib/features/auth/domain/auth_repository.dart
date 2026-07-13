@@ -10,5 +10,11 @@ abstract class AuthRepository {
     required String password,
     required String passwordConfirmation,
   });
+  Future<SessionUser> uploadAvatar({
+    required String path,
+    required String fileName,
+    void Function(int sent, int total)? onSendProgress,
+  });
+  Future<SessionUser> deleteAvatar();
   Future<void> logout();
 }

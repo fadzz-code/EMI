@@ -85,6 +85,38 @@ class AuthRemoteDataSource {
     return SessionUser.fromJson(data);
   }
 
+  Future<SessionUser> uploadAvatar({
+    required String path,
+    required String fileName,
+    void Function(int sent, int total)? onSendProgress,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/auth/me/avatar',
+      data: FormData.fromMap({
+        'avatar': await MultipartFile.fromFile(path, filename: fileName),
+      }),
+      onSendProgress: onSendProgress,
+    );
+    final payload = ApiResponse<Map<String, dynamic>>.fromJson(
+      response.data ?? {},
+      (value) => value as Map<String, dynamic>,
+    );
+    final data = payload.data;
+    if (data == null) throw StateError('Response profil tidak lengkap.');
+    return SessionUser.fromJson(data);
+  }
+
+  Future<SessionUser> deleteAvatar() async {
+    final response = await _dio.delete<Map<String, dynamic>>('/auth/me/avatar');
+    final payload = ApiResponse<Map<String, dynamic>>.fromJson(
+      response.data ?? {},
+      (value) => value as Map<String, dynamic>,
+    );
+    final data = payload.data;
+    if (data == null) throw StateError('Response profil tidak lengkap.');
+    return SessionUser.fromJson(data);
+  }
+
   Future<void> logout() async {
     await _dio.post<Map<String, dynamic>>('/auth/logout');
   }

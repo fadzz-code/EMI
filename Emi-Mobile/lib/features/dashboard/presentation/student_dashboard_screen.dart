@@ -190,7 +190,9 @@ class _ContinueCard extends StatelessWidget {
             '${learning.completedLessons}/${learning.totalLessons} materi selesai',
           ),
           const SizedBox(height: EmiSpacing.sm),
-          LinearProgressIndicator(value: learning.overallProgressPercent / 100),
+          LinearProgressIndicator(
+            value: (learning.overallProgressPercent / 100).clamp(0.0, 1.0),
+          ),
         ],
       ),
     );
