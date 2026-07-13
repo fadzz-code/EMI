@@ -111,6 +111,17 @@ Status: Selesai.
 - Emulator: `flutter run -d emulator-5554 --dart-define=APP_ENV=production --dart-define=API_BASE_URL=https://api.emi-kolaka.id` sempat menampilkan error cache incremental Kotlin dari package audio di drive berbeda, lalu build debug APK berhasil, install berhasil, app berjalan; CLI lost connection setelah attach. `adb devices` mendeteksi `emulator-5554`, `adb shell pidof id.emikolaka.emi_mobile` mengembalikan PID `8041`.
 - Manual login, pencarian data production, dan audio nyata belum diuji karena kredensial harus diisi langsung di emulator.
 
+## Update diagnosis buffering Modul/Kamus
+
+Status: Selesai.
+
+- Akar masalah Modul: `StudentModuleQuery` dipakai sebagai parameter `FutureProvider.family`, tetapi belum punya `==` dan `hashCode`. Setiap rebuild screen membuat instance query baru sehingga Riverpod melihat key provider baru dan memulai fetch ulang; loading terlihat panjang/berulang.
+- Akar masalah Kamus: `DictionaryQuery` punya masalah sama; tiap rebuild/search/filter membuat identity provider tidak stabil walau value sama.
+- Bukti diagnosis: file `student_module_providers.dart` dan `dictionary_providers.dart` sebelum fix hanya berisi field `search/status/categoryId` tanpa equality. Setelah fix ditambah value equality dan regression test `query_identity_test.dart` memastikan dua query dengan value sama menghasilkan key provider sama.
+- Perbaikan: tambah `operator ==` dan `hashCode` pada `StudentModuleQuery` dan `DictionaryQuery`.
+- Kotlin cache warning tidak relevan dengan buffering API/UI karena warning terjadi saat Gradle compile package audio; aplikasi tetap build/install/run dan masalah loading berasal dari lifecycle provider Flutter.
+- Fitur Kuis diblokir: Figma MCP terkena `429` saat membaca frame Kuis, sehingga implementasi UI Kuis dihentikan sesuai batasan tugas.
+
 ## Blocker
 
 - Figma API rate limit 429 masih memblokir typography exact, logo, icon library, dan component set detail.

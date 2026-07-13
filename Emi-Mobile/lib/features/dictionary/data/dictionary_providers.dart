@@ -14,6 +14,16 @@ class DictionaryQuery {
 
   final String? search;
   final String? categoryId;
+
+  @override
+  bool operator ==(Object other) {
+    return other is DictionaryQuery &&
+        other.search == search &&
+        other.categoryId == categoryId;
+  }
+
+  @override
+  int get hashCode => Object.hash(search, categoryId);
 }
 
 final dictionaryListProvider = FutureProvider.autoDispose

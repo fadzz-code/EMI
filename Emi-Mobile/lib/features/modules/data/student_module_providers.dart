@@ -15,6 +15,16 @@ class StudentModuleQuery {
 
   final String? search;
   final String? status;
+
+  @override
+  bool operator ==(Object other) {
+    return other is StudentModuleQuery &&
+        other.search == search &&
+        other.status == status;
+  }
+
+  @override
+  int get hashCode => Object.hash(search, status);
 }
 
 final studentModuleListProvider = FutureProvider.autoDispose
