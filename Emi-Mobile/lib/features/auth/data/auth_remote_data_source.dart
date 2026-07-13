@@ -1,0 +1,52 @@
+import 'package:dio/dio.dart';
+
+import '../../../shared/models/api_response.dart';
+import '../domain/session_user.dart';
+
+class AuthRemoteDataSource {
+  AuthRemoteDataSource(this._dio);
+
+  final Dio _dio;
+
+  Future<({String token, SessionUser user})> login({
+    required String email,
+    required String password,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/auth/login',
+      data: {
+        'email': email,
+        'password': password,
+        'device_name': 'emi-flutter-android',
+      },
+    );
+    final payload = ApiResponse<Map<String, dynamic>>.fromJson(
+      response.data ?? {},
+      (value) => value as Map<String, dynamic>,
+    );
+    final data = payload.data ?? {};
+    final token = data['token'] as String? ?? '';
+    final userJson = data['user'];
+
+    if (token.isEmpty || userJson is! Map<String, dynamic>) {
+      throw StateError('Response login tidak lengkap.');
+    }
+
+    return (token: token, user: SessionUser.fromJson(userJson));
+  }
+
+  Future<SessionUser> currentUser() async {
+    final response = await _dio.get<Map<String, dynamic>>('/auth/me');
+    final payload = ApiResponse<Map<String, dynamic>>.fromJson(
+      response.data ?? {},
+      (value) => value as Map<String, dynamic>,
+    );
+    final data = payload.data;
+    if (data == null) throw StateError('Response profil tidak lengkap.');
+    return SessionUser.fromJson(data);
+  }
+
+  Future<void> logout() async {
+    await _dio.post<Map<String, dynamic>>('/auth/logout');
+  }
+}

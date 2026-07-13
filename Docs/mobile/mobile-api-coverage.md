@@ -152,6 +152,13 @@ Rekomendasi umum: Admin penuh tetap web-first untuk MVP mobile. Hampir semua end
 | Siswa lesson | `/api/v1/student/lessons/{id}` | Missing | Web memakai `/class-lessons/{id}` dan `/class-lessons/{id}/content-url`. | Flutter pakai endpoint shared yang sudah ada. |
 | Guru student detail dedicated | `/api/v1/teacher/students/{id}` | Missing | Web memakai report students dengan `student_id`. | Tambah endpoint dedicated hanya jika UI guru butuh detail lebih kaya. |
 
+## Verifikasi Fase Dashboard/Modul
+
+- `GET /api/v1/student/dashboard/summary` terverifikasi lewat backend: controller `StudentDashboardController::summary`, role `student`, response `class`, `empty_state`, `learning`, `quizzes`, `upcoming_deadlines`, `recent_activity`, `capabilities`, `speaking_summary`, `generated_at`.
+- `GET /api/v1/student/modules` terverifikasi lewat backend: controller `StudentModuleController::index`, resource `StudentModuleResource`, role `student`, filter `search`, `status`, `page`, `per_page`, `sort_by`, `sort_direction`, pagination `meta`.
+- `GET /api/v1/student/modules/{id}` tersedia untuk detail berikutnya; detail penuh belum diimplementasikan pada fase ini.
+- Media lesson di module detail hanya mengirim metadata `id`, `mime_type`, `visibility`; URL konten harus lewat `GET /api/v1/class-lessons/{id}/content-url` atau media endpoint terkait.
+
 ## Gap API Paling Penting
 
 1. Speaking list siswa dan hasil speaking belum paginated; aman untuk demo kecil, berisiko jika data besar.

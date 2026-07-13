@@ -1,0 +1,30 @@
+import 'package:emi_mobile/features/auth/domain/session_user.dart';
+import 'package:emi_mobile/features/auth/presentation/auth_state.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  test('unknown role can be represented safely', () {
+    final user = SessionUser.fromJson({
+      'id': '1',
+      'full_name': 'User',
+      'email': 'user@example.test',
+      'role': 'operator',
+      'status': 'approved',
+    });
+
+    expect(user.role, UserRole.unknown);
+  });
+
+  test('auth state supports unsupported role', () {
+    const user = SessionUser(
+      id: '1',
+      fullName: 'Guru',
+      email: 'guru@example.test',
+      role: UserRole.teacher,
+      status: 'approved',
+    );
+
+    const state = AuthState(status: AuthStatus.unsupportedRole, user: user);
+    expect(state.status, AuthStatus.unsupportedRole);
+  });
+}
