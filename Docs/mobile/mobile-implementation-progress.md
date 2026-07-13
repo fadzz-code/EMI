@@ -185,6 +185,20 @@ Status: Selesai sebagian.
 - Emulator production: `flutter run -d emulator-5554 --dart-define=APP_ENV=production --dart-define=API_BASE_URL=https://api.emi-kolaka.id` build debug APK, install, dan app berjalan; command timeout karena Flutter CLI attach. PID app terdeteksi `9923`.
 - Manual production login dan upload/delete avatar ke API production belum dilakukan karena kredensial demo tidak tersedia; picker/cancel/preview perlu verifikasi manual dengan akun siswa.
 
+## Update fase Chatbot Siswa
+
+Status: Selesai sebagian.
+
+- Figma MCP dicoba satu kali untuk file `Untitled`, file key `oMA2sYbh2B7cgzGJINNiar`, node chatbot `109:1100`; hasil gagal `403 Forbidden` dengan body `{"status":403,"err":"Invalid token"}`.
+- Mode desain memakai fallback dari `Docs/mobile/desain.md`, komponen mobile EMI existing, dan gaya neobrutalism; `Docs/mobile/desain.md` tidak diubah karena tidak ada data Figma baru.
+- Audit backend menemukan route aktif tunggal `POST /api/v1/student/chatbot/messages` dengan auth Sanctum dan role `student`; route lama `/student/chatbot/message` di dokumen audit lama adalah stale.
+- Backend tidak menyediakan daftar percakapan, create conversation, detail riwayat, pagination riwayat, delete, atau archive; Flutter memakai flow chat tunggal tanpa persistence palsu.
+- Request chatbot memakai body `message` string wajib, min 2, max 1000. Response non-streaming berisi `answer`, `source`, `matched`, `mode`, `provider`, dan opsional `confidence`.
+- Flutter menambah route `/student/chatbot`, akses dari menu cepat dashboard, parsing model/repository, controller Riverpod, bubble user/assistant, source expansion, input multiline, loading, error + retry, double-send prevention, auto-scroll hanya saat user masih di bawah, keyboard/SafeArea aman, dan tidak membuat Dio baru.
+- Verifikasi: `flutter pub get` berhasil, `dart format .` berhasil, `flutter analyze` clean, `flutter test` lulus 34 tests.
+- Emulator production: `flutter run -d emulator-5554 --dart-define=APP_ENV=production --dart-define=API_BASE_URL=https://api.emi-kolaka.id` build debug APK, install, dan app berjalan; command timeout karena Flutter CLI attach. PID app terdeteksi `10131`.
+- Manual production login dan kirim pesan chatbot belum dilakukan karena kredensial demo tidak tersedia; navigasi/input/keyboard/pesan production perlu verifikasi manual dengan akun siswa.
+
 ## Blocker
 
 - Figma API rate limit 429/akses token tidak valid masih memblokir typography exact, logo, icon library, component set detail, frame progress, dan frame profil aktual.

@@ -84,6 +84,7 @@ lib/
 - `/student/quizzes/:quizId`
 - `/student/quizzes/:quizId/attempt`
 - `/student/progress`
+- `/student/chatbot`
 - `/student/profile`
 
 ## Dependency Tambahan
@@ -128,12 +129,12 @@ lib/
 - Edit profil.
 - Ganti password.
 - Upload dan hapus avatar.
+- Chatbot siswa.
 - Unsupported role.
 - Tests dasar.
 
 ## Fitur Belum
 
-- Chatbot.
 - Budaya.
 - Speaking.
 - Guru mobile.

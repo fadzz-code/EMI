@@ -41,7 +41,10 @@ class StudentDashboardScreen extends ConsumerWidget {
                 const SizedBox(height: EmiSpacing.xl),
                 _ContinueCard(summary: data),
                 const SizedBox(height: EmiSpacing.xl),
-                _QuickMenu(onTapModules: () => context.go('/student/modules')),
+                _QuickMenu(
+                  onTapModules: () => context.go('/student/modules'),
+                  onTapChatbot: () => context.go('/student/chatbot'),
+                ),
               ],
             ],
           ),
@@ -200,9 +203,10 @@ class _ContinueCard extends StatelessWidget {
 }
 
 class _QuickMenu extends StatelessWidget {
-  const _QuickMenu({required this.onTapModules});
+  const _QuickMenu({required this.onTapModules, required this.onTapChatbot});
 
   final VoidCallback onTapModules;
+  final VoidCallback onTapChatbot;
 
   @override
   Widget build(BuildContext context) {
@@ -233,7 +237,11 @@ class _QuickMenu extends StatelessWidget {
               icon: Icons.trending_up_outlined,
               onTap: () => context.go('/student/progress'),
             ),
-            const _QuickMenuItem(label: 'Budaya', icon: Icons.public_outlined),
+            _QuickMenuItem(
+              label: 'Chatbot',
+              icon: Icons.auto_awesome_outlined,
+              onTap: onTapChatbot,
+            ),
             const _QuickMenuItem(label: 'Profil', icon: Icons.person_outline),
           ],
         ),

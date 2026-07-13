@@ -203,6 +203,16 @@ Rekomendasi umum: Admin penuh tetap web-first untuk MVP mobile. Hampir semua end
 - `POST /api/v1/auth/me/avatar` dan `DELETE /api/v1/auth/me/avatar` terverifikasi untuk avatar. Upload memakai multipart field `avatar`; request `UploadAvatarRequest` mewajibkan file dan ukuran maksimal `config('media.max_kb.image')` default 5120 KB; `MediaUploadService` menerima MIME `image/jpeg`, `image/png`, `image/webp`, memaksa visibility `public`, menyimpan purpose `avatar`, dan response `UserResource` mengembalikan `avatar.id` serta `avatar.url`. Flutter sudah mengaktifkan picker galeri dan validasi client sesuai kontrak; upload/delete production masih Needs manual verification karena kredensial demo tidak tersedia.
 - `POST /api/v1/auth/logout` terverifikasi; mobile tetap menghapus token lokal walau request logout gagal.
 
+## Verifikasi Fase Chatbot Siswa
+
+- Route aktif chatbot siswa hanya `POST /api/v1/student/chatbot/messages`, berada di group `auth:sanctum` + `role:student`, controller `StudentChatbotController::store`.
+- Request `StudentChatbotMessageRequest` menerima body `message` wajib string, minimal 2 karakter, maksimal 1000 karakter.
+- Response non-streaming melalui `ApiResponse::success('Respons Chatbot AI berhasil dibuat.', $result)`; tidak ada SSE/WebSocket/streaming di backend.
+- Response data memakai hasil `ChatbotService::respond`: `answer`, `source`, `matched`, `mode`, `provider`, dan opsional `confidence`. Source mengikuti kontrak frontend existing: `id`, `title`, `category`, `source_type`, `source_url`.
+- Tidak ada endpoint daftar percakapan, membuat percakapan, detail riwayat, pagination riwayat, delete, atau archive percakapan. Flutter memakai flow chat tunggal tanpa persistence palsu.
+- Route lama di audit/web doc `POST /student/chatbot/message` adalah stale; route aktif adalah plural `/student/chatbot/messages`.
+- Chatbot mencari kamus lebih dulu, lalu Basis AI published knowledge/chunks, lalu fallback default jika tidak ada match. Flutter hanya memanggil Laravel dan tidak mengakses service AI langsung.
+
 ## Gap API Paling Penting
 
 1. Speaking list siswa dan hasil speaking belum paginated; aman untuk demo kecil, berisiko jika data besar.
