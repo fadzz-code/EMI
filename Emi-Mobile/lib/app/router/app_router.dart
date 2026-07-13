@@ -19,6 +19,8 @@ import '../../features/progress/presentation/student_progress_screen.dart';
 import '../../features/quizzes/presentation/student_quiz_attempt_screen.dart';
 import '../../features/quizzes/presentation/student_quiz_detail_screen.dart';
 import '../../features/quizzes/presentation/student_quizzes_screen.dart';
+import '../../features/speaking/presentation/student_speaking_detail_screen.dart';
+import '../../features/speaking/presentation/student_speaking_list_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import 'router_refresh_stream.dart';
 import 'unsupported_role_screen.dart';
@@ -115,6 +117,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => StudentCultureDetailScreen(
           cultureId: state.pathParameters['cultureId'] ?? '',
           item: state.extra is CultureItem ? state.extra as CultureItem : null,
+        ),
+      ),
+      GoRoute(
+        path: '/student/speaking',
+        builder: (_, _) => const StudentSpeakingListScreen(),
+      ),
+      GoRoute(
+        path: '/student/speaking/:exerciseId',
+        builder: (_, state) => StudentSpeakingDetailScreen(
+          exerciseId: state.pathParameters['exerciseId'] ?? '',
         ),
       ),
       GoRoute(

@@ -215,6 +215,24 @@ Status: Selesai sebagian.
 - Emulator production: `flutter run -d emulator-5554 --dart-define=APP_ENV=production --dart-define=API_BASE_URL=https://api.emi-kolaka.id` build debug APK, install, dan app berjalan; command timeout karena Flutter CLI attach. PID app terdeteksi `10379`.
 - Manual production login, buka drawer, navigasi Progress/Chatbot/Budaya, dan data Budaya nyata belum dilakukan karena kredensial demo tidak tersedia; perlu manual verification dengan akun siswa.
 
+## Update fase Speaking Siswa
+
+Status: Selesai sebagian.
+
+- Figma MCP dicoba satu kali untuk file `Untitled`, file key `oMA2sYbh2B7cgzGJINNiar`, node Speaking `109:158`; hasil gagal `403 Forbidden` dengan body `{"status":403,"err":"Invalid token"}`.
+- Mode desain memakai fallback dari `Docs/mobile/desain.md`, komponen mobile EMI existing, dan gaya neobrutalism; `Docs/mobile/desain.md` tidak diubah karena tidak ada data Figma baru.
+- Audit backend Speaking Siswa memakai route aktif: `GET /api/v1/student/speaking/exercises`, `GET /api/v1/student/speaking/exercises/{exercise}`, `GET /api/v1/student/speaking/attempts`, `GET /api/v1/student/speaking/attempts/{attempt}`, `POST /api/v1/student/speaking/exercises/{exercise}/attempts`.
+- Multipart submit memakai field `file`; opsional `audio_duration_seconds` integer 1-30; ukuran maksimal `config('speaking.max_audio_mb', 5)` default 5 MB.
+- MIME diterima backend: `audio/webm`, `video/webm`, `audio/wav`, `audio/x-wav`, `audio/mpeg`, `audio/mp4`, `audio/m4a`, `audio/ogg`; fallback `application/octet-stream` diterima hanya jika extension aman `webm/wav/mp3/m4a/mp4/mpeg/mpga/ogg/oga`.
+- Flutter merekam AAC LC `m4a` memakai package `record`, mengirim MIME normalisasi `audio/mp4`, memutar audio memakai `just_audio`, izin mikrofon memakai `permission_handler`, dan file sementara memakai `path_provider`.
+- Route Flutter ditambah: `/student/speaking` dan `/student/speaking/:exerciseId`; akses dari sidebar, bukan bottom navigation. Bottom navigation tetap lima item: Beranda, Modul, Kamus, Kuis, Profil.
+- Flow Flutter mencakup daftar latihan, detail target/instruksi, audio referensi jika URL public tersedia, rekam/stop/timer 30 detik, preview/play/pause, rekam ulang/hapus, upload progress, double-submit prevention, status pending/processing/completed/failed, hasil AI, feedback guru, riwayat attempt, loading/empty/error/retry, pull-to-refresh.
+- AI asynchronous via queue `AnalyzeSpeakingAttemptJob`; Flutter memakai refresh manual dan polling terbatas 12 kali x 5 detik setelah submit, tanpa polling tanpa batas.
+- Gap backend: list exercise dan attempt speaking belum paginated; reference audio private mengirim URL null sehingga butuh temporary URL bila ingin playback private; `audio_url` attempt berupa `/api/v1/media/{id}` metadata, bukan temporary playback URL; tidak ada endpoint delete local/remote attempt; status khusus hanya dari attempt detail; produksi perlu queue/AI enabled agar status selesai.
+- Verifikasi: `flutter pub get` berhasil, `dart format .` berhasil, `flutter analyze` clean, `flutter test` lulus 46 tests.
+- Emulator production: `flutter run -d emulator-5554 --dart-define=APP_ENV=production --dart-define=API_BASE_URL=https://api.emi-kolaka.id` build debug APK, install, dan app berjalan; command timeout karena Flutter CLI attach. PID app terdeteksi `10878`.
+- Manual production login, buka sidebar Speaking, rekam mikrofon, submit data production, audio referensi nyata, dan hasil AI nyata masih Needs manual verification karena kredensial demo/data production tidak tersedia.
+
 ## Blocker
 
 - Figma API rate limit 429/akses token tidak valid masih memblokir typography exact, logo, icon library, component set detail, frame progress, dan frame profil aktual.

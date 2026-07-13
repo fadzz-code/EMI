@@ -222,6 +222,21 @@ Rekomendasi umum: Admin penuh tetap web-first untuk MVP mobile. Hampir semua end
 - Media budaya memakai `media.url` jika public dari `MediaFileResource`; jika media private maka URL null. `external_url` tersedia untuk link/video/youtube. Flutter tidak membangun URL sendiri.
 - Akses siswa dibatasi kelas aktif via `CultureAccessService::studentClassIds`, item `published`, class active, dan school active. Jika siswa tidak punya kelas aktif, response sukses dengan data kosong.
 
+## Verifikasi Fase Speaking Siswa
+
+- Route aktif Speaking Siswa berada di group `auth:sanctum` + `role:student`: `GET /api/v1/student/speaking/exercises`, `GET /api/v1/student/speaking/exercises/{exercise}`, `GET /api/v1/student/speaking/attempts`, `GET /api/v1/student/speaking/attempts/{attempt}`, `POST /api/v1/student/speaking/exercises/{exercise}/attempts`.
+- Daftar latihan memakai `StudentSpeakingController::exercises`, `SpeakingExerciseResource`, `published()`, global exercise `classroom_id=null` atau kelas aktif siswa; response collection non-paginated.
+- Detail latihan memakai `StudentSpeakingController::showExercise`, akses via `SpeakingAttemptService::studentCanAccessExercise`, response `id`, `title`, `prompt_text`, `target_text`, `target_translation`, `reference_audio_media_id`, `language_code`, `difficulty`, `classroom_id`, `created_by_id`, `status`, `metadata`, `reference_audio`, `created_at`, `updated_at`.
+- `reference_audio.url` hanya tersedia jika media public; private reference audio mengirim `url=null`. Media private perlu temporary URL endpoint backend jika diperlukan dan authorized.
+- Riwayat attempt memakai `GET /api/v1/student/speaking/attempts`, `SpeakingAttemptResource`, `forStudent(request()->user())`, `latest()`, collection non-paginated.
+- Detail/status/result attempt memakai `GET /api/v1/student/speaking/attempts/{attempt}` dengan guard `student_id === request()->user()->id`; response `status`, `ai_score`, `ai_transcription`, `ai_alignment`, `ai_error`, `teacher_score`, `teacher_feedback`, `reviewed_at`, `audio_media_id`, `audio_url`, timestamps, dan exercise jika loaded.
+- Submit attempt memakai `POST /api/v1/student/speaking/exercises/{exercise}/attempts`, request `StoreSpeakingAttemptRequest`, multipart field `file`, opsional `audio_duration_seconds` integer min 1 max `config('speaking.max_duration_seconds', 30)` default 30.
+- Ukuran file maksimal `config('speaking.max_audio_mb', 5) * 1024` KB, default 5 MB.
+- MIME diterima: `audio/webm`, `video/webm`, `audio/wav`, `audio/x-wav`, `audio/mpeg`, `audio/mp4`, `audio/m4a`, `audio/ogg`; fallback `application/octet-stream` hanya diterima dengan extension aman `webm`, `wav`, `mp3`, `m4a`, `mp4`, `mpeg`, `mpga`, `ogg`, `oga`.
+- Service menyimpan upload sebagai media private purpose `speaking_recording`, membuat attempt status awal `pending`, lalu dispatch `AnalyzeSpeakingAttemptJob`.
+- AI async: job mengubah status ke `processing`, lalu `completed` berisi `ai_engine`, `ai_model`, `ai_transcription`, `ai_score`, `ai_alignment`, `ai_raw_response`; jika AI disabled status tetap `pending`; jika error status `failed` dan `ai_error` terisi.
+- Flutter memakai recorder AAC `m4a` dengan MIME upload `audio/mp4`, validasi extension/size client sesuai kontrak, refresh manual, dan polling terbatas 12 kali x 5 detik setelah submit.
+
 ## Gap API Paling Penting
 
 1. Speaking list siswa dan hasil speaking belum paginated; aman untuk demo kecil, berisiko jika data besar.

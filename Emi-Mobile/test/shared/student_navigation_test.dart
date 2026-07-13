@@ -66,6 +66,7 @@ void main() {
     expect(find.text('Progress Belajar'), findsOneWidget);
     expect(find.text('Chatbot'), findsOneWidget);
     expect(find.text('Budaya Mekongga'), findsOneWidget);
+    expect(find.text('Speaking'), findsOneWidget);
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
@@ -135,6 +136,10 @@ GoRouter _router(String initialLocation) {
       GoRoute(
         path: '/student/culture',
         builder: (_, _) => _page('Budaya', null),
+      ),
+      GoRoute(
+        path: '/student/speaking',
+        builder: (_, _) => _page('Speaking', null),
       ),
     ],
   );

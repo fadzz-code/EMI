@@ -87,12 +87,21 @@ lib/
 - `/student/chatbot`
 - `/student/culture`
 - `/student/culture/:cultureId`
+- `/student/speaking`
+- `/student/speaking/:exerciseId`
 - `/student/profile`
 
 ## Dependency Tambahan
 
-- `just_audio`: pemutaran audio kosakata dari URL backend.
+- `just_audio`: pemutaran audio kosakata dan speaking dari URL/backend atau file lokal.
 - `image_picker`: pemilihan avatar dari galeri Android memakai picker sistem.
+- `record`: rekaman speaking lokal Android ke `m4a`/AAC.
+- `permission_handler`: izin mikrofon untuk speaking.
+- `path_provider`: lokasi file sementara rekaman speaking.
+
+## Permission Android
+
+- `android.permission.RECORD_AUDIO` dipakai untuk rekaman Speaking.
 
 ## Aturan Keamanan
 
@@ -134,12 +143,12 @@ lib/
 - Chatbot siswa.
 - Sidebar navigasi siswa.
 - Daftar dan detail Budaya Mekongga.
+- Daftar, detail, rekam, submit, status, hasil AI, feedback guru, dan riwayat Speaking siswa.
 - Unsupported role.
 - Tests dasar.
 
 ## Fitur Belum
 
-- Speaking.
 - Guru mobile.
 - Admin mobile.
 

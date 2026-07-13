@@ -138,6 +138,12 @@ class _StudentDrawer extends StatelessWidget {
               route: '/student/culture',
               selected: location.startsWith('/student/culture'),
             ),
+            _DrawerItem(
+              label: 'Speaking',
+              icon: Icons.mic_none_outlined,
+              route: '/student/speaking',
+              selected: location.startsWith('/student/speaking'),
+            ),
           ],
         ),
       ),
