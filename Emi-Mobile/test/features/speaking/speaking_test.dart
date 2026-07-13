@@ -93,6 +93,17 @@ void main() {
           );
           return;
         }
+        if (options.path == '/media/media-1/temporary-url') {
+          handler.resolve(
+            Response(
+              requestOptions: options,
+              data: {
+                'data': {'url': 'https://example.test/private.m4a'},
+              },
+            ),
+          );
+          return;
+        }
         if (options.path == '/student/speaking/exercises/exercise-1/attempts') {
           final form = options.data as FormData;
           expect(form.files.single.key, 'file');
@@ -114,6 +125,10 @@ void main() {
     expect((await repository.listExercises()).single.id, 'exercise-1');
     expect((await repository.getExercise('exercise-1')).title, 'Salam');
     expect((await repository.getAttempt('attempt-1')).status, 'pending');
+    expect(
+      await repository.temporaryMediaUrl('media-1'),
+      'https://example.test/private.m4a',
+    );
     final temp = await File(
       '${Directory.systemTemp.path}${Platform.pathSeparator}sample-speaking.m4a',
     ).writeAsBytes([1, 2, 3]);

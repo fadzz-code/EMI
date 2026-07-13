@@ -262,8 +262,37 @@ Status: Terblokir signing.
 - Karena signing tidak tersedia, signed APK dan AAB tidak dibuild, signed APK tidak diinstall ke emulator, dan smoke test signed release tidak dilakukan.
 - Status release signing: `BLOCKED_BY_SIGNING` sampai pengelola menyediakan keystore dan `android/key.properties` lokal.
 
+## Update audit E2E Siswa production
+
+Status: Belum complete.
+
+- Manual login production berhasil dilakukan oleh user langsung di emulator; password tidak dikirim ke chat dan tidak dicatat.
+- App production debug attach berjalan di `emulator-5554`; PID terdeteksi, logcat audit tidak menemukan `FATAL EXCEPTION`/crash app dan tidak menemukan token/password tercetak.
+- Flutter audit menemukan gap nyata Speaking: private reference audio dan audio attempt bisa datang tanpa playback URL, sedangkan mobile hanya memakai `url` langsung. Fix: Flutter sekarang meminta `POST /api/v1/media/{id}/temporary-url` saat `reference_audio.url`/`audio_url` null dan `media_id` tersedia, serta menampilkan playback rekaman terkirim.
+- Regression test ditambah untuk temporary media URL Speaking.
+- Verifikasi setelah fix: `dart format .` berhasil, `flutter analyze` clean, `flutter test` lulus 47 tests.
+- Build APK production berhasil: `build/app/outputs/flutter-apk/app-release.apk` 52.7 MB.
+- `RELEASE_SIGNING_BLOCKED`: `android/key.properties`/keystore tidak tersedia; AAB/signed APK tidak dibuat.
+
+| Flow | Status | Bukti |
+|---|---|---|
+| Splash, login, session, 401, logout | PASS sebagian | Login production user berhasil; 401 clear session sudah ada dan diuji unit; logout belum diverifikasi manual setelah semua flow agar session audit tetap berjalan. |
+| Dashboard | NEEDS USER DATA | Login berhasil, tetapi data dashboard production tidak bisa dibuktikan lengkap dari UI dump Flutter. |
+| Bottom navigation 5 item | PASS | Test `student_navigation_test.dart`; implementasi tetap Beranda, Modul, Kamus, Kuis, Profil. |
+| Sidebar 9 item | PASS | Test `student_navigation_test.dart`; menu Beranda, Modul, Kamus, Kuis, Progress, Chatbot, Budaya, Speaking, Profil. |
+| Modul/detail/lesson/selesai lesson | NEEDS USER DATA | Endpoint dan UI ada; perlu data modul/lesson production yang aman diubah untuk menandai selesai. |
+| Kamus/detail/audio | NEEDS USER DATA | Endpoint dan audio UI ada; perlu entri production dengan audio valid. |
+| Kuis list/detail/start/resume/PG/isian/autosave/timer/submit/hasil | NEEDS USER DATA | Endpoint/UI/test ada; perlu kuis production aktif dengan soal PG dan isian, serta izin submit data nyata. |
+| Progress belajar | NEEDS USER DATA | Endpoint/UI ada; perlu perubahan lesson/kuis production untuk bukti end-to-end. |
+| Profil/edit/ganti password | NEEDS USER DATA | Endpoint/UI ada; edit/password tidak diuji karena berisiko mengubah akun user tanpa data aman. |
+| Avatar upload/hapus | NEEDS USER DATA | Endpoint/UI ada; perlu file gambar uji dan izin mengubah avatar akun production. |
+| Chatbot | NEEDS USER DATA | Endpoint/UI ada; perlu kirim pesan production dan validasi jawaban/sumber. |
+| Budaya list/detail | NEEDS USER DATA | Endpoint/UI ada; detail mobile dari cache/list karena backend tidak punya endpoint detail siswa. |
+| Speaking full flow | BLOCKED/NEEDS USER DATA | Fix private media playback dibuat; tetap perlu exercise production, izin mic, upload, queue/AI running, status pending/processing/completed/failed, feedback/history. |
+
 ## Blocker
 
+- Manual E2E penuh masih butuh data siswa production yang boleh diubah: modul/lesson, kuis aktif PG+isian, avatar test, chatbot prompt, speaking exercise, queue/AI, dan feedback guru.
 - Figma API rate limit 429/akses token tidak valid masih memblokir typography exact, logo, icon library, component set detail, frame progress, dan frame profil aktual.
 - Manual production login membutuhkan kredensial demo dari pengelola.
 - Native assets dependency tetap terdeteksi dari `jni`/`jni_flutter`, tetapi NDK Clang blocker sudah tidak muncul pada Flutter 3.44.6.

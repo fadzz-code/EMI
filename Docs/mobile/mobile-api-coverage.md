@@ -241,6 +241,7 @@ Rekomendasi umum: Admin penuh tetap web-first untuk MVP mobile. Hampir semua end
 
 1. Speaking list siswa dan hasil speaking belum paginated; aman untuk demo kecil, berisiko jika data besar.
 2. Teacher speaking attempts belum paginated; review banyak siswa bisa berat di mobile.
+2a. Audit E2E production menemukan Flutter harus fallback ke `POST /api/v1/media/{id}/temporary-url` untuk Speaking reference audio private dan audio attempt ketika resource hanya mengirim `media_id`/`audio_media_id` tanpa playback URL. Mobile sudah memakai fallback ini; backend tidak diubah.
 3. Endpoint detail siswa guru dedicated belum ada; saat ini pakai report filter `student_id`.
 4. Endpoint lesson siswa dedicated tidak ada; mobile harus memakai `/class-lessons/{id}` yang shared/scoped.
 5. Audio Flutter perlu validasi MIME/extension nyata terhadap `StoreSpeakingAttemptRequest`.

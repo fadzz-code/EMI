@@ -6,6 +6,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../app/theme/emi_theme.dart';
+import '../../../core/errors/app_error.dart';
 import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
 import '../data/speaking_models.dart';
@@ -87,14 +88,18 @@ class _StudentSpeakingDetailScreenState
             children: [
               _ExerciseCard(exercise: data),
               const SizedBox(height: EmiSpacing.md),
-              if (data.referenceAudio?.url != null)
+              if (data.referenceAudio?.url != null ||
+                  data.referenceAudioMediaId != null)
                 _AudioBox(
                   title: 'Suara Asli',
                   player: _referencePlayer,
-                  url: data.referenceAudio!.url!,
+                  url: data.referenceAudio?.url,
+                  mediaId: data.referenceAudioMediaId,
+                  repository: ref.read(speakingRepositoryProvider),
                   beforePlay: () => _previewPlayer.pause(),
                 ),
-              if (data.referenceAudio?.url != null)
+              if (data.referenceAudio?.url != null ||
+                  data.referenceAudioMediaId != null)
                 const SizedBox(height: EmiSpacing.md),
               _RecorderCard(
                 state: recorder,
@@ -308,14 +313,18 @@ class _AudioBox extends StatefulWidget {
   const _AudioBox({
     required this.title,
     required this.player,
-    required this.url,
     required this.beforePlay,
+    this.url,
+    this.mediaId,
+    this.repository,
     this.local = false,
   });
 
   final String title;
   final AudioPlayer player;
-  final String url;
+  final String? url;
+  final String? mediaId;
+  final SpeakingRepository? repository;
   final Future<void> Function() beforePlay;
   final bool local;
 
@@ -367,9 +376,9 @@ class _AudioBoxState extends State<_AudioBox> {
         await widget.beforePlay();
         if (widget.player.audioSource == null) {
           if (widget.local) {
-            await widget.player.setFilePath(widget.url);
+            await widget.player.setFilePath(widget.url!);
           } else {
-            await widget.player.setUrl(widget.url);
+            await widget.player.setUrl(await _playbackUrl());
           }
         }
         await widget.player.play();
@@ -379,6 +388,20 @@ class _AudioBoxState extends State<_AudioBox> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<String> _playbackUrl() async {
+    final url = widget.url;
+    if (url != null && url.isNotEmpty) return url;
+    final mediaId = widget.mediaId;
+    final repository = widget.repository;
+    if (mediaId != null && mediaId.isNotEmpty && repository != null) {
+      return repository.temporaryMediaUrl(mediaId);
+    }
+    throw const AppError(
+      type: AppErrorType.unknown,
+      message: 'Audio tidak tersedia.',
+    );
   }
 }
 
@@ -416,13 +439,27 @@ class _SubmitCard extends StatelessWidget {
   }
 }
 
-class _AttemptResultCard extends ConsumerWidget {
+class _AttemptResultCard extends ConsumerStatefulWidget {
   const _AttemptResultCard(this.attempt);
 
   final SpeakingAttempt attempt;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_AttemptResultCard> createState() => _AttemptResultCardState();
+}
+
+class _AttemptResultCardState extends ConsumerState<_AttemptResultCard> {
+  final _player = AudioPlayer();
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final attempt = widget.attempt;
     return EmiCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -443,6 +480,17 @@ class _AttemptResultCard extends ConsumerWidget {
               ),
             ],
           ),
+          if (attempt.audioUrl != null || attempt.audioMediaId != null) ...[
+            const SizedBox(height: EmiSpacing.sm),
+            _AudioBox(
+              title: 'Rekaman Terkirim',
+              player: _player,
+              url: attempt.audioUrl,
+              mediaId: attempt.audioMediaId,
+              repository: ref.read(speakingRepositoryProvider),
+              beforePlay: () async {},
+            ),
+          ],
           if (attempt.isProcessing)
             const Text(
               'Analisis AI sedang diproses. Refresh manual atau tunggu polling terbatas.',

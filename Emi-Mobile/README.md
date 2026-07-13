@@ -191,7 +191,8 @@ lib/
 - Launcher icon, adaptive icon, splash, dan logo masih temporary/default karena Figma MCP 403.
 - Manual production login dan data nyata butuh kredensial siswa.
 - Speaking list/attempt belum paginated dari backend.
-- Media private perlu verifikasi temporary URL di Android.
+- Speaking reference audio private dan audio attempt memakai fallback temporary URL via `/api/v1/media/{id}/temporary-url` jika backend tidak mengirim playback URL.
+- Media private perlu verifikasi temporary URL di Android dengan data production.
 
 ## Manual QA Checklist
 

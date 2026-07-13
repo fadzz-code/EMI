@@ -56,6 +56,25 @@ class SpeakingRepository {
     }
   }
 
+  Future<String> temporaryMediaUrl(String mediaId) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/media/$mediaId/temporary-url',
+      );
+      final data = response.data?['data'];
+      if (data is Map<String, dynamic>) {
+        final url = data['url'] ?? data['temporary_url'];
+        if (url is String && url.isNotEmpty) return url;
+      }
+      throw const AppError(
+        type: AppErrorType.unknown,
+        message: 'URL media tidak valid.',
+      );
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
   Future<SpeakingAttempt> submitAttempt({
     required String exerciseId,
     required SpeakingSubmissionFile file,
