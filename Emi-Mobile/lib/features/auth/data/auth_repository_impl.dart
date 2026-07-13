@@ -63,6 +63,42 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<SessionUser> updateProfile({
+    required String fullName,
+    String? phone,
+  }) async {
+    try {
+      final user = await _remoteDataSource.updateProfile(
+        fullName: fullName,
+        phone: phone,
+      );
+      _validateUser(user);
+      return user;
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  @override
+  Future<SessionUser> updatePassword({
+    required String currentPassword,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    try {
+      final user = await _remoteDataSource.updatePassword(
+        currentPassword: currentPassword,
+        password: password,
+        passwordConfirmation: passwordConfirmation,
+      );
+      _validateUser(user);
+      return user;
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  @override
   Future<void> logout() async {
     try {
       await _remoteDataSource.logout();

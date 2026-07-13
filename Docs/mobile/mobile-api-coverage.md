@@ -191,6 +191,18 @@ Rekomendasi umum: Admin penuh tetap web-first untuk MVP mobile. Hampir semua end
 - Timer/durasi memakai `expires_at` attempt dari backend; backend membatasi dengan `duration_minutes` dan `close_at`, lalu attempt expired difinalisasi sebagai `expired`.
 - Gap: `GET /api/v1/quiz-attempts/{id}` tidak memuat `classQuiz.questions.options`; resume layar pengerjaan mobile harus memakai start endpoint pada quiz yang sama untuk memperoleh soal + jawaban aktif.
 
+## Verifikasi Fase Progress dan Profil
+
+- `GET /api/v1/student/reports/progress` terverifikasi untuk Progress Belajar: controller `StudentProgressReportController::show`, request `StudentProgressReportRequest`, service `LearningProgressReportService`, role `student`.
+- Response progress berisi `summary` dan `modules`; `summary` memakai field backend nyata: `published_modules`, `started_modules`, `completed_modules`, `in_progress_modules`, `not_started_modules`, `overall_learning_progress_percent`, `completed_lessons`, `total_published_lessons`, `published_quizzes`, `quizzes_attempted`, `quizzes_completed`, `submitted_quiz_count`, `average_best_quiz_score_percent`, `last_learning_activity_at`, `last_quiz_activity_at`.
+- `modules.data` berisi `id`, `title`, `sort_order`, `status`, `progress_percent`, `completed_lessons`, `total_lessons`, `last_calculated_at`; `modules.meta` berisi pagination.
+- `GET /api/v1/student/progress/modules` tersedia, tetapi progress screen memakai report karena sudah menggabungkan summary dan module pagination.
+- `GET /api/v1/auth/me` terverifikasi untuk profil; response `UserResource` berisi `id`, `full_name`, `email`, `phone`, `avatar.id/url`, `role`, `status`, `active_school`, `active_class`, `active_membership`.
+- `PATCH /api/v1/auth/me` terverifikasi untuk edit profil; request `UpdateProfileRequest` menerima `full_name` dan `phone`.
+- `PUT /api/v1/auth/password` terverifikasi untuk ganti password; request `UpdatePasswordRequest` menerima `current_password`, `password`, dan `password_confirmation`.
+- `POST /api/v1/auth/me/avatar` dan `DELETE /api/v1/auth/me/avatar` tersedia dengan field multipart `avatar`, tetapi Flutter belum mengaktifkan upload avatar karena belum ada package picker dan belum diuji kontrak file Android.
+- `POST /api/v1/auth/logout` terverifikasi; mobile tetap menghapus token lokal walau request logout gagal.
+
 ## Gap API Paling Penting
 
 1. Speaking list siswa dan hasil speaking belum paginated; aman untuk demo kecil, berisiko jika data besar.

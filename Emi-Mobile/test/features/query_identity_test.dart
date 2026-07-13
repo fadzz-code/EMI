@@ -1,5 +1,6 @@
 import 'package:emi_mobile/features/dictionary/data/dictionary_providers.dart';
 import 'package:emi_mobile/features/modules/data/student_module_providers.dart';
+import 'package:emi_mobile/features/progress/data/student_progress_providers.dart';
 import 'package:emi_mobile/features/quizzes/data/student_quiz_providers.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -23,6 +24,14 @@ void main() {
   test('quiz query keeps stable provider identity', () {
     const first = StudentQuizQuery(availability: 'open');
     const second = StudentQuizQuery(availability: 'open');
+
+    expect(first, second);
+    expect(first.hashCode, second.hashCode);
+  });
+
+  test('progress query keeps stable provider identity', () {
+    const first = StudentProgressQuery(page: 1, perPage: 15);
+    const second = StudentProgressQuery(page: 1, perPage: 15);
 
     expect(first, second);
     expect(first.hashCode, second.hashCode);

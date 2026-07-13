@@ -26,6 +26,7 @@ class SessionUser {
     required this.status,
     this.activeClassName,
     this.activeSchoolName,
+    this.avatarUrl,
   });
 
   final String id;
@@ -36,12 +37,14 @@ class SessionUser {
   final String status;
   final String? activeClassName;
   final String? activeSchoolName;
+  final String? avatarUrl;
 
   bool get isApproved => status == 'approved';
 
   factory SessionUser.fromJson(Map<String, dynamic> json) {
     final activeClass = json['active_class'];
     final activeSchool = json['active_school'];
+    final avatar = json['avatar'];
 
     return SessionUser(
       id: json['id'] as String? ?? '',
@@ -55,6 +58,9 @@ class SessionUser {
           : null,
       activeSchoolName: activeSchool is Map<String, dynamic>
           ? activeSchool['name'] as String?
+          : null,
+      avatarUrl: avatar is Map<String, dynamic>
+          ? avatar['url'] as String?
           : null,
     );
   }

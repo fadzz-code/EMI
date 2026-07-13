@@ -226,9 +226,10 @@ class _QuickMenu extends StatelessWidget {
               icon: Icons.translate_outlined,
             ),
             const _QuickMenuItem(label: 'Kuis', icon: Icons.quiz_outlined),
-            const _QuickMenuItem(
+            _QuickMenuItem(
               label: 'Progress',
               icon: Icons.trending_up_outlined,
+              onTap: () => context.go('/student/progress'),
             ),
             const _QuickMenuItem(label: 'Budaya', icon: Icons.public_outlined),
             const _QuickMenuItem(label: 'Profil', icon: Icons.person_outline),

@@ -83,6 +83,7 @@ lib/
 - `/student/quizzes`
 - `/student/quizzes/:quizId`
 - `/student/quizzes/:quizId/attempt`
+- `/student/progress`
 - `/student/profile`
 
 ## Dependency Tambahan
@@ -121,13 +122,16 @@ lib/
 - Attempt kuis siswa.
 - Simpan jawaban kuis.
 - Submit dan hasil kuis.
-- Profil siswa foundation.
+- Progress belajar siswa.
+- Profil siswa data nyata.
+- Edit profil.
+- Ganti password.
 - Unsupported role.
 - Tests dasar.
 
 ## Fitur Belum
 
-- Progress lengkap.
+- Upload avatar.
 - Chatbot.
 - Budaya.
 - Speaking.

@@ -20,6 +20,19 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Future<SessionUser?> restoreSession() async => null;
+
+  @override
+  Future<SessionUser> updatePassword({
+    required String currentPassword,
+    required String password,
+    required String passwordConfirmation,
+  }) async => throw UnimplementedError();
+
+  @override
+  Future<SessionUser> updateProfile({
+    required String fullName,
+    String? phone,
+  }) async => throw UnimplementedError();
 }
 
 void main() {

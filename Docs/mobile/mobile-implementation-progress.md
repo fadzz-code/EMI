@@ -153,9 +153,26 @@ Status: Selesai sebagian.
 - Gap backend: resume layar pengerjaan penuh harus lewat start endpoint karena `GET /api/v1/quiz-attempts/{id}` tidak memuat `classQuiz.questions.options`.
 - Verifikasi awal: `dart format .` berhasil, `flutter analyze` clean, `flutter test` lulus 24 tests.
 
+## Update fase Progress Belajar dan Profil
+
+Status: Selesai sebagian.
+
+- Figma MCP dicoba satu kali untuk file `Untitled`, file key `oMA2sYbh2B7cgzGJINNiar`, node `109:1179`; hasil gagal `403 Forbidden` dengan body `{"status":403,"err":"Invalid token"}`.
+- Mode desain memakai fallback dari `Docs/mobile/desain.md` dan referensi node sebelumnya `1:4221`, `1:4473`, `1:4637`, `1:6283`, `1:4968`.
+- Progress Belajar memakai endpoint nyata `GET /api/v1/student/reports/progress`.
+- Progress menampilkan summary backend, progress per modul, lesson selesai/total, dan statistik kuis hanya dari field response.
+- Profil memakai data nyata `GET /api/v1/auth/me` dari session.
+- Edit profil memakai endpoint nyata `PATCH /api/v1/auth/me` dengan `full_name` dan `phone`.
+- Ganti password memakai endpoint nyata `PUT /api/v1/auth/password` dengan `current_password`, `password`, dan `password_confirmation`.
+- Avatar URL ditampilkan dari `UserResource.avatar.url` jika tersedia.
+- Upload/hapus avatar belum diaktifkan walau endpoint tersedia karena package picker/file flow Android belum ada dan belum diuji.
+- Logout tetap memakai endpoint nyata `POST /api/v1/auth/logout` dan menghapus session lokal.
+- Route Flutter ditambah: `/student/progress`.
+- Verifikasi awal: `dart format .` berhasil, `flutter analyze` clean, `flutter test` lulus 26 tests.
+
 ## Blocker
 
-- Figma API rate limit 429/akses token tidak valid masih memblokir typography exact, logo, icon library, component set detail, dan frame kuis aktual.
+- Figma API rate limit 429/akses token tidak valid masih memblokir typography exact, logo, icon library, component set detail, frame progress, dan frame profil aktual.
 - Manual production login membutuhkan kredensial demo dari pengelola.
 - Native assets dependency tetap terdeteksi dari `jni`/`jni_flutter`, tetapi NDK Clang blocker sudah tidak muncul pada Flutter 3.44.6.
 

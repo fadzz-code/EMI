@@ -46,6 +46,45 @@ class AuthRemoteDataSource {
     return SessionUser.fromJson(data);
   }
 
+  Future<SessionUser> updateProfile({
+    required String fullName,
+    String? phone,
+  }) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      '/auth/me',
+      data: {'full_name': fullName, 'phone': phone},
+    );
+    final payload = ApiResponse<Map<String, dynamic>>.fromJson(
+      response.data ?? {},
+      (value) => value as Map<String, dynamic>,
+    );
+    final data = payload.data;
+    if (data == null) throw StateError('Response profil tidak lengkap.');
+    return SessionUser.fromJson(data);
+  }
+
+  Future<SessionUser> updatePassword({
+    required String currentPassword,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/auth/password',
+      data: {
+        'current_password': currentPassword,
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      },
+    );
+    final payload = ApiResponse<Map<String, dynamic>>.fromJson(
+      response.data ?? {},
+      (value) => value as Map<String, dynamic>,
+    );
+    final data = payload.data;
+    if (data == null) throw StateError('Response profil tidak lengkap.');
+    return SessionUser.fromJson(data);
+  }
+
   Future<void> logout() async {
     await _dio.post<Map<String, dynamic>>('/auth/logout');
   }

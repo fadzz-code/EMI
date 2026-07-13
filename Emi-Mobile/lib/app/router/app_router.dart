@@ -11,6 +11,7 @@ import '../../features/modules/presentation/student_lesson_detail_screen.dart';
 import '../../features/modules/presentation/student_module_detail_screen.dart';
 import '../../features/modules/presentation/student_modules_screen.dart';
 import '../../features/profile/presentation/student_profile_screen.dart';
+import '../../features/progress/presentation/student_progress_screen.dart';
 import '../../features/quizzes/presentation/student_quiz_attempt_screen.dart';
 import '../../features/quizzes/presentation/student_quiz_detail_screen.dart';
 import '../../features/quizzes/presentation/student_quizzes_screen.dart';
@@ -92,6 +93,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => StudentQuizAttemptScreen(
           quizId: state.pathParameters['quizId'] ?? '',
         ),
+      ),
+      GoRoute(
+        path: '/student/progress',
+        builder: (_, _) => const StudentProgressScreen(),
       ),
       GoRoute(
         path: '/student/profile',
