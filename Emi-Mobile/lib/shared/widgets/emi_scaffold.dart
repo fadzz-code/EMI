@@ -108,6 +108,32 @@ class _StudentDrawer extends StatelessWidget {
             ),
             const Divider(height: 1),
             _DrawerItem(
+              label: 'Beranda',
+              icon: Icons.home_outlined,
+              route: '/student/dashboard',
+              selected: location == '/student/dashboard',
+            ),
+            _DrawerItem(
+              label: 'Modul',
+              icon: Icons.menu_book_outlined,
+              route: '/student/modules',
+              selected:
+                  location.startsWith('/student/modules') ||
+                  location.startsWith('/student/lessons'),
+            ),
+            _DrawerItem(
+              label: 'Kamus',
+              icon: Icons.translate_outlined,
+              route: '/student/dictionary',
+              selected: location.startsWith('/student/dictionary'),
+            ),
+            _DrawerItem(
+              label: 'Kuis',
+              icon: Icons.quiz_outlined,
+              route: '/student/quizzes',
+              selected: location.startsWith('/student/quizzes'),
+            ),
+            _DrawerItem(
               label: 'Progress Belajar',
               icon: Icons.trending_up_outlined,
               route: '/student/progress',
@@ -130,6 +156,12 @@ class _StudentDrawer extends StatelessWidget {
               icon: Icons.mic_none_outlined,
               route: '/student/speaking',
               selected: location.startsWith('/student/speaking'),
+            ),
+            _DrawerItem(
+              label: 'Profil',
+              icon: Icons.person_outline,
+              route: '/student/profile',
+              selected: location.startsWith('/student/profile'),
             ),
           ],
         ),

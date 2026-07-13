@@ -63,10 +63,15 @@ void main() {
     await tester.tap(find.byKey(const Key('studentMenuButton')));
     await tester.pumpAndSettle();
 
+    expect(find.text('Beranda'), findsWidgets);
+    expect(find.text('Modul'), findsWidgets);
+    expect(find.text('Kamus'), findsWidgets);
+    expect(find.text('Kuis'), findsWidgets);
     expect(find.text('Progress Belajar'), findsOneWidget);
     expect(find.text('Chatbot'), findsOneWidget);
     expect(find.text('Budaya Mekongga'), findsOneWidget);
     expect(find.text('Speaking'), findsOneWidget);
+    expect(find.text('Profil'), findsWidgets);
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
