@@ -1,7 +1,26 @@
 import '../../../core/errors/app_error.dart';
 import '../domain/session_user.dart';
 
-enum AuthStatus { unknown, unauthenticated, authenticated, unsupportedRole }
+enum AuthStatus {
+  initializing,
+  unauthenticated,
+  authenticatedAdmin,
+  authenticatedTeacher,
+  authenticatedStudent,
+  pendingApproval,
+  registrationRejected,
+  accountDisabled,
+  sessionExpired,
+  forbidden,
+  unsupportedRole,
+}
+
+extension AuthStatusX on AuthStatus {
+  bool get isAuthenticated =>
+      this == AuthStatus.authenticatedAdmin ||
+      this == AuthStatus.authenticatedTeacher ||
+      this == AuthStatus.authenticatedStudent;
+}
 
 class AuthState {
   const AuthState({
@@ -11,7 +30,8 @@ class AuthState {
     this.isLoading = false,
   });
 
-  const AuthState.unknown() : this(status: AuthStatus.unknown, isLoading: true);
+  const AuthState.unknown()
+    : this(status: AuthStatus.initializing, isLoading: true);
   const AuthState.unauthenticated() : this(status: AuthStatus.unauthenticated);
 
   final AuthStatus status;

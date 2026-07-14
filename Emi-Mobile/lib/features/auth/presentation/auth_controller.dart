@@ -33,7 +33,7 @@ class AuthController extends StateNotifier<AuthState> {
       state = _stateForUser(user);
     } catch (error) {
       state = AuthState(
-        status: AuthStatus.unauthenticated,
+        status: AuthStatus.sessionExpired,
         error: _asAppError(error),
       );
     }
@@ -45,10 +45,23 @@ class AuthController extends StateNotifier<AuthState> {
       final user = await _repository.login(email: email, password: password);
       state = _stateForUser(user);
     } catch (error) {
-      state = AuthState(
-        status: AuthStatus.unauthenticated,
-        error: _asAppError(error),
-      );
+      final appError = _asAppError(error);
+      state = AuthState(status: _statusForError(appError), error: appError);
+    }
+  }
+
+  Future<AuthRegistrationResult> register(
+    AuthRegistrationPayload payload,
+  ) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final result = await _repository.register(payload);
+      state = const AuthState(status: AuthStatus.pendingApproval);
+      return result;
+    } catch (error) {
+      final appError = _asAppError(error);
+      state = AuthState(status: AuthStatus.unauthenticated, error: appError);
+      rethrow;
     }
   }
 
@@ -111,22 +124,74 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
+  Future<void> deleteAccount({required String currentPassword}) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      await _repository.deleteAccount(currentPassword: currentPassword);
+      state = const AuthState.unauthenticated();
+    } catch (error) {
+      state = state.copyWith(isLoading: false, error: _asAppError(error));
+    }
+  }
+
   Future<void> logout() async {
     await _repository.logout();
     state = const AuthState.unauthenticated();
   }
 
   void invalidateSession() {
-    state = const AuthState.unauthenticated();
+    state = const AuthState(status: AuthStatus.sessionExpired);
   }
 
   AuthState _stateForUser(SessionUser user) {
-    if (user.role == UserRole.student ||
-        user.role == UserRole.admin ||
-        user.role == UserRole.teacher) {
-      return AuthState(status: AuthStatus.authenticated, user: user);
+    if (user.status == 'pending') {
+      return AuthState(status: AuthStatus.pendingApproval, user: user);
     }
-    return AuthState(status: AuthStatus.unsupportedRole, user: user);
+    if (user.status == 'rejected') {
+      return AuthState(status: AuthStatus.registrationRejected, user: user);
+    }
+    if (user.status == 'inactive' || user.status == 'disabled') {
+      return AuthState(status: AuthStatus.accountDisabled, user: user);
+    }
+    if (!user.isApproved) {
+      return AuthState(status: AuthStatus.forbidden, user: user);
+    }
+
+    return switch (user.role) {
+      UserRole.admin => AuthState(
+        status: AuthStatus.authenticatedAdmin,
+        user: user,
+      ),
+      UserRole.teacher => AuthState(
+        status: AuthStatus.authenticatedTeacher,
+        user: user,
+      ),
+      UserRole.student => AuthState(
+        status: AuthStatus.authenticatedStudent,
+        user: user,
+      ),
+      UserRole.unknown => AuthState(
+        status: AuthStatus.unsupportedRole,
+        user: user,
+      ),
+    };
+  }
+
+  AuthStatus _statusForError(AppError error) {
+    if (error.type == AppErrorType.unauthorized) {
+      return AuthStatus.sessionExpired;
+    }
+    if (error.type != AppErrorType.forbidden) return AuthStatus.unauthenticated;
+    if (error.message.toLowerCase().contains('ditolak')) {
+      return AuthStatus.registrationRejected;
+    }
+    if (error.message.toLowerCase().contains('dinonaktifkan')) {
+      return AuthStatus.accountDisabled;
+    }
+    if (error.message.toLowerCase().contains('menunggu')) {
+      return AuthStatus.pendingApproval;
+    }
+    return AuthStatus.forbidden;
   }
 
   AppError _asAppError(Object error) {

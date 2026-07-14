@@ -7,6 +7,18 @@ import 'package:flutter_test/flutter_test.dart';
 
 class FakeAuthRepository implements AuthRepository {
   @override
+  Future<List<PublicSchoolOption>> listPublicSchools() async => const [];
+
+  @override
+  Future<List<PublicClassOption>> listPublicClasses(String schoolId) async =>
+      const [];
+
+  @override
+  Future<AuthRegistrationResult> register(
+    AuthRegistrationPayload payload,
+  ) async => const AuthRegistrationResult(userId: '1', status: 'pending');
+
+  @override
   Future<SessionUser> currentUser() async => throw UnimplementedError();
 
   @override
@@ -17,6 +29,9 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Future<SessionUser> deleteAvatar() async => throw UnimplementedError();
+
+  @override
+  Future<void> deleteAccount({required String currentPassword}) async {}
 
   @override
   Future<void> logout() async {}

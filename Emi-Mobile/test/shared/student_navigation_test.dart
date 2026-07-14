@@ -9,6 +9,18 @@ import 'package:go_router/go_router.dart';
 
 class FakeAuthRepository implements AuthRepository {
   @override
+  Future<List<PublicSchoolOption>> listPublicSchools() async => const [];
+
+  @override
+  Future<List<PublicClassOption>> listPublicClasses(String schoolId) async =>
+      const [];
+
+  @override
+  Future<AuthRegistrationResult> register(
+    AuthRegistrationPayload payload,
+  ) async => const AuthRegistrationResult(userId: '1', status: 'pending');
+
+  @override
   Future<SessionUser> currentUser() async => _student;
 
   @override
@@ -19,6 +31,9 @@ class FakeAuthRepository implements AuthRepository {
     required String email,
     required String password,
   }) async => _student;
+
+  @override
+  Future<void> deleteAccount({required String currentPassword}) async {}
 
   @override
   Future<void> logout() async {}

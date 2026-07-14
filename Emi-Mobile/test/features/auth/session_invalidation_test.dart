@@ -9,6 +9,18 @@ import 'package:flutter_test/flutter_test.dart';
 
 class _FakeAuthRepository implements AuthRepository {
   @override
+  Future<List<PublicSchoolOption>> listPublicSchools() async => const [];
+
+  @override
+  Future<List<PublicClassOption>> listPublicClasses(String schoolId) async =>
+      const [];
+
+  @override
+  Future<AuthRegistrationResult> register(
+    AuthRegistrationPayload payload,
+  ) async => const AuthRegistrationResult(userId: '1', status: 'pending');
+
+  @override
   Future<SessionUser> currentUser() async => _student;
 
   @override
@@ -19,6 +31,9 @@ class _FakeAuthRepository implements AuthRepository {
     required String email,
     required String password,
   }) async => _student;
+
+  @override
+  Future<void> deleteAccount({required String currentPassword}) async {}
 
   @override
   Future<void> logout() async {}
@@ -69,7 +84,7 @@ void main() {
       await container.read(authControllerProvider.notifier).restoreSession();
       expect(
         container.read(authControllerProvider).status,
-        AuthStatus.authenticated,
+        AuthStatus.authenticatedStudent,
       );
 
       container.read(sessionInvalidationProvider.notifier).state++;
@@ -77,7 +92,7 @@ void main() {
 
       expect(
         container.read(authControllerProvider).status,
-        AuthStatus.unauthenticated,
+        AuthStatus.sessionExpired,
       );
     },
   );

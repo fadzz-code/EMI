@@ -19,6 +19,35 @@ class AuthRepositoryImpl implements AuthRepository {
   final DioErrorMapper _errorMapper;
 
   @override
+  Future<List<PublicSchoolOption>> listPublicSchools() async {
+    try {
+      return await _remoteDataSource.listPublicSchools();
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  @override
+  Future<List<PublicClassOption>> listPublicClasses(String schoolId) async {
+    try {
+      return await _remoteDataSource.listPublicClasses(schoolId);
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  @override
+  Future<AuthRegistrationResult> register(
+    AuthRegistrationPayload payload,
+  ) async {
+    try {
+      return await _remoteDataSource.register(payload);
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  @override
   Future<SessionUser> login({
     required String email,
     required String password,
@@ -129,6 +158,17 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<void> deleteAccount({required String currentPassword}) async {
+    try {
+      await _remoteDataSource.deleteAccount(currentPassword: currentPassword);
+    } catch (error) {
+      throw _map(error);
+    } finally {
+      await _tokenStorage.clearSession();
+    }
+  }
+
+  @override
   Future<void> logout() async {
     try {
       await _remoteDataSource.logout();
@@ -139,12 +179,15 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   void _validateUser(SessionUser user) {
-    if (!user.isApproved) {
-      throw const AppError(
-        type: AppErrorType.forbidden,
-        message: 'Akun belum aktif. Silakan tunggu persetujuan Admin.',
-      );
-    }
+    if (user.isApproved) return;
+
+    final message = switch (user.status) {
+      'pending' => 'Akun sedang menunggu persetujuan Admin.',
+      'rejected' => 'Registrasi akun ditolak. Hubungi Admin EMI.',
+      'inactive' || 'disabled' => 'Akun dinonaktifkan. Hubungi Admin EMI.',
+      _ => 'Akun belum aktif. Silakan tunggu persetujuan Admin.',
+    };
+    throw AppError(type: AppErrorType.forbidden, message: message);
   }
 
   Object _map(Object error) {

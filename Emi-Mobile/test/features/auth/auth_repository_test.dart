@@ -3,6 +3,7 @@ import 'package:emi_mobile/core/errors/app_error.dart';
 import 'package:emi_mobile/core/storage/token_storage.dart';
 import 'package:emi_mobile/features/auth/data/auth_remote_data_source.dart';
 import 'package:emi_mobile/features/auth/data/auth_repository_impl.dart';
+import 'package:emi_mobile/features/auth/domain/auth_repository.dart';
 import 'package:emi_mobile/features/auth/domain/session_user.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -27,6 +28,63 @@ class _MemoryTokenStorage implements TokenStorage {
 }
 
 void main() {
+  test('login response parsing stores token for approved admin', () async {
+    final storage = _MemoryTokenStorage();
+    final repository = AuthRepositoryImpl(
+      remoteDataSource: AuthRemoteDataSource(
+        _dio((options, handler) {
+          handler.resolve(
+            Response(
+              requestOptions: options,
+              data: {
+                'data': {
+                  'token': 'safe-test-token',
+                  'user': _user(role: 'admin'),
+                },
+              },
+            ),
+          );
+        }),
+      ),
+      tokenStorage: storage,
+    );
+
+    final user = await repository.login(
+      email: 'admin@test',
+      password: 'secret',
+    );
+
+    expect(user.role, UserRole.admin);
+    expect(storage.token, 'safe-test-token');
+  });
+
+  test('login response parsing stores token for approved student', () async {
+    final storage = _MemoryTokenStorage();
+    final repository = AuthRepositoryImpl(
+      remoteDataSource: AuthRemoteDataSource(
+        _dio((options, handler) {
+          handler.resolve(
+            Response(
+              requestOptions: options,
+              data: {
+                'data': {'token': 'safe-test-token', 'user': _user()},
+              },
+            ),
+          );
+        }),
+      ),
+      tokenStorage: storage,
+    );
+
+    final user = await repository.login(
+      email: 'siswa@test',
+      password: 'secret',
+    );
+
+    expect(user.role, UserRole.student);
+    expect(storage.token, 'safe-test-token');
+  });
+
   test('login response parsing stores token for approved teacher', () async {
     final storage = _MemoryTokenStorage();
     final repository = AuthRepositoryImpl(
@@ -120,6 +178,41 @@ void main() {
 
     await expectLater(repository.restoreSession(), throwsA(isA<AppError>()));
     expect(storage.cleared, isTrue);
+  });
+
+  test('register returns pending result and does not store token', () async {
+    final storage = _MemoryTokenStorage();
+    final repository = AuthRepositoryImpl(
+      remoteDataSource: AuthRemoteDataSource(
+        _dio((options, handler) {
+          expect(options.path, '/auth/register');
+          handler.resolve(
+            Response(
+              requestOptions: options,
+              data: {
+                'data': {'user_id': 'user-1', 'status': 'pending'},
+              },
+            ),
+          );
+        }),
+      ),
+      tokenStorage: storage,
+    );
+
+    final result = await repository.register(
+      const AuthRegistrationPayload(
+        fullName: 'Siswa Test',
+        email: 'siswa@test',
+        password: 'Password1',
+        passwordConfirmation: 'Password1',
+        requestedRole: UserRole.student,
+        schoolId: 'school-1',
+        classId: 'class-1',
+      ),
+    );
+
+    expect(result.status, 'pending');
+    expect(storage.token, isNull);
   });
 
   test('session user parses unknown role safely', () {

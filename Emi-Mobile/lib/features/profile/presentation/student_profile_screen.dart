@@ -30,6 +30,7 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
   final _currentPasswordController = TextEditingController();
   final _passwordController = TextEditingController();
   final _passwordConfirmationController = TextEditingController();
+  final _deleteAccountPasswordController = TextEditingController();
 
   @override
   void dispose() {
@@ -38,6 +39,7 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
     _currentPasswordController.dispose();
     _passwordController.dispose();
     _passwordConfirmationController.dispose();
+    _deleteAccountPasswordController.dispose();
     super.dispose();
   }
 
@@ -46,10 +48,12 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
     final auth = ref.watch(authControllerProvider);
     final user = auth.user;
 
+    final isStudent = user?.role == UserRole.student;
+
     return EmiScaffold(
       title: 'Profil',
-      currentIndex: 4,
-      onNavTap: (index) => _go(context, index),
+      currentIndex: isStudent ? 4 : null,
+      onNavTap: isStudent ? (index) => _go(context, index) : null,
       child: ListView(
         padding: const EdgeInsets.all(EmiSpacing.md),
         children: [
@@ -104,6 +108,14 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
             label: const Text('Ganti Password'),
           ),
           const SizedBox(height: EmiSpacing.lg),
+          OutlinedButton.icon(
+            onPressed: user == null || auth.isLoading
+                ? null
+                : _showDeleteAccount,
+            icon: const Icon(Icons.delete_forever_outlined),
+            label: const Text('Hapus Akun'),
+          ),
+          const SizedBox(height: EmiSpacing.sm),
           OutlinedButton(
             onPressed: auth.isLoading
                 ? null
@@ -304,6 +316,49 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
     if (mounted && ref.read(authControllerProvider).error == null) {
       _snack('Password diperbarui.');
     }
+  }
+
+  Future<void> _showDeleteAccount() async {
+    _deleteAccountPasswordController.clear();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Akun'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Akun akan dinonaktifkan dan sesi login dihapus. Masukkan password saat ini untuk melanjutkan.',
+            ),
+            const SizedBox(height: EmiSpacing.md),
+            TextField(
+              controller: _deleteAccountPasswordController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Password saat ini'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => context.pop(false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => context.pop(true),
+            child: const Text('Hapus Akun'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final password = _deleteAccountPasswordController.text;
+    if (password.isEmpty) {
+      _snack('Password saat ini wajib diisi.');
+      return;
+    }
+    await ref
+        .read(authControllerProvider.notifier)
+        .deleteAccount(currentPassword: password);
   }
 
   void _snack(String message) {

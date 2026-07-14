@@ -1,12 +1,64 @@
 import 'package:dio/dio.dart';
 
 import '../../../shared/models/api_response.dart';
+import '../domain/auth_repository.dart';
 import '../domain/session_user.dart';
 
 class AuthRemoteDataSource {
   AuthRemoteDataSource(this._dio);
 
   final Dio _dio;
+
+  Future<List<PublicSchoolOption>> listPublicSchools() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/public/schools',
+      queryParameters: {'per_page': 100},
+    );
+    final payload = ApiResponse<List<PublicSchoolOption>>.fromJson(
+      response.data ?? {},
+      (value) => _requiredList(value, PublicSchoolOption.fromJson),
+    );
+    return payload.data ?? const [];
+  }
+
+  Future<List<PublicClassOption>> listPublicClasses(String schoolId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/public/schools/$schoolId/classes',
+      queryParameters: {'per_page': 100},
+    );
+    final payload = ApiResponse<List<PublicClassOption>>.fromJson(
+      response.data ?? {},
+      (value) => _requiredList(value, PublicClassOption.fromJson),
+    );
+    return payload.data ?? const [];
+  }
+
+  Future<AuthRegistrationResult> register(
+    AuthRegistrationPayload payload,
+  ) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/auth/register',
+      data: {
+        'full_name': payload.fullName,
+        'email': payload.email,
+        'password': payload.password,
+        'password_confirmation': payload.passwordConfirmation,
+        'requested_role': payload.requestedRole.value,
+        'school_id': payload.schoolId,
+        'class_id': payload.classId,
+      },
+    );
+    final envelope = ApiResponse<Map<String, dynamic>>.fromJson(
+      response.data ?? {},
+      _requiredMap,
+    );
+    final data = envelope.data;
+    if (data == null) throw StateError('Response registrasi tidak lengkap.');
+    return AuthRegistrationResult(
+      userId: data['user_id'] as String? ?? '',
+      status: data['status'] as String? ?? '',
+    );
+  }
 
   Future<({String token, SessionUser user})> login({
     required String email,
@@ -117,6 +169,13 @@ class AuthRemoteDataSource {
     return SessionUser.fromJson(data);
   }
 
+  Future<void> deleteAccount({required String currentPassword}) async {
+    await _dio.delete<Map<String, dynamic>>(
+      '/auth/account',
+      data: {'current_password': currentPassword},
+    );
+  }
+
   Future<void> logout() async {
     await _dio.post<Map<String, dynamic>>('/auth/logout');
   }
@@ -125,4 +184,16 @@ class AuthRemoteDataSource {
 Map<String, dynamic> _requiredMap(Object? value) {
   if (value is Map<String, dynamic>) return value;
   throw StateError('Response autentikasi tidak lengkap.');
+}
+
+List<T> _requiredList<T>(
+  Object? value,
+  T Function(Map<String, dynamic> json) fromJson,
+) {
+  if (value is! List) throw StateError('Response daftar tidak lengkap.');
+  return value.whereType<Map<String, dynamic>>().map(fromJson).where((item) {
+    if (item is PublicSchoolOption) return item.id.isNotEmpty;
+    if (item is PublicClassOption) return item.id.isNotEmpty;
+    return true;
+  }).toList();
 }

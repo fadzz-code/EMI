@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../shared/widgets/emi_card.dart';
@@ -57,7 +58,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                           const SizedBox(height: EmiSpacing.xs),
                           const Text(
-                            'Gunakan akun siswa yang sudah disetujui pengelola.',
+                            'Gunakan akun Admin, Guru, atau Siswa yang sudah disetujui pengelola.',
                           ),
                           const SizedBox(height: EmiSpacing.lg),
                           TextFormField(
@@ -109,6 +110,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     ),
                                   )
                                 : const Text('Masuk'),
+                          ),
+                          TextButton(
+                            onPressed: auth.isLoading
+                                ? null
+                                : () => context.go('/register'),
+                            child: const Text('Daftar akun Guru/Siswa'),
                           ),
                         ],
                       ),

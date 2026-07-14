@@ -7,10 +7,11 @@ import '../../features/admin/presentation/admin_quiz_screens.dart';
 import '../../features/admin/presentation/admin_reports_screen.dart';
 import '../../features/admin/presentation/admin_screens.dart';
 import '../../features/admin/presentation/admin_settings_screen.dart';
-import '../../features/auth/domain/session_user.dart';
+import '../../features/auth/presentation/account_status_screen.dart';
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/auth_state.dart';
 import '../../features/auth/presentation/login_screen.dart';
+import '../../features/auth/presentation/register_screen.dart';
 import '../../features/chatbot/presentation/student_chatbot_screen.dart';
 import '../../features/culture/data/culture_models.dart';
 import '../../features/culture/presentation/student_culture_detail_screen.dart';
@@ -40,34 +41,45 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final auth = ref.read(authControllerProvider);
       final location = state.uri.path;
 
-      if (auth.status == AuthStatus.unknown) {
+      final isAuthRoute = location == '/login' || location == '/register';
+      final isStatusRoute = location == '/account-status';
+
+      if (auth.status == AuthStatus.initializing) {
         return location == '/splash' ? null : '/splash';
       }
-      if (auth.status == AuthStatus.unauthenticated) {
-        return location == '/login' ? null : '/login';
+      if (auth.status == AuthStatus.unauthenticated ||
+          auth.status == AuthStatus.sessionExpired) {
+        return isAuthRoute ? null : '/login';
+      }
+      if (auth.status == AuthStatus.pendingApproval ||
+          auth.status == AuthStatus.registrationRejected ||
+          auth.status == AuthStatus.accountDisabled ||
+          auth.status == AuthStatus.forbidden) {
+        return isStatusRoute ? null : '/account-status';
       }
       if (auth.status == AuthStatus.unsupportedRole) {
         return location == '/unsupported-role' ? null : '/unsupported-role';
       }
-      if (auth.status == AuthStatus.authenticated) {
-        final home = switch (auth.user?.role) {
-          UserRole.admin => '/admin/dashboard',
-          UserRole.teacher => '/teacher/dashboard',
-          _ => '/student/dashboard',
+      if (auth.status.isAuthenticated) {
+        final home = switch (auth.status) {
+          AuthStatus.authenticatedAdmin => '/admin/dashboard',
+          AuthStatus.authenticatedTeacher => '/teacher/dashboard',
+          AuthStatus.authenticatedStudent => '/student/dashboard',
+          _ => '/login',
         };
-        if (location == '/login' || location == '/splash' || location == '/') {
+        if (isAuthRoute || location == '/splash' || location == '/') {
           return home;
         }
         if (location.startsWith('/admin') &&
-            auth.user?.role != UserRole.admin) {
+            auth.status != AuthStatus.authenticatedAdmin) {
           return home;
         }
         if (location.startsWith('/student') &&
-            auth.user?.role != UserRole.student) {
+            auth.status != AuthStatus.authenticatedStudent) {
           return home;
         }
         if (location.startsWith('/teacher') &&
-            auth.user?.role != UserRole.teacher) {
+            auth.status != AuthStatus.authenticatedTeacher) {
           return home;
         }
       }
@@ -78,10 +90,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/', redirect: (_, _) => '/splash'),
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+      GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
+      GoRoute(
+        path: '/account-status',
+        builder: (_, _) => const AccountStatusScreen(),
+      ),
       GoRoute(path: '/teacher', redirect: (_, _) => '/teacher/dashboard'),
       GoRoute(
         path: '/teacher/dashboard',
         builder: (_, _) => const TeacherDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/teacher/profile',
+        builder: (_, _) => const StudentProfileScreen(),
       ),
       GoRoute(
         path: '/student/dashboard',
@@ -214,6 +235,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/admin/settings',
         builder: (_, _) => const AdminSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/admin/profile',
+        builder: (_, _) => const StudentProfileScreen(),
       ),
       GoRoute(
         path: '/unsupported-role',

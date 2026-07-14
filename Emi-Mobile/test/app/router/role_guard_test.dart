@@ -24,7 +24,7 @@ void main() {
       status: 'approved',
     );
 
-    const state = AuthState(status: AuthStatus.authenticated, user: user);
+    const state = AuthState(status: AuthStatus.authenticatedAdmin, user: user);
     expect(state.user?.role, UserRole.admin);
   });
 
@@ -37,7 +37,10 @@ void main() {
       status: 'approved',
     );
 
-    const state = AuthState(status: AuthStatus.authenticated, user: user);
+    const state = AuthState(
+      status: AuthStatus.authenticatedTeacher,
+      user: user,
+    );
     expect(state.user?.role, UserRole.teacher);
   });
 }
