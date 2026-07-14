@@ -5,6 +5,7 @@ enum AppErrorType {
   forbidden,
   validation,
   notFound,
+  conflict,
   server,
   unknown,
 }

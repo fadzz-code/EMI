@@ -166,6 +166,7 @@ class RegistrationApprovalAdmin {
     required this.userEmail,
     this.schoolName,
     this.className,
+    this.classId,
     this.reviewNote,
     this.createdAt,
     this.reviewedAt,
@@ -178,6 +179,7 @@ class RegistrationApprovalAdmin {
   final String userEmail;
   final String? schoolName;
   final String? className;
+  final String? classId;
   final String? reviewNote;
   final String? createdAt;
   final String? reviewedAt;
@@ -200,6 +202,7 @@ class RegistrationApprovalAdmin {
       userEmail: user['email'] as String? ?? '',
       schoolName: school['name'] as String?,
       className: schoolClass['name'] as String?,
+      classId: schoolClass['id'] as String?,
       reviewNote: json['review_note'] as String?,
       createdAt: json['created_at'] as String?,
       reviewedAt: json['reviewed_at'] as String?,

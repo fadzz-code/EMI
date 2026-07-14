@@ -234,7 +234,6 @@ class AdminApprovalDetailScreen extends ConsumerStatefulWidget {
 class _AdminApprovalDetailScreenState
     extends ConsumerState<AdminApprovalDetailScreen> {
   bool _saving = false;
-  String? _error;
 
   @override
   Widget build(BuildContext context) {
@@ -253,14 +252,6 @@ class _AdminApprovalDetailScreenState
         data: (item) => ListView(
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
-            if (_error != null) ...[
-              FriendlyState(
-                icon: Icons.info_outline,
-                title: _error!,
-                message: '',
-              ),
-              const SizedBox(height: EmiSpacing.md),
-            ],
             EmiCard(
               child: ListTile(
                 leading: CircleAvatar(
@@ -403,10 +394,7 @@ class _AdminApprovalDetailScreenState
   }
 
   Future<void> _submit(String action, String? note) async {
-    setState(() {
-      _saving = true;
-      _error = null;
-    });
+    setState(() => _saving = true);
     try {
       await ref
           .read(adminCrudRepositoryProvider)
@@ -432,13 +420,117 @@ class _AdminApprovalDetailScreenState
       }
     } catch (e) {
       final message = _actionError(e);
-      if (mounted) {
-        setState(() => _error = message);
-        ref.invalidate(adminApprovalDetailProvider(widget.id));
+      if (!mounted) return;
+      setState(() => _saving = false);
+
+      if (message.contains('sudah memiliki guru') ||
+          message.contains('CLASS_ALREADY_HAS_TEACHER')) {
+        await _showConflictDialog(
+          'Akun Belum Bisa Disetujui',
+          'Kelas yang dipilih sudah memiliki Guru aktif.\n\nPilih kelas lain atau ganti Guru kelas terlebih dahulu melalui menu Kelas.',
+          true,
+        );
+        return;
       }
-    } finally {
-      if (mounted) setState(() => _saving = false);
+      if (message.contains('Guru sudah memiliki') ||
+          message.contains('TEACHER_ALREADY_ASSIGNED')) {
+        await _showConflictDialog(
+          'Akun Belum Bisa Disetujui',
+          'Guru ini sudah memiliki kelas aktif di tempat lain.',
+          false,
+        );
+        return;
+      }
+      if (message.contains('Siswa sudah memiliki') ||
+          message.contains('STUDENT_ALREADY_ASSIGNED')) {
+        await _showConflictDialog(
+          'Akun Belum Bisa Disetujui',
+          'Siswa ini sudah memiliki kelas aktif di tempat lain.',
+          false,
+        );
+        return;
+      }
+      if (message.contains('sedang tidak aktif')) {
+        await _showConflictDialog('Akun Belum Bisa Disetujui', message, false);
+        return;
+      }
+      if (message.contains('tidak sesuai dengan sekolah')) {
+        await _showConflictDialog('Akun Belum Bisa Disetujui', message, false);
+        return;
+      }
+      if (message.contains('Status akun sudah berubah')) {
+        await _showConflictDialog(
+          'Status Akun Sudah Berubah',
+          'Pengajuan ini sudah diperiksa oleh Admin lain. Data terbaru telah dimuat.',
+          false,
+        );
+        ref.invalidate(adminApprovalDetailProvider(widget.id));
+        ref.invalidate(adminApprovalsProvider);
+        ref.invalidate(adminDashboardProvider);
+        return;
+      }
+      if (message.contains('Data belum lengkap')) {
+        await _showConflictDialog(
+          'Data Belum Lengkap',
+          'Periksa kembali data pengajuan sebelum menyetujui akun.',
+          false,
+        );
+        return;
+      }
+      if (message.contains('Persetujuan belum berhasil')) {
+        await _showConflictDialog(
+          'Persetujuan Belum Berhasil',
+          'Periksa koneksi internet, lalu coba lagi.',
+          false,
+        );
+        return;
+      }
+      if (message.contains('Anda tidak memiliki izin')) {
+        await _showConflictDialog(
+          'Akses Ditolak',
+          'Anda tidak memiliki izin.',
+          false,
+        );
+        return;
+      }
+
+      await _showConflictDialog(
+        'Persetujuan Belum Berhasil',
+        'Akun belum dapat disetujui saat ini. Silakan coba kembali.',
+        false,
+      );
     }
+  }
+
+  Future<void> _showConflictDialog(
+    String title,
+    String content,
+    bool canOpenClass,
+  ) async {
+    final detail = ref.read(adminApprovalDetailProvider(widget.id)).valueOrNull;
+    final classId = detail?.classId;
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Mengerti'),
+          ),
+          if (canOpenClass && classId != null && classId.isNotEmpty)
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(context);
+                context.push('/admin/classes/$classId');
+              },
+              child: const Text('Buka Kelas'),
+            ),
+        ],
+      ),
+    );
   }
 }
 
@@ -498,13 +590,47 @@ String _dateLabel(String value) =>
 
 String _actionError(Object error) {
   final message = error is AppError ? error.message : error.toString();
+
   if (message.contains('REGISTRATION_ALREADY_PROCESSED') ||
-      message.contains('sudah diproses')) {
+      message.contains('sudah diproses') ||
+      message.contains('Status akun sudah berubah')) {
     return 'Status akun sudah berubah. Data terbaru telah dimuat.';
   }
+
+  if (message.contains('TEACHER_ALREADY_ASSIGNED') ||
+      message.contains('CLASS_ALREADY_HAS_TEACHER') ||
+      message.contains('Guru sudah memiliki') ||
+      message.contains('sudah memiliki guru')) {
+    return message;
+  }
+
+  if (message.contains('STUDENT_ALREADY_ASSIGNED') ||
+      message.contains('Siswa sudah memiliki')) {
+    return message;
+  }
+
+  if (message.contains('TARGET_INACTIVE') ||
+      message.contains('sudah tidak aktif')) {
+    return 'Sekolah atau kelas yang dipilih sedang tidak aktif.';
+  }
+
+  if (message.contains('CLASS_MISMATCH') ||
+      message.contains('tidak sesuai dengan sekolah')) {
+    return 'Kelas tidak sesuai dengan sekolah yang dipilih.';
+  }
+
   if (message.contains('VALIDATION_ERROR') || message.contains('wajib')) {
     return 'Data belum lengkap. Periksa kembali isian.';
   }
-  if (message.contains('FORBIDDEN')) return 'Anda tidak memiliki izin.';
-  return 'Keputusan belum bisa disimpan. Coba lagi.';
+
+  if (message.contains('FORBIDDEN') || message.contains('izin')) {
+    return 'Anda tidak memiliki izin.';
+  }
+
+  if (error is AppError && error.type == AppErrorType.timeout ||
+      error is AppError && error.type == AppErrorType.networkUnavailable) {
+    return 'Persetujuan belum berhasil. Periksa koneksi internet, lalu coba lagi.';
+  }
+
+  return 'Akun belum dapat disetujui saat ini. Silakan coba kembali.';
 }
