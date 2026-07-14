@@ -45,7 +45,12 @@ class RoleHeroHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(greeting, style: Theme.of(context).textTheme.bodyMedium),
-                Text(name, style: Theme.of(context).textTheme.headlineMedium),
+                Text(
+                  name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
                 const SizedBox(height: EmiSpacing.xs),
                 Text(message),
               ],
@@ -83,11 +88,17 @@ class SimpleStatItem extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Icon(icon),
-          const Spacer(),
-          Text(value, style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: EmiSpacing.xs),
+          Flexible(
+            child: Text(
+              value,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+          ),
           Text(label, maxLines: 2, overflow: TextOverflow.ellipsis),
         ],
       ),
@@ -112,23 +123,34 @@ class QuickActionItem extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(EmiRadii.card),
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(EmiSpacing.sm),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: EmiColors.surfaceSoft,
-                borderRadius: BorderRadius.circular(EmiRadii.pill),
+      child: SizedBox(
+        width: 92,
+        height: 120,
+        child: Padding(
+          padding: const EdgeInsets.all(EmiSpacing.xs),
+          child: Column(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: EmiColors.surfaceSoft,
+                  borderRadius: BorderRadius.circular(EmiRadii.pill),
+                ),
+                child: Icon(icon),
               ),
-              child: Icon(icon),
-            ),
-            const SizedBox(height: EmiSpacing.xs),
-            Text(label, textAlign: TextAlign.center),
-          ],
+              const SizedBox(height: EmiSpacing.xs),
+              SizedBox(
+                height: 40,
+                child: Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

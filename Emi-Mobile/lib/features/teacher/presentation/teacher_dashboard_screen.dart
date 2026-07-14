@@ -56,7 +56,7 @@ class TeacherDashboardScreen extends ConsumerWidget {
                       mainAxisSpacing: EmiSpacing.md,
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      childAspectRatio: 1.05,
+                      mainAxisExtent: 150,
                       children: [
                         for (final metric in summary.metrics)
                           SimpleStatItem(
