@@ -113,7 +113,7 @@ Privacy technical decision: current mobile feature must be named as deactivation
 | Kelas | CRUD/detail/students | `/admin/schools-classes`, `/admin/classes/{id}` | `/classes*`, `/classes/{id}/students` | GET/POST/PUT/DELETE | SchoolClassPolicy | PARTIAL | backend feature + Flutter admin test | Mobile has Admin Kelas menu/list/search/status filter/pagination/detail/create/edit/status. School filter UI uses backend `school_id`. Smoke HP NOT_TESTED. |
 | Guru kelas | assign teacher | class detail | `/classes/{id}/assign-teacher` | POST | policy | PARTIAL | backend feature + Flutter admin test | Mobile can pilih/ganti Guru via approved user picker; backend closes old assignment in transaction and unique indexes prevent active duplicates. Search in picker and device smoke NOT_TESTED. |
 | Siswa kelas | assign student/list | class detail | `/classes/{id}/assign-student`, `/classes/{id}/students` | GET/POST | policy | PARTIAL | backend feature + Flutter admin test | Mobile can list anggota and tambah/pindah Siswa via approved user picker; backend closes old membership in transaction. Remove student endpoint MISSING/BLOCKED_BY_BACKEND. Smoke HP NOT_TESTED. |
-| Kamus | category/entry CRUD/detail/search/filter | `/admin/dictionary`, detail | `/admin/dictionary/categories*`, `/admin/dictionary/entries*` | GET/POST/PUT/DELETE | dictionary policies | PARTIAL | admin/dictionary tests | Mobile admin dictionary exists; import/detail parity incomplete. |
+| Kamus | category/entry CRUD/detail/search/filter | `/admin/dictionary`, detail | `/admin/dictionary/categories*`, `/admin/dictionary/entries*` | GET/POST/PUT/DELETE | dictionary policies | PARTIAL | admin/dictionary tests | Mobile admin dictionary list/detail/create/edit/delete uses real API; import remains WEB_ONLY_BY_DESIGN; smoke HP NOT_TESTED. |
 | Import kamus | template/preview/errors/confirm | `/admin/dictionary/import` | `/admin/dictionary/imports*` | GET/POST | admin + import policy | MISSING | none | No mobile import. |
 | Modul template | list/detail/create/edit/delete | `/admin/modules`, edit | `/admin/module-templates*` | GET/POST/PUT/DELETE | ModuleTemplatePolicy | MISSING | none | No mobile admin module templates. |
 | Lesson | CRUD/reorder/publish/archive | module editor | `/admin/module-templates/{id}/lessons*`, `/admin/lesson-templates*` | GET/POST/PATCH/PUT/DELETE | LessonTemplatePolicy | MISSING | none | No mobile lesson builder. |
@@ -211,6 +211,25 @@ Status: `PARTIAL`.
 - Test coverage: backend `ClassPlacementConsistencyTest` ensures old records are securely closed during cross-class placement. Flutter `admin_class_consistency_test.dart` ensures UI triggers source and target invalidation correctly. `Phase3SchoolClassUsersTest` covers CRUD, authorization, assignment, membership. Full widget/navigation matrix remains partial.
 - Smoke test HP: `PASS` via controlled replication of the assignment caching bug. Fix proven robust.
 - Sisa gap: picker search belum lengkap, exhaustive widget navigation tests belum lengkap.
+
+## Admin Dictionary/Kamus update 2026-07-15
+
+Status: `PARTIAL`.
+
+- Route Flutter: `/admin/dictionary`, `/admin/dictionary/create`, `/admin/dictionary/:id`, `/admin/dictionary/:id/edit`.
+- API aktual: `GET /admin/dictionary/categories`; `GET /admin/dictionary/entries` dengan `search`, `category_id`, `status`, `has_audio`, `page`, `per_page`; `GET/POST/PUT/DELETE /admin/dictionary/entries/{id?}`.
+- Field aktual: `category_id`, `indonesia`, `english`, `mekongga`, `example_mekongga`, `example_indonesia`, `audio_media_id`, `status`; resource mengembalikan `category`, `sentence_examples`, `audio.url` jika ada.
+- Navigasi: menu Admin `Kamus` membuka daftar nyata; active state berbasis prefix `/admin/dictionary` untuk list/detail/create/edit; tidak ada menu Media standalone.
+- List: API nyata, search kata/arti via backend, filter kategori/status, pagination `Muat Lagi`, empty/error Bahasa Indonesia, status dipetakan `active` → `Aktif`, `inactive` → `Tidak Aktif`.
+- Detail: menampilkan kata Mekongga, arti Indonesia, English, kategori, status, contoh, audio availability; tanpa `null` dan tanpa raw enum.
+- Create/edit: memakai kontrak backend; daftar/detail diinvalidate setelah sukses; media lama tidak dikirim ulang/dihapus bila tidak diubah.
+- Delete/status: backend mendukung soft delete lewat `DELETE`; mobile menampilkan `Hapus` dengan konfirmasi. Toggle status belum dibuat sebagai aksi terpisah.
+- Gambar: `BLOCKED_BY_BACKEND`; resource Kamus tidak punya gambar.
+- Audio: `PARTIAL`; backend/Web mendukung `audio_media_id` lewat upload media, mobile menampilkan info audio tetapi belum punya picker/upload audio Kamus.
+- Authorization: admin routes dilindungi `auth:sanctum` + `role:admin`; shared `/dictionary` hanya entry aktif untuk approved user; Guru/Siswa tidak dapat create/update/delete.
+- Import/export massal: `WEB_ONLY_BY_DESIGN`; mobile tidak membuat UI import.
+- Tests: `flutter analyze --no-pub` No issues found; `flutter test` 88 pass; Laravel `Phase5DictionaryImportTest` 14 pass / 164 assertions. Exhaustive admin widget/navigation tests remain partial.
+- Smoke test HP: `NOT_TESTED`; jangan klaim `PARITY_COMPLETE` sebelum smoke dan create/edit device terbukti.
 
 ## Admin dashboard response vs widgets
 
