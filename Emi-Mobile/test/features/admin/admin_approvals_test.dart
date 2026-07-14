@@ -40,14 +40,13 @@ class _FakeAuthNotifier extends StateNotifier<AuthState>
     required String passwordConfirmation,
   }) async {}
   @override
-  Future<void> updateAvatar({
-    required String mediaId,
-    required String url,
+  Future<void> uploadAvatar({
+    required String path,
+    required String fileName,
+    void Function(int sent, int total)? onSendProgress,
   }) async {}
   @override
   Future<void> deleteAvatar() async {}
-  @override
-  Future<void> reloadProfile() async {}
   @override
   Future<void> deleteAccount({required String currentPassword}) async {}
   @override
