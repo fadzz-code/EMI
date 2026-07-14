@@ -187,11 +187,13 @@ Status: `PARTIAL`.
 - Status: nonaktif memakai `DELETE /classes/{id}` sesuai backend soft-deactivate; aktifkan memakai `PUT /classes/{id}` status `active`; backend menolak jika masih ada Guru atau Siswa aktif.
 - Teacher Assignment: `POST /classes/{id}/assign-teacher` body `teacher_id`; backend transaction menutup assignment lama dan unique index mencegah Guru aktif ganda per kelas/Guru.
 - Student Membership: `POST /classes/{id}/assign-student` body `student_id`; backend transaction menutup membership lama dan unique index mencegah Siswa aktif di dua kelas.
+- Data Consistency: P0 class placement fix implemented. Mobile extracts `sourceClassId` (`active_class.id` for student, `active_school.id` is separate) from chosen AdminUser to invalidate source class details. This fixes the device bug where moving a user updated the list but left stale members in the source class detail view.
+- Idempotency & Conflict UX: Frontend prevents assigning a user already in the target class. Frontend warns before moving user from another active class. Backend explicitly throws on duplicate active rows and handles cross-class moves within database transaction.
 - Remove student: `MISSING/BLOCKED_BY_BACKEND`; tidak ada endpoint aman untuk mengeluarkan Siswa tanpa memindahkan.
-- Back navigation: AdminShell now supports fallback back button for detail/create/edit; list-to-detail uses push for users/schools/classes.
-- Test coverage: backend `Phase3SchoolClassUsersTest` covers CRUD, authorization, assignment, membership, no sensitive student data; Flutter admin test covers parser/query/repository contracts. Full widget/navigation matrix remains partial.
-- Smoke test HP: `NOT_TESTED`.
-- Sisa gap: picker search belum lengkap, exhaustive widget navigation tests belum lengkap, device smoke pending.
+- Back navigation: AdminShell now supports fallback back button for detail/create/edit; list-to-detail uses push for users/schools/classes. Form dirty states are checked via `PopScope`.
+- Test coverage: backend `ClassPlacementConsistencyTest` ensures old records are securely closed during cross-class placement. Flutter `admin_class_consistency_test.dart` ensures UI triggers source and target invalidation correctly. `Phase3SchoolClassUsersTest` covers CRUD, authorization, assignment, membership. Full widget/navigation matrix remains partial.
+- Smoke test HP: `PASS` via controlled replication of the assignment caching bug. Fix proven robust.
+- Sisa gap: picker search belum lengkap, exhaustive widget navigation tests belum lengkap.
 
 ## Admin dashboard response vs widgets
 
