@@ -272,6 +272,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const AdminDictionaryFormScreen(),
       ),
       GoRoute(
+        path: '/admin/dictionary/categories',
+        builder: (_, _) => const AdminDictionaryCategoryScreen(),
+      ),
+      GoRoute(
+        path: '/admin/dictionary/import',
+        builder: (_, _) => const AdminDictionaryImportScreen(),
+      ),
+      GoRoute(
         path: '/admin/dictionary/:id/edit',
         builder: (_, state) =>
             AdminDictionaryFormScreen(id: state.pathParameters['id']),

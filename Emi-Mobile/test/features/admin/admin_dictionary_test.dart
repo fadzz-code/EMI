@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:emi_mobile/core/errors/app_error.dart';
 import 'package:emi_mobile/core/errors/dio_error_mapper.dart';
@@ -225,6 +227,92 @@ void main() {
       );
     },
   );
+
+  test('admin dictionary category and import contracts', () async {
+    final requests = <String>[];
+    final temp =
+        await File(
+          '${Directory.systemTemp.path}/emi_dictionary_test.csv',
+        ).writeAsString(
+          'kode,indonesia,english,mekongga,kategori,audio_filename\n',
+        );
+    final repository = AdminCrudRepository(
+      Dio(BaseOptions(baseUrl: 'https://example.test'))
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              requests.add('${options.method} ${options.path}');
+              final data = switch (options.path) {
+                '/admin/dictionary/categories' => {
+                  'data': {
+                    'id': 'c1',
+                    'name': 'Benda',
+                    'status': 'active',
+                    'entries_count': 2,
+                  },
+                },
+                '/admin/dictionary/imports/preview' => {
+                  'data': {
+                    'id': 'job-1',
+                    'status': 'previewed',
+                    'total_rows': 1,
+                    'valid_rows': 1,
+                    'invalid_rows': 0,
+                  },
+                },
+                '/admin/dictionary/imports/job-1/confirm' => {
+                  'data': {
+                    'id': 'job-1',
+                    'status': 'completed',
+                    'inserted_rows': 1,
+                    'updated_rows': 0,
+                    'skipped_rows': 0,
+                    'invalid_rows': 0,
+                  },
+                },
+                '/admin/dictionary/imports/job-1/errors' => {
+                  'data': [
+                    {
+                      'id': 'e1',
+                      'row_number': 4,
+                      'field': 'mekongga',
+                      'code': 'REQUIRED',
+                      'message': 'Kata Mekongga wajib diisi.',
+                    },
+                  ],
+                  'meta': {'current_page': 1, 'last_page': 1, 'total': 1},
+                },
+                _ => {
+                  'data': {'id': 'c1', 'name': 'Benda'},
+                },
+              };
+              handler.resolve(Response(requestOptions: options, data: data));
+            },
+          ),
+        ),
+      const DioErrorMapper(),
+    );
+
+    final category = await repository.saveCategory(
+      data: {'name': 'Benda', 'description': null, 'status': 'active'},
+    );
+    final preview = await repository.previewDictionaryImport(csvFile: temp);
+    final confirmed = await repository.confirmDictionaryImport(preview.id);
+    final errors = await repository.dictionaryImportErrors(preview.id);
+    await repository.deleteCategory(category.id);
+
+    expect(category.entriesCount, 2);
+    expect(preview.totalRows, 1);
+    expect(confirmed.insertedRows, 1);
+    expect(errors.items.single.rowNumber, 4);
+    expect(requests, [
+      'POST /admin/dictionary/categories',
+      'POST /admin/dictionary/imports/preview',
+      'POST /admin/dictionary/imports/job-1/confirm',
+      'GET /admin/dictionary/imports/job-1/errors',
+      'DELETE /admin/dictionary/categories/c1',
+    ]);
+  });
 
   test('admin dictionary query identity includes filters', () {
     const a = AdminSearchQuery(

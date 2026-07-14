@@ -1,5 +1,9 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
@@ -43,6 +47,14 @@ class _AdminDictionaryScreenState extends ConsumerState<AdminDictionaryScreen> {
               _items.clear();
             }),
             onFilter: () => _showFilters(categories),
+            onCategories: () async {
+              await context.push('/admin/dictionary/categories');
+              if (mounted) ref.invalidate(dictionaryCategoriesProvider);
+            },
+            onImport: () async {
+              await context.push('/admin/dictionary/import');
+              if (mounted) ref.invalidate(adminDictionaryProvider);
+            },
             onAdd: () async {
               await context.push('/admin/dictionary/create');
               if (mounted) {
@@ -66,6 +78,7 @@ class _AdminDictionaryScreenState extends ConsumerState<AdminDictionaryScreen> {
                   if (!_items.any((old) => old.id == item.id)) _items.add(item);
                 }
                 return _PagedList(
+                  header: _AudioPreviewCard(item: _firstAudioEntry(_items)),
                   empty:
                       (_search?.isNotEmpty == true ||
                           _categoryId != null ||
@@ -79,11 +92,17 @@ class _AdminDictionaryScreenState extends ConsumerState<AdminDictionaryScreen> {
                       _Tile(
                         title: item.mekongga,
                         subtitle: [
-                          item.indonesia,
-                          if (item.categoryName?.isNotEmpty == true)
-                            item.categoryName!,
-                          if (item.audioUrl?.isNotEmpty == true) 'Ada Audio',
-                        ].join(' • '),
+                          'Indonesia: ${item.indonesia}',
+                          'Inggris: ${item.english}',
+                          [
+                            if (item.categoryName?.isNotEmpty == true)
+                              item.categoryName!,
+                            _statusLabel(item.status),
+                          ].join(' • '),
+                          item.audioUrl?.isNotEmpty == true
+                              ? 'Audio Tersedia'
+                              : 'Belum Ada Audio',
+                        ].join('\n'),
                         status: _statusLabel(item.status),
                         onTap: () =>
                             context.push('/admin/dictionary/${item.id}'),
@@ -365,8 +384,19 @@ class AdminDictionaryDetailScreen extends ConsumerWidget {
                   Text(item.indonesia),
                   if (item.english.isNotEmpty) Text(item.english),
                   const SizedBox(height: EmiSpacing.sm),
-                  Text(item.categoryName ?? 'Kategori tidak tersedia'),
-                  Text(_statusLabel(item.status)),
+                  Text(
+                    'Kategori: ${item.categoryName ?? 'Kategori tidak tersedia'}',
+                  ),
+                  Text('Status: ${_statusLabel(item.status)}'),
+                  if (item.audioMediaId?.isNotEmpty == true)
+                    Text('ID Media Audio: ${item.audioMediaId}'),
+                  if (item.createdAt?.isNotEmpty == true)
+                    Text('Dibuat: ${item.createdAt}'),
+                  if (item.updatedAt?.isNotEmpty == true)
+                    Text('Terakhir Diubah: ${item.updatedAt}'),
+                  const Text(
+                    'Tinjau terjemahan, contoh kalimat, status, kategori, dan audio yang terhubung dengan kata ini.',
+                  ),
                 ],
               ),
             ),
@@ -385,10 +415,24 @@ class AdminDictionaryDetailScreen extends ConsumerWidget {
               ),
             ),
             EmiCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: item.sentenceExamples.isEmpty
+                    ? const [Text('Belum ada contoh kalimat.')]
+                    : [
+                        const Text('Contoh Kalimat'),
+                        for (final example in item.sentenceExamples)
+                          Text(
+                            '${example.mekongga ?? ''}\n${example.indonesia ?? ''}',
+                          ),
+                      ],
+              ),
+            ),
+            EmiCard(
               child: Text(
                 item.audioUrl?.isNotEmpty == true
                     ? 'Audio Pelafalan tersedia'
-                    : 'Belum Ada Audio',
+                    : 'Audio belum tersedia.',
               ),
             ),
             const SizedBox(height: EmiSpacing.md),
@@ -397,7 +441,22 @@ class AdminDictionaryDetailScreen extends ConsumerWidget {
                 await context.push('/admin/dictionary/$id/edit');
                 ref.invalidate(adminDictionaryDetailProvider(id));
               },
-              child: const Text('Edit Kosakata'),
+              child: const Text('Edit Entri'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final ok = await _confirm(
+                  context,
+                  'Hapus kosakata ini dari Kamus?\nKosakata tidak akan tampil pada daftar aktif, tetapi datanya tetap disimpan oleh sistem.',
+                );
+                if (ok != true) return;
+                await ref
+                    .read(adminCrudRepositoryProvider)
+                    .deleteDictionary(id);
+                ref.invalidate(adminDictionaryProvider);
+                if (context.mounted) context.go('/admin/dictionary');
+              },
+              child: const Text('Hapus'),
             ),
           ],
         ),
@@ -474,28 +533,358 @@ class _DictionaryFilterSheetState extends State<_DictionaryFilterSheet> {
   );
 }
 
+class AdminDictionaryCategoryScreen extends ConsumerWidget {
+  const AdminDictionaryCategoryScreen({super.key});
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final categories = ref.watch(dictionaryCategoriesProvider);
+    return AdminShell(
+      title: 'Kategori Kamus',
+      child: categories.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => _Error(
+          message: _friendlyError(e),
+          onRetry: () => ref.invalidate(dictionaryCategoriesProvider),
+        ),
+        data: (page) => ListView(
+          padding: const EdgeInsets.all(EmiSpacing.md),
+          children: [
+            FilledButton(
+              onPressed: () => _showCategoryForm(context, ref),
+              child: const Text('Tambah Kategori'),
+            ),
+            for (final category in page.items)
+              EmiCard(
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(category.name),
+                  subtitle: Text(
+                    '${category.entriesCount} kosakata • ${_statusLabel(category.status)}',
+                  ),
+                  trailing: Wrap(
+                    children: [
+                      IconButton(
+                        onPressed: () =>
+                            _showCategoryForm(context, ref, category: category),
+                        icon: const Icon(Icons.edit),
+                      ),
+                      IconButton(
+                        onPressed: () =>
+                            _deleteCategory(context, ref, category),
+                        icon: const Icon(Icons.delete_outline),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AdminDictionaryImportScreen extends ConsumerStatefulWidget {
+  const AdminDictionaryImportScreen({super.key});
+  @override
+  ConsumerState<AdminDictionaryImportScreen> createState() =>
+      _AdminDictionaryImportScreenState();
+}
+
+class _AdminDictionaryImportScreenState
+    extends ConsumerState<AdminDictionaryImportScreen> {
+  File? _csv;
+  File? _zip;
+  var _importType = 'vocabulary';
+  var _duplicateStrategy = 'skip';
+  bool _uploading = false;
+  double? _progress;
+  DictionaryImportJobAdmin? _job;
+  AdminCrudPage<DictionaryImportErrorAdmin>? _errors;
+  String? _error;
+
+  @override
+  Widget build(BuildContext context) => AdminShell(
+    title: 'Import Data',
+    child: ListView(
+      padding: const EdgeInsets.all(EmiSpacing.md),
+      children: [
+        EmiCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Format CSV: kode, indonesia, english, mekongga, kategori, audio_filename',
+              ),
+              DropdownButtonFormField<String>(
+                initialValue: _importType,
+                decoration: const InputDecoration(labelText: 'Jenis Import'),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'vocabulary',
+                    child: Text('Kosakata'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'sentence_examples',
+                    child: Text('Contoh Kalimat'),
+                  ),
+                ],
+                onChanged: _uploading
+                    ? null
+                    : (v) => setState(() => _importType = v ?? 'vocabulary'),
+              ),
+              DropdownButtonFormField<String>(
+                initialValue: _duplicateStrategy,
+                decoration: const InputDecoration(labelText: 'Duplikasi'),
+                items: const [
+                  DropdownMenuItem(value: 'skip', child: Text('Lewati')),
+                  DropdownMenuItem(value: 'update', child: Text('Perbarui')),
+                  DropdownMenuItem(value: 'reject', child: Text('Tolak')),
+                ],
+                onChanged: _uploading
+                    ? null
+                    : (v) => setState(() => _duplicateStrategy = v ?? 'skip'),
+              ),
+              OutlinedButton(
+                onPressed: _uploading ? null : _pickCsv,
+                child: Text(
+                  _csv == null
+                      ? 'Pilih CSV'
+                      : _csv!.path.split(Platform.pathSeparator).last,
+                ),
+              ),
+              OutlinedButton(
+                onPressed: _uploading ? null : _pickZip,
+                child: Text(
+                  _zip == null
+                      ? 'Pilih ZIP Audio'
+                      : _zip!.path.split(Platform.pathSeparator).last,
+                ),
+              ),
+              if (_progress != null) LinearProgressIndicator(value: _progress),
+              if (_uploading) const Text('Mengunggah data Kamus...'),
+              if (_error != null) Text(_error!),
+              FilledButton(
+                onPressed: _uploading || _csv == null ? null : _preview,
+                child: const Text('Import Data'),
+              ),
+            ],
+          ),
+        ),
+        if (_job != null)
+          _ImportResult(job: _job!, errors: _errors?.items ?? const []),
+      ],
+    ),
+  );
+
+  Future<void> _pickCsv() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['csv'],
+    );
+    final path = result?.files.single.path;
+    if (path != null) setState(() => _csv = File(path));
+  }
+
+  Future<void> _pickZip() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['zip'],
+    );
+    final path = result?.files.single.path;
+    if (path != null) setState(() => _zip = File(path));
+  }
+
+  Future<void> _preview() async {
+    final csv = _csv;
+    if (csv == null || _uploading) return;
+    setState(() {
+      _uploading = true;
+      _error = null;
+      _progress = null;
+    });
+    try {
+      final job = await ref
+          .read(adminCrudRepositoryProvider)
+          .previewDictionaryImport(
+            csvFile: csv,
+            audioZip: _zip,
+            importType: _importType,
+            duplicateStrategy: _duplicateStrategy,
+            onSendProgress: (sent, total) {
+              if (mounted && total > 0)
+                setState(() => _progress = sent / total);
+            },
+          );
+      final confirmed = await ref
+          .read(adminCrudRepositoryProvider)
+          .confirmDictionaryImport(job.id);
+      final errors = await ref
+          .read(adminCrudRepositoryProvider)
+          .dictionaryImportErrors(job.id);
+      if (mounted) {
+        setState(() {
+          _job = confirmed;
+          _errors = errors;
+        });
+        ref.invalidate(adminDictionaryProvider);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = _importError(e));
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+}
+
+class _ImportResult extends StatelessWidget {
+  const _ImportResult({required this.job, required this.errors});
+  final DictionaryImportJobAdmin job;
+  final List<DictionaryImportErrorAdmin> errors;
+  @override
+  Widget build(BuildContext context) => EmiCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Import Selesai'),
+        Text('Berhasil: ${job.insertedRows + job.updatedRows} kosakata'),
+        Text('Dilewati: ${job.skippedRows} kosakata'),
+        Text('Gagal: ${job.invalidRows} kosakata'),
+        for (final error in errors.take(10))
+          Text('Baris ${error.rowNumber ?? '-'}: ${_importErrorText(error)}'),
+      ],
+    ),
+  );
+}
+
+class _AudioPreviewCard extends StatefulWidget {
+  const _AudioPreviewCard({this.item});
+  final DictionaryEntryAdmin? item;
+  @override
+  State<_AudioPreviewCard> createState() => _AudioPreviewCardState();
+}
+
+class _AudioPreviewCardState extends State<_AudioPreviewCard> {
+  final _player = AudioPlayer();
+  String? _error;
+
+  @override
+  void didUpdateWidget(covariant _AudioPreviewCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.item?.audioUrl != widget.item?.audioUrl) {
+      _player.stop();
+      _error = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => EmiCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Pratinjau Audio Kamus',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const Text(
+          'Audio pertama yang tersedia dari hasil filter ditampilkan untuk pemeriksaan cepat.',
+        ),
+        if (widget.item == null) ...const [
+          SizedBox(height: EmiSpacing.sm),
+          Text('Belum Ada Audio untuk Ditinjau'),
+          Text(
+            'Audio akan muncul setelah kosakata memiliki file audio publik yang valid.',
+          ),
+        ] else ...[
+          const SizedBox(height: EmiSpacing.sm),
+          Text(widget.item!.mekongga),
+          Text(widget.item!.indonesia),
+          if (_error != null) Text(_error!),
+          Wrap(
+            spacing: EmiSpacing.sm,
+            children: [
+              OutlinedButton(onPressed: _play, child: const Text('Putar')),
+              OutlinedButton(
+                onPressed: _player.pause,
+                child: const Text('Jeda'),
+              ),
+              OutlinedButton(
+                onPressed: _player.stop,
+                child: const Text('Berhenti'),
+              ),
+            ],
+          ),
+        ],
+      ],
+    ),
+  );
+
+  Future<void> _play() async {
+    final url = widget.item?.audioUrl;
+    if (url == null || url.isEmpty) return;
+    try {
+      await _player.setUrl(url);
+      await _player.play();
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Audio belum bisa diputar.');
+    }
+  }
+}
+
 class _SearchBar extends StatelessWidget {
   const _SearchBar({
     required this.onChanged,
     required this.onFilter,
+    required this.onCategories,
+    required this.onImport,
     required this.onAdd,
   });
   final ValueChanged<String> onChanged;
   final VoidCallback onFilter;
+  final VoidCallback onCategories;
+  final VoidCallback onImport;
   final VoidCallback onAdd;
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.all(EmiSpacing.md),
-    child: Row(
+    child: Column(
       children: [
-        Expanded(
-          child: TextField(
-            decoration: const InputDecoration(hintText: 'Cari kata atau arti'),
-            onChanged: onChanged,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                decoration: const InputDecoration(
+                  hintText: 'Cari kata atau arti',
+                ),
+                onChanged: onChanged,
+              ),
+            ),
+            IconButton(
+              onPressed: onFilter,
+              icon: const Icon(Icons.filter_list),
+            ),
+            IconButton.filled(onPressed: onAdd, icon: const Icon(Icons.add)),
+          ],
         ),
-        IconButton(onPressed: onFilter, icon: const Icon(Icons.filter_list)),
-        IconButton.filled(onPressed: onAdd, icon: const Icon(Icons.add)),
+        Wrap(
+          spacing: EmiSpacing.sm,
+          children: [
+            OutlinedButton(
+              onPressed: onCategories,
+              child: const Text('Kelola Kategori'),
+            ),
+            OutlinedButton(
+              onPressed: onImport,
+              child: const Text('Import Data'),
+            ),
+          ],
+        ),
       ],
     ),
   );
@@ -516,9 +905,14 @@ class _Tile extends StatelessWidget {
   Widget build(BuildContext context) => EmiCard(
     child: ListTile(
       contentPadding: EdgeInsets.zero,
-      title: Text(title),
-      subtitle: subtitle == null ? null : Text(subtitle!),
-      trailing: Text(status ?? ''),
+      title: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis),
+      subtitle: subtitle == null
+          ? null
+          : Text(subtitle!, maxLines: 5, overflow: TextOverflow.ellipsis),
+      trailing: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [Text(status ?? ''), const Icon(Icons.chevron_right)],
+      ),
       onTap: onTap,
     ),
   );
@@ -526,11 +920,13 @@ class _Tile extends StatelessWidget {
 
 class _PagedList extends StatelessWidget {
   const _PagedList({
+    this.header,
     required this.children,
     required this.empty,
     required this.hasMore,
     required this.onMore,
   });
+  final Widget? header;
   final List<Widget> children;
   final String empty;
   final bool hasMore;
@@ -538,13 +934,16 @@ class _PagedList extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(EmiSpacing.md),
-    children: children.isEmpty
-        ? [EmiCard(child: Text(empty))]
-        : [
-            ...children,
-            if (hasMore)
-              OutlinedButton(onPressed: onMore, child: const Text('Muat lagi')),
-          ],
+    children: [
+      if (header != null) header!,
+      if (children.isEmpty)
+        EmiCard(child: Text(empty))
+      else ...[
+        ...children,
+        if (hasMore)
+          OutlinedButton(onPressed: onMore, child: const Text('Muat Lagi')),
+      ],
+    ],
   );
 }
 
@@ -585,11 +984,141 @@ class _ValidationBox extends StatelessWidget {
   );
 }
 
+Future<void> _showCategoryForm(
+  BuildContext context,
+  WidgetRef ref, {
+  DictionaryCategory? category,
+}) async {
+  final name = TextEditingController(text: category?.name ?? '');
+  final description = TextEditingController(text: category?.description ?? '');
+  var status = category?.status ?? 'active';
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(category == null ? 'Tambah Kategori' : 'Edit Kategori'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: name,
+            decoration: const InputDecoration(labelText: 'Nama Kategori'),
+          ),
+          TextField(
+            controller: description,
+            decoration: const InputDecoration(labelText: 'Deskripsi'),
+          ),
+          DropdownButtonFormField<String>(
+            initialValue: status,
+            decoration: const InputDecoration(labelText: 'Status'),
+            items: const [
+              DropdownMenuItem(value: 'active', child: Text('Aktif')),
+              DropdownMenuItem(value: 'inactive', child: Text('Tidak Aktif')),
+            ],
+            onChanged: (v) => status = v ?? 'active',
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => context.pop(false),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () => context.pop(true),
+          child: const Text('Simpan'),
+        ),
+      ],
+    ),
+  );
+  if (ok != true || name.text.trim().isEmpty) return;
+  await ref
+      .read(adminCrudRepositoryProvider)
+      .saveCategory(
+        id: category?.id,
+        data: {
+          'name': name.text.trim(),
+          'description': description.text.trim().isEmpty
+              ? null
+              : description.text.trim(),
+          'status': status,
+        },
+      );
+  ref.invalidate(dictionaryCategoriesProvider);
+}
+
+Future<void> _deleteCategory(
+  BuildContext context,
+  WidgetRef ref,
+  DictionaryCategory category,
+) async {
+  final ok = await _confirm(context, 'Hapus kategori ini?');
+  if (ok != true) return;
+  try {
+    await ref.read(adminCrudRepositoryProvider).deleteCategory(category.id);
+    ref.invalidate(dictionaryCategoriesProvider);
+  } catch (e) {
+    if (context.mounted) {
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Kategori Belum Bisa Dihapus'),
+          content: Text(_categoryError(e)),
+          actions: [
+            FilledButton(
+              onPressed: () => context.pop(),
+              child: const Text('Mengerti'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+}
+
+DictionaryEntryAdmin? _firstAudioEntry(List<DictionaryEntryAdmin> items) {
+  for (final item in items) {
+    if (item.audioUrl?.isNotEmpty == true) return item;
+  }
+  return null;
+}
+
 String _statusLabel(String? status) => switch (status) {
   'active' => 'Aktif',
   'inactive' => 'Tidak Aktif',
   _ => 'Status tidak tersedia',
 };
+
+String _categoryError(Object error) {
+  final message = error is AppError ? error.message : error.toString();
+  if (message.contains('CATEGORY_IN_USE') ||
+      message.contains('DICTIONARY_CATEGORY_IN_USE')) {
+    return 'Kategori ini masih digunakan oleh kosakata. Pindahkan atau ubah kategori kosakata terlebih dahulu.';
+  }
+  return 'Kategori belum dapat diproses. Silakan coba kembali.';
+}
+
+String _importError(Object error) {
+  final message = error is AppError ? error.message : error.toString();
+  if (message.contains('INVALID_CSV_HEADER'))
+    return 'Susunan kolom CSV belum sesuai dengan format Kamus EMI.';
+  if (message.contains('INVALID_ZIP'))
+    return 'File ZIP tidak dapat dibaca atau formatnya belum sesuai.';
+  if (message.contains('413')) return 'Ukuran file terlalu besar.';
+  if (message.contains('415')) return 'Format file belum didukung.';
+  if (message.contains('AUDIO') && message.contains('MISSING'))
+    return 'Beberapa file audio yang disebutkan pada CSV tidak ditemukan di dalam ZIP.';
+  if (error is AppError && error.type == AppErrorType.networkUnavailable)
+    return 'Import belum berhasil. Periksa koneksi internet, lalu coba lagi.';
+  return 'Data belum dapat diproses. Silakan periksa file dan coba kembali.';
+}
+
+String _importErrorText(DictionaryImportErrorAdmin error) {
+  final code = error.code ?? '';
+  if (code.contains('DUPLICATE')) return 'Kosakata sudah tersedia.';
+  if (code.contains('CATEGORY')) return 'Kategori tidak ditemukan.';
+  if (code.contains('REQUIRED')) return 'Field wajib belum diisi.';
+  return error.message ?? 'Data belum valid.';
+}
 
 String _friendlyError(Object error) {
   final message = error is AppError ? error.message : error.toString();

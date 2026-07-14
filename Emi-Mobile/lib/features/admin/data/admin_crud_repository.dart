@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 
 import '../../../core/errors/app_error.dart';
@@ -19,15 +21,28 @@ class AdminCrudPage<T> {
 }
 
 class DictionaryCategory {
-  const DictionaryCategory({required this.id, required this.name, this.status});
+  const DictionaryCategory({
+    required this.id,
+    required this.name,
+    this.slug,
+    this.description,
+    this.status,
+    this.entriesCount = 0,
+  });
   final String id;
   final String name;
+  final String? slug;
+  final String? description;
   final String? status;
+  final int entriesCount;
   factory DictionaryCategory.fromJson(Map<String, dynamic> json) =>
       DictionaryCategory(
         id: json['id'] as String? ?? '',
         name: json['name'] as String? ?? '',
+        slug: json['slug'] as String?,
+        description: json['description'] as String?,
         status: json['status'] as String?,
+        entriesCount: _int(json['entries_count']) ?? 0,
       );
 }
 
@@ -44,6 +59,10 @@ class DictionaryEntryAdmin {
     this.exampleIndonesia,
     this.audioMediaId,
     this.audioUrl,
+    this.audioMimeType,
+    this.createdAt,
+    this.updatedAt,
+    this.sentenceExamples = const [],
   });
   final String id;
   final String indonesia;
@@ -56,6 +75,10 @@ class DictionaryEntryAdmin {
   final String? exampleIndonesia;
   final String? audioMediaId;
   final String? audioUrl;
+  final String? audioMimeType;
+  final String? createdAt;
+  final String? updatedAt;
+  final List<DictionarySentenceExampleAdmin> sentenceExamples;
   factory DictionaryEntryAdmin.fromJson(Map<String, dynamic> json) {
     final category = json['category'] is Map<String, dynamic>
         ? json['category'] as Map<String, dynamic>
@@ -75,8 +98,105 @@ class DictionaryEntryAdmin {
       exampleIndonesia: json['example_indonesia'] as String?,
       audioMediaId: audio['id'] as String? ?? json['audio_media_id'] as String?,
       audioUrl: audio['url'] as String?,
+      audioMimeType: audio['mime_type'] as String?,
+      createdAt: json['created_at'] as String?,
+      updatedAt: json['updated_at'] as String?,
+      sentenceExamples: (json['sentence_examples'] as List? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(DictionarySentenceExampleAdmin.fromJson)
+          .toList(),
     );
   }
+}
+
+class DictionarySentenceExampleAdmin {
+  const DictionarySentenceExampleAdmin({
+    required this.id,
+    this.kode,
+    this.mekongga,
+    this.indonesia,
+  });
+  final String id;
+  final String? kode;
+  final String? mekongga;
+  final String? indonesia;
+  factory DictionarySentenceExampleAdmin.fromJson(Map<String, dynamic> json) =>
+      DictionarySentenceExampleAdmin(
+        id: json['id'] as String? ?? '',
+        kode: json['kode'] as String?,
+        mekongga: json['contoh_mekongga'] as String?,
+        indonesia: json['contoh_indonesia'] as String?,
+      );
+}
+
+class DictionaryImportJobAdmin {
+  const DictionaryImportJobAdmin({
+    required this.id,
+    required this.status,
+    this.importType,
+    this.duplicateStrategy,
+    this.totalRows = 0,
+    this.validRows = 0,
+    this.invalidRows = 0,
+    this.insertedRows = 0,
+    this.updatedRows = 0,
+    this.skippedRows = 0,
+    this.warningCount = 0,
+    this.failureCode,
+    this.failureMessage,
+  });
+  final String id;
+  final String status;
+  final String? importType;
+  final String? duplicateStrategy;
+  final int totalRows;
+  final int validRows;
+  final int invalidRows;
+  final int insertedRows;
+  final int updatedRows;
+  final int skippedRows;
+  final int warningCount;
+  final String? failureCode;
+  final String? failureMessage;
+  factory DictionaryImportJobAdmin.fromJson(Map<String, dynamic> json) =>
+      DictionaryImportJobAdmin(
+        id: json['id'] as String? ?? '',
+        status: json['status'] as String? ?? '',
+        importType: json['import_type'] as String?,
+        duplicateStrategy: json['duplicate_strategy'] as String?,
+        totalRows: _int(json['total_rows']) ?? 0,
+        validRows: _int(json['valid_rows']) ?? 0,
+        invalidRows: _int(json['invalid_rows']) ?? 0,
+        insertedRows: _int(json['inserted_rows']) ?? 0,
+        updatedRows: _int(json['updated_rows']) ?? 0,
+        skippedRows: _int(json['skipped_rows']) ?? 0,
+        warningCount: _int(json['warning_count']) ?? 0,
+        failureCode: json['failure_code'] as String?,
+        failureMessage: json['failure_message'] as String?,
+      );
+}
+
+class DictionaryImportErrorAdmin {
+  const DictionaryImportErrorAdmin({
+    required this.id,
+    this.rowNumber,
+    this.field,
+    this.code,
+    this.message,
+  });
+  final String id;
+  final int? rowNumber;
+  final String? field;
+  final String? code;
+  final String? message;
+  factory DictionaryImportErrorAdmin.fromJson(Map<String, dynamic> json) =>
+      DictionaryImportErrorAdmin(
+        id: json['id'] as String? ?? '',
+        rowNumber: _int(json['row_number']),
+        field: json['field'] as String?,
+        code: json['code'] as String?,
+        message: json['message'] as String?,
+      );
 }
 
 class QuizTemplateAdmin {
@@ -250,6 +370,21 @@ class AdminCrudRepository {
     }
   }
 
+  Future<DictionaryCategory> saveCategory({
+    String? id,
+    required Map<String, dynamic> data,
+  }) async => _mutate(
+    id == null ? 'post' : 'put',
+    id == null
+        ? '/admin/dictionary/categories'
+        : '/admin/dictionary/categories/$id',
+    data,
+    DictionaryCategory.fromJson,
+  );
+
+  Future<void> deleteCategory(String id) =>
+      _delete('/admin/dictionary/categories/$id');
+
   Future<AdminCrudPage<DictionaryEntryAdmin>> dictionary({
     String? search,
     String? categoryId,
@@ -286,6 +421,53 @@ class AdminCrudRepository {
   );
   Future<void> deleteDictionary(String id) =>
       _delete('/admin/dictionary/entries/$id');
+
+  Future<DictionaryImportJobAdmin> previewDictionaryImport({
+    required File csvFile,
+    File? audioZip,
+    String importType = 'vocabulary',
+    String duplicateStrategy = 'skip',
+    void Function(int sent, int total)? onSendProgress,
+  }) async {
+    try {
+      final form = FormData.fromMap({
+        'csv_file': await MultipartFile.fromFile(csvFile.path),
+        if (audioZip != null)
+          'audio_zip': await MultipartFile.fromFile(audioZip.path),
+        'import_type': importType,
+        'duplicate_strategy': duplicateStrategy,
+      });
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/admin/dictionary/imports/preview',
+        data: form,
+        onSendProgress: onSendProgress,
+      );
+      return DictionaryImportJobAdmin.fromJson(_dataObject(res.data));
+    } catch (e) {
+      throw _map(e);
+    }
+  }
+
+  Future<DictionaryImportJobAdmin> confirmDictionaryImport(String id) async =>
+      _mutate(
+        'post',
+        '/admin/dictionary/imports/$id/confirm',
+        null,
+        DictionaryImportJobAdmin.fromJson,
+      );
+
+  Future<AdminCrudPage<DictionaryImportErrorAdmin>> dictionaryImportErrors(
+    String id,
+  ) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '/admin/dictionary/imports/$id/errors',
+      );
+      return _page(res.data, DictionaryImportErrorAdmin.fromJson);
+    } catch (e) {
+      throw _map(e);
+    }
+  }
 
   Future<AdminCrudPage<QuizTemplateAdmin>> quizzes({
     String? search,
@@ -466,7 +648,7 @@ class AdminCrudRepository {
   Future<T> _mutate<T>(
     String method,
     String path,
-    Map<String, dynamic> data,
+    Map<String, dynamic>? data,
     T Function(Map<String, dynamic>) parse,
   ) async {
     try {
@@ -490,6 +672,15 @@ class AdminCrudRepository {
     } catch (e) {
       throw _map(e);
     }
+  }
+
+  static Map<String, dynamic> _dataObject(Map<String, dynamic>? json) {
+    final data = json?['data'];
+    if (data is Map<String, dynamic>) return data;
+    throw const AppError(
+      type: AppErrorType.unknown,
+      message: 'Data admin tidak valid.',
+    );
   }
 
   Object _map(Object e) => e is AppError ? e : _mapper.map(e);
