@@ -30,8 +30,22 @@ class Phase3SchoolClassUsersTest extends TestCase
             'created_by' => $otherAdmin->id,
         ]);
 
-        $response->assertCreated()->assertJsonPath('data.created_by', $admin->id);
+        $response->assertCreated()
+            ->assertJsonPath('data.created_by', $admin->id)
+            ->assertJsonMissingPath('data.internal_notes')
+            ->assertJsonMissingPath('data.deleted_at');
         $schoolId = $response->json('data.id');
+
+        $this->withToken($this->tokenFor($admin))->getJson('/api/v1/schools?search=Kolaka&status=active&per_page=1')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $schoolId)
+            ->assertJsonStructure(['meta' => ['current_page', 'per_page', 'total', 'last_page']]);
+
+        $this->withToken($this->tokenFor($admin))->getJson("/api/v1/schools/{$schoolId}")
+            ->assertOk()
+            ->assertJsonPath('data.id', $schoolId)
+            ->assertJsonMissingPath('data.internal_notes')
+            ->assertJsonMissingPath('data.deleted_at');
 
         $this->withToken($this->tokenFor($admin))->putJson("/api/v1/schools/{$schoolId}", [
             'name' => 'SMP Negeri 1 Kolaka Baru',
@@ -61,6 +75,7 @@ class Phase3SchoolClassUsersTest extends TestCase
         $this->withToken($this->tokenFor($teacher))->getJson("/api/v1/schools/{$otherSchool->id}")->assertForbidden();
         $this->withToken($this->tokenFor($student))->getJson("/api/v1/schools/{$otherSchool->id}")->assertForbidden();
         $this->withToken($this->tokenFor($teacher))->postJson('/api/v1/schools', ['name' => 'Dilarang'])->assertForbidden();
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/schools', ['name' => 'Dilarang'])->assertForbidden();
 
         $this->assertSame($class->school_id, $school->id);
     }
