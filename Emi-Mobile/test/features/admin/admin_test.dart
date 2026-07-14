@@ -605,6 +605,121 @@ void main() {
     expect(find.text('Budi Baru'), findsOneWidget);
   });
 
+  test('admin class parser query and repository contracts', () async {
+    const query = AdminListQuery(
+      search: 'VII',
+      status: 'active',
+      schoolId: 's1',
+      page: 2,
+    );
+    final page = AdminClassPage.fromJson({
+      'data': [
+        {
+          'id': 'c1',
+          'school_id': 's1',
+          'name': 'Kelas VII A',
+          'grade_level': '7',
+          'academic_year': '2026/2027',
+          'status': 'active',
+          'school': {'id': 's1', 'name': 'SMP Negeri 1 Kolaka'},
+          'active_teacher_assignment': {
+            'teacher': {'full_name': 'Ahmad', 'email': 'ahmad@example.test'},
+          },
+          'active_students_count': 28,
+        },
+      ],
+      'meta': {'current_page': 2, 'last_page': 3, 'total': 16},
+    });
+
+    expect(query.toQuery(), {
+      'search': 'VII',
+      'status': 'active',
+      'school_id': 's1',
+      'page': 2,
+      'per_page': 15,
+    });
+    expect(page.hasMore, isTrue);
+    expect(page.items.single.schoolName, 'SMP Negeri 1 Kolaka');
+    expect(page.items.single.teacherName, 'Ahmad');
+    expect(page.items.single.studentsCount, 28);
+
+    final requests = <String>[];
+    final bodies = <Object?>[];
+    final repository = AdminRepository(
+      Dio(BaseOptions(baseUrl: 'https://example.test'))
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              requests.add('${options.method} ${options.path}');
+              bodies.add(options.data);
+              handler.resolve(
+                Response(
+                  requestOptions: options,
+                  data: {
+                    'data': {
+                      'id': 'c1',
+                      'school_id': 's1',
+                      'name': 'Kelas VII A',
+                      'academic_year': '2026/2027',
+                      'status': 'active',
+                    },
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      const DioErrorMapper(),
+    );
+
+    await repository.saveClass(
+      schoolId: 's1',
+      name: 'Kelas VII A',
+      gradeLevel: '7',
+      academicYear: '2026/2027',
+      status: 'active',
+    );
+    await repository.saveClass(
+      id: 'c1',
+      schoolId: 's1',
+      name: 'Kelas VII B',
+      academicYear: '2026/2027',
+      status: 'inactive',
+    );
+    await repository.deactivateClass('c1');
+    await repository.assignTeacher('c1', 't1');
+    await repository.assignStudent('c1', 'u1');
+
+    expect(requests, [
+      'POST /classes',
+      'PUT /classes/c1',
+      'DELETE /classes/c1',
+      'POST /classes/c1/assign-teacher',
+      'POST /classes/c1/assign-student',
+    ]);
+    expect(bodies[3], {'teacher_id': 't1'});
+    expect(bodies[4], {'student_id': 'u1'});
+  });
+
+  test('admin class students parser hides raw membership terms', () {
+    final page = AdminClassStudentPage.fromJson({
+      'data': [
+        {
+          'membership_id': 'm1',
+          'student': {
+            'id': 'u1',
+            'full_name': 'Budi',
+            'email': 'budi@example.test',
+            'status': 'approved',
+          },
+        },
+      ],
+    });
+
+    expect(page.items.single.name, 'Budi');
+    expect(page.items.single.status, 'approved');
+  });
+
   testWidgets('admin user edit validation and close safety', (tester) async {
     final repository = AdminRepository(
       Dio(BaseOptions(baseUrl: 'https://example.test'))
