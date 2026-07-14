@@ -216,20 +216,24 @@ Status: `PARTIAL`.
 
 Status: `PARTIAL`.
 
-- Route Flutter: `/admin/dictionary`, `/admin/dictionary/create`, `/admin/dictionary/:id`, `/admin/dictionary/:id/edit`.
-- API aktual: `GET /admin/dictionary/categories`; `GET /admin/dictionary/entries` dengan `search`, `category_id`, `status`, `has_audio`, `page`, `per_page`; `GET/POST/PUT/DELETE /admin/dictionary/entries/{id?}`.
-- Field aktual: `category_id`, `indonesia`, `english`, `mekongga`, `example_mekongga`, `example_indonesia`, `audio_media_id`, `status`; resource mengembalikan `category`, `sentence_examples`, `audio.url` jika ada.
-- Navigasi: menu Admin `Kamus` membuka daftar nyata; active state berbasis prefix `/admin/dictionary` untuk list/detail/create/edit; tidak ada menu Media standalone.
-- List: API nyata, search kata/arti via backend, filter kategori/status, pagination `Muat Lagi`, empty/error Bahasa Indonesia, status dipetakan `active` → `Aktif`, `inactive` → `Tidak Aktif`.
-- Detail: menampilkan kata Mekongga, arti Indonesia, English, kategori, status, contoh, audio availability; tanpa `null` dan tanpa raw enum.
+- Route Flutter: `/admin/dictionary`, `/admin/dictionary/create`, `/admin/dictionary/categories`, `/admin/dictionary/import`, `/admin/dictionary/:id`, `/admin/dictionary/:id/edit`.
+- API aktual: `GET/POST/PUT/DELETE /admin/dictionary/categories`; `GET /admin/dictionary/entries` dengan `search`, `category_id`, `status`, `has_audio`, `page`, `per_page`; `GET/POST/PUT/DELETE /admin/dictionary/entries/{id?}`.
+- Import aktual: `GET /admin/dictionary/imports/{import_type}/template`; `POST /admin/dictionary/imports/preview` multipart `csv_file`, optional `audio_zip`, `import_type`, `duplicate_strategy`; `POST /admin/dictionary/imports/{id}/confirm`; `GET /admin/dictionary/imports/{id}/errors`.
+- Format CSV aktual: vocabulary `kode,indonesia,english,mekongga,kategori,audio_filename`; sentence examples `kode,contoh_mekongga,contoh_indonesia`; ZIP opsional berisi audio yang cocok nama file CSV.
+- Field aktual: `category_id`, `indonesia`, `english`, `mekongga`, `example_mekongga`, `example_indonesia`, `audio_media_id`, `status`; resource mengembalikan `category`, `sentence_examples`, `audio.url`, `created_at`, `updated_at` jika ada.
+- Navigasi: menu Admin `Kamus` membuka daftar nyata; active state berbasis prefix `/admin/dictionary` untuk list/detail/create/edit/category/import; tidak ada menu Media standalone.
+- List: API nyata, search kata/arti via backend, filter kategori/status, pagination `Muat Lagi`, empty/error Bahasa Indonesia, status dipetakan `active` → `Aktif`, `inactive` → `Tidak Aktif`; menampilkan Mekongga/Indonesia/Inggris/kategori/audio/status.
+- Detail: menampilkan kata Mekongga, arti Indonesia, English, kategori, status, contoh, sentence examples, audio media ID, tanggal dibuat/diubah, dan audio availability; tanpa `null` dan tanpa raw enum.
+- Category CRUD: mobile dapat list/create/edit/delete kategori; error kategori dipakai dipetakan ke Bahasa Indonesia.
 - Create/edit: memakai kontrak backend; daftar/detail diinvalidate setelah sukses; media lama tidak dikirim ulang/dihapus bila tidak diubah.
 - Delete/status: backend mendukung soft delete lewat `DELETE`; mobile menampilkan `Hapus` dengan konfirmasi. Toggle status belum dibuat sebagai aksi terpisah.
 - Gambar: `BLOCKED_BY_BACKEND`; resource Kamus tidak punya gambar.
-- Audio: `PARTIAL`; backend/Web mendukung `audio_media_id` lewat upload media, mobile menampilkan info audio tetapi belum punya picker/upload audio Kamus.
-- Authorization: admin routes dilindungi `auth:sanctum` + `role:admin`; shared `/dictionary` hanya entry aktif untuk approved user; Guru/Siswa tidak dapat create/update/delete.
-- Import/export massal: `WEB_ONLY_BY_DESIGN`; mobile tidak membuat UI import.
-- Tests: `flutter analyze --no-pub` No issues found; `flutter test` 88 pass; Laravel `Phase5DictionaryImportTest` 14 pass / 164 assertions. Exhaustive admin widget/navigation tests remain partial.
-- Smoke test HP: `NOT_TESTED`; jangan klaim `PARITY_COMPLETE` sebelum smoke dan create/edit device terbukti.
+- Audio: `PARTIAL`; audio Kamus bagian dari Kamus, bukan modul Media standalone. Mobile menampilkan pratinjau audio pertama hasil filter dan playback detail/list; upload audio individual masih belum tersedia karena Flutter baru menambahkan file picker untuk import CSV/ZIP.
+- Import CSV/ZIP: mobile menyediakan pilih CSV/ZIP, upload preview, confirm, progress, summary, dan error per baris; template download belum dibuat.
+- Authorization: admin routes dilindungi `auth:sanctum` + `role:admin`; shared `/dictionary` hanya entry aktif untuk approved user; Guru/Siswa tidak dapat create/update/delete/import/category management.
+- Seeder: development demo data dikonsolidasikan ke `DevDemoDataSeeder`; `DemoPresentationSeeder` dan `ThreeRoleAccountSeeder` dihapus; akun stabil `admin@emi.test`, `teacher@emi.test`, `student@emi.test` memakai password hash untuk `12345678`.
+- Tests: Flutter `flutter test` 89 pass; Laravel `DevDemoDataSeederTest` 4 pass / 40 assertions; Laravel `Phase5DictionaryImportTest` 14 pass / 164 assertions. `flutter analyze --no-pub` pada environment ini mengembalikan output tidak normal `clean — nothing to commit`; targeted/full Flutter tests lulus.
+- Smoke test HP: `NOT_TESTED`; jangan klaim `PARITY_COMPLETE` sebelum smoke dan import device terbukti.
 
 ## Admin dashboard response vs widgets
 
