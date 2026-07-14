@@ -38,34 +38,45 @@ class DictionaryEntryAdmin {
     required this.english,
     required this.mekongga,
     required this.categoryId,
+    this.categoryName,
     this.status,
     this.exampleMekongga,
     this.exampleIndonesia,
     this.audioMediaId,
+    this.audioUrl,
   });
   final String id;
   final String indonesia;
   final String english;
   final String mekongga;
   final String categoryId;
+  final String? categoryName;
   final String? status;
   final String? exampleMekongga;
   final String? exampleIndonesia;
   final String? audioMediaId;
-  factory DictionaryEntryAdmin.fromJson(Map<String, dynamic> json) =>
-      DictionaryEntryAdmin(
-        id: json['id'] as String? ?? '',
-        indonesia: json['indonesia'] as String? ?? '',
-        english: json['english'] as String? ?? '',
-        mekongga: json['mekongga'] as String? ?? '',
-        categoryId: json['category_id'] as String? ?? '',
-        status: json['status'] as String?,
-        exampleMekongga: json['example_mekongga'] as String?,
-        exampleIndonesia: json['example_indonesia'] as String?,
-        audioMediaId: (json['audio'] is Map<String, dynamic>)
-            ? (json['audio']['id'] as String?)
-            : json['audio_media_id'] as String?,
-      );
+  final String? audioUrl;
+  factory DictionaryEntryAdmin.fromJson(Map<String, dynamic> json) {
+    final category = json['category'] is Map<String, dynamic>
+        ? json['category'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+    final audio = json['audio'] is Map<String, dynamic>
+        ? json['audio'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+    return DictionaryEntryAdmin(
+      id: json['id'] as String? ?? '',
+      indonesia: json['indonesia'] as String? ?? '',
+      english: json['english'] as String? ?? '',
+      mekongga: json['mekongga'] as String? ?? '',
+      categoryId: json['category_id'] as String? ?? '',
+      categoryName: category['name'] as String?,
+      status: json['status'] as String?,
+      exampleMekongga: json['example_mekongga'] as String?,
+      exampleIndonesia: json['example_indonesia'] as String?,
+      audioMediaId: audio['id'] as String? ?? json['audio_media_id'] as String?,
+      audioUrl: audio['url'] as String?,
+    );
+  }
 }
 
 class QuizTemplateAdmin {
@@ -241,6 +252,8 @@ class AdminCrudRepository {
 
   Future<AdminCrudPage<DictionaryEntryAdmin>> dictionary({
     String? search,
+    String? categoryId,
+    String? status,
     int page = 1,
   }) async {
     try {
@@ -250,6 +263,8 @@ class AdminCrudRepository {
           'page': page,
           'per_page': 15,
           if (search?.trim().isNotEmpty == true) 'search': search!.trim(),
+          if (categoryId?.isNotEmpty == true) 'category_id': categoryId,
+          if (status?.isNotEmpty == true) 'status': status,
         },
       );
       return _page(res.data, DictionaryEntryAdmin.fromJson);

@@ -19,7 +19,12 @@ final adminDictionaryProvider =
     >(
       (ref, query) => ref
           .watch(adminCrudRepositoryProvider)
-          .dictionary(search: query.search, page: query.page),
+          .dictionary(
+            search: query.search,
+            categoryId: query.categoryId,
+            status: query.status,
+            page: query.page,
+          ),
     );
 
 final adminDictionaryDetailProvider =
@@ -76,15 +81,26 @@ final adminApprovalDetailProvider =
     );
 
 class AdminSearchQuery {
-  const AdminSearchQuery({this.search, this.page = 1});
+  const AdminSearchQuery({
+    this.search,
+    this.categoryId,
+    this.status,
+    this.page = 1,
+  });
   final String? search;
+  final String? categoryId;
+  final String? status;
   final int page;
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is AdminSearchQuery && other.search == search && other.page == page;
+      other is AdminSearchQuery &&
+          other.search == search &&
+          other.categoryId == categoryId &&
+          other.status == status &&
+          other.page == page;
   @override
-  int get hashCode => Object.hash(search, page);
+  int get hashCode => Object.hash(search, categoryId, status, page);
 }
 
 class AdminApprovalQuery {
