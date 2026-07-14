@@ -264,6 +264,8 @@ class Phase3SchoolClassUsersTest extends TestCase
 
     public function test_user_management_scope_filters_update_and_audit(): void
     {
+        $this->getJson('/api/v1/users')->assertUnauthorized();
+
         [$teacher, $student, $school, $class] = $this->assignedTeacherAndStudent(['full_name' => 'Budi Siswa', 'email' => 'budi@example.test']);
         $otherStudent = User::factory()->student()->approved()->create(['full_name' => 'Siswa Lain']);
         StudentClassMembership::factory()->create(['student_id' => $otherStudent->id, 'class_id' => SchoolClass::factory()->create()->id]);
@@ -271,7 +273,9 @@ class Phase3SchoolClassUsersTest extends TestCase
 
         $userList = $this->withToken($this->tokenFor($admin))->getJson('/api/v1/users?role=student&status=approved&search=Budi')
             ->assertOk()
-            ->assertJsonMissingPath('data.0.password');
+            ->assertJsonMissingPath('data.0.password')
+            ->assertJsonMissingPath('data.0.remember_token')
+            ->assertJsonMissingPath('data.0.tokens');
         $this->assertContains($student->id, collect($userList->json('data'))->pluck('id')->all());
         $schoolUsers = $this->withToken($this->tokenFor($admin))->getJson("/api/v1/users?school_id={$school->id}")->assertOk();
         $this->assertContains($teacher->id, collect($schoolUsers->json('data'))->pluck('id')->all());
