@@ -109,7 +109,7 @@ Privacy technical decision: current mobile feature must be named as deactivation
 | Dashboard | metrics schools/classes/users/content/learning/quiz/speaking | `/admin/dashboard` | `/admin/dashboard/summary` | GET | admin | `/admin/dashboard` | PARTIAL | admin test | Mobile has dashboard foundation; field-by-field parity not proven for all web widgets. |
 | Persetujuan pendaftaran | list/detail/approve/reject/filter | `/admin/approvals`, `/admin/approvals/{id}` | `/admin/registration-requests*` | GET/POST | admin + policy | `/admin/approvals`, detail | PARTIAL | admin test | Mobile present; needs full validation/error parity. |
 | Pengguna | list/detail/edit/status/search/filter | `/admin/users`, `/admin/users/{id}` | `/users*`, `/users/{id}/status` | GET/PUT/PATCH | UserPolicy | `/admin/users`, `/admin/users/:id` | PARTIAL | backend feature + Flutter admin test | Mobile has Guru dan Siswa list/search/role-status filter/pagination/detail/edit/status. Smoke HP NOT_TESTED; school/class filters intentionally not exposed. |
-| Sekolah | CRUD/search/filter/pagination | `/admin/schools-classes` | `/schools*` | GET/POST/PUT/DELETE | SchoolPolicy | MISSING | none | No mobile schools CRUD. |
+| Sekolah | CRUD/search/filter/pagination | `/admin/schools-classes` | `/schools*` | GET/POST/PUT/DELETE | SchoolPolicy | `/admin/schools`, detail/create/edit | PARTIAL | backend feature + Flutter admin test | Mobile has school navigation/list/search/status filter/pagination/detail/create/edit/status. Smoke HP NOT_TESTED. |
 | Kelas | CRUD/detail/students | `/admin/schools-classes`, `/admin/classes/{id}` | `/classes*`, `/classes/{id}/students` | GET/POST/PUT/DELETE | SchoolClassPolicy | MISSING | none | No mobile classes CRUD. |
 | Guru kelas | assign teacher | class detail | `/classes/{id}/assign-teacher` | POST | policy | MISSING | none | No mobile assignment. |
 | Siswa kelas | assign student/list | class detail | `/classes/{id}/assign-student`, `/classes/{id}/students` | GET/POST | policy | MISSING | none | No mobile enrollment. |
@@ -157,6 +157,22 @@ Status: `PARTIAL`.
 - Test coverage: `Phase3SchoolClassUsersTest` 10 pass / 138 assertions; `flutter test` 75 pass. `flutter analyze` command returned `clean — nothing to commit` in this environment instead of normal analyzer text, so analyzer result remains `NOT_TESTED` until rerun confirms `No issues found!`.
 - Smoke test HP: `NOT_TESTED`.
 - Sisa gap: widget tests exhaustive labels/overflow not complete; school/class filter hidden because tahap ini tidak masuk Admin Kelas/Penempatan; manual device smoke pending.
+
+## Admin Schools update 2026-07-15
+
+Status: `PARTIAL`.
+
+- Route Flutter: `/admin/schools`, `/admin/schools/:id`, `/admin/schools/create`, `/admin/schools/:id/edit`.
+- Navigasi: menu Admin `Sekolah` tampil di drawer dan menu cepat dashboard; active state memakai prefix `/admin/schools` untuk list/detail/create/edit.
+- Backend authorization: `SchoolPolicy`; Admin dapat list/detail/create/update/deactivate/reactivate, Guru/Siswa hanya read sekolah sendiri pada endpoint shared, Guest 401.
+- List: API nyata `GET /schools`, search `search`, filter `status`, pagination `page/per_page`, refresh, empty/error/loading.
+- Detail: nama, status, alamat, telepon, jumlah kelas; tidak ada CRUD kelas atau penempatan.
+- Create/edit: `name`, `address`, `phone`, `status`; validasi mobile untuk nama wajib; backend validasi tetap sumber utama.
+- Status: nonaktif memakai `DELETE /schools/{id}` sesuai backend soft-deactivate; aktifkan memakai `PUT /schools/{id}` status `active`.
+- Delete hard: tidak ditampilkan; backend delete adalah nonaktifkan dan menolak sekolah dengan kelas aktif.
+- Test coverage: `Phase3SchoolClassUsersTest` 10 pass / 152 assertions; `flutter analyze --no-pub` No issues found; `flutter test` 79 pass.
+- Smoke test HP: `NOT_TESTED`.
+- Sisa gap: widget tests UI sekolah belum exhaustive; active state diverifikasi via route prefix audit, belum smoke device.
 
 ## Admin dashboard response vs widgets
 
