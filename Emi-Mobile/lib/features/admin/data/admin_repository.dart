@@ -230,6 +230,68 @@ class AdminUser {
   }
 }
 
+class AdminSchool {
+  const AdminSchool({
+    required this.id,
+    required this.name,
+    required this.status,
+    this.address,
+    this.phone,
+    this.classesCount = 0,
+    this.createdAt,
+  });
+
+  final String id;
+  final String name;
+  final String status;
+  final String? address;
+  final String? phone;
+  final int classesCount;
+  final String? createdAt;
+
+  factory AdminSchool.fromJson(Map<String, dynamic> json) => AdminSchool(
+    id: _string(json['id']),
+    name: _string(json['name'], fallback: 'Tanpa nama'),
+    status: _string(json['status']),
+    address: _nullableString(json['address']),
+    phone: _nullableString(json['phone']),
+    classesCount: _int(json['classes_count']) ?? 0,
+    createdAt: _nullableString(json['created_at']),
+  );
+}
+
+class AdminSchoolPage {
+  const AdminSchoolPage({
+    required this.items,
+    required this.currentPage,
+    required this.lastPage,
+    required this.total,
+  });
+
+  final List<AdminSchool> items;
+  final int currentPage;
+  final int lastPage;
+  final int total;
+
+  bool get hasMore => currentPage < lastPage;
+
+  factory AdminSchoolPage.fromJson(Map<String, dynamic>? json) {
+    final rows = json?['data'] is List
+        ? (json?['data'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map(AdminSchool.fromJson)
+              .toList()
+        : <AdminSchool>[];
+    final meta = _map(json?['meta']);
+    return AdminSchoolPage(
+      items: rows,
+      currentPage: _int(meta['current_page']) ?? 1,
+      lastPage: _int(meta['last_page']) ?? 1,
+      total: _int(meta['total']) ?? rows.length,
+    );
+  }
+}
+
 class AdminUserPage {
   const AdminUserPage({
     required this.items,
@@ -319,6 +381,74 @@ class AdminRepository {
       throw const AppError(
         type: AppErrorType.unknown,
         message: 'Data admin tidak valid.',
+      );
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<AdminSchoolPage> schools(AdminListQuery query) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/schools',
+        queryParameters: query.toQuery(),
+      );
+      return AdminSchoolPage.fromJson(response.data);
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<AdminSchool> schoolDetail(String id) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>('/schools/$id');
+      final data = response.data?['data'];
+      if (data is Map<String, dynamic>) return AdminSchool.fromJson(data);
+      throw const AppError(
+        type: AppErrorType.unknown,
+        message: 'Data sekolah tidak valid.',
+      );
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<AdminSchool> saveSchool({
+    String? id,
+    required String name,
+    String? address,
+    String? phone,
+    required String status,
+  }) async {
+    try {
+      final data = {
+        'name': name,
+        'address': address,
+        'phone': phone,
+        'status': status,
+      };
+      final response = id == null
+          ? await _dio.post<Map<String, dynamic>>('/schools', data: data)
+          : await _dio.put<Map<String, dynamic>>('/schools/$id', data: data);
+      final body = response.data?['data'];
+      if (body is Map<String, dynamic>) return AdminSchool.fromJson(body);
+      throw const AppError(
+        type: AppErrorType.unknown,
+        message: 'Data sekolah tidak valid.',
+      );
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<AdminSchool> deactivateSchool(String id) async {
+    try {
+      final response = await _dio.delete<Map<String, dynamic>>('/schools/$id');
+      final data = response.data?['data'];
+      if (data is Map<String, dynamic>) return AdminSchool.fromJson(data);
+      throw const AppError(
+        type: AppErrorType.unknown,
+        message: 'Data sekolah tidak valid.',
       );
     } catch (error) {
       throw _map(error);

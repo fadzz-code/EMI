@@ -129,6 +129,7 @@ class _AdminDrawer extends ConsumerWidget {
   IconData _icon(AdminFeature feature) => switch (feature) {
     AdminFeature.approvals => Icons.how_to_reg_outlined,
     AdminFeature.users => Icons.people_outline,
+    AdminFeature.schools => Icons.apartment_outlined,
     AdminFeature.classes => Icons.school_outlined,
     AdminFeature.modules => Icons.menu_book_outlined,
     AdminFeature.dictionary => Icons.translate_outlined,

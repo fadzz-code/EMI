@@ -65,6 +65,91 @@ void main() {
     });
   });
 
+  test('admin school parser and query support status pagination', () {
+    const query = AdminListQuery(search: 'kolaka', status: 'active', page: 2);
+    final page = AdminSchoolPage.fromJson({
+      'data': [
+        {
+          'id': 's1',
+          'name': 'SMP Negeri 1 Kolaka',
+          'address': null,
+          'phone': null,
+          'status': 'active',
+          'classes_count': 6,
+        },
+      ],
+      'meta': {'current_page': 2, 'last_page': 3, 'total': 16},
+    });
+
+    expect(query.toQuery(), {
+      'search': 'kolaka',
+      'status': 'active',
+      'page': 2,
+      'per_page': 15,
+    });
+    expect(page.hasMore, isTrue);
+    expect(page.items.single.address, isNull);
+    expect(page.items.single.phone, isNull);
+    expect(page.items.single.classesCount, 6);
+  });
+
+  test('admin school create update activate deactivate contracts', () async {
+    final requests = <String>[];
+    final bodies = <Object?>[];
+    final repository = AdminRepository(
+      Dio(BaseOptions(baseUrl: 'https://example.test'))
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              requests.add('${options.method} ${options.path}');
+              bodies.add(options.data);
+              handler.resolve(
+                Response(
+                  requestOptions: options,
+                  data: {
+                    'data': {
+                      'id': 's1',
+                      'name': 'SMP Negeri 1 Kolaka',
+                      'address': 'Kolaka',
+                      'phone': '0405',
+                      'status': 'active',
+                      'classes_count': 0,
+                    },
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      const DioErrorMapper(),
+    );
+
+    await repository.saveSchool(
+      name: 'SMP Negeri 1 Kolaka',
+      address: 'Kolaka',
+      phone: '0405',
+      status: 'active',
+    );
+    await repository.saveSchool(
+      id: 's1',
+      name: 'SMP Negeri 1 Kolaka',
+      status: 'active',
+    );
+    await repository.deactivateSchool('s1');
+
+    expect(requests, [
+      'POST /schools',
+      'PUT /schools/s1',
+      'DELETE /schools/s1',
+    ]);
+    expect(bodies.first, {
+      'name': 'SMP Negeri 1 Kolaka',
+      'address': 'Kolaka',
+      'phone': '0405',
+      'status': 'active',
+    });
+  });
+
   test('admin user parser handles nullable school class avatar', () {
     final page = AdminUserPage.fromJson({
       'data': [
