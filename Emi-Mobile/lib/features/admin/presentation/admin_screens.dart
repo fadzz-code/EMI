@@ -336,7 +336,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
               Text('Filter', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: EmiSpacing.md),
               DropdownButtonFormField<String?>(
-                value: role,
+                initialValue: role,
                 decoration: const InputDecoration(labelText: 'Role'),
                 items: const [
                   DropdownMenuItem(value: null, child: Text('Semua')),
@@ -347,7 +347,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
               ),
               const SizedBox(height: EmiSpacing.md),
               DropdownButtonFormField<String?>(
-                value: status,
+                initialValue: status,
                 decoration: const InputDecoration(labelText: 'Status'),
                 items: const [
                   DropdownMenuItem(value: null, child: Text('Semua')),
@@ -482,75 +482,16 @@ class AdminUserDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     AdminUser user,
   ) async {
-    final formKey = GlobalKey<FormState>();
-    final name = TextEditingController(text: user.name);
-    final phone = TextEditingController(text: user.phone ?? '');
-    await showModalBottomSheet<void>(
+    final updated = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (context) => Padding(
-        padding: EdgeInsets.fromLTRB(
-          EmiSpacing.lg,
-          EmiSpacing.lg,
-          EmiSpacing.lg,
-          MediaQuery.viewInsetsOf(context).bottom + EmiSpacing.lg,
-        ),
-        child: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Edit Data', style: Theme.of(context).textTheme.titleLarge),
-              Text('Email: ${user.email}'),
-              const SizedBox(height: EmiSpacing.md),
-              TextFormField(
-                controller: name,
-                decoration: const InputDecoration(labelText: 'Nama'),
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Nama wajib diisi.'
-                    : null,
-              ),
-              const SizedBox(height: EmiSpacing.md),
-              TextFormField(
-                controller: phone,
-                decoration: const InputDecoration(labelText: 'Nomor Telepon'),
-              ),
-              const SizedBox(height: EmiSpacing.lg),
-              FilledButton(
-                onPressed: () async {
-                  if (!formKey.currentState!.validate()) return;
-                  await ref
-                      .read(adminRepositoryProvider)
-                      .updateUser(
-                        id,
-                        name: name.text.trim(),
-                        email: user.email,
-                        phone: phone.text.trim().isEmpty
-                            ? null
-                            : phone.text.trim(),
-                      );
-                  ref.invalidate(adminUserDetailProvider(id));
-                  ref.invalidate(adminUsersProvider);
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Data pengguna berhasil disimpan.'),
-                      ),
-                    );
-                  }
-                },
-                child: const Text('Simpan'),
-              ),
-            ],
-          ),
-        ),
-      ),
+      builder: (context) => _EditUserForm(user: user),
     );
-    name.dispose();
-    phone.dispose();
+    if (updated == true) {
+      ref.invalidate(adminUserDetailProvider(user.id));
+      ref.invalidate(adminUsersProvider);
+    }
   }
 
   Future<void> _confirmStatus(
@@ -584,23 +525,122 @@ class AdminUserDetailScreen extends ConsumerWidget {
     await ref
         .read(adminRepositoryProvider)
         .updateUserStatus(
-          id,
+          user.id,
           status: activate ? 'approved' : 'inactive',
           reason: activate ? null : 'Dinonaktifkan dari aplikasi mobile',
         );
-    ref.invalidate(adminUserDetailProvider(id));
+    if (!context.mounted) return;
+    ref.invalidate(adminUserDetailProvider(user.id));
     ref.invalidate(adminUsersProvider);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            activate
-                ? 'Akun berhasil diaktifkan.'
-                : 'Akun berhasil dinonaktifkan.',
-          ),
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          activate
+              ? 'Akun berhasil diaktifkan.'
+              : 'Akun berhasil dinonaktifkan.',
         ),
-      );
-    }
+      ),
+    );
+  }
+}
+
+class _EditUserForm extends ConsumerStatefulWidget {
+  const _EditUserForm({required this.user});
+
+  final AdminUser user;
+
+  @override
+  ConsumerState<_EditUserForm> createState() => _EditUserFormState();
+}
+
+class _EditUserFormState extends ConsumerState<_EditUserForm> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _name;
+  late final TextEditingController _phone;
+
+  @override
+  void initState() {
+    super.initState();
+    _name = TextEditingController(text: widget.user.name);
+    _phone = TextEditingController(text: widget.user.phone ?? '');
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _phone.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        EmiSpacing.lg,
+        EmiSpacing.lg,
+        EmiSpacing.lg,
+        MediaQuery.viewInsetsOf(context).bottom + EmiSpacing.lg,
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Edit Data', style: Theme.of(context).textTheme.titleLarge),
+            Text('Email: ${widget.user.email}'),
+            const SizedBox(height: EmiSpacing.md),
+            TextFormField(
+              controller: _name,
+              decoration: const InputDecoration(labelText: 'Nama'),
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? 'Nama wajib diisi.'
+                  : null,
+            ),
+            const SizedBox(height: EmiSpacing.md),
+            TextFormField(
+              controller: _phone,
+              decoration: const InputDecoration(labelText: 'Nomor Telepon'),
+            ),
+            const SizedBox(height: EmiSpacing.lg),
+            FilledButton(
+              onPressed: () async {
+                if (!_formKey.currentState!.validate()) return;
+                try {
+                  await ref
+                      .read(adminRepositoryProvider)
+                      .updateUser(
+                        widget.user.id,
+                        name: _name.text.trim(),
+                        email: widget.user.email,
+                        phone: _phone.text.trim().isEmpty
+                            ? null
+                            : _phone.text.trim(),
+                      );
+                  if (context.mounted) {
+                    Navigator.pop(context, true);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Data pengguna berhasil disimpan.'),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Data belum bisa disimpan.'),
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Simpan'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

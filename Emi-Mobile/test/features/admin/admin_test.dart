@@ -1,4 +1,8 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:emi_mobile/features/admin/presentation/admin_screens.dart';
 import 'package:dio/dio.dart';
+import 'package:go_router/go_router.dart';
 import 'package:emi_mobile/core/errors/dio_error_mapper.dart';
 import 'package:emi_mobile/features/admin/data/admin_crud_providers.dart';
 import 'package:emi_mobile/features/admin/data/admin_crud_repository.dart';
@@ -432,5 +436,154 @@ void main() {
       contains('POST /admin/registration-requests/req-1/approve'),
     );
     expect(requests, contains('GET /admin/reports/quiz-results'));
+  });
+
+  testWidgets('admin user edit success without exception', (tester) async {
+    var isUpdated = false;
+    final repository = AdminRepository(
+      Dio(BaseOptions(baseUrl: 'https://example.test'))
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              if (options.path == '/users/u1') {
+                if (options.method == 'PUT') {
+                  isUpdated = true;
+                  handler.resolve(
+                    Response(
+                      requestOptions: options,
+                      data: {
+                        'data': {
+                          'id': 'u1',
+                          'full_name': 'Budi Baru',
+                          'email': 'budi@example.test',
+                          'role': 'teacher',
+                          'status': 'approved',
+                        },
+                      },
+                    ),
+                  );
+                  return;
+                }
+                handler.resolve(
+                  Response(
+                    requestOptions: options,
+                    data: {
+                      'data': {
+                        'id': 'u1',
+                        'full_name': isUpdated ? 'Budi Baru' : 'Budi',
+                        'email': 'budi@example.test',
+                        'role': 'teacher',
+                        'status': 'approved',
+                      },
+                    },
+                  ),
+                );
+                return;
+              }
+              handler.reject(DioException(requestOptions: options));
+            },
+          ),
+        ),
+      const DioErrorMapper(),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [adminRepositoryProvider.overrideWithValue(repository)],
+        child: MaterialApp.router(
+          routerConfig: GoRouter(
+            initialLocation: '/admin/users/u1',
+            routes: [
+              GoRoute(
+                path: '/admin/users/:id',
+                builder: (_, state) =>
+                    AdminUserDetailScreen(id: state.pathParameters['id']!),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    expect(find.text('Budi'), findsOneWidget);
+
+    await tester.tap(find.text('Edit Data'));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit Data').last, findsOneWidget);
+
+    await tester.enterText(find.byType(TextFormField).first, 'Budi Baru');
+    await tester.tap(find.text('Simpan'));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Budi Baru'), findsOneWidget);
+  });
+
+  testWidgets('admin user edit validation and close safety', (tester) async {
+    final repository = AdminRepository(
+      Dio(BaseOptions(baseUrl: 'https://example.test'))
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              if (options.path == '/users/u1') {
+                handler.resolve(
+                  Response(
+                    requestOptions: options,
+                    data: {
+                      'data': {
+                        'id': 'u1',
+                        'full_name': 'Budi',
+                        'email': 'budi@example.test',
+                        'role': 'teacher',
+                        'status': 'approved',
+                      },
+                    },
+                  ),
+                );
+                return;
+              }
+              handler.reject(DioException(requestOptions: options));
+            },
+          ),
+        ),
+      const DioErrorMapper(),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [adminRepositoryProvider.overrideWithValue(repository)],
+        child: MaterialApp.router(
+          routerConfig: GoRouter(
+            initialLocation: '/admin/users/u1',
+            routes: [
+              GoRoute(
+                path: '/admin/users/:id',
+                builder: (_, state) =>
+                    AdminUserDetailScreen(id: state.pathParameters['id']!),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit Data'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextFormField).first, '');
+    await tester.tap(find.text('Simpan'));
+    await tester.pumpAndSettle();
+    expect(find.text('Nama wajib diisi.'), findsOneWidget);
+
+    // Tap outside to close
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+
+    // Open again
+    await tester.tap(find.text('Edit Data'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
   });
 }

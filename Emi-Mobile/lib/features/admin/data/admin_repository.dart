@@ -381,7 +381,7 @@ class AdminRepository {
     try {
       final response = await _dio.patch<Map<String, dynamic>>(
         '/users/$id/status',
-        data: {'status': status, if (reason != null) 'reason': reason},
+        data: {'status': status, 'reason': ?reason},
       );
       final data = response.data?['data'];
       if (data is Map<String, dynamic>) return AdminUser.fromJson(data);
