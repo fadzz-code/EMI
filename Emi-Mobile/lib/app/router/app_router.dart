@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/admin/data/admin_providers.dart';
 import '../../features/admin/presentation/admin_approvals_screens.dart';
 import '../../features/admin/presentation/admin_dictionary_screens.dart';
 import '../../features/admin/presentation/admin_quiz_screens.dart';
@@ -210,6 +211,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/admin/approvals/:id',
         builder: (_, state) =>
             AdminApprovalDetailScreen(id: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
+        path: '/admin/users',
+        builder: (_, _) => const AdminListScreen(feature: AdminFeature.users),
+      ),
+      GoRoute(
+        path: '/admin/users/:id',
+        builder: (_, state) => AdminDetailScreen(
+          feature: AdminFeature.users,
+          id: state.pathParameters['id'] ?? '',
+        ),
       ),
       GoRoute(
         path: '/admin/dictionary',

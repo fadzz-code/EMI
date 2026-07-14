@@ -26,6 +26,68 @@ final adminDetailProvider =
           .detail(query.feature.endpoint, query.id),
     );
 
+final adminUsersProvider =
+    AsyncNotifierProvider<AdminUsersController, AdminUserPage>(
+      AdminUsersController.new,
+    );
+
+final adminUserDetailProvider = FutureProvider.family<AdminUser, String>(
+  (ref, id) => ref.watch(adminRepositoryProvider).userDetail(id),
+);
+
+class AdminUsersController extends AsyncNotifier<AdminUserPage> {
+  AdminListQuery _query = const AdminListQuery();
+
+  AdminListQuery get query => _query;
+
+  @override
+  Future<AdminUserPage> build() => _load(_query);
+
+  Future<AdminUserPage> _load(AdminListQuery query) =>
+      ref.read(adminRepositoryProvider).users(query);
+
+  Future<void> search(String value) async {
+    _query = _query.copyWith(search: value, page: 1);
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() => _load(_query));
+  }
+
+  Future<void> filter({String? role, String? status}) async {
+    _query = _query.copyWith(
+      role: role,
+      status: status,
+      clearRole: role == null,
+      clearStatus: status == null,
+      page: 1,
+    );
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() => _load(_query));
+  }
+
+  Future<void> refresh() async {
+    state = await AsyncValue.guard(() => _load(_query.copyWith(page: 1)));
+  }
+
+  Future<void> loadMore() async {
+    final current = state.valueOrNull;
+    if (current == null || !current.hasMore || state.isLoading) return;
+    final nextQuery = _query.copyWith(page: current.currentPage + 1);
+    final next = await _load(nextQuery);
+    final byId = {
+      for (final item in [...current.items, ...next.items]) item.id: item,
+    };
+    _query = nextQuery;
+    state = AsyncData(
+      AdminUserPage(
+        items: byId.values.toList(),
+        currentPage: next.currentPage,
+        lastPage: next.lastPage,
+        total: next.total,
+      ),
+    );
+  }
+}
+
 class AdminFeatureQuery {
   const AdminFeatureQuery({
     required this.feature,
@@ -67,7 +129,7 @@ enum AdminFeature {
     '/admin/registration-requests',
     '/admin/approvals',
   ),
-  users('Pengguna', '/users', '/admin/users'),
+  users('Guru dan Siswa', '/users', '/admin/users'),
   classes('Kelas', '/classes', '/admin/classes'),
   modules('Modul', '/admin/module-templates', '/admin/modules'),
   dictionary('Kamus', '/admin/dictionary/entries', '/admin/dictionary'),
@@ -85,6 +147,7 @@ enum AdminFeature {
 
   bool get isMobileImplemented => switch (this) {
     AdminFeature.approvals ||
+    AdminFeature.users ||
     AdminFeature.dictionary ||
     AdminFeature.quizzes ||
     AdminFeature.reports ||

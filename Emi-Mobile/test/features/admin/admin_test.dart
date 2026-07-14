@@ -44,6 +44,46 @@ void main() {
     expect(a.hashCode, b.hashCode);
   });
 
+  test('admin user query supports search role status pagination', () {
+    const query = AdminListQuery(
+      search: 'budi',
+      role: 'teacher',
+      status: 'approved',
+      page: 2,
+    );
+
+    expect(query.toQuery(), {
+      'search': 'budi',
+      'role': 'teacher',
+      'status': 'approved',
+      'page': 2,
+      'per_page': 15,
+    });
+  });
+
+  test('admin user parser handles nullable school class avatar', () {
+    final page = AdminUserPage.fromJson({
+      'data': [
+        {
+          'id': 'u1',
+          'full_name': 'Guru Panjang',
+          'email': 'guru@example.test',
+          'role': 'teacher',
+          'status': 'approved',
+          'avatar': null,
+          'active_school': null,
+          'active_class': null,
+        },
+      ],
+      'meta': {'current_page': 1, 'last_page': 2, 'total': 16},
+    });
+
+    expect(page.hasMore, isTrue);
+    expect(page.items.single.schoolName, isNull);
+    expect(page.items.single.className, isNull);
+    expect(page.items.single.avatarUrl, isNull);
+  });
+
   test('repository uses real admin and shared endpoints', () async {
     final requests = <String>[];
     final repository = AdminRepository(
@@ -103,6 +143,57 @@ void main() {
     );
     expect(requests, contains('GET /admin/dashboard/summary'));
     expect(requests, contains('GET /users'));
+  });
+
+  test('admin user update and status calls use allowed fields', () async {
+    final requests = <String>[];
+    final bodies = <Object?>[];
+    final repository = AdminRepository(
+      Dio(BaseOptions(baseUrl: 'https://example.test'))
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              requests.add('${options.method} ${options.path}');
+              bodies.add(options.data);
+              handler.resolve(
+                Response(
+                  requestOptions: options,
+                  data: {
+                    'data': {
+                      'id': 'u1',
+                      'full_name': 'Budi',
+                      'email': 'budi@example.test',
+                      'role': 'student',
+                      'status': 'inactive',
+                    },
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      const DioErrorMapper(),
+    );
+
+    await repository.updateUser(
+      'u1',
+      name: 'Budi',
+      email: 'budi@example.test',
+      phone: '0812',
+    );
+    await repository.updateUserStatus(
+      'u1',
+      status: 'inactive',
+      reason: 'Nonaktif',
+    );
+
+    expect(requests, ['PUT /users/u1', 'PATCH /users/u1/status']);
+    expect(bodies.first, {
+      'full_name': 'Budi',
+      'email': 'budi@example.test',
+      'phone': '0812',
+    });
+    expect(bodies.last, {'status': 'inactive', 'reason': 'Nonaktif'});
   });
 
   test('crud query keeps stable provider identity', () {

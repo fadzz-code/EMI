@@ -72,24 +72,46 @@ class AdminMetric {
 }
 
 class AdminListQuery {
-  const AdminListQuery({this.search, this.page = 1});
+  const AdminListQuery({this.search, this.role, this.status, this.page = 1});
 
   final String? search;
+  final String? role;
+  final String? status;
   final int page;
 
   Map<String, dynamic> toQuery() => {
     if (search != null && search!.trim().isNotEmpty) 'search': search!.trim(),
+    if (role != null && role!.isNotEmpty) 'role': role,
+    if (status != null && status!.isNotEmpty) 'status': status,
     'page': page,
     'per_page': 15,
   };
 
+  AdminListQuery copyWith({
+    String? search,
+    String? role,
+    String? status,
+    int? page,
+    bool clearRole = false,
+    bool clearStatus = false,
+  }) => AdminListQuery(
+    search: search ?? this.search,
+    role: clearRole ? null : role ?? this.role,
+    status: clearStatus ? null : status ?? this.status,
+    page: page ?? this.page,
+  );
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is AdminListQuery && other.search == search && other.page == page;
+      other is AdminListQuery &&
+          other.search == search &&
+          other.role == role &&
+          other.status == status &&
+          other.page == page;
 
   @override
-  int get hashCode => Object.hash(search, page);
+  int get hashCode => Object.hash(search, role, status, page);
 }
 
 class AdminListPage {
@@ -164,6 +186,100 @@ class AdminRecord {
   }
 }
 
+class AdminUser {
+  const AdminUser({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.role,
+    required this.status,
+    this.phone,
+    this.avatarUrl,
+    this.schoolName,
+    this.className,
+    this.createdAt,
+  });
+
+  final String id;
+  final String name;
+  final String email;
+  final String role;
+  final String status;
+  final String? phone;
+  final String? avatarUrl;
+  final String? schoolName;
+  final String? className;
+  final String? createdAt;
+
+  factory AdminUser.fromJson(Map<String, dynamic> json) {
+    final school = _map(json['active_school']);
+    final klass = _map(json['active_class']);
+    final avatar = _map(json['avatar']);
+    return AdminUser(
+      id: _string(json['id']),
+      name: _string(json['full_name'], fallback: 'Tanpa nama'),
+      email: _string(json['email']),
+      phone: _nullableString(json['phone']),
+      avatarUrl: _nullableString(avatar['url']),
+      role: _string(json['role']),
+      status: _string(json['status']),
+      schoolName: _nullableString(school['name']),
+      className: _nullableString(klass['name']),
+      createdAt: _nullableString(json['created_at']),
+    );
+  }
+}
+
+class AdminUserPage {
+  const AdminUserPage({
+    required this.items,
+    required this.currentPage,
+    required this.lastPage,
+    required this.total,
+  });
+
+  final List<AdminUser> items;
+  final int currentPage;
+  final int lastPage;
+  final int total;
+
+  bool get hasMore => currentPage < lastPage;
+
+  factory AdminUserPage.fromJson(Map<String, dynamic>? json) {
+    final rows = json?['data'] is List
+        ? (json?['data'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map(AdminUser.fromJson)
+              .where((user) => user.role == 'teacher' || user.role == 'student')
+              .toList()
+        : <AdminUser>[];
+    final meta = _map(json?['meta']);
+    return AdminUserPage(
+      items: rows,
+      currentPage: _int(meta['current_page']) ?? 1,
+      lastPage: _int(meta['last_page']) ?? 1,
+      total: _int(meta['total']) ?? rows.length,
+    );
+  }
+}
+
+String _string(Object? value, {String fallback = ''}) {
+  if (value is String && value.trim().isNotEmpty) return value.trim();
+  if (value is num) return '$value';
+  return fallback;
+}
+
+String? _nullableString(Object? value) {
+  final text = _string(value);
+  return text.isEmpty ? null : text;
+}
+
+int? _int(Object? value) {
+  if (value is int) return value;
+  if (value is String) return int.tryParse(value);
+  return null;
+}
+
 class AdminRepository {
   const AdminRepository(this._dio, this._errorMapper);
 
@@ -203,6 +319,75 @@ class AdminRepository {
       throw const AppError(
         type: AppErrorType.unknown,
         message: 'Data admin tidak valid.',
+      );
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<AdminUserPage> users(AdminListQuery query) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/users',
+        queryParameters: query.toQuery(),
+      );
+      return AdminUserPage.fromJson(response.data);
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<AdminUser> userDetail(String id) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>('/users/$id');
+      final data = response.data?['data'];
+      if (data is Map<String, dynamic>) return AdminUser.fromJson(data);
+      throw const AppError(
+        type: AppErrorType.unknown,
+        message: 'Data pengguna tidak valid.',
+      );
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<AdminUser> updateUser(
+    String id, {
+    required String name,
+    required String email,
+    String? phone,
+  }) async {
+    try {
+      final response = await _dio.put<Map<String, dynamic>>(
+        '/users/$id',
+        data: {'full_name': name, 'email': email, 'phone': phone},
+      );
+      final data = response.data?['data'];
+      if (data is Map<String, dynamic>) return AdminUser.fromJson(data);
+      throw const AppError(
+        type: AppErrorType.unknown,
+        message: 'Data pengguna tidak valid.',
+      );
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<AdminUser> updateUserStatus(
+    String id, {
+    required String status,
+    String? reason,
+  }) async {
+    try {
+      final response = await _dio.patch<Map<String, dynamic>>(
+        '/users/$id/status',
+        data: {'status': status, if (reason != null) 'reason': reason},
+      );
+      final data = response.data?['data'];
+      if (data is Map<String, dynamic>) return AdminUser.fromJson(data);
+      throw const AppError(
+        type: AppErrorType.unknown,
+        message: 'Data pengguna tidak valid.',
       );
     } catch (error) {
       throw _map(error);
