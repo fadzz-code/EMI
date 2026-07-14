@@ -19,9 +19,15 @@ void main() {
       'quizzes': {'submitted_attempts': 5},
     });
 
-    expect(summary.items.map((item) => item.label), contains('Siswa'));
-    expect(summary.items.map((item) => item.value), contains('10'));
-    expect(summary.items.map((item) => item.helper), contains('Butuh review'));
+    expect(
+      summary.items.map((item) => item.label),
+      contains('Pendaftaran yang Perlu Diperiksa'),
+    );
+    expect(summary.items.map((item) => item.value), contains('12'));
+    expect(
+      summary.items.map((item) => item.helper),
+      contains('Guru dan Siswa.'),
+    );
   });
 
   test('admin query keeps stable provider identity', () {
@@ -87,7 +93,7 @@ void main() {
       const DioErrorMapper(),
     );
 
-    expect((await repository.dashboard()).items.first.value, '1');
+    expect((await repository.dashboard()).items.last.value, '1');
     expect(
       (await repository.list(
         '/users',

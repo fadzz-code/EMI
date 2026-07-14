@@ -10,38 +10,34 @@ class AdminSummary {
 
   factory AdminSummary.fromJson(Map<String, dynamic> json) {
     final overview = _map(json['overview']);
-    final quizzes = _map(json['quizzes']);
     return AdminSummary(
       items: [
         AdminMetric(
-          label: 'Siswa',
-          value: _number(overview['active_students']),
-          helper: 'Siswa teregistrasi',
-        ),
-        AdminMetric(
-          label: 'Guru',
-          value: _number(overview['active_teachers']),
-          helper: 'Guru teregistrasi',
-        ),
-        AdminMetric(
-          label: 'Sekolah',
-          value: _number(overview['active_schools']),
-          helper: 'Sekolah terdaftar',
-        ),
-        AdminMetric(
-          label: 'Kelas',
-          value: _number(overview['active_classes']),
-          helper: 'Kelas aktif',
-        ),
-        AdminMetric(
-          label: 'Persetujuan',
+          label: 'Pendaftaran yang Perlu Diperiksa',
           value: _number(overview['pending_registration_requests']),
-          helper: 'Butuh review',
+          helper: 'Periksa data Guru dan Siswa.',
+          iconName: 'approval',
+          highlight: true,
         ),
         AdminMetric(
-          label: 'Kuis',
-          value: _number(quizzes['submitted_attempts']),
-          helper: 'Submission kuis',
+          label: 'Sekolah Aktif',
+          value: _number(overview['active_schools']),
+          helper: 'Sekolah yang memakai EMI.',
+          iconName: 'school',
+        ),
+        AdminMetric(
+          label: 'Kelas Aktif',
+          value: _number(overview['active_classes']),
+          helper: 'Kelas yang sudah terdata.',
+          iconName: 'class',
+        ),
+        AdminMetric(
+          label: 'Jumlah Pengguna',
+          value: _number(
+            _sum(overview['active_teachers'], overview['active_students']),
+          ),
+          helper: 'Guru dan Siswa.',
+          iconName: 'users',
         ),
       ],
     );
@@ -53,12 +49,26 @@ Map<String, dynamic> _map(Object? value) =>
 
 String _number(Object? value) => value is num ? value.toString() : '0';
 
+int _sum(Object? first, Object? second) {
+  final a = first is num ? first.toInt() : 0;
+  final b = second is num ? second.toInt() : 0;
+  return a + b;
+}
+
 class AdminMetric {
-  const AdminMetric({required this.label, required this.value, this.helper});
+  const AdminMetric({
+    required this.label,
+    required this.value,
+    required this.iconName,
+    this.helper,
+    this.highlight = false,
+  });
 
   final String label;
   final String value;
+  final String iconName;
   final String? helper;
+  final bool highlight;
 }
 
 class AdminListQuery {

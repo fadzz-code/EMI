@@ -62,14 +62,18 @@ class AdminDetailQuery {
 }
 
 enum AdminFeature {
-  approvals('Persetujuan', '/admin/registration-requests', '/admin/approvals'),
+  approvals(
+    'Persetujuan Akun',
+    '/admin/registration-requests',
+    '/admin/approvals',
+  ),
   users('Pengguna', '/users', '/admin/users'),
   classes('Kelas', '/classes', '/admin/classes'),
   modules('Modul', '/admin/module-templates', '/admin/modules'),
   dictionary('Kamus', '/admin/dictionary/entries', '/admin/dictionary'),
   quizzes('Kuis', '/admin/quiz-templates', '/admin/quizzes'),
   culture('Budaya', '/admin/culture/items', '/admin/culture'),
-  speaking('Speaking', '/admin/speaking/exercises', '/admin/speaking'),
+  speaking('Rekaman Speaking', '/admin/speaking/exercises', '/admin/speaking'),
   reports('Laporan', '/admin/reports/progress/students', '/admin/reports'),
   settings('Pengaturan', '/admin/settings', '/admin/settings');
 

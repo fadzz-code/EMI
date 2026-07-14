@@ -4,10 +4,17 @@ import '../../../core/errors/app_error.dart';
 import '../../../core/errors/dio_error_mapper.dart';
 
 class TeacherMetric {
-  const TeacherMetric({required this.label, required this.value});
+  const TeacherMetric({
+    required this.label,
+    required this.value,
+    required this.iconName,
+    this.highlight = false,
+  });
 
   final String label;
   final String value;
+  final String iconName;
+  final bool highlight;
 }
 
 class TeacherDashboardSummary {
@@ -35,11 +42,7 @@ class TeacherDashboardSummary {
       className: klass['name'] as String?,
       schoolName: school['name'] as String?,
       generatedAt: json['generated_at'] as String?,
-      metrics: [
-        ..._metrics('Siswa', _map(json['students'])),
-        ..._metrics('Pembelajaran', _map(json['learning'])),
-        ..._metrics('Kuis', _map(json['quizzes'])),
-      ],
+      metrics: _dashboardMetrics(json),
       recentActivity: (json['recent_activity'] as List? ?? const [])
           .whereType<Map<String, dynamic>>()
           .map(TeacherRecentActivity.fromJson)
@@ -95,12 +98,47 @@ class TeacherRepository {
   }
 }
 
-List<TeacherMetric> _metrics(String group, Map<String, dynamic> values) => [
-  for (final entry in values.entries)
-    TeacherMetric(label: '$group ${entry.key}', value: _value(entry.value)),
-];
+List<TeacherMetric> _dashboardMetrics(Map<String, dynamic> json) {
+  final students = _map(json['students']);
+  final learning = _map(json['learning']);
+  final quizzes = _map(json['quizzes']);
+  return [
+    TeacherMetric(
+      label: 'Kelas Saya',
+      value: _value(_map(json['class'])['name'], empty: '-'),
+      iconName: 'class',
+    ),
+    TeacherMetric(
+      label: 'Jumlah Siswa',
+      value: _value(students['total_students'] ?? students['total']),
+      iconName: 'students',
+    ),
+    TeacherMetric(
+      label: 'Sudah Belajar',
+      value: _value(
+        learning['students_with_learning_activity'] ??
+            students['with_learning_activity'],
+      ),
+      iconName: 'learning',
+    ),
+    TeacherMetric(
+      label: 'Perlu Diperiksa',
+      value: _value(
+        quizzes['submitted_attempts'] ??
+            quizzes['pending_review'] ??
+            quizzes['final_attempts'],
+      ),
+      iconName: 'review',
+      highlight: true,
+    ),
+  ];
+}
 
-String _value(Object? value) => value == null ? '-' : value.toString();
+String _value(Object? value, {String empty = '0'}) {
+  if (value == null) return empty;
+  if (value is String && value.trim().isEmpty) return empty;
+  return value.toString();
+}
 
 Map<String, dynamic> _map(Object? value) =>
     value is Map<String, dynamic> ? value : const <String, dynamic>{};

@@ -88,13 +88,13 @@ class _TeacherDrawer extends ConsumerWidget {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 if (user?.email != null) Text(user!.email),
-                Text(user?.role.value ?? 'teacher'),
+                const Text('Guru'),
               ],
             ),
           ),
           const Divider(height: 1),
           _Item(
-            label: 'Dashboard',
+            label: 'Beranda',
             icon: Icons.dashboard_outlined,
             route: '/teacher/dashboard',
             selected:
@@ -103,7 +103,7 @@ class _TeacherDrawer extends ConsumerWidget {
           const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.logout),
-            title: const Text('Logout'),
+            title: const Text('Keluar'),
             onTap: () async {
               Navigator.of(context).pop();
               await ref.read(authControllerProvider.notifier).logout();

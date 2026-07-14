@@ -4,7 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../shared/widgets/emi_card.dart';
+import '../../../shared/widgets/role_dashboard_widgets.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../data/admin_providers.dart';
+import '../data/admin_repository.dart';
 import 'admin_shell.dart';
 
 class AdminDashboardScreen extends ConsumerWidget {
@@ -12,76 +15,71 @@ class AdminDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authControllerProvider).user;
     final summary = ref.watch(adminDashboardProvider);
     return AdminShell(
-      title: 'Dashboard Admin',
+      title: 'Beranda Admin',
       child: RefreshIndicator(
         onRefresh: () => ref.refresh(adminDashboardProvider.future),
         child: summary.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => _ErrorState(
-            message: error.toString(),
+          error: (_, _) => FriendlyState(
+            icon: Icons.wifi_off_outlined,
+            title: 'Data belum bisa dimuat',
+            message: 'Periksa koneksi internetmu, lalu coba lagi.',
             onRetry: () => ref.invalidate(adminDashboardProvider),
           ),
           data: (data) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
-              Container(
-                padding: const EdgeInsets.all(EmiSpacing.lg),
-                decoration: BoxDecoration(
-                  color: EmiColors.secondary,
-                  border: Border.all(color: EmiColors.border, width: 2),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [EmiShadows.hard],
-                ),
-                child: Text(
-                  'Pusat Pengelolaan EMI',
-                  style: Theme.of(context).textTheme.headlineSmall,
+              RoleHeroHeader(
+                greeting: 'Selamat datang,',
+                name: user?.fullName ?? 'Admin EMI',
+                message: 'Mari periksa kegiatan EMI hari ini.',
+                icon: Icons.admin_panel_settings_outlined,
+                action: IconButton(
+                  tooltip: 'Profil',
+                  onPressed: () => context.go('/admin/profile'),
+                  icon: const Icon(Icons.account_circle_outlined),
                 ),
               ),
-              const SizedBox(height: EmiSpacing.lg),
+              const SizedBox(height: EmiSpacing.xl),
               if (data.items.isEmpty)
-                const EmiCard(
-                  child: Text('Dashboard belum mengirim ringkasan.'),
+                const FriendlyState(
+                  icon: Icons.inbox_outlined,
+                  title: 'Belum Ada Data',
+                  message:
+                      'Ringkasan akan muncul setelah data sekolah tersedia.',
                 )
-              else
+              else ...[
+                Text(
+                  'Ringkasan Utama',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: EmiSpacing.md),
                 GridView.count(
                   crossAxisCount: 2,
                   crossAxisSpacing: EmiSpacing.md,
                   mainAxisSpacing: EmiSpacing.md,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  childAspectRatio: 1.25,
+                  childAspectRatio: 1.05,
                   children: [
                     for (final item in data.items)
-                      EmiCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              item.value,
-                              style: Theme.of(context).textTheme.headlineSmall,
-                            ),
-                            const SizedBox(height: EmiSpacing.xs),
-                            Text(
-                              item.label,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            if (item.helper != null)
-                              Text(
-                                item.helper!,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                          ],
-                        ),
+                      SimpleStatItem(
+                        label: item.label,
+                        value: item.value,
+                        icon: _metricIcon(item),
+                        highlight: item.highlight,
                       ),
                   ],
                 ),
-              const SizedBox(height: EmiSpacing.lg),
-              Text('Shortcut', style: Theme.of(context).textTheme.titleMedium),
+              ],
+              const SizedBox(height: EmiSpacing.xl),
+              Text(
+                'Menu Cepat',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: EmiSpacing.md),
               Wrap(
                 spacing: EmiSpacing.sm,
@@ -90,9 +88,10 @@ class AdminDashboardScreen extends ConsumerWidget {
                   for (final feature in AdminFeature.values.where(
                     (feature) => feature.isMobileImplemented,
                   ))
-                    OutlinedButton(
-                      onPressed: () => context.go(feature.route),
-                      child: Text(feature.label),
+                    QuickActionItem(
+                      label: feature.label,
+                      icon: _featureIcon(feature),
+                      onTap: () => context.go(feature.route),
                     ),
                 ],
               ),
@@ -102,6 +101,23 @@ class AdminDashboardScreen extends ConsumerWidget {
       ),
     );
   }
+
+  IconData _metricIcon(AdminMetric metric) => switch (metric.iconName) {
+    'approval' => Icons.how_to_reg_outlined,
+    'school' => Icons.apartment_outlined,
+    'class' => Icons.school_outlined,
+    'users' => Icons.people_outline,
+    _ => Icons.insights_outlined,
+  };
+
+  IconData _featureIcon(AdminFeature feature) => switch (feature) {
+    AdminFeature.approvals => Icons.how_to_reg_outlined,
+    AdminFeature.dictionary => Icons.translate_outlined,
+    AdminFeature.quizzes => Icons.quiz_outlined,
+    AdminFeature.reports => Icons.bar_chart_outlined,
+    AdminFeature.settings => Icons.settings_outlined,
+    _ => Icons.apps_outlined,
+  };
 }
 
 class AdminListScreen extends ConsumerWidget {
@@ -119,16 +135,17 @@ class AdminListScreen extends ConsumerWidget {
         onRefresh: () => ref.refresh(adminListProvider(query).future),
         child: page.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => _ErrorState(
-            message: error.toString(),
+          error: (_, _) => FriendlyState(
+            icon: Icons.wifi_off_outlined,
+            title: 'Data belum bisa dimuat',
+            message: 'Periksa koneksi internetmu, lalu coba lagi.',
             onRetry: () => ref.invalidate(adminListProvider(query)),
           ),
           data: (data) => data.items.isEmpty
-              ? ListView(
-                  padding: const EdgeInsets.all(EmiSpacing.md),
-                  children: const [
-                    EmiCard(child: Text('Data belum tersedia.')),
-                  ],
+              ? const FriendlyState(
+                  icon: Icons.inbox_outlined,
+                  title: 'Belum Ada Data',
+                  message: 'Data akan muncul setelah kegiatan EMI dimulai.',
                 )
               : ListView.separated(
                   padding: const EdgeInsets.all(EmiSpacing.md),
@@ -143,10 +160,8 @@ class AdminListScreen extends ConsumerWidget {
                         title: Text(item.title),
                         subtitle: item.subtitle == null
                             ? null
-                            : Text(item.subtitle!),
-                        trailing: item.status == null
-                            ? const Icon(Icons.chevron_right)
-                            : Text(item.status!),
+                            : Text(_simpleLabel(item.subtitle!)),
+                        trailing: const Icon(Icons.chevron_right),
                         onTap: () => context.go('${feature.route}/${item.id}'),
                       ),
                     );
@@ -173,8 +188,10 @@ class AdminDetailScreen extends ConsumerWidget {
       title: feature.label,
       child: detail.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => _ErrorState(
-          message: error.toString(),
+        error: (_, _) => FriendlyState(
+          icon: Icons.wifi_off_outlined,
+          title: 'Data belum bisa dimuat',
+          message: 'Periksa koneksi internetmu, lalu coba lagi.',
           onRetry: () => ref.invalidate(
             adminDetailProvider(AdminDetailQuery(feature: feature, id: id)),
           ),
@@ -190,8 +207,8 @@ class AdminDetailScreen extends ConsumerWidget {
                     item.title,
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
-                  if (item.subtitle != null) Text(item.subtitle!),
-                  if (item.status != null) Text('Status: ${item.status}'),
+                  if (item.subtitle != null) Text(_simpleLabel(item.subtitle!)),
+                  if (item.status != null) Text(_simpleLabel(item.status!)),
                 ],
               ),
             ),
@@ -202,32 +219,11 @@ class AdminDetailScreen extends ConsumerWidget {
   }
 }
 
-class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(EmiSpacing.md),
-      children: [
-        EmiCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(message),
-              const SizedBox(height: EmiSpacing.sm),
-              OutlinedButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Coba lagi'),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
+String _simpleLabel(String value) => switch (value) {
+  'teacher' => 'Guru',
+  'student' => 'Siswa',
+  'admin' => 'Admin',
+  'active' => 'Aktif',
+  'inactive' => 'Tidak Aktif',
+  _ => value,
+};

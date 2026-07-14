@@ -617,14 +617,25 @@ Perubahan dari urutan awal: account deletion/privacy naik ke awal karena Play P0
 
 # Baseline verification log
 
-Isi aktual diisi setelah command verifikasi akhir sesi.
+## UI Foundation Reset — 2026-07-15
+
+| Area | Status | Catatan |
+|---|---|---|
+| UI foundation | PARTIAL | Shared role header, stat item, quick action, and friendly state added for role dashboards. |
+| Admin dashboard | PARTIAL | Dashboard copy changed to Bahasa Indonesia sederhana, metric labels mapped explicitly, and raw API keys avoided. Feature parity remains partial. |
+| Teacher dashboard | PARTIAL | Dashboard now answers class, student count, learning activity, and review needs with explicit labels. Feature parity remains partial. |
+| Student visual consistency | PARTIAL | Student dashboard error copy simplified; main student feature layout not rebuilt. |
+| Navigation | PARTIAL | Admin/Guru shell labels changed to Beranda/Keluar and profile buttons retained. Missing modules are not exposed as fake routes from dashboard. |
+| Language | PARTIAL | Touched screens avoid raw keys such as `active_students`, `students_with_learning_activity`, and `with_learning_activity`. |
+| Test coverage | PARTIAL | Repository tests cover explicit role dashboard labels and raw key avoidance. Widget parity tests still need deeper screen coverage. |
+| Manual smoke test | BLOCKED_USER_INTERACTION | ADB reverse verified on physical device; login smoke needs user-entered credentials on phone. |
+| Backlog | PARTIAL | Next stage remains Admin Pengguna; do not mark Admin/Guru parity complete. |
 
 ```text
-dart format: PASS — Formatted 113 files (0 changed)
-flutter analyze: PASS — No issues found (7.0s)
-flutter test: PASS — 63 tests
+dart format: PASS — Formatted 118 files (0 changed)
+flutter analyze: PASS — No issues found! (ran in 2.4s)
+flutter test: PASS — 70 tests
 git diff --check: PASS
-flutter devices: PASS — emulator-5554, Windows, Chrome, Edge detected
-adb devices: PASS — emulator-5554 device
-app launch smoke: PASS — debug APK built/installed/launched on emulator; no login performed; no fatal startup error in captured log
+adb reverse: PASS — UsbFfs tcp:8000 tcp:8000
+app launch smoke: BLOCKED_USER_INTERACTION — do not run long-lived flutter run in OpenCode; user must run final command manually
 ```

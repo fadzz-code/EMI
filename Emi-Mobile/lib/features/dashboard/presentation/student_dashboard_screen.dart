@@ -25,8 +25,7 @@ class StudentDashboardScreen extends ConsumerWidget {
         onRefresh: () => ref.refresh(studentDashboardSummaryProvider.future),
         child: summary.when(
           loading: () => const _DashboardLoading(),
-          error: (error, _) => _DashboardError(
-            message: error.toString(),
+          error: (_, _) => _DashboardError(
             onRetry: () => ref.invalidate(studentDashboardSummaryProvider),
           ),
           data: (data) => ListView(
@@ -286,9 +285,8 @@ class _DashboardLoading extends StatelessWidget {
 }
 
 class _DashboardError extends StatelessWidget {
-  const _DashboardError({required this.message, required this.onRetry});
+  const _DashboardError({required this.onRetry});
 
-  final String message;
   final VoidCallback onRetry;
 
   @override
@@ -299,7 +297,12 @@ class _DashboardError extends StatelessWidget {
         EmiCard(
           child: Column(
             children: [
-              Text(message),
+              Text(
+                'Data belum bisa dimuat',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: EmiSpacing.xs),
+              const Text('Periksa koneksi internetmu, lalu coba lagi.'),
               const SizedBox(height: EmiSpacing.md),
               ElevatedButton(
                 onPressed: onRetry,

@@ -81,7 +81,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ],
                     const SizedBox(height: EmiSpacing.lg),
                     DropdownButtonFormField<UserRole>(
-                      value: _role,
+                      initialValue: _role,
                       decoration: const InputDecoration(labelText: 'Role'),
                       items: const [
                         DropdownMenuItem(
@@ -138,7 +138,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ),
                     const SizedBox(height: EmiSpacing.md),
                     DropdownButtonFormField<String>(
-                      value: _schoolId,
+                      initialValue: _schoolId,
                       decoration: const InputDecoration(labelText: 'Sekolah'),
                       items: _schools
                           .map(
@@ -163,7 +163,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ),
                     const SizedBox(height: EmiSpacing.md),
                     DropdownButtonFormField<String>(
-                      value: _classId,
+                      initialValue: _classId,
                       decoration: const InputDecoration(labelText: 'Kelas'),
                       items: _classes
                           .map(
