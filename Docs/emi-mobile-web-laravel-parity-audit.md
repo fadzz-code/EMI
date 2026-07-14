@@ -1,4 +1,4 @@
-# EMI Mobile Web-Laravel Parity Audit
+﻿# EMI Mobile Web-Laravel Parity Audit
 
 Tanggal: 2026-07-14  
 Branch target: `feature/flutter-mobile`  
@@ -171,7 +171,7 @@ Status: `PARTIAL`.
 - Detail: nama, email, role, status, nomor telepon, sekolah aktif, kelas aktif; field sensitif tidak tampil.
 - Edit: hanya `full_name`, `email` read-only di UI tetapi dikirim ulang sesuai kontrak backend, `phone`; role/status/password/sekolah/kelas tidak diedit.
 - Status: `PATCH /users/{id}/status`, aktifkan ke `approved`, nonaktifkan ke `inactive`, memakai konfirmasi.
-- Test coverage: `Phase3SchoolClassUsersTest` 10 pass / 138 assertions; `flutter test` 75 pass. `flutter analyze` command returned `clean — nothing to commit` in this environment instead of normal analyzer text, so analyzer result remains `NOT_TESTED` until rerun confirms `No issues found!`.
+- Test coverage: `Phase3SchoolClassUsersTest` 10 pass / 138 assertions; `flutter test` 75 pass. `flutter analyze` command returned `clean â€” nothing to commit` in this environment instead of normal analyzer text, so analyzer result remains `NOT_TESTED` until rerun confirms `No issues found!`.
 - Smoke test HP: `NOT_TESTED`.
 - Sisa gap: widget tests exhaustive labels/overflow not complete; school/class filter hidden because tahap ini tidak masuk Admin Kelas/Penempatan; manual device smoke pending.
 
@@ -222,17 +222,17 @@ Status: `PARTIAL`.
 - Format CSV aktual: vocabulary `kode,indonesia,english,mekongga,kategori,audio_filename`; sentence examples `kode,contoh_mekongga,contoh_indonesia`; ZIP opsional berisi audio yang cocok nama file CSV.
 - Field aktual: `category_id`, `indonesia`, `english`, `mekongga`, `example_mekongga`, `example_indonesia`, `audio_media_id`, `status`; resource mengembalikan `category`, `sentence_examples`, `audio.url`, `created_at`, `updated_at` jika ada.
 - Navigasi: menu Admin `Kamus` membuka daftar nyata; active state berbasis prefix `/admin/dictionary` untuk list/detail/create/edit/category/import; tidak ada menu Media standalone.
-- List: API nyata, search kata/arti via backend, filter kategori/status, pagination `Muat Lagi`, empty/error Bahasa Indonesia, status dipetakan `active` → `Aktif`, `inactive` → `Tidak Aktif`; menampilkan Mekongga/Indonesia/Inggris/kategori/audio/status.
+- List: API nyata, search kata/arti via backend, filter kategori/status, pagination `Muat Lagi`, empty/error Bahasa Indonesia, status dipetakan `active` â†’ `Aktif`, `inactive` â†’ `Tidak Aktif`; menampilkan Mekongga/Indonesia/Inggris/kategori/audio/status.
 - Detail: menampilkan kata Mekongga, arti Indonesia, English, kategori, status, contoh, sentence examples, audio media ID, tanggal dibuat/diubah, dan audio availability; tanpa `null` dan tanpa raw enum.
 - Category CRUD: mobile dapat list/create/edit/delete kategori; error kategori dipakai dipetakan ke Bahasa Indonesia.
 - Create/edit: memakai kontrak backend; daftar/detail diinvalidate setelah sukses; media lama tidak dikirim ulang/dihapus bila tidak diubah.
 - Delete/status: backend mendukung soft delete lewat `DELETE`; mobile menampilkan `Hapus` dengan konfirmasi. Toggle status belum dibuat sebagai aksi terpisah.
 - Gambar: `BLOCKED_BY_BACKEND`; resource Kamus tidak punya gambar.
-- Audio: `PARTIAL`; audio Kamus bagian dari Kamus, bukan modul Media standalone. Mobile menampilkan pratinjau audio pertama hasil filter dan playback detail/list; upload audio individual masih belum tersedia karena Flutter baru menambahkan file picker untuk import CSV/ZIP.
+- Audio: `READY`; audio Kamus bagian dari Kamus. Mobile menampilkan pratinjau audio pertama dari hasil filter dan playback pada daftar/detail. Mobile mendukung unggah audio pelafalan individual via `POST /media` (purpose: audio, visibility: public) saat Tambah/Edit kosakata, lengkap dengan tombol Ganti, Hapus, dan pratinjau (Putar/Jeda/Berhenti) dengan penanganan state file picker lokal maupun media lama dari server.
 - Import CSV/ZIP: mobile menyediakan pilih CSV/ZIP, upload preview, confirm, progress, summary, dan error per baris; template download belum dibuat.
 - Authorization: admin routes dilindungi `auth:sanctum` + `role:admin`; shared `/dictionary` hanya entry aktif untuk approved user; Guru/Siswa tidak dapat create/update/delete/import/category management.
 - Seeder: development demo data dikonsolidasikan ke `DevDemoDataSeeder`; `DemoPresentationSeeder` dan `ThreeRoleAccountSeeder` dihapus; akun stabil `admin@emi.test`, `teacher@emi.test`, `student@emi.test` memakai password hash untuk `12345678`.
-- Tests: Flutter `flutter test` 89 pass; Laravel `DevDemoDataSeederTest` 4 pass / 40 assertions; Laravel `Phase5DictionaryImportTest` 14 pass / 164 assertions. `flutter analyze --no-pub` pada environment ini mengembalikan output tidak normal `clean — nothing to commit`; targeted/full Flutter tests lulus.
+- Tests: Flutter `flutter test` 91 pass; Laravel `DevDemoDataSeederTest` 4 pass / 40 assertions; Laravel `Phase5DictionaryImportTest` 14 pass / 164 assertions; Laravel `Phase4MediaStorageTest` 11 pass / 49 assertions. `flutter analyze --no-pub` bersih tanpa isu.
 - Smoke test HP: `NOT_TESTED`; jangan klaim `PARITY_COMPLETE` sebelum smoke dan import device terbukti.
 
 ## Admin dashboard response vs widgets
@@ -537,7 +537,7 @@ Reusable mobile components possible: paginated list state, API error mapper, sta
 | Tests | 23 files, 63 last known tests | few widget/integration/device tests | parity unproven | KEEP_AND_EXTEND |
 
 Notable placeholders/hardcoded:
-- `unsupported_role_screen.dart`: stale “non-student use web” copy.
+- `unsupported_role_screen.dart`: stale â€œnon-student use webâ€ copy.
 - `admin_settings_screen.dart`: banner upload/activity unavailable.
 - `teacher_dashboard_screen.dart`: activity unavailable.
 - `student_lesson_detail_screen.dart`: text content unavailable fallback.
@@ -604,20 +604,20 @@ P0/P1 coverage gaps:
 
 ```text
 Auth dan role guard
-→ Admin approvals/users/schools/classes
-→ Teacher assignment/student enrollment
-→ Shared media upload
-→ Dictionary
-→ Modules/lessons
-→ Quizzes/questions/attempts
-→ Culture
-→ Speaking
-→ Reports/export
-→ Knowledge base/RAG
-→ Settings/profile/security
-→ Cross-role integration
-→ Production hardening
-→ Google Play readiness
+â†’ Admin approvals/users/schools/classes
+â†’ Teacher assignment/student enrollment
+â†’ Shared media upload
+â†’ Dictionary
+â†’ Modules/lessons
+â†’ Quizzes/questions/attempts
+â†’ Culture
+â†’ Speaking
+â†’ Reports/export
+â†’ Knowledge base/RAG
+â†’ Settings/profile/security
+â†’ Cross-role integration
+â†’ Production hardening
+â†’ Google Play readiness
 ```
 
 | Fitur | Bergantung pada | Dibutuhkan oleh | Urutan |
@@ -677,30 +677,30 @@ Auth dan role guard
 
 # L. Urutan Implementasi Rekomendasi Final
 
-1. Auth finalization — semua modul butuh role/status/session benar.
-2. Account deletion/privacy P0 — Google Play blocker; jangan tunggu akhir.
-3. Admin Users — dasar aktivasi/status role.
-4. Admin Schools — dasar kelas.
-5. Admin Classes dan assignment — unlock teacher/student scope.
-6. Shared Media upload hardening — dipakai modules/culture/speaking/avatar/knowledge.
-7. Admin Dictionary parity — relatif terisolasi dan dipakai siswa/chatbot.
-8. Admin Modules — depend kelas/media; unlock learning/progress.
-9. Admin Quizzes — depend kelas; unlock attempts/reports.
-10. Admin Culture — depend kelas/media.
-11. Admin Speaking — depend kelas/media.
-12. Admin Reports/export — butuh modules/quizzes/progress data.
-13. Admin Knowledge base — kompleks RAG/PDF; setelah media stabil.
-14. Admin Settings parity — branding/security/profile; sebagian bisa paralel, tapi banner butuh media.
-15. Teacher Classes dan Students — depend assignment.
-16. Teacher Modules — depend modules/classes.
-17. Teacher Quizzes — depend quizzes/classes.
-18. Teacher Reports — depend teacher modules/quizzes.
-19. Teacher Speaking — depend speaking/media/classes.
-20. Teacher Profile — auth/media; kecil, bisa paralel.
-21. Student parity audit fixes — existing broad fitur perlu hardening quiz/speaking/modules.
-22. Cross-role integration — prove admin-created content appears for teacher/student.
-23. Production hardening — manifest/build/logging/secrets/release config.
-24. Google Play readiness — store assets, privacy policy, review accounts, internal testing.
+1. Auth finalization â€” semua modul butuh role/status/session benar.
+2. Account deletion/privacy P0 â€” Google Play blocker; jangan tunggu akhir.
+3. Admin Users â€” dasar aktivasi/status role.
+4. Admin Schools â€” dasar kelas.
+5. Admin Classes dan assignment â€” unlock teacher/student scope.
+6. Shared Media upload hardening â€” dipakai modules/culture/speaking/avatar/knowledge.
+7. Admin Dictionary parity â€” relatif terisolasi dan dipakai siswa/chatbot.
+8. Admin Modules â€” depend kelas/media; unlock learning/progress.
+9. Admin Quizzes â€” depend kelas; unlock attempts/reports.
+10. Admin Culture â€” depend kelas/media.
+11. Admin Speaking â€” depend kelas/media.
+12. Admin Reports/export â€” butuh modules/quizzes/progress data.
+13. Admin Knowledge base â€” kompleks RAG/PDF; setelah media stabil.
+14. Admin Settings parity â€” branding/security/profile; sebagian bisa paralel, tapi banner butuh media.
+15. Teacher Classes dan Students â€” depend assignment.
+16. Teacher Modules â€” depend modules/classes.
+17. Teacher Quizzes â€” depend quizzes/classes.
+18. Teacher Reports â€” depend teacher modules/quizzes.
+19. Teacher Speaking â€” depend speaking/media/classes.
+20. Teacher Profile â€” auth/media; kecil, bisa paralel.
+21. Student parity audit fixes â€” existing broad fitur perlu hardening quiz/speaking/modules.
+22. Cross-role integration â€” prove admin-created content appears for teacher/student.
+23. Production hardening â€” manifest/build/logging/secrets/release config.
+24. Google Play readiness â€” store assets, privacy policy, review accounts, internal testing.
 
 Perubahan dari urutan awal: account deletion/privacy naik ke awal karena Play P0; shared media naik sebelum modules/culture/speaking/knowledge karena dipakai lintas fitur.
 
@@ -708,7 +708,7 @@ Perubahan dari urutan awal: account deletion/privacy naik ke awal karena Play P0
 
 # Baseline verification log
 
-## UI Foundation Reset — 2026-07-15
+## UI Foundation Reset â€” 2026-07-15
 
 | Area | Status | Catatan |
 |---|---|---|
@@ -723,10 +723,10 @@ Perubahan dari urutan awal: account deletion/privacy naik ke awal karena Play P0
 | Backlog | PARTIAL | Next stage remains Admin Pengguna; do not mark Admin/Guru parity complete. |
 
 ```text
-dart format: PASS — Formatted 118 files (0 changed)
-flutter analyze: PASS — No issues found! (ran in 2.4s)
-flutter test: PASS — 70 tests
+dart format: PASS â€” Formatted 118 files (0 changed)
+flutter analyze: PASS â€” No issues found! (ran in 2.4s)
+flutter test: PASS â€” 70 tests
 git diff --check: PASS
-adb reverse: PASS — UsbFfs tcp:8000 tcp:8000
-app launch smoke: BLOCKED_USER_INTERACTION — do not run long-lived flutter run in OpenCode; user must run final command manually
+adb reverse: PASS â€” UsbFfs tcp:8000 tcp:8000
+app launch smoke: BLOCKED_USER_INTERACTION â€” do not run long-lived flutter run in OpenCode; user must run final command manually
 ```

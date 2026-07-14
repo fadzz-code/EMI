@@ -105,7 +105,8 @@ class _AdminDictionaryScreenState extends ConsumerState<AdminDictionaryScreen> {
                   padding: const EdgeInsets.all(EmiSpacing.md),
                   sliver: SliverList.separated(
                     itemCount: _items.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: EmiSpacing.md),
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: EmiSpacing.md),
                     itemBuilder: (context, index) {
                       final item = _items[index];
                       return _DictionaryTile(
@@ -177,6 +178,10 @@ class _AdminDictionaryFormScreenState
   final _exampleIndonesia = TextEditingController();
   String? _categoryId;
   String _status = 'active';
+  String? _audioMediaId;
+  String? _initialAudioUrl;
+  File? _audioFile;
+  bool _removeAudio = false;
   bool _saving = false;
   AppError? _error;
   bool _hydrated = false;
@@ -207,6 +212,8 @@ class _AdminDictionaryFormScreenState
       _exampleIndonesia.text = item.exampleIndonesia ?? '';
       _categoryId = item.categoryId;
       _status = item.status ?? 'active';
+      _audioMediaId = item.audioMediaId;
+      _initialAudioUrl = item.audioUrl;
       _hydrated = true;
     }
     return AdminShell(
@@ -340,6 +347,23 @@ class _AdminDictionaryFormScreenState
                       ),
                     ],
                   ),
+                  _SectionCard(
+                    title: 'Audio Pelafalan',
+                    icon: Icons.volume_up_outlined,
+                    children: [
+                      _AudioField(
+                        initialAudioUrl: _initialAudioUrl,
+                        audioFile: _audioFile,
+                        removeAudio: _removeAudio,
+                        disabled: _saving,
+                        onPick: _pickAudio,
+                        onRemove: () => setState(() => _removeAudio = true),
+                        onRestore: () => setState(() => _removeAudio = false),
+                        onClearSelected: () =>
+                            setState(() => _audioFile = null),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: EmiSpacing.md),
                   FilledButton.icon(
                     onPressed: _saving ? null : _save,
@@ -372,6 +396,7 @@ class _AdminDictionaryFormScreenState
         ? null
         : _exampleIndonesia.text.trim(),
     'status': _status,
+    'audio_media_id': _removeAudio ? null : _audioMediaId,
   };
   Future<void> _save() async {
     if (_saving || !_formKey.currentState!.validate()) return;
@@ -380,6 +405,11 @@ class _AdminDictionaryFormScreenState
       _error = null;
     });
     try {
+      if (_audioFile != null) {
+        _audioMediaId = await ref
+            .read(adminCrudRepositoryProvider)
+            .uploadDictionaryAudio(_audioFile!);
+      }
       await ref
           .read(adminCrudRepositoryProvider)
           .saveDictionary(id: _editing ? widget.id : null, data: _payload());
@@ -412,6 +442,20 @@ class _AdminDictionaryFormScreenState
       if (mounted) context.go('/admin/dictionary');
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _pickAudio() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['mp3', 'wav', 'ogg', 'm4a', 'webm'],
+    );
+    final path = result?.files.single.path;
+    if (path != null) {
+      setState(() {
+        _audioFile = File(path);
+        _removeAudio = false;
+      });
     }
   }
 }
@@ -521,11 +565,12 @@ class AdminDictionaryDetailScreen extends ConsumerWidget {
               title: 'Audio',
               icon: Icons.volume_up_outlined,
               children: [
-                Text(
-                  item.audioUrl?.isNotEmpty == true
-                      ? 'Audio pelafalan tersedia.'
-                      : 'Audio belum tersedia.',
-                ),
+                if (item.audioUrl?.isNotEmpty == true) ...[
+                  const Text('Audio pelafalan tersedia.'),
+                  const SizedBox(height: EmiSpacing.sm),
+                  _AudioPlayerButtons(url: item.audioUrl!),
+                ] else
+                  const Text('Audio belum tersedia.'),
               ],
             ),
             const SizedBox(height: EmiSpacing.md),
@@ -1120,6 +1165,221 @@ class _DictionaryTile extends StatelessWidget {
   );
 }
 
+class _AudioField extends StatefulWidget {
+  const _AudioField({
+    required this.initialAudioUrl,
+    required this.audioFile,
+    required this.removeAudio,
+    required this.disabled,
+    required this.onPick,
+    required this.onRemove,
+    required this.onRestore,
+    required this.onClearSelected,
+  });
+  final String? initialAudioUrl;
+  final File? audioFile;
+  final bool removeAudio;
+  final bool disabled;
+  final VoidCallback onPick;
+  final VoidCallback onRemove;
+  final VoidCallback onRestore;
+  final VoidCallback onClearSelected;
+  @override
+  State<_AudioField> createState() => _AudioFieldState();
+}
+
+class _AudioFieldState extends State<_AudioField> {
+  final _player = AudioPlayer();
+  String? _error;
+
+  @override
+  void didUpdateWidget(covariant _AudioField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.audioFile?.path != widget.audioFile?.path ||
+        oldWidget.initialAudioUrl != widget.initialAudioUrl ||
+        oldWidget.removeAudio != widget.removeAudio) {
+      _player.stop();
+      _error = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  Future<void> _play() async {
+    if (widget.removeAudio) return;
+    try {
+      if (widget.audioFile != null) {
+        await _player.setFilePath(widget.audioFile!.path);
+      } else if (widget.initialAudioUrl?.isNotEmpty == true) {
+        await _player.setUrl(widget.initialAudioUrl!);
+      } else {
+        return;
+      }
+      await _player.play();
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Audio belum bisa diputar.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasActiveAudio =
+        !widget.removeAudio &&
+        (widget.audioFile != null ||
+            widget.initialAudioUrl?.isNotEmpty == true);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (hasActiveAudio) ...[
+          _InfoLine(
+            icon: Icons.audio_file_outlined,
+            text: widget.audioFile != null
+                ? widget.audioFile!.path.split(Platform.pathSeparator).last
+                : 'Audio tersedia',
+          ),
+          if (_error != null)
+            Text(_error!, style: const TextStyle(color: EmiColors.error)),
+          Wrap(
+            spacing: EmiSpacing.sm,
+            runSpacing: EmiSpacing.sm,
+            children: [
+              OutlinedButton.icon(
+                onPressed: widget.disabled ? null : _play,
+                icon: const Icon(Icons.play_arrow_outlined),
+                label: const Text('Putar'),
+              ),
+              OutlinedButton.icon(
+                onPressed: widget.disabled ? null : _player.pause,
+                icon: const Icon(Icons.pause_outlined),
+                label: const Text('Jeda'),
+              ),
+              OutlinedButton.icon(
+                onPressed: widget.disabled ? null : _player.stop,
+                icon: const Icon(Icons.stop_outlined),
+                label: const Text('Berhenti'),
+              ),
+            ],
+          ),
+          const SizedBox(height: EmiSpacing.md),
+        ] else if (widget.removeAudio) ...[
+          const Text('Audio akan dihapus setelah disimpan.'),
+          const SizedBox(height: EmiSpacing.sm),
+        ] else ...[
+          const Text(
+            'Belum Ada Audio\nTambahkan audio agar pelafalan kosakata dapat didengarkan.',
+          ),
+          const SizedBox(height: EmiSpacing.sm),
+        ],
+        Wrap(
+          spacing: EmiSpacing.sm,
+          runSpacing: EmiSpacing.sm,
+          children: [
+            OutlinedButton.icon(
+              onPressed: widget.disabled ? null : widget.onPick,
+              icon: const Icon(Icons.file_upload_outlined),
+              label: Text(
+                widget.audioFile != null ||
+                        widget.initialAudioUrl?.isNotEmpty == true
+                    ? 'Ganti Audio'
+                    : 'Pilih Audio',
+              ),
+            ),
+            if (widget.audioFile != null)
+              OutlinedButton.icon(
+                onPressed: widget.disabled ? null : widget.onClearSelected,
+                icon: const Icon(Icons.clear_outlined),
+                label: const Text('Batal Pilih'),
+              )
+            else if (widget.initialAudioUrl?.isNotEmpty == true)
+              if (widget.removeAudio)
+                OutlinedButton.icon(
+                  onPressed: widget.disabled ? null : widget.onRestore,
+                  icon: const Icon(Icons.restore_outlined),
+                  label: const Text('Batal Hapus'),
+                )
+              else
+                OutlinedButton.icon(
+                  onPressed: widget.disabled ? null : widget.onRemove,
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Hapus Audio'),
+                ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _AudioPlayerButtons extends StatefulWidget {
+  const _AudioPlayerButtons({required this.url});
+  final String url;
+  @override
+  State<_AudioPlayerButtons> createState() => _AudioPlayerButtonsState();
+}
+
+class _AudioPlayerButtonsState extends State<_AudioPlayerButtons> {
+  final _player = AudioPlayer();
+  String? _error;
+
+  @override
+  void didUpdateWidget(covariant _AudioPlayerButtons oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) {
+      _player.stop();
+      _error = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  Future<void> _play() async {
+    try {
+      await _player.setUrl(widget.url);
+      await _player.play();
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Audio belum bisa diputar.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      if (_error != null)
+        Text(_error!, style: const TextStyle(color: EmiColors.error)),
+      Wrap(
+        spacing: EmiSpacing.sm,
+        runSpacing: EmiSpacing.sm,
+        children: [
+          OutlinedButton.icon(
+            onPressed: _play,
+            icon: const Icon(Icons.play_arrow_outlined),
+            label: const Text('Putar'),
+          ),
+          OutlinedButton.icon(
+            onPressed: _player.pause,
+            icon: const Icon(Icons.pause_outlined),
+            label: const Text('Jeda'),
+          ),
+          OutlinedButton.icon(
+            onPressed: _player.stop,
+            icon: const Icon(Icons.stop_outlined),
+            label: const Text('Berhenti'),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
 class _PageIntro extends StatelessWidget {
   const _PageIntro({
     required this.title,
@@ -1151,7 +1411,6 @@ class _PageIntro extends StatelessWidget {
     ),
   );
 }
-
 
 class _SectionCard extends StatelessWidget {
   const _SectionCard({

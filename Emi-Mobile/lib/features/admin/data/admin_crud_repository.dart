@@ -422,6 +422,28 @@ class AdminCrudRepository {
   Future<void> deleteDictionary(String id) =>
       _delete('/admin/dictionary/entries/$id');
 
+  Future<String> uploadDictionaryAudio(File file) async {
+    try {
+      final form = FormData.fromMap({
+        'file': await MultipartFile.fromFile(file.path),
+        'purpose': 'audio',
+        'visibility': 'public',
+      });
+      final res = await _dio.post<Map<String, dynamic>>('/media', data: form);
+      final data = res.data?['data'];
+      if (data is Map<String, dynamic> && data['id'] is String) {
+        return data['id'] as String;
+      }
+      throw AppError(
+        type: AppErrorType.server,
+        message: 'ID media tidak ditemukan.',
+      );
+    } catch (e) {
+      if (e is AppError) rethrow;
+      throw _map(e);
+    }
+  }
+
   Future<DictionaryImportJobAdmin> previewDictionaryImport({
     required File csvFile,
     File? audioZip,

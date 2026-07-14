@@ -110,6 +110,48 @@ void main() {
     });
   });
 
+  test('admin dictionary upload audio returns media id', () async {
+    final repository = AdminCrudRepository(
+      Dio(BaseOptions(baseUrl: 'https://example.test'))
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              final form = options.data as FormData;
+              expect(
+                form.fields.any(
+                  (e) => e.key == 'purpose' && e.value == 'audio',
+                ),
+                isTrue,
+              );
+              expect(
+                form.fields.any(
+                  (e) => e.key == 'visibility' && e.value == 'public',
+                ),
+                isTrue,
+              );
+              expect(form.files.any((e) => e.key == 'file'), isTrue);
+              handler.resolve(
+                Response(
+                  requestOptions: options,
+                  statusCode: 200,
+                  data: {
+                    'data': {'id': 'm2'},
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      const DioErrorMapper(),
+    );
+
+    final file = File('${Directory.systemTemp.path}/test.mp3');
+    await file.writeAsString('audio');
+    final id = await repository.uploadDictionaryAudio(file);
+    expect(id, 'm2');
+    await file.delete();
+  });
+
   test('admin dictionary create update delete contracts', () async {
     final requests = <String>[];
     final bodies = <Object?>[];
