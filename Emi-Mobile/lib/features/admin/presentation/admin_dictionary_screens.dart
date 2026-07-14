@@ -78,7 +78,16 @@ class _AdminDictionaryScreenState extends ConsumerState<AdminDictionaryScreen> {
                   if (!_items.any((old) => old.id == item.id)) _items.add(item);
                 }
                 return _PagedList(
-                  header: _AudioPreviewCard(item: _firstAudioEntry(_items)),
+                  header: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SectionTitle(
+                        title: 'Daftar Kosakata',
+                        subtitle: '${page.total} kosakata siap dikelola',
+                      ),
+                      _AudioPreviewCard(item: _firstAudioEntry(_items)),
+                    ],
+                  ),
                   empty:
                       (_search?.isNotEmpty == true ||
                           _categoryId != null ||
@@ -89,21 +98,8 @@ class _AdminDictionaryScreenState extends ConsumerState<AdminDictionaryScreen> {
                   onMore: () => setState(() => _page++),
                   children: [
                     for (final item in _items)
-                      _Tile(
-                        title: item.mekongga,
-                        subtitle: [
-                          'Indonesia: ${item.indonesia}',
-                          'Inggris: ${item.english}',
-                          [
-                            if (item.categoryName?.isNotEmpty == true)
-                              item.categoryName!,
-                            _statusLabel(item.status),
-                          ].join(' • '),
-                          item.audioUrl?.isNotEmpty == true
-                              ? 'Audio Tersedia'
-                              : 'Belum Ada Audio',
-                        ].join('\n'),
-                        status: _statusLabel(item.status),
+                      _DictionaryTile(
+                        item: item,
                         onTap: () =>
                             context.push('/admin/dictionary/${item.id}'),
                       ),
@@ -198,13 +194,56 @@ class _AdminDictionaryFormScreenState
               child: ListView(
                 padding: const EdgeInsets.all(EmiSpacing.md),
                 children: [
+                  _PageIntro(
+                    title: _editing ? 'Edit Kosakata' : 'Tambah Kosakata',
+                    subtitle:
+                        'Isi data dengan bahasa yang mudah dipahami siswa.',
+                    icon: Icons.menu_book_outlined,
+                  ),
                   if (_error != null) _ValidationBox(error: _error!),
-                  EmiCard(
-                    child: Column(
-                      children: [
-                        categories.when(
+                  _SectionCard(
+                    title: 'Arti Kosakata',
+                    icon: Icons.translate,
+                    children: [
+                      _GapField(
+                        child: TextFormField(
+                          controller: _mekongga,
+                          decoration: const InputDecoration(
+                            labelText: 'Kata Mekongga',
+                            hintText: 'Contoh: mowila',
+                          ),
+                          validator: _required,
+                        ),
+                      ),
+                      _GapField(
+                        child: TextFormField(
+                          controller: _indonesia,
+                          decoration: const InputDecoration(
+                            labelText: 'Arti Bahasa Indonesia',
+                          ),
+                          validator: _required,
+                        ),
+                      ),
+                      _GapField(
+                        child: TextFormField(
+                          controller: _english,
+                          decoration: const InputDecoration(
+                            labelText: 'Arti Bahasa Inggris',
+                          ),
+                          validator: _required,
+                        ),
+                      ),
+                    ],
+                  ),
+                  _SectionCard(
+                    title: 'Pengelompokan',
+                    icon: Icons.category_outlined,
+                    children: [
+                      _GapField(
+                        child: categories.when(
                           loading: () => const LinearProgressIndicator(),
-                          error: (e, _) => Text(e.toString()),
+                          error: (e, _) =>
+                              const Text('Kategori belum bisa dimuat.'),
                           data: (page) => DropdownButtonFormField<String>(
                             initialValue: _categoryId?.isEmpty == true
                                 ? null
@@ -227,40 +266,9 @@ class _AdminDictionaryFormScreenState
                                 : null,
                           ),
                         ),
-                        TextFormField(
-                          controller: _indonesia,
-                          decoration: const InputDecoration(
-                            labelText: 'Arti Bahasa Indonesia',
-                          ),
-                          validator: _required,
-                        ),
-                        TextFormField(
-                          controller: _english,
-                          decoration: const InputDecoration(
-                            labelText: 'English',
-                          ),
-                          validator: _required,
-                        ),
-                        TextFormField(
-                          controller: _mekongga,
-                          decoration: const InputDecoration(
-                            labelText: 'Kata Mekongga',
-                          ),
-                          validator: _required,
-                        ),
-                        TextFormField(
-                          controller: _exampleMekongga,
-                          decoration: const InputDecoration(
-                            labelText: 'Contoh Mekongga',
-                          ),
-                        ),
-                        TextFormField(
-                          controller: _exampleIndonesia,
-                          decoration: const InputDecoration(
-                            labelText: 'Contoh Indonesia',
-                          ),
-                        ),
-                        DropdownButtonFormField<String>(
+                      ),
+                      _GapField(
+                        child: DropdownButtonFormField<String>(
                           initialValue: _status,
                           decoration: const InputDecoration(
                             labelText: 'Status',
@@ -279,18 +287,46 @@ class _AdminDictionaryFormScreenState
                               ? null
                               : (v) => setState(() => _status = v ?? 'active'),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
+                  _SectionCard(
+                    title: 'Contoh Kalimat',
+                    icon: Icons.format_quote,
+                    children: [
+                      _GapField(
+                        child: TextFormField(
+                          controller: _exampleMekongga,
+                          minLines: 2,
+                          maxLines: 4,
+                          decoration: const InputDecoration(
+                            labelText: 'Contoh Mekongga',
+                          ),
+                        ),
+                      ),
+                      _GapField(
+                        child: TextFormField(
+                          controller: _exampleIndonesia,
+                          minLines: 2,
+                          maxLines: 4,
+                          decoration: const InputDecoration(
+                            labelText: 'Contoh Indonesia',
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: EmiSpacing.md),
-                  FilledButton(
+                  FilledButton.icon(
                     onPressed: _saving ? null : _save,
-                    child: Text(_saving ? 'Menyimpan...' : 'Simpan'),
+                    icon: const Icon(Icons.save_outlined),
+                    label: Text(_saving ? 'Menyimpan...' : 'Simpan'),
                   ),
                   if (_editing)
-                    TextButton(
+                    TextButton.icon(
                       onPressed: _saving ? null : _delete,
-                      child: const Text('Hapus'),
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('Hapus'),
                     ),
                 ],
               ),
@@ -373,77 +409,111 @@ class AdminDictionaryDetailScreen extends ConsumerWidget {
         data: (item) => ListView(
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
-            EmiCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.mekongga,
-                    style: Theme.of(context).textTheme.headlineSmall,
+            _PageIntro(
+              title: item.mekongga,
+              subtitle:
+                  'Tinjau arti, contoh kalimat, kategori, status, dan audio kosakata ini.',
+              icon: Icons.auto_stories_outlined,
+            ),
+            _SectionCard(
+              title: 'Arti Utama',
+              icon: Icons.translate,
+              children: [
+                _InfoLine(
+                  icon: Icons.record_voice_over,
+                  text: 'Mekongga: ${item.mekongga}',
+                ),
+                _InfoLine(
+                  icon: Icons.flag_outlined,
+                  text: 'Indonesia: ${item.indonesia}',
+                ),
+                _InfoLine(
+                  icon: Icons.language,
+                  text: 'Inggris: ${item.english.isEmpty ? '-' : item.english}',
+                ),
+                Wrap(
+                  spacing: EmiSpacing.xs,
+                  runSpacing: EmiSpacing.xs,
+                  children: [
+                    _Chip(text: item.categoryName ?? 'Kategori tidak tersedia'),
+                    _Chip(
+                      text: _statusLabel(item.status),
+                      color: EmiColors.secondary,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            _SectionCard(
+              title: 'Data Admin',
+              icon: Icons.info_outline,
+              children: [
+                if (item.audioMediaId?.isNotEmpty == true)
+                  _InfoLine(
+                    icon: Icons.perm_media_outlined,
+                    text: 'Audio Media ID: ${item.audioMediaId}',
                   ),
-                  Text(item.indonesia),
-                  if (item.english.isNotEmpty) Text(item.english),
-                  const SizedBox(height: EmiSpacing.sm),
-                  Text(
-                    'Kategori: ${item.categoryName ?? 'Kategori tidak tersedia'}',
+                if (item.createdAt?.isNotEmpty == true)
+                  _InfoLine(
+                    icon: Icons.event_outlined,
+                    text: 'Dibuat: ${item.createdAt}',
                   ),
-                  Text('Status: ${_statusLabel(item.status)}'),
-                  if (item.audioMediaId?.isNotEmpty == true)
-                    Text('ID Media Audio: ${item.audioMediaId}'),
-                  if (item.createdAt?.isNotEmpty == true)
-                    Text('Dibuat: ${item.createdAt}'),
-                  if (item.updatedAt?.isNotEmpty == true)
-                    Text('Terakhir Diubah: ${item.updatedAt}'),
-                  const Text(
-                    'Tinjau terjemahan, contoh kalimat, status, kategori, dan audio yang terhubung dengan kata ini.',
+                if (item.updatedAt?.isNotEmpty == true)
+                  _InfoLine(
+                    icon: Icons.update,
+                    text: 'Terakhir Diubah: ${item.updatedAt}',
                   ),
-                ],
-              ),
+              ],
             ),
-            EmiCard(
-              child: Text(
-                item.exampleMekongga?.isNotEmpty == true
-                    ? item.exampleMekongga!
-                    : 'Belum Ada Contoh',
-              ),
+            _SectionCard(
+              title: 'Contoh Kalimat',
+              icon: Icons.format_quote,
+              children: [
+                _InfoLine(
+                  icon: Icons.chat_bubble_outline,
+                  text: item.exampleMekongga?.isNotEmpty == true
+                      ? item.exampleMekongga!
+                      : 'Belum ada contoh Mekongga.',
+                ),
+                _InfoLine(
+                  icon: Icons.chat_outlined,
+                  text: item.exampleIndonesia?.isNotEmpty == true
+                      ? item.exampleIndonesia!
+                      : 'Belum ada contoh Indonesia.',
+                ),
+                if (item.sentenceExamples.isEmpty)
+                  const Text('Belum ada contoh kalimat.')
+                else
+                  for (final example in item.sentenceExamples)
+                    Padding(
+                      padding: const EdgeInsets.only(top: EmiSpacing.sm),
+                      child: Text(
+                        '${example.mekongga ?? '-'}\n${example.indonesia ?? '-'}',
+                      ),
+                    ),
+              ],
             ),
-            EmiCard(
-              child: Text(
-                item.exampleIndonesia?.isNotEmpty == true
-                    ? item.exampleIndonesia!
-                    : 'Belum Ada Contoh',
-              ),
-            ),
-            EmiCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: item.sentenceExamples.isEmpty
-                    ? const [Text('Belum ada contoh kalimat.')]
-                    : [
-                        const Text('Contoh Kalimat'),
-                        for (final example in item.sentenceExamples)
-                          Text(
-                            '${example.mekongga ?? ''}\n${example.indonesia ?? ''}',
-                          ),
-                      ],
-              ),
-            ),
-            EmiCard(
-              child: Text(
-                item.audioUrl?.isNotEmpty == true
-                    ? 'Audio Pelafalan tersedia'
-                    : 'Audio belum tersedia.',
-              ),
+            _SectionCard(
+              title: 'Audio',
+              icon: Icons.volume_up_outlined,
+              children: [
+                Text(
+                  item.audioUrl?.isNotEmpty == true
+                      ? 'Audio pelafalan tersedia.'
+                      : 'Audio belum tersedia.',
+                ),
+              ],
             ),
             const SizedBox(height: EmiSpacing.md),
-            FilledButton(
+            FilledButton.icon(
               onPressed: () async {
                 await context.push('/admin/dictionary/$id/edit');
                 ref.invalidate(adminDictionaryDetailProvider(id));
               },
-              child: const Text('Edit Entri'),
+              icon: const Icon(Icons.edit_outlined),
+              label: const Text('Edit Entri'),
             ),
-            TextButton(
+            TextButton.icon(
               onPressed: () async {
                 final ok = await _confirm(
                   context,
@@ -456,7 +526,8 @@ class AdminDictionaryDetailScreen extends ConsumerWidget {
                 ref.invalidate(adminDictionaryProvider);
                 if (context.mounted) context.go('/admin/dictionary');
               },
-              child: const Text('Hapus'),
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('Hapus'),
             ),
           ],
         ),
@@ -549,32 +620,65 @@ class AdminDictionaryCategoryScreen extends ConsumerWidget {
         data: (page) => ListView(
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
-            FilledButton(
-              onPressed: () => _showCategoryForm(context, ref),
-              child: const Text('Tambah Kategori'),
+            _PageIntro(
+              title: 'Kategori Kamus',
+              subtitle:
+                  'Rapikan kelompok kosakata agar siswa lebih mudah mencari kata.',
+              icon: Icons.category_outlined,
             ),
+            FilledButton.icon(
+              onPressed: () => _showCategoryForm(context, ref),
+              icon: const Icon(Icons.add),
+              label: const Text('Tambah Kategori'),
+            ),
+            const SizedBox(height: EmiSpacing.md),
             for (final category in page.items)
               EmiCard(
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(category.name),
-                  subtitle: Text(
-                    '${category.entriesCount} kosakata • ${_statusLabel(category.status)}',
-                  ),
-                  trailing: Wrap(
-                    children: [
-                      IconButton(
-                        onPressed: () =>
-                            _showCategoryForm(context, ref, category: category),
-                        icon: const Icon(Icons.edit),
-                      ),
-                      IconButton(
-                        onPressed: () =>
-                            _deleteCategory(context, ref, category),
-                        icon: const Icon(Icons.delete_outline),
-                      ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      category.name,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    if (category.description?.isNotEmpty == true) ...[
+                      const SizedBox(height: EmiSpacing.xs),
+                      Text(category.description!),
                     ],
-                  ),
+                    const SizedBox(height: EmiSpacing.sm),
+                    Wrap(
+                      spacing: EmiSpacing.xs,
+                      runSpacing: EmiSpacing.xs,
+                      children: [
+                        _Chip(text: '${category.entriesCount} kosakata'),
+                        _Chip(
+                          text: _statusLabel(category.status),
+                          color: EmiColors.secondary,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: EmiSpacing.sm),
+                    Wrap(
+                      spacing: EmiSpacing.sm,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () => _showCategoryForm(
+                            context,
+                            ref,
+                            category: category,
+                          ),
+                          icon: const Icon(Icons.edit_outlined),
+                          label: const Text('Edit'),
+                        ),
+                        TextButton.icon(
+                          onPressed: () =>
+                              _deleteCategory(context, ref, category),
+                          icon: const Icon(Icons.delete_outline),
+                          label: const Text('Hapus'),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
           ],
@@ -609,14 +713,21 @@ class _AdminDictionaryImportScreenState
     child: ListView(
       padding: const EdgeInsets.all(EmiSpacing.md),
       children: [
-        EmiCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Format CSV: kode, indonesia, english, mekongga, kategori, audio_filename',
-              ),
-              DropdownButtonFormField<String>(
+        _PageIntro(
+          title: 'Import Data',
+          subtitle: 'Pilih file, cek nama file, lalu mulai import Kamus.',
+          icon: Icons.upload_file,
+        ),
+        _SectionCard(
+          title: 'Pilih File',
+          icon: Icons.folder_open_outlined,
+          children: [
+            const Text(
+              'Format CSV: kode, indonesia, english, mekongga, kategori, audio_filename',
+            ),
+            const SizedBox(height: EmiSpacing.md),
+            _GapField(
+              child: DropdownButtonFormField<String>(
                 initialValue: _importType,
                 decoration: const InputDecoration(labelText: 'Jenis Import'),
                 items: const [
@@ -633,9 +744,11 @@ class _AdminDictionaryImportScreenState
                     ? null
                     : (v) => setState(() => _importType = v ?? 'vocabulary'),
               ),
-              DropdownButtonFormField<String>(
+            ),
+            _GapField(
+              child: DropdownButtonFormField<String>(
                 initialValue: _duplicateStrategy,
-                decoration: const InputDecoration(labelText: 'Duplikasi'),
+                decoration: const InputDecoration(labelText: 'Data yang Sama'),
                 items: const [
                   DropdownMenuItem(value: 'skip', child: Text('Lewati')),
                   DropdownMenuItem(value: 'update', child: Text('Perbarui')),
@@ -645,31 +758,52 @@ class _AdminDictionaryImportScreenState
                     ? null
                     : (v) => setState(() => _duplicateStrategy = v ?? 'skip'),
               ),
-              OutlinedButton(
-                onPressed: _uploading ? null : _pickCsv,
-                child: Text(
-                  _csv == null
-                      ? 'Pilih CSV'
-                      : _csv!.path.split(Platform.pathSeparator).last,
+            ),
+            Wrap(
+              spacing: EmiSpacing.sm,
+              runSpacing: EmiSpacing.sm,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _uploading ? null : _pickCsv,
+                  icon: const Icon(Icons.description_outlined),
+                  label: Text(
+                    _csv == null
+                        ? 'Pilih CSV'
+                        : _csv!.path.split(Platform.pathSeparator).last,
+                  ),
                 ),
-              ),
-              OutlinedButton(
-                onPressed: _uploading ? null : _pickZip,
-                child: Text(
-                  _zip == null
-                      ? 'Pilih ZIP Audio'
-                      : _zip!.path.split(Platform.pathSeparator).last,
+                OutlinedButton.icon(
+                  onPressed: _uploading ? null : _pickZip,
+                  icon: const Icon(Icons.volume_up_outlined),
+                  label: Text(
+                    _zip == null
+                        ? 'Pilih ZIP Audio'
+                        : _zip!.path.split(Platform.pathSeparator).last,
+                  ),
                 ),
-              ),
-              if (_progress != null) LinearProgressIndicator(value: _progress),
-              if (_uploading) const Text('Mengunggah data Kamus...'),
-              if (_error != null) Text(_error!),
-              FilledButton(
-                onPressed: _uploading || _csv == null ? null : _preview,
-                child: const Text('Import Data'),
-              ),
+              ],
+            ),
+            if (_progress != null) ...[
+              const SizedBox(height: EmiSpacing.md),
+              LinearProgressIndicator(value: _progress),
             ],
-          ),
+            if (_uploading)
+              const Padding(
+                padding: EdgeInsets.only(top: EmiSpacing.sm),
+                child: Text('Mengunggah data Kamus...'),
+              ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: EmiSpacing.sm),
+                child: Text(_error!),
+              ),
+            const SizedBox(height: EmiSpacing.md),
+            FilledButton.icon(
+              onPressed: _uploading || _csv == null ? null : _preview,
+              icon: const Icon(Icons.upload_file),
+              label: const Text('Import Data'),
+            ),
+          ],
         ),
         if (_job != null)
           _ImportResult(job: _job!, errors: _errors?.items ?? const []),
@@ -853,36 +987,52 @@ class _SearchBar extends StatelessWidget {
   final VoidCallback onAdd;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.all(EmiSpacing.md),
+    padding: const EdgeInsets.fromLTRB(
+      EmiSpacing.md,
+      EmiSpacing.md,
+      EmiSpacing.md,
+      0,
+    ),
     child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                decoration: const InputDecoration(
-                  hintText: 'Cari kata atau arti',
-                ),
-                onChanged: onChanged,
-              ),
-            ),
-            IconButton(
-              onPressed: onFilter,
-              icon: const Icon(Icons.filter_list),
-            ),
-            IconButton.filled(onPressed: onAdd, icon: const Icon(Icons.add)),
-          ],
+        _PageIntro(
+          title: 'Kamus',
+          subtitle: 'Kelola kosakata Mekongga agar mudah dipelajari siswa.',
+          icon: Icons.auto_stories_outlined,
         ),
+        const SizedBox(height: EmiSpacing.sm),
+        TextField(
+          decoration: const InputDecoration(
+            prefixIcon: Icon(Icons.search),
+            hintText: 'Cari kata atau arti',
+          ),
+          onChanged: onChanged,
+        ),
+        const SizedBox(height: EmiSpacing.sm),
         Wrap(
           spacing: EmiSpacing.sm,
+          runSpacing: EmiSpacing.sm,
           children: [
-            OutlinedButton(
-              onPressed: onCategories,
-              child: const Text('Kelola Kategori'),
+            FilledButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.add),
+              label: const Text('Tambah Kosakata'),
             ),
-            OutlinedButton(
+            OutlinedButton.icon(
+              onPressed: onFilter,
+              icon: const Icon(Icons.tune),
+              label: const Text('Filter'),
+            ),
+            OutlinedButton.icon(
+              onPressed: onCategories,
+              icon: const Icon(Icons.category_outlined),
+              label: const Text('Kelola Kategori'),
+            ),
+            OutlinedButton.icon(
               onPressed: onImport,
-              child: const Text('Import Data'),
+              icon: const Icon(Icons.upload_file),
+              label: const Text('Import Data'),
             ),
           ],
         ),
@@ -891,30 +1041,188 @@ class _SearchBar extends StatelessWidget {
   );
 }
 
-class _Tile extends StatelessWidget {
-  const _Tile({
-    required this.title,
-    this.subtitle,
-    this.status,
-    required this.onTap,
-  });
-  final String title;
-  final String? subtitle;
-  final String? status;
+class _DictionaryTile extends StatelessWidget {
+  const _DictionaryTile({required this.item, required this.onTap});
+  final DictionaryEntryAdmin item;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) => EmiCard(
-    child: ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis),
-      subtitle: subtitle == null
-          ? null
-          : Text(subtitle!, maxLines: 5, overflow: TextOverflow.ellipsis),
-      trailing: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [Text(status ?? ''), const Icon(Icons.chevron_right)],
-      ),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(EmiRadii.card),
       onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(EmiSpacing.xs),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    item.mekongga,
+                    style: Theme.of(context).textTheme.titleLarge,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const Icon(Icons.chevron_right),
+              ],
+            ),
+            const SizedBox(height: EmiSpacing.sm),
+            _InfoLine(icon: Icons.translate, text: item.indonesia),
+            if (item.english.isNotEmpty)
+              _InfoLine(icon: Icons.language, text: item.english),
+            const SizedBox(height: EmiSpacing.sm),
+            Wrap(
+              spacing: EmiSpacing.xs,
+              runSpacing: EmiSpacing.xs,
+              children: [
+                _Chip(text: item.categoryName ?? 'Tanpa Kategori'),
+                _Chip(
+                  text: _statusLabel(item.status),
+                  color: EmiColors.secondary,
+                ),
+                _Chip(
+                  text: item.audioUrl?.isNotEmpty == true
+                      ? 'Audio Tersedia'
+                      : 'Audio Belum Tersedia',
+                  icon: Icons.volume_up_outlined,
+                  color: item.audioUrl?.isNotEmpty == true
+                      ? EmiColors.success
+                      : EmiColors.surfaceSoft,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _PageIntro extends StatelessWidget {
+  const _PageIntro({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+  });
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  @override
+  Widget build(BuildContext context) => EmiCard(
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 32),
+        const SizedBox(width: EmiSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: Theme.of(context).textTheme.headlineSmall),
+              const SizedBox(height: EmiSpacing.xs),
+              Text(subtitle),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.title, required this.subtitle});
+  final String title;
+  final String subtitle;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: EmiSpacing.sm),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: EmiSpacing.xs),
+        Text(subtitle),
+      ],
+    ),
+  );
+}
+
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({
+    required this.title,
+    required this.icon,
+    required this.children,
+  });
+  final String title;
+  final IconData icon;
+  final List<Widget> children;
+  @override
+  Widget build(BuildContext context) => EmiCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon),
+            const SizedBox(width: EmiSpacing.sm),
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+          ],
+        ),
+        const SizedBox(height: EmiSpacing.md),
+        ...children,
+      ],
+    ),
+  );
+}
+
+class _GapField extends StatelessWidget {
+  const _GapField({required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: EmiSpacing.md),
+    child: child,
+  );
+}
+
+class _InfoLine extends StatelessWidget {
+  const _InfoLine({required this.icon, required this.text});
+  final IconData icon;
+  final String text;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: EmiSpacing.xs),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18),
+        const SizedBox(width: EmiSpacing.xs),
+        Expanded(child: Text(text.isEmpty ? '-' : text)),
+      ],
+    ),
+  );
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({
+    required this.text,
+    this.icon,
+    this.color = EmiColors.surfaceAccent,
+  });
+  final String text;
+  final IconData? icon;
+  final Color color;
+  @override
+  Widget build(BuildContext context) => Chip(
+    avatar: icon == null ? null : Icon(icon, size: 16),
+    label: Text(text),
+    backgroundColor: color,
+    side: const BorderSide(color: EmiColors.border),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(EmiRadii.pill),
     ),
   );
 }
