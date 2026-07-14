@@ -9,32 +9,56 @@ class AdminSummary {
   final List<AdminMetric> items;
 
   factory AdminSummary.fromJson(Map<String, dynamic> json) {
-    final metrics = <AdminMetric>[];
-    void walk(String prefix, Object? value) {
-      if (value is num || value is String || value is bool) {
-        metrics.add(AdminMetric(label: prefix, value: '$value'));
-      } else if (value is Map<String, dynamic>) {
-        for (final entry in value.entries) {
-          walk(
-            prefix.isEmpty ? entry.key : '$prefix ${entry.key}',
-            entry.value,
-          );
-        }
-      }
-    }
-
-    for (final entry in json.entries) {
-      walk(entry.key, entry.value);
-    }
-    return AdminSummary(items: metrics.take(12).toList());
+    final overview = _map(json['overview']);
+    final quizzes = _map(json['quizzes']);
+    return AdminSummary(
+      items: [
+        AdminMetric(
+          label: 'Siswa',
+          value: _number(overview['active_students']),
+          helper: 'Siswa teregistrasi',
+        ),
+        AdminMetric(
+          label: 'Guru',
+          value: _number(overview['active_teachers']),
+          helper: 'Guru teregistrasi',
+        ),
+        AdminMetric(
+          label: 'Sekolah',
+          value: _number(overview['active_schools']),
+          helper: 'Sekolah terdaftar',
+        ),
+        AdminMetric(
+          label: 'Kelas',
+          value: _number(overview['active_classes']),
+          helper: 'Kelas aktif',
+        ),
+        AdminMetric(
+          label: 'Persetujuan',
+          value: _number(overview['pending_registration_requests']),
+          helper: 'Butuh review',
+        ),
+        AdminMetric(
+          label: 'Kuis',
+          value: _number(quizzes['submitted_attempts']),
+          helper: 'Submission kuis',
+        ),
+      ],
+    );
   }
 }
 
+Map<String, dynamic> _map(Object? value) =>
+    value is Map<String, dynamic> ? value : const <String, dynamic>{};
+
+String _number(Object? value) => value is num ? value.toString() : '0';
+
 class AdminMetric {
-  const AdminMetric({required this.label, required this.value});
+  const AdminMetric({required this.label, required this.value, this.helper});
 
   final String label;
   final String value;
+  final String? helper;
 }
 
 class AdminListQuery {

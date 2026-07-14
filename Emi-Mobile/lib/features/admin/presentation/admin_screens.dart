@@ -69,6 +69,12 @@ class AdminDashboardScreen extends ConsumerWidget {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
+                            if (item.helper != null)
+                              Text(
+                                item.helper!,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                           ],
                         ),
                       ),
@@ -81,7 +87,9 @@ class AdminDashboardScreen extends ConsumerWidget {
                 spacing: EmiSpacing.sm,
                 runSpacing: EmiSpacing.sm,
                 children: [
-                  for (final feature in AdminFeature.values.take(6))
+                  for (final feature in AdminFeature.values.where(
+                    (feature) => feature.isMobileImplemented,
+                  ))
                     OutlinedButton(
                       onPressed: () => context.go(feature.route),
                       child: Text(feature.label),

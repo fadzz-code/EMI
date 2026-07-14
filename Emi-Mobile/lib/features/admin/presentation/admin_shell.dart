@@ -102,7 +102,9 @@ class _AdminDrawer extends ConsumerWidget {
               route: '/admin/dashboard',
               selected: location == '/admin/dashboard',
             ),
-            for (final feature in AdminFeature.values)
+            for (final feature in AdminFeature.values.where(
+              (feature) => feature.isMobileImplemented,
+            ))
               _Item(
                 label: feature.label,
                 icon: _icon(feature),
@@ -125,6 +127,7 @@ class _AdminDrawer extends ConsumerWidget {
   }
 
   IconData _icon(AdminFeature feature) => switch (feature) {
+    AdminFeature.approvals => Icons.how_to_reg_outlined,
     AdminFeature.users => Icons.people_outline,
     AdminFeature.classes => Icons.school_outlined,
     AdminFeature.modules => Icons.menu_book_outlined,

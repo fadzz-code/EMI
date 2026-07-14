@@ -28,7 +28,7 @@ void main() {
     expect(state.user?.role, UserRole.admin);
   });
 
-  test('auth state supports unsupported role', () {
+  test('teacher role is supported by mobile auth state', () {
     const user = SessionUser(
       id: '1',
       fullName: 'Guru',
@@ -37,7 +37,7 @@ void main() {
       status: 'approved',
     );
 
-    const state = AuthState(status: AuthStatus.unsupportedRole, user: user);
-    expect(state.status, AuthStatus.unsupportedRole);
+    const state = AuthState(status: AuthStatus.authenticated, user: user);
+    expect(state.user?.role, UserRole.teacher);
   });
 }

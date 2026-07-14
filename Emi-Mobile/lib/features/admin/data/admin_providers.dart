@@ -62,6 +62,7 @@ class AdminDetailQuery {
 }
 
 enum AdminFeature {
+  approvals('Persetujuan', '/admin/registration-requests', '/admin/approvals'),
   users('Pengguna', '/users', '/admin/users'),
   classes('Kelas', '/classes', '/admin/classes'),
   modules('Modul', '/admin/module-templates', '/admin/modules'),
@@ -77,4 +78,13 @@ enum AdminFeature {
   final String label;
   final String endpoint;
   final String route;
+
+  bool get isMobileImplemented => switch (this) {
+    AdminFeature.approvals ||
+    AdminFeature.dictionary ||
+    AdminFeature.quizzes ||
+    AdminFeature.reports ||
+    AdminFeature.settings => true,
+    _ => false,
+  };
 }
