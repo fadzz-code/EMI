@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\DeleteAccountRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\UpdatePasswordRequest;
@@ -67,6 +68,13 @@ class AuthController extends Controller
         $user = $this->authService->updatePassword($request->user(), $request->validated());
 
         return ApiResponse::success('Password berhasil diperbarui.', new UserResource($this->loadProfile($user)));
+    }
+
+    public function deleteAccount(DeleteAccountRequest $request): JsonResponse
+    {
+        $this->authService->deleteAccount($request->user(), $request->validated());
+
+        return ApiResponse::success('Akun berhasil dinonaktifkan.', []);
     }
 
     private function loadProfile(User $user): User

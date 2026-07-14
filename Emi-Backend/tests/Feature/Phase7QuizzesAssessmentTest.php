@@ -221,6 +221,14 @@ class Phase7QuizzesAssessmentTest extends TestCase
         $this->withToken($this->tokenFor($studentA))->putJson("/api/v1/quiz-attempts/{$attemptId}/answers/{$mcId}", [
             'selected_option_id' => $correctOption->id,
         ])->assertConflict()->assertJsonPath('code', 'ATTEMPT_ALREADY_SUBMITTED');
+
+        $this->withToken($this->tokenFor($studentB))->getJson("/api/v1/quiz-attempts/{$attemptId}")
+            ->assertForbidden();
+        $this->withToken($this->tokenFor($studentB))->putJson("/api/v1/quiz-attempts/{$attemptId}/answers/{$mcId}", [
+            'selected_option_id' => $correctOption->id,
+        ])->assertForbidden();
+        $this->withToken($this->tokenFor($studentB))->withHeader('Idempotency-Key', 'phase7-submit-key-0003')->postJson("/api/v1/quiz-attempts/{$attemptId}/submit")
+            ->assertForbidden();
     }
 
     public function test_student_can_complete_multiple_choice_quiz_attempt_flow(): void

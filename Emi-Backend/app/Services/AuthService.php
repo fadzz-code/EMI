@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Exceptions\ApiException;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\PersonalAccessToken;
 
@@ -70,5 +71,39 @@ class AuthService
         $user->forceFill(['password' => $data['password']])->save();
 
         return $user->refresh();
+    }
+
+    public function deleteAccount(User $user, array $data): void
+    {
+        if (! Hash::check($data['current_password'], $user->password)) {
+            throw new ApiException('Password lama tidak sesuai.', 'INVALID_CURRENT_PASSWORD', 422, [
+                'current_password' => ['Password lama tidak sesuai.'],
+            ]);
+        }
+
+        if ($user->role === 'admin') {
+            $otherAdmins = User::query()
+                ->where('role', 'admin')
+                ->where('status', 'approved')
+                ->whereKeyNot($user->id)
+                ->exists();
+
+            if (! $otherAdmins) {
+                throw new ApiException('Admin terakhir tidak dapat menghapus akun sendiri.', 'LAST_ADMIN_ACCOUNT', 409);
+            }
+        }
+
+        DB::transaction(function () use ($user): void {
+            $user->teacherClassAssignments()->where('is_active', true)->update([
+                'is_active' => false,
+                'ended_at' => now(),
+            ]);
+            $user->studentClassMemberships()->where('is_active', true)->update([
+                'is_active' => false,
+                'ended_at' => now(),
+            ]);
+            $user->forceFill(['status' => 'inactive'])->save();
+            $user->tokens()->delete();
+        });
     }
 }

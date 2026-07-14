@@ -70,6 +70,7 @@ Route::prefix('v1')->group(function () {
             Route::get('me', [AuthController::class, 'me']);
             Route::patch('me', [AuthController::class, 'updateProfile']);
             Route::put('password', [AuthController::class, 'updatePassword']);
+            Route::delete('account', [AuthController::class, 'deleteAccount']);
             Route::post('me/avatar', [AvatarController::class, 'store']);
             Route::delete('me/avatar', [AvatarController::class, 'destroy']);
         });

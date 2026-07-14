@@ -266,6 +266,41 @@ class Phase2AuthApprovalTest extends TestCase
         $this->withToken($token)->getJson('/api/v1/auth/me')->assertOk();
     }
 
+    public function test_account_delete_requires_password_deactivates_user_and_revokes_tokens(): void
+    {
+        $student = User::factory()->student()->approved()->create(['password' => 'Password123']);
+        $schoolClass = SchoolClass::factory()->create();
+        StudentClassMembership::factory()->create([
+            'student_id' => $student->id,
+            'class_id' => $schoolClass->id,
+        ]);
+        $token = $this->tokenFor($student);
+
+        $this->withToken($token)->deleteJson('/api/v1/auth/account', [
+            'current_password' => 'Salah123',
+        ])->assertUnprocessable()->assertJsonPath('code', 'INVALID_CURRENT_PASSWORD');
+
+        $this->withToken($token)->deleteJson('/api/v1/auth/account', [
+            'current_password' => 'Password123',
+        ])->assertOk();
+
+        $this->assertSame('inactive', $student->refresh()->status);
+        $this->assertDatabaseHas('student_class_memberships', [
+            'student_id' => $student->id,
+            'is_active' => false,
+        ]);
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
+    public function test_last_admin_cannot_delete_own_account(): void
+    {
+        $admin = User::factory()->admin()->approved()->create(['password' => 'Password123']);
+
+        $this->withToken($this->tokenFor($admin))->deleteJson('/api/v1/auth/account', [
+            'current_password' => 'Password123',
+        ])->assertConflict()->assertJsonPath('code', 'LAST_ADMIN_ACCOUNT');
+    }
+
     public function test_logout_revokes_current_token(): void
     {
         $user = User::factory()->student()->approved()->create();
