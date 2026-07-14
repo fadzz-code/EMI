@@ -38,77 +38,101 @@ class _AdminDictionaryScreenState extends ConsumerState<AdminDictionaryScreen> {
     final categories = ref.watch(dictionaryCategoriesProvider);
     return AdminShell(
       title: 'Kamus',
-      child: Column(
-        children: [
-          _SearchBar(
-            onChanged: (v) => setState(() {
-              _search = v;
-              _page = 1;
-              _items.clear();
-            }),
-            onFilter: () => _showFilters(categories),
-            onCategories: () async {
-              await context.push('/admin/dictionary/categories');
-              if (mounted) ref.invalidate(dictionaryCategoriesProvider);
-            },
-            onImport: () async {
-              await context.push('/admin/dictionary/import');
-              if (mounted) ref.invalidate(adminDictionaryProvider);
-            },
-            onAdd: () async {
-              await context.push('/admin/dictionary/create');
-              if (mounted) {
-                setState(() {
-                  _page = 1;
-                  _items.clear();
-                });
-              }
-            },
-          ),
-          Expanded(
-            child: data.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => _Error(
-                message: _friendlyError(e),
-                onRetry: () => ref.invalidate(adminDictionaryProvider(query)),
+      child: data.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => _Error(
+          message: _friendlyError(e),
+          onRetry: () => ref.invalidate(adminDictionaryProvider(query)),
+        ),
+        data: (page) {
+          if (_page == 1) _items.clear();
+          for (final item in page.items) {
+            if (!_items.any((old) => old.id == item.id)) _items.add(item);
+          }
+          return CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: _SearchBar(
+                  onChanged: (v) => setState(() {
+                    _search = v;
+                    _page = 1;
+                    _items.clear();
+                  }),
+                  onFilter: () => _showFilters(categories),
+                  onCategories: () async {
+                    await context.push('/admin/dictionary/categories');
+                    if (mounted) ref.invalidate(dictionaryCategoriesProvider);
+                  },
+                  onImport: () async {
+                    await context.push('/admin/dictionary/import');
+                    if (mounted) ref.invalidate(adminDictionaryProvider);
+                  },
+                  onAdd: () async {
+                    await context.push('/admin/dictionary/create');
+                    if (mounted) {
+                      setState(() {
+                        _page = 1;
+                        _items.clear();
+                      });
+                    }
+                  },
+                ),
               ),
-              data: (page) {
-                if (_page == 1) _items.clear();
-                for (final item in page.items) {
-                  if (!_items.any((old) => old.id == item.id)) _items.add(item);
-                }
-                return _PagedList(
-                  header: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _SectionTitle(
-                        title: 'Daftar Kosakata',
-                        subtitle: '${page.total} kosakata siap dikelola',
-                      ),
-                      _AudioPreviewCard(item: _firstAudioEntry(_items)),
-                    ],
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: EmiSpacing.md,
                   ),
-                  empty:
+                  child: _AudioPreviewCard(item: _firstAudioEntry(_items)),
+                ),
+              ),
+              if (_items.isEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(EmiSpacing.md),
+                    child: Text(
                       (_search?.isNotEmpty == true ||
-                          _categoryId != null ||
-                          _status != null)
-                      ? 'Kosakata Tidak Ditemukan\nCoba gunakan kata, arti, atau filter yang berbeda.'
-                      : 'Belum Ada Kosakata\nTambahkan kosakata agar Kamus EMI dapat digunakan.',
-                  hasMore: page.hasMore,
-                  onMore: () => setState(() => _page++),
-                  children: [
-                    for (final item in _items)
-                      _DictionaryTile(
+                              _categoryId != null ||
+                              _status != null)
+                          ? 'Kosakata Tidak Ditemukan\nCoba gunakan kata, arti, atau filter yang berbeda.'
+                          : 'Belum Ada Kosakata\nTambahkan kosakata agar Kamus EMI dapat digunakan.',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.all(EmiSpacing.md),
+                  sliver: SliverList.separated(
+                    itemCount: _items.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: EmiSpacing.md),
+                    itemBuilder: (context, index) {
+                      final item = _items[index];
+                      return _DictionaryTile(
                         item: item,
                         onTap: () =>
                             context.push('/admin/dictionary/${item.id}'),
-                      ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
+                      );
+                    },
+                  ),
+                ),
+              if (page.hasMore)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: EmiSpacing.md,
+                      vertical: EmiSpacing.sm,
+                    ),
+                    child: OutlinedButton(
+                      onPressed: () => setState(() => _page++),
+                      child: const Text('Muat Lagi'),
+                    ),
+                  ),
+                ),
+              const SliverToBoxAdapter(child: SizedBox(height: EmiSpacing.xl)),
+            ],
+          );
+        },
       ),
     );
   }
@@ -919,45 +943,41 @@ class _AudioPreviewCardState extends State<_AudioPreviewCard> {
   }
 
   @override
-  Widget build(BuildContext context) => EmiCard(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const SizedBox(height: EmiSpacing.md),
+      Text(
+        'Pratinjau Audio Kamus',
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+      const Text(
+        'Audio pertama yang tersedia dari hasil filter ditampilkan untuk pemeriksaan cepat.',
+      ),
+      if (widget.item == null) ...const [
+        SizedBox(height: EmiSpacing.sm),
+        Text('Belum Ada Audio untuk Ditinjau'),
         Text(
-          'Pratinjau Audio Kamus',
-          style: Theme.of(context).textTheme.titleMedium,
+          'Audio akan muncul setelah kosakata memiliki file audio publik yang valid.',
         ),
-        const Text(
-          'Audio pertama yang tersedia dari hasil filter ditampilkan untuk pemeriksaan cepat.',
+      ] else ...[
+        const SizedBox(height: EmiSpacing.sm),
+        Text('${widget.item!.mekongga} - ${widget.item!.indonesia}'),
+        if (_error != null) Text(_error!),
+        Wrap(
+          spacing: EmiSpacing.sm,
+          children: [
+            OutlinedButton(onPressed: _play, child: const Text('Putar')),
+            OutlinedButton(onPressed: _player.pause, child: const Text('Jeda')),
+            OutlinedButton(
+              onPressed: _player.stop,
+              child: const Text('Berhenti'),
+            ),
+          ],
         ),
-        if (widget.item == null) ...const [
-          SizedBox(height: EmiSpacing.sm),
-          Text('Belum Ada Audio untuk Ditinjau'),
-          Text(
-            'Audio akan muncul setelah kosakata memiliki file audio publik yang valid.',
-          ),
-        ] else ...[
-          const SizedBox(height: EmiSpacing.sm),
-          Text(widget.item!.mekongga),
-          Text(widget.item!.indonesia),
-          if (_error != null) Text(_error!),
-          Wrap(
-            spacing: EmiSpacing.sm,
-            children: [
-              OutlinedButton(onPressed: _play, child: const Text('Putar')),
-              OutlinedButton(
-                onPressed: _player.pause,
-                child: const Text('Jeda'),
-              ),
-              OutlinedButton(
-                onPressed: _player.stop,
-                child: const Text('Berhenti'),
-              ),
-            ],
-          ),
-        ],
       ],
-    ),
+      const SizedBox(height: EmiSpacing.sm),
+    ],
   );
 
   Future<void> _play() async {
@@ -987,21 +1007,18 @@ class _SearchBar extends StatelessWidget {
   final VoidCallback onAdd;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(
-      EmiSpacing.md,
-      EmiSpacing.md,
-      EmiSpacing.md,
-      0,
+    padding: const EdgeInsets.symmetric(
+      horizontal: EmiSpacing.md,
+      vertical: EmiSpacing.md,
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _PageIntro(
+        const _PageIntro(
           title: 'Kamus',
           subtitle: 'Kelola kosakata Mekongga agar mudah dipelajari siswa.',
           icon: Icons.auto_stories_outlined,
         ),
-        const SizedBox(height: EmiSpacing.sm),
         TextField(
           decoration: const InputDecoration(
             prefixIcon: Icon(Icons.search),
@@ -1009,7 +1026,7 @@ class _SearchBar extends StatelessWidget {
           ),
           onChanged: onChanged,
         ),
-        const SizedBox(height: EmiSpacing.sm),
+        const SizedBox(height: EmiSpacing.md),
         Wrap(
           spacing: EmiSpacing.sm,
           runSpacing: EmiSpacing.sm,
@@ -1051,7 +1068,7 @@ class _DictionaryTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(EmiRadii.card),
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.all(EmiSpacing.xs),
+        padding: const EdgeInsets.all(EmiSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1086,8 +1103,10 @@ class _DictionaryTile extends StatelessWidget {
                 _Chip(
                   text: item.audioUrl?.isNotEmpty == true
                       ? 'Audio Tersedia'
-                      : 'Audio Belum Tersedia',
-                  icon: Icons.volume_up_outlined,
+                      : 'Belum Ada Audio',
+                  icon: item.audioUrl?.isNotEmpty == true
+                      ? Icons.volume_up_outlined
+                      : Icons.volume_off_outlined,
                   color: item.audioUrl?.isNotEmpty == true
                       ? EmiColors.success
                       : EmiColors.surfaceSoft,
@@ -1111,7 +1130,8 @@ class _PageIntro extends StatelessWidget {
   final String subtitle;
   final IconData icon;
   @override
-  Widget build(BuildContext context) => EmiCard(
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: EmiSpacing.lg),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1132,23 +1152,6 @@ class _PageIntro extends StatelessWidget {
   );
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title, required this.subtitle});
-  final String title;
-  final String subtitle;
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: EmiSpacing.sm),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: EmiSpacing.xs),
-        Text(subtitle),
-      ],
-    ),
-  );
-}
 
 class _SectionCard extends StatelessWidget {
   const _SectionCard({
@@ -1160,18 +1163,23 @@ class _SectionCard extends StatelessWidget {
   final IconData icon;
   final List<Widget> children;
   @override
-  Widget build(BuildContext context) => EmiCard(
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: EmiSpacing.lg),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(icon),
+            Icon(
+              icon,
+              size: 20,
+              color: EmiColors.textPrimary.withValues(alpha: 0.7),
+            ),
             const SizedBox(width: EmiSpacing.sm),
             Text(title, style: Theme.of(context).textTheme.titleMedium),
           ],
         ),
-        const SizedBox(height: EmiSpacing.md),
+        const SizedBox(height: EmiSpacing.sm),
         ...children,
       ],
     ),
@@ -1224,35 +1232,6 @@ class _Chip extends StatelessWidget {
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(EmiRadii.pill),
     ),
-  );
-}
-
-class _PagedList extends StatelessWidget {
-  const _PagedList({
-    this.header,
-    required this.children,
-    required this.empty,
-    required this.hasMore,
-    required this.onMore,
-  });
-  final Widget? header;
-  final List<Widget> children;
-  final String empty;
-  final bool hasMore;
-  final VoidCallback onMore;
-  @override
-  Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(EmiSpacing.md),
-    children: [
-      ?header,
-      if (children.isEmpty)
-        EmiCard(child: Text(empty))
-      else ...[
-        ...children,
-        if (hasMore)
-          OutlinedButton(onPressed: onMore, child: const Text('Muat Lagi')),
-      ],
-    ],
   );
 }
 
