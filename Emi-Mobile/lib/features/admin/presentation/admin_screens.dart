@@ -115,6 +115,7 @@ class AdminDashboardScreen extends ConsumerWidget {
   IconData _featureIcon(AdminFeature feature) => switch (feature) {
     AdminFeature.approvals => Icons.how_to_reg_outlined,
     AdminFeature.schools => Icons.apartment_outlined,
+    AdminFeature.classes => Icons.school_outlined,
     AdminFeature.dictionary => Icons.translate_outlined,
     AdminFeature.quizzes => Icons.quiz_outlined,
     AdminFeature.reports => Icons.bar_chart_outlined,
@@ -132,6 +133,7 @@ class AdminListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (feature == AdminFeature.users) return const AdminUsersScreen();
     if (feature == AdminFeature.schools) return const AdminSchoolsScreen();
+    if (feature == AdminFeature.classes) return const AdminClassesScreen();
     final query = AdminFeatureQuery(feature: feature);
     final page = ref.watch(adminListProvider(query));
     return AdminShell(
@@ -188,6 +190,7 @@ class AdminDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (feature == AdminFeature.users) return AdminUserDetailScreen(id: id);
     if (feature == AdminFeature.schools) return AdminSchoolDetailScreen(id: id);
+    if (feature == AdminFeature.classes) return AdminClassDetailScreen(id: id);
     final detail = ref.watch(
       adminDetailProvider(AdminDetailQuery(feature: feature, id: id)),
     );
@@ -226,6 +229,209 @@ class AdminDetailScreen extends ConsumerWidget {
   }
 }
 
+class AdminClassesScreen extends ConsumerStatefulWidget {
+  const AdminClassesScreen({super.key});
+
+  @override
+  ConsumerState<AdminClassesScreen> createState() => _AdminClassesScreenState();
+}
+
+class _AdminClassesScreenState extends ConsumerState<AdminClassesScreen> {
+  final _search = TextEditingController();
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final page = ref.watch(adminClassesProvider);
+    final query = ref.read(adminClassesProvider.notifier).query;
+    return AdminShell(
+      title: 'Kelas',
+      child: RefreshIndicator(
+        onRefresh: () => ref.read(adminClassesProvider.notifier).refresh(),
+        child: ListView(
+          padding: const EdgeInsets.all(EmiSpacing.md),
+          children: [
+            FilledButton.icon(
+              onPressed: () => context.push('/admin/classes/create'),
+              icon: const Icon(Icons.add),
+              label: const Text('Tambah Kelas'),
+            ),
+            const SizedBox(height: EmiSpacing.md),
+            TextField(
+              controller: _search,
+              decoration: InputDecoration(
+                hintText: 'Cari nama kelas',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: IconButton(
+                  tooltip: 'Filter',
+                  onPressed: () => _showClassFilter(context, query),
+                  icon: Badge(
+                    isLabelVisible:
+                        query.status != null || query.schoolId != null,
+                    child: const Icon(Icons.tune),
+                  ),
+                ),
+              ),
+              onChanged: (value) {
+                _debounce?.cancel();
+                _debounce = Timer(const Duration(milliseconds: 400), () {
+                  ref.read(adminClassesProvider.notifier).search(value);
+                });
+              },
+            ),
+            const SizedBox(height: EmiSpacing.md),
+            page.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (_, _) => FriendlyState(
+                icon: Icons.wifi_off_outlined,
+                title: 'Data belum bisa dimuat',
+                message: 'Periksa koneksi internet, lalu coba lagi.',
+                onRetry: () => ref.invalidate(adminClassesProvider),
+              ),
+              data: (data) {
+                if (data.items.isEmpty) {
+                  final hasSearch = _search.text.trim().isNotEmpty;
+                  return FriendlyState(
+                    icon: Icons.school_outlined,
+                    title: hasSearch
+                        ? 'Kelas Tidak Ditemukan'
+                        : 'Belum Ada Kelas',
+                    message: hasSearch
+                        ? 'Coba gunakan nama kelas atau filter yang berbeda.'
+                        : 'Tambahkan kelas agar Guru dan Siswa dapat ditempatkan.',
+                  );
+                }
+                return Column(
+                  children: [
+                    for (final klass in data.items) ...[
+                      _AdminClassTile(klass: klass),
+                      const SizedBox(height: EmiSpacing.sm),
+                    ],
+                    if (data.hasMore)
+                      FilledButton(
+                        onPressed: () =>
+                            ref.read(adminClassesProvider.notifier).loadMore(),
+                        child: const Text('Muat Lagi'),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showClassFilter(
+    BuildContext context,
+    AdminListQuery query,
+  ) async {
+    String? status = query.status;
+    String? schoolId = query.schoolId;
+    final schools =
+        ref.read(adminSchoolsProvider).valueOrNull?.items ??
+        const <AdminSchool>[];
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: const EdgeInsets.all(EmiSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Pilih Sekolah',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: EmiSpacing.md),
+              DropdownButtonFormField<String?>(
+                initialValue: schoolId,
+                decoration: const InputDecoration(labelText: 'Pilih Sekolah'),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Semua Sekolah'),
+                  ),
+                  for (final school in schools)
+                    DropdownMenuItem(
+                      value: school.id,
+                      child: Text(school.name),
+                    ),
+                ],
+                onChanged: (value) => setSheetState(() => schoolId = value),
+              ),
+              const SizedBox(height: EmiSpacing.md),
+              DropdownButtonFormField<String?>(
+                initialValue: status,
+                decoration: const InputDecoration(labelText: 'Status'),
+                items: const [
+                  DropdownMenuItem(value: null, child: Text('Semua Status')),
+                  DropdownMenuItem(value: 'active', child: Text('Aktif')),
+                  DropdownMenuItem(
+                    value: 'inactive',
+                    child: Text('Tidak Aktif'),
+                  ),
+                ],
+                onChanged: (value) => setSheetState(() => status = value),
+              ),
+              const SizedBox(height: EmiSpacing.lg),
+              FilledButton(
+                onPressed: () {
+                  ref
+                      .read(adminClassesProvider.notifier)
+                      .filter(schoolId: schoolId, status: status);
+                  Navigator.pop(context);
+                },
+                child: const Text('Terapkan'),
+              ),
+              TextButton(
+                onPressed: () {
+                  ref.read(adminClassesProvider.notifier).filter();
+                  Navigator.pop(context);
+                },
+                child: const Text('Hapus Filter'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AdminClassTile extends StatelessWidget {
+  const _AdminClassTile({required this.klass});
+
+  final AdminClass klass;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    leading: const CircleAvatar(child: Icon(Icons.school_outlined)),
+    title: Text(klass.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+    subtitle: Text(
+      [
+        klass.schoolName ?? 'Belum Ada Sekolah',
+        'Guru: ${klass.teacherName ?? 'Belum Ada Guru'}',
+        '${klass.studentsCount == 0 ? 'Belum Ada Siswa' : '${klass.studentsCount} Siswa'} • ${_classStatusLabel(klass.status)}',
+      ].join('\n'),
+      maxLines: 3,
+      overflow: TextOverflow.ellipsis,
+    ),
+    trailing: const Icon(Icons.chevron_right),
+    onTap: () => context.push('/admin/classes/${klass.id}'),
+  );
+}
+
 class AdminSchoolsScreen extends ConsumerStatefulWidget {
   const AdminSchoolsScreen({super.key});
 
@@ -256,7 +462,7 @@ class _AdminSchoolsScreenState extends ConsumerState<AdminSchoolsScreen> {
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
             FilledButton.icon(
-              onPressed: () => context.go('/admin/schools/create'),
+              onPressed: () => context.push('/admin/schools/create'),
               icon: const Icon(Icons.add),
               label: const Text('Tambah Sekolah'),
             ),
@@ -400,7 +606,7 @@ class _AdminSchoolTile extends StatelessWidget {
       overflow: TextOverflow.ellipsis,
     ),
     trailing: const Icon(Icons.chevron_right),
-    onTap: () => context.go('/admin/schools/${school.id}'),
+    onTap: () => context.push('/admin/schools/${school.id}'),
   );
 }
 
@@ -414,6 +620,7 @@ class AdminSchoolDetailScreen extends ConsumerWidget {
     final detail = ref.watch(adminSchoolDetailProvider(id));
     return AdminShell(
       title: 'Detail Sekolah',
+      fallbackRoute: '/admin/schools',
       child: detail.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => FriendlyState(
@@ -470,7 +677,7 @@ class AdminSchoolDetailScreen extends ConsumerWidget {
             ),
             const SizedBox(height: EmiSpacing.md),
             FilledButton(
-              onPressed: () => context.go('/admin/schools/${school.id}/edit'),
+              onPressed: () => context.push('/admin/schools/${school.id}/edit'),
               child: const Text('Edit Sekolah'),
             ),
             const SizedBox(height: EmiSpacing.sm),
@@ -558,6 +765,7 @@ class AdminSchoolFormScreen extends ConsumerWidget {
         : ref.watch(adminSchoolDetailProvider(id!));
     return AdminShell(
       title: id == null ? 'Tambah Sekolah' : 'Edit Sekolah',
+      fallbackRoute: id == null ? '/admin/schools' : '/admin/schools/$id',
       child: id == null
           ? const _AdminSchoolForm()
           : detail!.when(
@@ -693,6 +901,462 @@ class _AdminSchoolFormState extends ConsumerState<_AdminSchoolForm> {
     }
   }
 }
+
+class AdminClassDetailScreen extends ConsumerWidget {
+  const AdminClassDetailScreen({super.key, required this.id});
+
+  final String id;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final detail = ref.watch(adminClassDetailProvider(id));
+    return AdminShell(
+      title: 'Detail Kelas',
+      fallbackRoute: '/admin/classes',
+      child: detail.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, _) => FriendlyState(
+          icon: Icons.wifi_off_outlined,
+          title: 'Data belum bisa dimuat',
+          message: 'Periksa koneksi internet, lalu coba lagi.',
+          onRetry: () => ref.invalidate(adminClassDetailProvider(id)),
+        ),
+        data: (klass) => ListView(
+          padding: const EdgeInsets.all(EmiSpacing.md),
+          children: [
+            EmiCard(
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const CircleAvatar(child: Icon(Icons.school_outlined)),
+                title: Text(
+                  klass.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Text(_classStatusLabel(klass.status)),
+              ),
+            ),
+            const SizedBox(height: EmiSpacing.md),
+            _InfoSection(
+              title: 'Informasi Kelas',
+              rows: {
+                'Sekolah': klass.schoolName ?? 'Belum Ada Sekolah',
+                'Tingkat': klass.gradeLevel ?? 'Belum diisi',
+                'Tahun Ajaran': klass.academicYear ?? 'Belum diisi',
+                'Status': _classStatusLabel(klass.status),
+              },
+            ),
+            const SizedBox(height: EmiSpacing.md),
+            _InfoSection(
+              title: 'Guru Kelas',
+              rows: {
+                'Nama': klass.teacherName ?? 'Belum Ada Guru',
+                'Email': klass.teacherEmail ?? '-',
+              },
+            ),
+            const SizedBox(height: EmiSpacing.md),
+            _InfoSection(
+              title: 'Siswa',
+              rows: {'Jumlah Siswa': '${klass.studentsCount} Siswa'},
+            ),
+            const SizedBox(height: EmiSpacing.sm),
+            _ClassStudentsList(classId: klass.id),
+            const SizedBox(height: EmiSpacing.md),
+            FilledButton(
+              onPressed: () => context.push('/admin/classes/${klass.id}/edit'),
+              child: const Text('Edit Kelas'),
+            ),
+            const SizedBox(height: EmiSpacing.sm),
+            OutlinedButton(
+              onPressed: () => _pickUser(context, ref, klass, 'teacher'),
+              child: Text(
+                klass.teacherName == null ? 'Pilih Guru' : 'Ganti Guru',
+              ),
+            ),
+            const SizedBox(height: EmiSpacing.sm),
+            OutlinedButton(
+              onPressed: () => _pickUser(context, ref, klass, 'student'),
+              child: const Text('Tambah Siswa'),
+            ),
+            const SizedBox(height: EmiSpacing.sm),
+            OutlinedButton(
+              onPressed: () => _confirmClassStatus(context, ref, klass),
+              child: Text(
+                klass.status == 'active'
+                    ? 'Nonaktifkan Kelas'
+                    : 'Aktifkan Kelas',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickUser(
+    BuildContext context,
+    WidgetRef ref,
+    AdminClass klass,
+    String role,
+  ) async {
+    final users = await ref
+        .read(adminRepositoryProvider)
+        .users(AdminListQuery(role: role, status: 'approved'));
+    if (!context.mounted) return;
+    final selected = await showModalBottomSheet<AdminUser>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => ListView(
+        padding: const EdgeInsets.all(EmiSpacing.md),
+        children: [
+          Text(
+            role == 'teacher' ? 'Pilih Guru' : 'Tambah Siswa',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: EmiSpacing.md),
+          for (final user in users.items)
+            ListTile(
+              leading: CircleAvatar(
+                child: Icon(role == 'teacher' ? Icons.school : Icons.person),
+              ),
+              title: Text(user.name),
+              subtitle: Text(user.schoolName ?? 'Belum Ada Sekolah'),
+              onTap: () => Navigator.pop(context, user),
+            ),
+        ],
+      ),
+    );
+    if (selected == null) return;
+    if (role == 'teacher') {
+      await ref
+          .read(adminRepositoryProvider)
+          .assignTeacher(klass.id, selected.id);
+    } else {
+      await ref
+          .read(adminRepositoryProvider)
+          .assignStudent(klass.id, selected.id);
+    }
+    ref.invalidate(adminClassDetailProvider(klass.id));
+    ref.invalidate(adminClassesProvider);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          role == 'teacher'
+              ? 'Guru kelas berhasil disimpan.'
+              : 'Siswa berhasil ditambahkan.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmClassStatus(
+    BuildContext context,
+    WidgetRef ref,
+    AdminClass klass,
+  ) async {
+    final activate = klass.status != 'active';
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          activate ? 'Aktifkan kelas ini?' : 'Nonaktifkan kelas ini?',
+        ),
+        content: Text(
+          activate
+              ? 'Kelas dapat digunakan kembali untuk penempatan Guru dan Siswa.'
+              : 'Kelas tidak dapat digunakan untuk penempatan baru sampai diaktifkan kembali.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(activate ? 'Aktifkan' : 'Nonaktifkan'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    if (activate) {
+      await ref
+          .read(adminRepositoryProvider)
+          .saveClass(
+            id: klass.id,
+            schoolId: klass.schoolId ?? '',
+            name: klass.name,
+            gradeLevel: klass.gradeLevel,
+            academicYear: klass.academicYear,
+            status: 'active',
+          );
+    } else {
+      await ref.read(adminRepositoryProvider).deactivateClass(klass.id);
+    }
+    ref.invalidate(adminClassDetailProvider(klass.id));
+    ref.invalidate(adminClassesProvider);
+  }
+}
+
+class _ClassStudentsList extends ConsumerWidget {
+  const _ClassStudentsList({required this.classId});
+
+  final String classId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final students = ref.watch(adminClassStudentsProvider(classId));
+    return students.when(
+      loading: () => const LinearProgressIndicator(),
+      error: (_, _) => const Text('Data siswa belum bisa dimuat.'),
+      data: (page) {
+        if (page.items.isEmpty) return const Text('Belum Ada Siswa');
+        return Column(
+          children: [
+            for (final student in page.items)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const CircleAvatar(child: Icon(Icons.person_outline)),
+                title: Text(student.name),
+                subtitle: Text(
+                  '${student.email}\n${_statusLabel(student.status)}',
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class AdminClassFormScreen extends ConsumerWidget {
+  const AdminClassFormScreen({super.key, this.id});
+
+  final String? id;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final detail = id == null ? null : ref.watch(adminClassDetailProvider(id!));
+    return AdminShell(
+      title: id == null ? 'Tambah Kelas' : 'Edit Kelas',
+      fallbackRoute: id == null ? '/admin/classes' : '/admin/classes/$id',
+      child: id == null
+          ? const _AdminClassForm()
+          : detail!.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (_, _) => FriendlyState(
+                icon: Icons.wifi_off_outlined,
+                title: 'Data belum bisa dimuat',
+                message: 'Periksa koneksi internet, lalu coba lagi.',
+                onRetry: () => ref.invalidate(adminClassDetailProvider(id!)),
+              ),
+              data: (klass) => _AdminClassForm(klass: klass),
+            ),
+    );
+  }
+}
+
+class _AdminClassForm extends ConsumerStatefulWidget {
+  const _AdminClassForm({this.klass});
+
+  final AdminClass? klass;
+
+  @override
+  ConsumerState<_AdminClassForm> createState() => _AdminClassFormState();
+}
+
+class _AdminClassFormState extends ConsumerState<_AdminClassForm> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _name;
+  late final TextEditingController _grade;
+  late final TextEditingController _year;
+  String? _schoolId;
+  late String _status;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _name = TextEditingController(text: widget.klass?.name ?? '');
+    _grade = TextEditingController(text: widget.klass?.gradeLevel ?? '');
+    _year = TextEditingController(text: widget.klass?.academicYear ?? '');
+    _schoolId = widget.klass?.schoolId;
+    _status = widget.klass?.status == 'inactive' ? 'inactive' : 'active';
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _grade.dispose();
+    _year.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final schools = ref.watch(adminSchoolsProvider);
+    return PopScope(
+      canPop: !_changed,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final leave = await _confirmLeave(context);
+        if (!context.mounted || leave != true) return;
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go(
+            widget.klass == null
+                ? '/admin/classes'
+                : '/admin/classes/${widget.klass!.id}',
+          );
+        }
+      },
+      child: ListView(
+        padding: const EdgeInsets.all(EmiSpacing.md),
+        children: [
+          Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextFormField(
+                  controller: _name,
+                  decoration: const InputDecoration(labelText: 'Nama Kelas'),
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Nama kelas wajib diisi.'
+                      : null,
+                ),
+                const SizedBox(height: EmiSpacing.md),
+                schools.when(
+                  loading: () => const LinearProgressIndicator(),
+                  error: (_, _) =>
+                      const Text('Data sekolah belum bisa dimuat.'),
+                  data: (page) => DropdownButtonFormField<String>(
+                    initialValue: _schoolId,
+                    decoration: const InputDecoration(
+                      labelText: 'Pilih Sekolah',
+                    ),
+                    items: [
+                      for (final school in page.items)
+                        DropdownMenuItem(
+                          value: school.id,
+                          child: Text(school.name),
+                        ),
+                    ],
+                    onChanged: _saving
+                        ? null
+                        : (value) => setState(() => _schoolId = value),
+                    validator: (value) => value == null || value.isEmpty
+                        ? 'Sekolah wajib dipilih.'
+                        : null,
+                  ),
+                ),
+                const SizedBox(height: EmiSpacing.md),
+                TextFormField(
+                  controller: _grade,
+                  decoration: const InputDecoration(labelText: 'Tingkat'),
+                ),
+                const SizedBox(height: EmiSpacing.md),
+                TextFormField(
+                  controller: _year,
+                  decoration: const InputDecoration(labelText: 'Tahun Ajaran'),
+                ),
+                const SizedBox(height: EmiSpacing.md),
+                DropdownButtonFormField<String>(
+                  initialValue: _status,
+                  decoration: const InputDecoration(labelText: 'Status'),
+                  items: const [
+                    DropdownMenuItem(value: 'active', child: Text('Aktif')),
+                    DropdownMenuItem(
+                      value: 'inactive',
+                      child: Text('Tidak Aktif'),
+                    ),
+                  ],
+                  onChanged: _saving
+                      ? null
+                      : (value) => setState(() => _status = value ?? 'active'),
+                ),
+                const SizedBox(height: EmiSpacing.lg),
+                FilledButton(
+                  onPressed: _saving ? null : _save,
+                  child: Text(_saving ? 'Menyimpan...' : 'Simpan'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool get _changed =>
+      _name.text != (widget.klass?.name ?? '') ||
+      _grade.text != (widget.klass?.gradeLevel ?? '') ||
+      _year.text != (widget.klass?.academicYear ?? '') ||
+      _schoolId != widget.klass?.schoolId ||
+      _status != (widget.klass?.status == 'inactive' ? 'inactive' : 'active');
+
+  Future<bool?> _confirmLeave(BuildContext context) => showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Batalkan perubahan?'),
+      content: const Text('Perubahan yang belum disimpan akan hilang.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Tetap di Halaman'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Keluar'),
+        ),
+      ],
+    ),
+  );
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
+    try {
+      final saved = await ref
+          .read(adminRepositoryProvider)
+          .saveClass(
+            id: widget.klass?.id,
+            schoolId: _schoolId!,
+            name: _name.text.trim(),
+            gradeLevel: _grade.text.trim().isEmpty ? null : _grade.text.trim(),
+            academicYear: _year.text.trim().isEmpty ? null : _year.text.trim(),
+            status: _status,
+          );
+      ref.invalidate(adminClassesProvider);
+      ref.invalidate(adminClassDetailProvider(saved.id));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.klass == null
+                ? 'Kelas berhasil ditambahkan.'
+                : 'Data kelas berhasil disimpan.',
+          ),
+        ),
+      );
+      context.go('/admin/classes/${saved.id}');
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Data belum bisa disimpan.')),
+      );
+      setState(() => _saving = false);
+    }
+  }
+}
+
+String _classStatusLabel(String value) => switch (value) {
+  'active' => 'Aktif',
+  'inactive' => 'Tidak Aktif',
+  _ => 'Status Tidak Dikenal',
+};
 
 String _schoolStatusLabel(String value) => switch (value) {
   'active' => 'Aktif',
@@ -890,7 +1554,7 @@ class _AdminUserTile extends StatelessWidget {
       overflow: TextOverflow.ellipsis,
     ),
     trailing: const Icon(Icons.chevron_right),
-    onTap: () => context.go('/admin/users/${user.id}'),
+    onTap: () => context.push('/admin/users/${user.id}'),
   );
 }
 
@@ -904,6 +1568,7 @@ class AdminUserDetailScreen extends ConsumerWidget {
     final detail = ref.watch(adminUserDetailProvider(id));
     return AdminShell(
       title: 'Guru dan Siswa',
+      fallbackRoute: '/admin/users',
       child: detail.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => FriendlyState(

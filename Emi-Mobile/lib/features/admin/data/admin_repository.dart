@@ -72,17 +72,25 @@ class AdminMetric {
 }
 
 class AdminListQuery {
-  const AdminListQuery({this.search, this.role, this.status, this.page = 1});
+  const AdminListQuery({
+    this.search,
+    this.role,
+    this.status,
+    this.schoolId,
+    this.page = 1,
+  });
 
   final String? search;
   final String? role;
   final String? status;
+  final String? schoolId;
   final int page;
 
   Map<String, dynamic> toQuery() => {
     if (search != null && search!.trim().isNotEmpty) 'search': search!.trim(),
     if (role != null && role!.isNotEmpty) 'role': role,
     if (status != null && status!.isNotEmpty) 'status': status,
+    if (schoolId != null && schoolId!.isNotEmpty) 'school_id': schoolId,
     'page': page,
     'per_page': 15,
   };
@@ -91,13 +99,16 @@ class AdminListQuery {
     String? search,
     String? role,
     String? status,
+    String? schoolId,
     int? page,
     bool clearRole = false,
     bool clearStatus = false,
+    bool clearSchool = false,
   }) => AdminListQuery(
     search: search ?? this.search,
     role: clearRole ? null : role ?? this.role,
     status: clearStatus ? null : status ?? this.status,
+    schoolId: clearSchool ? null : schoolId ?? this.schoolId,
     page: page ?? this.page,
   );
 
@@ -108,10 +119,11 @@ class AdminListQuery {
           other.search == search &&
           other.role == role &&
           other.status == status &&
+          other.schoolId == schoolId &&
           other.page == page;
 
   @override
-  int get hashCode => Object.hash(search, role, status, page);
+  int get hashCode => Object.hash(search, role, status, schoolId, page);
 }
 
 class AdminListPage {
@@ -260,6 +272,124 @@ class AdminSchool {
   );
 }
 
+class AdminClass {
+  const AdminClass({
+    required this.id,
+    required this.name,
+    required this.status,
+    this.schoolId,
+    this.schoolName,
+    this.teacherName,
+    this.teacherEmail,
+    this.studentsCount = 0,
+    this.gradeLevel,
+    this.academicYear,
+  });
+
+  final String id;
+  final String name;
+  final String status;
+  final String? schoolId;
+  final String? schoolName;
+  final String? teacherName;
+  final String? teacherEmail;
+  final int studentsCount;
+  final String? gradeLevel;
+  final String? academicYear;
+
+  factory AdminClass.fromJson(Map<String, dynamic> json) {
+    final school = _map(json['school']);
+    final assignment = _map(json['active_teacher_assignment']);
+    final teacher = _map(assignment['teacher']);
+    return AdminClass(
+      id: _string(json['id']),
+      name: _string(json['name'], fallback: 'Tanpa nama'),
+      status: _string(json['status']),
+      schoolId: _nullableString(json['school_id'] ?? school['id']),
+      schoolName: _nullableString(school['name'] ?? json['school_name']),
+      teacherName: _nullableString(
+        teacher['full_name'] ?? json['teacher_name'],
+      ),
+      teacherEmail: _nullableString(teacher['email']),
+      studentsCount: _int(json['active_students_count']) ?? 0,
+      gradeLevel: _nullableString(json['grade_level']),
+      academicYear: _nullableString(json['academic_year']),
+    );
+  }
+}
+
+class AdminClassStudent {
+  const AdminClassStudent({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.status,
+  });
+
+  final String id;
+  final String name;
+  final String email;
+  final String status;
+
+  factory AdminClassStudent.fromJson(Map<String, dynamic> json) {
+    final student = _map(json['student']);
+    return AdminClassStudent(
+      id: _string(student['id']),
+      name: _string(student['full_name'], fallback: 'Tanpa nama'),
+      email: _string(student['email']),
+      status: _string(student['status']),
+    );
+  }
+}
+
+class AdminClassStudentPage {
+  const AdminClassStudentPage({required this.items});
+
+  final List<AdminClassStudent> items;
+
+  factory AdminClassStudentPage.fromJson(Map<String, dynamic>? json) {
+    final rows = json?['data'] is List
+        ? (json?['data'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map(AdminClassStudent.fromJson)
+              .toList()
+        : <AdminClassStudent>[];
+    return AdminClassStudentPage(items: rows);
+  }
+}
+
+class AdminClassPage {
+  const AdminClassPage({
+    required this.items,
+    required this.currentPage,
+    required this.lastPage,
+    required this.total,
+  });
+
+  final List<AdminClass> items;
+  final int currentPage;
+  final int lastPage;
+  final int total;
+
+  bool get hasMore => currentPage < lastPage;
+
+  factory AdminClassPage.fromJson(Map<String, dynamic>? json) {
+    final rows = json?['data'] is List
+        ? (json?['data'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map(AdminClass.fromJson)
+              .toList()
+        : <AdminClass>[];
+    final meta = _map(json?['meta']);
+    return AdminClassPage(
+      items: rows,
+      currentPage: _int(meta['current_page']) ?? 1,
+      lastPage: _int(meta['last_page']) ?? 1,
+      total: _int(meta['total']) ?? rows.length,
+    );
+  }
+}
+
 class AdminSchoolPage {
   const AdminSchoolPage({
     required this.items,
@@ -381,6 +511,109 @@ class AdminRepository {
       throw const AppError(
         type: AppErrorType.unknown,
         message: 'Data admin tidak valid.',
+      );
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<AdminClassPage> classes(AdminListQuery query) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/classes',
+        queryParameters: query.toQuery(),
+      );
+      return AdminClassPage.fromJson(response.data);
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<AdminClass> classDetail(String id) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>('/classes/$id');
+      final data = response.data?['data'];
+      if (data is Map<String, dynamic>) return AdminClass.fromJson(data);
+      throw const AppError(
+        type: AppErrorType.unknown,
+        message: 'Data kelas tidak valid.',
+      );
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<AdminClassStudentPage> classStudents(String id) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/classes/$id/students',
+      );
+      return AdminClassStudentPage.fromJson(response.data);
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<AdminClass> saveClass({
+    String? id,
+    required String schoolId,
+    required String name,
+    String? gradeLevel,
+    String? academicYear,
+    required String status,
+  }) async {
+    try {
+      final data = {
+        'school_id': schoolId,
+        'name': name,
+        'grade_level': gradeLevel,
+        'academic_year': academicYear,
+        'status': status,
+      };
+      final response = id == null
+          ? await _dio.post<Map<String, dynamic>>('/classes', data: data)
+          : await _dio.put<Map<String, dynamic>>('/classes/$id', data: data);
+      final body = response.data?['data'];
+      if (body is Map<String, dynamic>) return AdminClass.fromJson(body);
+      throw const AppError(
+        type: AppErrorType.unknown,
+        message: 'Data kelas tidak valid.',
+      );
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<AdminClass> deactivateClass(String id) async {
+    try {
+      final response = await _dio.delete<Map<String, dynamic>>('/classes/$id');
+      final data = response.data?['data'];
+      if (data is Map<String, dynamic>) return AdminClass.fromJson(data);
+      throw const AppError(
+        type: AppErrorType.unknown,
+        message: 'Data kelas tidak valid.',
+      );
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<void> assignTeacher(String classId, String teacherId) async {
+    try {
+      await _dio.post<Map<String, dynamic>>(
+        '/classes/$classId/assign-teacher',
+        data: {'teacher_id': teacherId},
+      );
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<void> assignStudent(String classId, String studentId) async {
+    try {
+      await _dio.post<Map<String, dynamic>>(
+        '/classes/$classId/assign-student',
+        data: {'student_id': studentId},
       );
     } catch (error) {
       throw _map(error);

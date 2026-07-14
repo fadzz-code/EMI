@@ -244,6 +244,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: '/admin/classes',
+        builder: (_, _) => const AdminListScreen(feature: AdminFeature.classes),
+      ),
+      GoRoute(
+        path: '/admin/classes/create',
+        builder: (_, _) => const AdminClassFormScreen(),
+      ),
+      GoRoute(
+        path: '/admin/classes/:id/edit',
+        builder: (_, state) =>
+            AdminClassFormScreen(id: state.pathParameters['id']),
+      ),
+      GoRoute(
+        path: '/admin/classes/:id',
+        builder: (_, state) => AdminDetailScreen(
+          feature: AdminFeature.classes,
+          id: state.pathParameters['id'] ?? '',
+        ),
+      ),
+      GoRoute(
         path: '/admin/dictionary',
         builder: (_, _) => const AdminDictionaryScreen(),
       ),

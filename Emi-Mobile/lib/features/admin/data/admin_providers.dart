@@ -26,6 +26,20 @@ final adminDetailProvider =
           .detail(query.feature.endpoint, query.id),
     );
 
+final adminClassesProvider =
+    AsyncNotifierProvider<AdminClassesController, AdminClassPage>(
+      AdminClassesController.new,
+    );
+
+final adminClassDetailProvider = FutureProvider.family<AdminClass, String>(
+  (ref, id) => ref.watch(adminRepositoryProvider).classDetail(id),
+);
+
+final adminClassStudentsProvider =
+    FutureProvider.family<AdminClassStudentPage, String>(
+      (ref, id) => ref.watch(adminRepositoryProvider).classStudents(id),
+    );
+
 final adminSchoolsProvider =
     AsyncNotifierProvider<AdminSchoolsController, AdminSchoolPage>(
       AdminSchoolsController.new,
@@ -43,6 +57,59 @@ final adminUsersProvider =
 final adminUserDetailProvider = FutureProvider.family<AdminUser, String>(
   (ref, id) => ref.watch(adminRepositoryProvider).userDetail(id),
 );
+
+class AdminClassesController extends AsyncNotifier<AdminClassPage> {
+  AdminListQuery _query = const AdminListQuery();
+
+  AdminListQuery get query => _query;
+
+  @override
+  Future<AdminClassPage> build() => _load(_query);
+
+  Future<AdminClassPage> _load(AdminListQuery query) =>
+      ref.read(adminRepositoryProvider).classes(query);
+
+  Future<void> search(String value) async {
+    _query = _query.copyWith(search: value, page: 1);
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() => _load(_query));
+  }
+
+  Future<void> filter({String? schoolId, String? status}) async {
+    _query = _query.copyWith(
+      schoolId: schoolId,
+      status: status,
+      clearSchool: schoolId == null,
+      clearStatus: status == null,
+      page: 1,
+    );
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() => _load(_query));
+  }
+
+  Future<void> refresh() async {
+    state = await AsyncValue.guard(() => _load(_query.copyWith(page: 1)));
+  }
+
+  Future<void> loadMore() async {
+    final current = state.valueOrNull;
+    if (current == null || !current.hasMore || state.isLoading) return;
+    final nextQuery = _query.copyWith(page: current.currentPage + 1);
+    final next = await _load(nextQuery);
+    final byId = {
+      for (final item in [...current.items, ...next.items]) item.id: item,
+    };
+    _query = nextQuery;
+    state = AsyncData(
+      AdminClassPage(
+        items: byId.values.toList(),
+        currentPage: next.currentPage,
+        lastPage: next.lastPage,
+        total: next.total,
+      ),
+    );
+  }
+}
 
 class AdminSchoolsController extends AsyncNotifier<AdminSchoolPage> {
   AdminListQuery _query = const AdminListQuery();
@@ -210,6 +277,7 @@ enum AdminFeature {
     AdminFeature.approvals ||
     AdminFeature.users ||
     AdminFeature.schools ||
+    AdminFeature.classes ||
     AdminFeature.dictionary ||
     AdminFeature.quizzes ||
     AdminFeature.reports ||

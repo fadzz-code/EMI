@@ -8,10 +8,16 @@ import '../../auth/presentation/auth_controller.dart';
 import '../data/admin_providers.dart';
 
 class AdminShell extends ConsumerWidget {
-  const AdminShell({super.key, required this.title, required this.child});
+  const AdminShell({
+    super.key,
+    required this.title,
+    required this.child,
+    this.fallbackRoute,
+  });
 
   final String title;
   final Widget child;
+  final String? fallbackRoute;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -34,13 +40,21 @@ class AdminShell extends ConsumerWidget {
               ),
               child: Row(
                 children: [
-                  Builder(
-                    builder: (context) => IconButton(
-                      key: const Key('adminMenuButton'),
-                      onPressed: () => Scaffold.of(context).openDrawer(),
-                      icon: const Icon(Icons.menu),
+                  if (fallbackRoute == null)
+                    Builder(
+                      builder: (context) => IconButton(
+                        key: const Key('adminMenuButton'),
+                        onPressed: () => Scaffold.of(context).openDrawer(),
+                        icon: const Icon(Icons.menu),
+                      ),
+                    )
+                  else
+                    IconButton(
+                      key: const Key('adminBackButton'),
+                      tooltip: 'Kembali',
+                      onPressed: () => _back(context, fallbackRoute!),
+                      icon: const Icon(Icons.arrow_back),
                     ),
-                  ),
                   const SizedBox(width: EmiSpacing.sm),
                   Expanded(
                     child: Text(
@@ -57,6 +71,14 @@ class AdminShell extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  void _back(BuildContext context, String route) {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(route);
+    }
   }
 }
 
