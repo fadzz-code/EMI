@@ -208,6 +208,7 @@ class AdminUser {
     this.phone,
     this.avatarUrl,
     this.schoolName,
+    this.classId,
     this.className,
     this.createdAt,
   });
@@ -220,6 +221,7 @@ class AdminUser {
   final String? phone;
   final String? avatarUrl;
   final String? schoolName;
+  final String? classId;
   final String? className;
   final String? createdAt;
 
@@ -236,6 +238,7 @@ class AdminUser {
       role: _string(json['role']),
       status: _string(json['status']),
       schoolName: _nullableString(school['name']),
+      classId: _nullableString(klass['id']),
       className: _nullableString(klass['name']),
       createdAt: _nullableString(json['created_at']),
     );

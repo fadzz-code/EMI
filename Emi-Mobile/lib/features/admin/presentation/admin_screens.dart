@@ -1027,6 +1027,48 @@ class AdminClassDetailScreen extends ConsumerWidget {
       ),
     );
     if (selected == null) return;
+    if (selected.classId == klass.id) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            role == 'teacher'
+                ? 'Guru ini sudah menjadi Guru kelas.'
+                : 'Siswa ini sudah berada di kelas ini.',
+          ),
+        ),
+      );
+      return;
+    }
+    if (selected.classId != null && selected.classId!.isNotEmpty) {
+      if (!context.mounted) return;
+      final move = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(
+            role == 'teacher'
+                ? 'Pindahkan Guru ke kelas ini?'
+                : 'Pindahkan Siswa?',
+          ),
+          content: Text(
+            role == 'teacher'
+                ? 'Guru akan berhenti menjadi Guru aktif di kelas lamanya dan menjadi Guru aktif di kelas ini.'
+                : 'Siswa akan keluar dari kelas lama dan masuk ke kelas ini.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Pindahkan'),
+            ),
+          ],
+        ),
+      );
+      if (move != true) return;
+    }
     if (role == 'teacher') {
       await ref
           .read(adminRepositoryProvider)
@@ -1037,7 +1079,13 @@ class AdminClassDetailScreen extends ConsumerWidget {
           .assignStudent(klass.id, selected.id);
     }
     ref.invalidate(adminClassDetailProvider(klass.id));
+    if (selected.classId != null && selected.classId!.isNotEmpty) {
+      ref.invalidate(adminClassDetailProvider(selected.classId!));
+      ref.invalidate(adminClassStudentsProvider(selected.classId!));
+    }
+    ref.invalidate(adminClassStudentsProvider(klass.id));
     ref.invalidate(adminClassesProvider);
+    ref.invalidate(adminUsersProvider);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -1081,18 +1129,37 @@ class AdminClassDetailScreen extends ConsumerWidget {
     );
     if (ok != true) return;
     if (activate) {
-      await ref
-          .read(adminRepositoryProvider)
-          .saveClass(
-            id: klass.id,
-            schoolId: klass.schoolId ?? '',
-            name: klass.name,
-            gradeLevel: klass.gradeLevel,
-            academicYear: klass.academicYear,
-            status: 'active',
-          );
+      try {
+        await ref
+            .read(adminRepositoryProvider)
+            .saveClass(
+              id: klass.id,
+              schoolId: klass.schoolId ?? '',
+              name: klass.name,
+              gradeLevel: klass.gradeLevel,
+              academicYear: klass.academicYear,
+              status: 'active',
+            );
+      } catch (_) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Kelas tidak dapat diaktifkan.')),
+        );
+        return;
+      }
     } else {
-      await ref.read(adminRepositoryProvider).deactivateClass(klass.id);
+      try {
+        await ref.read(adminRepositoryProvider).deactivateClass(klass.id);
+      } catch (error) {
+        if (!context.mounted) return;
+        final message = error.toString().contains('CLASS_HAS_ACTIVE_')
+            ? 'Kelas belum dapat dinonaktifkan karena masih memiliki Guru atau Siswa aktif.'
+            : 'Kelas tidak dapat dinonaktifkan.';
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+        return;
+      }
     }
     ref.invalidate(adminClassDetailProvider(klass.id));
     ref.invalidate(adminClassesProvider);
