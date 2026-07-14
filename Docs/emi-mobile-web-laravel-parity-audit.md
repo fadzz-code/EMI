@@ -28,15 +28,15 @@ Only these statuses are used: `PARITY_COMPLETE`, `PARTIAL`, `READ_ONLY`, `UI_ONL
 
 | Fitur Auth | Web Route/UI | Endpoint Laravel | Method | Request | Response | Middleware/Policy | Flutter Status | Test | Gap |
 |---|---|---|---|---|---|---|---|---|---|
-| Login | `/login`, `LoginForm` | `/auth/login` | POST | `email`, `password`, `device_name` | `token`, `token_type`, `user` | `throttle:emi-login` | PARTIAL | UNIT/WIDGET | Mobile login real API, but forgot/reset absent; device name hardcoded `emi-flutter-android`. |
-| Register role selection | `/register` | `/auth/register` | POST | `requested_role` teacher/student | pending user/request | `throttle:emi-register` | MISSING | none | Mobile has no register flow. |
-| Register Guru | `/register/teacher` | `/auth/register` | POST | `full_name`, `email`, password confirmed, `school_id`, `class_id`, role teacher | pending request | `RegisterRequest` | MISSING | none | Mobile missing teacher registration. |
-| Register Siswa | `/register/student` | `/auth/register` | POST | same, role student | pending request | `RegisterRequest` | MISSING | none | Mobile missing student registration. |
-| Pending registration | `/pending-approval` | login/me status | GET/POST | n/a | user/status | AuthService blocks unapproved login | PARTIAL | auth repo | Mobile blocks non-approved with forbidden message, no pending page UX. |
+| Login | `/login`, `LoginForm` | `/auth/login` | POST | `email`, `password`, `device_name` | `token`, `token_type`, `user` | `throttle:emi-login` | PARTIAL | UNIT/WIDGET | Mobile login real API, distinguishes admin/teacher/student and account states; device name still static. |
+| Register role selection | `/register` | `/auth/register` | POST | `requested_role` teacher/student | pending user/request | `throttle:emi-register` | PARTIAL | UNIT/WIDGET | Mobile `/register` supports teacher/student, public school/class lookup, pending result. |
+| Register Guru | `/register/teacher` | `/auth/register` | POST | `full_name`, `email`, password confirmed, `school_id`, `class_id`, role teacher | pending request | `RegisterRequest` | PARTIAL | UNIT/WIDGET | Mobile uses shared register screen with role Guru. |
+| Register Siswa | `/register/student` | `/auth/register` | POST | same, role student | pending request | `RegisterRequest` | PARTIAL | UNIT/WIDGET | Mobile uses shared register screen with role Siswa. |
+| Pending registration | `/pending-approval` | login/me status | GET/POST | n/a | user/status | AuthService blocks unapproved login | PARTIAL | auth repo/widget | Mobile has dedicated account status UX. |
 | Admin approval | `/admin/approvals` | `/admin/registration-requests/{id}/approve` | POST | approve payload | request/user updated | auth + role admin + policy | PARTIAL | admin tests | Mobile has approval screens/API; parity not proven for all fields. |
-| Rejected registration | `/admin/approvals`, `/pending-approval` | `/admin/registration-requests/{id}/reject` | POST | reason | request rejected | auth + role admin + policy | PARTIAL | admin tests | Mobile no rejected-account screen copy. |
-| Account activation | Admin users/status | `/users/{id}/status` | PATCH | status | user | auth + UserPolicy | PARTIAL | admin tests | Mobile admin users module missing; only status concepts in auth. |
-| Disabled account | Web auth/user status checks | `/auth/login`, `/auth/me` | POST/GET | token/login | user/status or forbidden | AuthService/status | PARTIAL | auth repo | Mobile treats non-approved as forbidden; disabled-specific UX not proven. |
+| Rejected registration | `/admin/approvals`, `/pending-approval` | `/admin/registration-requests/{id}/reject` | POST | reason | request rejected | auth + role admin + policy | PARTIAL | admin/auth tests | Mobile has dedicated rejected account UX after login/status error. |
+| Account activation | Admin users/status | `/users/{id}/status` | PATCH | status | user | auth + UserPolicy | PARTIAL | admin tests | Mobile admin users module still missing; auth state handles status. |
+| Disabled account | Web auth/user status checks | `/auth/login`, `/auth/me` | POST/GET | token/login | user/status or forbidden | AuthService/status | PARTIAL | auth repo | Mobile has dedicated disabled account UX; backend rejects inactive login. |
 | Forgot password | Not found in web auth routes | not found | n/a | n/a | n/a | n/a | MISSING | none | Backend/web route absent in audit. |
 | Reset password | Not found | not found | n/a | n/a | n/a | n/a | MISSING | none | Backend/web route absent. |
 | Session restore | `AuthProvider` calls `/auth/me` | `/auth/me` | GET | bearer token | `UserResource` | auth:sanctum | PARTIAL | auth repo | Real restore exists; no refresh token; 401 clears token. |
@@ -49,8 +49,8 @@ Only these statuses are used: `PARITY_COMPLETE`, `PARTIAL`, `READ_ONLY`, `UI_ONL
 | Change password | settings/profile | `/auth/password` | PUT | current/new/confirmation | user/success | auth:sanctum | PARTIAL | auth tests | Mobile method exists; screen parity partial. |
 | Avatar upload | settings/profile | `/auth/me/avatar` | POST | multipart avatar | `UserResource`/media | auth:sanctum | PARTIAL | avatar validator | Mobile method exists; UX coverage partial. |
 | Avatar delete | profile | `/auth/me/avatar` | DELETE | none | success | auth:sanctum | PARTIAL | auth tests | API wired; UI parity partial. |
-| Delete account | Not found | not found | n/a | n/a | n/a | n/a | MISSING | none | Required for Play/privacy but absent. |
-| Account deletion request | Not found | not found | n/a | n/a | n/a | n/a | MISSING | none | Play readiness gap. |
+| Delete account | Web absent | `/auth/account` | DELETE | `current_password` | success empty data | auth:sanctum + own user + last-admin guard | PARTIAL | backend auth tests | Mobile can deactivate own account and clear session; request/anonymization policy still future. |
+| Account deletion request | Not found | not implemented | n/a | n/a | n/a | n/a | BLOCKED_BY_BACKEND | none | Request-based retention workflow not designed; direct self-deactivation implemented instead. |
 
 ## Role mapping and guards
 
@@ -78,7 +78,7 @@ Only these statuses are used: `PARITY_COMPLETE`, `PARTIAL`, `READ_ONLY`, `UI_ONL
 | `/dictionary` | Yes | No | `DictionaryEntryPolicy` | active entries only | Low. |
 | `/media/{id}/download` | No | No | signed URL | signed URL bearer secret | Medium; leaked temporary URL grants access until expiry. |
 
-No clear P0 backend data leak found in audit. Main security risks: broad shared routes depend on policies; signed media URLs must be treated as secrets; account deletion flow missing for Play/privacy.
+Phase 3 re-check found no clear P0 backend data leak in shared users/schools/classes/media/quiz paths. Added explicit student quiz cross-user denial tests and `/auth/account` self-deactivation with current password, token revocation, membership/assignment closure, and last-admin guard. Signed media URLs remain bearer-style temporary secrets by design.
 
 ---
 
@@ -538,7 +538,7 @@ Auth dan role guard
 | ID | Role | Modul | Task | Status Saat Ini | Target | Dependency | Priority | Estimasi Kompleksitas | Definition of Done |
 |---|---|---|---|---|---|---|---|---|---|
 | AUTH-01 | All | Auth | Add mobile register teacher/student + pending/rejected/disabled UX | MISSING/PARTIAL | Web parity | Auth API/public lookups | P0 | M | Register, pending, rejected, disabled flows tested. |
-| AUTH-02 | All | Auth | Add account deletion/request plan/API/UI or documented web-only flow | MISSING | Play compliant | backend decision | P0 | L | User can request/delete account per policy; tests pass. |
+| AUTH-02 | All | Auth | Complete account deletion retention/anonymization policy and Play disclosure | PARTIAL | Play compliant | `/auth/account` self-deactivation | P0 | M | Direct delete/deactivate exists with tests; retention policy documented and Play disclosure ready. |
 | AUTH-03 | All | Auth | Harden role/status copy and unsupported-role screen | PARTIAL | Clear UX | router/auth | P1 | XS | Admin/teacher/student copy accurate. |
 | ADM-01 | Admin | Users | Implement admin users list/detail/edit/status | MISSING | Web parity | auth/users API | P1 | M | User management mobile tested. |
 | ADM-02 | Admin | Schools | Implement schools CRUD | MISSING | Web parity | admin guard | P1 | M | CRUD/search/pagination validation tested. |
@@ -558,7 +558,7 @@ Auth dan role guard
 | TCH-04 | Guru | Reports | Implement progress/quiz filters/export | MISSING | Web parity | modules/quizzes | P1 | M | Filters/export tested. |
 | TCH-05 | Guru | Speaking | Implement exercises/submissions/audio/feedback | MISSING | Web parity | media/classes | P1 | L | Audio/feedback tested. |
 | TCH-06 | Guru | Profile | Implement profile/password/avatar | MISSING | Web parity | auth/media | P1 | S | Profile tests pass. |
-| STD-01 | Siswa | Quiz | Prove idempotency/timer/result visibility parity | PARTIAL | Robust parity | quiz API | P0 | M | Contract/widget tests for submit/timer/hidden results. |
+| STD-01 | Siswa | Quiz | Complete timer/result visibility device parity | PARTIAL | Robust parity | quiz API | P0 | M | Backend cross-user attempt denial/idempotency tested; mobile timer/result UX still needs parity. |
 | STD-02 | Siswa | Speaking | Device smoke for record/upload/feedback | PARTIAL | Robust parity | media/speaking | P1 | M | Device smoke documented. |
 | STD-03 | Siswa | Modules | Complete lesson content/media/resume parity | PARTIAL | Web parity | modules/media | P1 | M | Content URL/media/progress tests. |
 | REL-01 | Release | Config | Audit Android package/version/SDK/manifest/cleartext/signing | PARTIAL | Release ready | all P0 | P0 | M | Release config documented; no secrets committed. |
