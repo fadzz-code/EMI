@@ -37,8 +37,8 @@ Only these statuses are used: `PARITY_COMPLETE`, `PARTIAL`, `READ_ONLY`, `UI_ONL
 | Rejected registration | `/admin/approvals`, `/pending-approval` | `/admin/registration-requests/{id}/reject` | POST | reason | request rejected | auth + role admin + policy | PARTIAL | admin/auth tests | Mobile has dedicated rejected account UX after login/status error. |
 | Account activation | Admin users/status | `/users/{id}/status` | PATCH | status | user | auth + UserPolicy | PARTIAL | admin tests | Mobile admin users module still missing; auth state handles status. |
 | Disabled account | Web auth/user status checks | `/auth/login`, `/auth/me` | POST/GET | token/login | user/status or forbidden | AuthService/status | PARTIAL | auth repo | Mobile has dedicated disabled account UX; backend rejects inactive login. |
-| Forgot password | Not found in web auth routes | not found | n/a | n/a | n/a | n/a | MISSING | none | Backend/web route absent in audit. |
-| Reset password | Not found | not found | n/a | n/a | n/a | n/a | MISSING | none | Backend/web route absent. |
+| Forgot password | Not found in web auth routes | `/auth/forgot-password` | POST | `email` | safe generic success | `throttle:emi-login` | PARITY_COMPLETE | backend + mobile unit | Backend and mobile implemented; Web remains absent but mobile no longer blocked. |
+| Reset password | Not found | `/auth/reset-password` | POST | `email`, `token`, `password`, `password_confirmation` | success or safe expired-link error | `throttle:emi-login` | PARITY_COMPLETE | backend + mobile unit | Backend resets password and revokes tokens; Web remains absent. |
 | Session restore | `AuthProvider` calls `/auth/me` | `/auth/me` | GET | bearer token | `UserResource` | auth:sanctum | PARTIAL | auth repo | Real restore exists; no refresh token; 401 clears token. |
 | Token expiration | API client handles 401 | any | n/a | expired token | 401 envelope | auth:sanctum | PARTIAL | session invalidation | Mobile clears token on 401; no refresh. |
 | Unauthorized 401 | ProtectedRoute/API client | any auth endpoint | n/a | no/invalid token | `UNAUTHENTICATED` | auth:sanctum | PARTIAL | dio mapper/session | Covered by mapper; no full integration test. |
@@ -49,7 +49,7 @@ Only these statuses are used: `PARITY_COMPLETE`, `PARTIAL`, `READ_ONLY`, `UI_ONL
 | Change password | settings/profile | `/auth/password` | PUT | current/new/confirmation | user/success | auth:sanctum | PARTIAL | auth tests | Mobile method exists; screen parity partial. |
 | Avatar upload | settings/profile | `/auth/me/avatar` | POST | multipart avatar | `UserResource`/media | auth:sanctum | PARTIAL | avatar validator | Mobile method exists; UX coverage partial. |
 | Avatar delete | profile | `/auth/me/avatar` | DELETE | none | success | auth:sanctum | PARTIAL | auth tests | API wired; UI parity partial. |
-| Delete account | Web absent | `/auth/account` | DELETE | `current_password` | success empty data | auth:sanctum + own user + last-admin guard | PARTIAL | backend auth tests | Mobile can deactivate own account and clear session; request/anonymization policy still future. |
+| Delete account | Web absent | `/auth/account` | DELETE | `current_password` | success empty data | auth:sanctum + own user + last-admin guard | PARTIAL | backend + mobile unit | This is self-deactivation, not hard deletion. Mobile clears token only after successful backend deactivation; request/anonymization policy still future. |
 | Account deletion request | Not found | not implemented | n/a | n/a | n/a | n/a | BLOCKED_BY_BACKEND | none | Request-based retention workflow not designed; direct self-deactivation implemented instead. |
 
 ## Role mapping and guards
@@ -69,6 +69,8 @@ Only these statuses are used: `PARITY_COMPLETE`, `PARTIAL`, `READ_ONLY`, `UI_ONL
 |---|---:|---:|---:|---:|---|
 | `/auth/login` | No | No | No | status checked by service | Low; throttled. |
 | `/auth/register` | No | No | No | role limited teacher/student; active school/class validation | Low; approval required. |
+| `/auth/forgot-password` | No | No | No | generic response, no account enumeration | Low; throttled. |
+| `/auth/reset-password` | No | No | No | password broker token + expiry, revokes tokens after reset | Low; throttled. |
 | `/auth/logout` | Yes | No | No | current token only | Low. |
 | `/auth/me` | Yes | No | No | current user | Low. |
 | `/auth/me` PATCH | Yes | No | No | current user | Low. |
@@ -79,6 +81,22 @@ Only these statuses are used: `PARITY_COMPLETE`, `PARTIAL`, `READ_ONLY`, `UI_ONL
 | `/media/{id}/download` | No | No | signed URL | signed URL bearer secret | Medium; leaked temporary URL grants access until expiry. |
 
 Phase 3 re-check found no clear P0 backend data leak in shared users/schools/classes/media/quiz paths. Added explicit student quiz cross-user denial tests and `/auth/account` self-deactivation with current password, token revocation, membership/assignment closure, and last-admin guard. Signed media URLs remain bearer-style temporary secrets by design.
+
+## Auth P0 update 2026-07-14
+
+| Area | Status | Evidence | Note |
+|---|---|---|---|
+| Forgot password | PARITY_COMPLETE | Laravel `/auth/forgot-password`; Flutter `/forgot-password`; tests pass | Safe response: no email enumeration. |
+| Reset password | PARITY_COMPLETE | Laravel `/auth/reset-password`; Flutter `/reset-password`; tests pass | Password broker token expiry follows Laravel config; all tokens revoked after reset. |
+| Account states | PARITY_COMPLETE | Flutter `pendingApproval`, `registrationRejected`, `accountDisabled`, router status gate | Manual pending/rejected/inactive accounts remain NOT_TESTED if no test accounts. |
+| Profile all roles | PARTIAL | Shared `/auth/me`, `/auth/password`, `/auth/me/avatar`; teacher route reuses profile screen; admin profile in settings | Manual three-role profile smoke required. |
+| Account deletion | PARTIAL | DELETE `/auth/account`; mobile calls it as `Nonaktifkan Akun` behavior | It is deactivation, not hard deletion. |
+| Privacy decision | PARTIAL | Backend keeps user row and learning records; status set inactive; class links ended; tokens revoked | Privacy Policy, Data Safety, and public account deletion URL still MISSING. |
+| Backend security | PARITY_COMPLETE | Sanctum on protected endpoints; password current check; reset safe response; reset token via broker | Rate limiting uses `emi-login` for forgot/reset. |
+| Emulator three-role smoke | NOT_TESTED | Pending current session run | Must be updated after emulator attempt. |
+| Test coverage | PARTIAL | Backend auth test 25 pass; Flutter targeted auth test 11 pass | Full test suite pending. |
+
+Privacy technical decision: current mobile feature must be named as deactivation/nonactivation behavior. Backend does not hard-delete profile, quiz results, learning progress, speaking audio, transcripts, AI-related records, PDFs/knowledge uploaded by Admin, or audit-relevant school/class records. Tokens are revoked and active teacher/student assignments are ended. Separate legal Privacy Policy, Data Safety declarations, and account deletion request URL are required before Google Play release.
 
 ---
 

@@ -60,6 +60,13 @@ abstract class AuthRepository {
   Future<List<PublicClassOption>> listPublicClasses(String schoolId);
   Future<AuthRegistrationResult> register(AuthRegistrationPayload payload);
   Future<SessionUser> login({required String email, required String password});
+  Future<void> forgotPassword({required String email});
+  Future<void> resetPassword({
+    required String email,
+    required String token,
+    required String password,
+    required String passwordConfirmation,
+  });
   Future<SessionUser?> restoreSession();
   Future<SessionUser> currentUser();
   Future<SessionUser> updateProfile({required String fullName, String? phone});

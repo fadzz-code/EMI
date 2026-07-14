@@ -66,6 +66,34 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<void> forgotPassword({required String email}) async {
+    try {
+      await _remoteDataSource.forgotPassword(email: email);
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  @override
+  Future<void> resetPassword({
+    required String email,
+    required String token,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    try {
+      await _remoteDataSource.resetPassword(
+        email: email,
+        token: token,
+        password: password,
+        passwordConfirmation: passwordConfirmation,
+      );
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  @override
   Future<SessionUser?> restoreSession() async {
     final token = await _tokenStorage.readAccessToken();
     if (token == null || token.isEmpty) return null;
@@ -161,10 +189,9 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> deleteAccount({required String currentPassword}) async {
     try {
       await _remoteDataSource.deleteAccount(currentPassword: currentPassword);
+      await _tokenStorage.clearSession();
     } catch (error) {
       throw _map(error);
-    } finally {
-      await _tokenStorage.clearSession();
     }
   }
 

@@ -215,6 +215,80 @@ void main() {
     expect(storage.token, isNull);
   });
 
+  test('forgot password posts safe email payload', () async {
+    final repository = AuthRepositoryImpl(
+      remoteDataSource: AuthRemoteDataSource(
+        _dio((options, handler) {
+          expect(options.path, '/auth/forgot-password');
+          expect(options.data, {'email': 'user@test'});
+          handler.resolve(
+            Response(requestOptions: options, data: {'data': []}),
+          );
+        }),
+      ),
+      tokenStorage: _MemoryTokenStorage(),
+    );
+
+    await repository.forgotPassword(email: 'user@test');
+  });
+
+  test('reset password posts token and matching password payload', () async {
+    final repository = AuthRepositoryImpl(
+      remoteDataSource: AuthRemoteDataSource(
+        _dio((options, handler) {
+          expect(options.path, '/auth/reset-password');
+          expect(options.data, {
+            'email': 'user@test',
+            'token': 'reset-token',
+            'password': 'PasswordBaru123',
+            'password_confirmation': 'PasswordBaru123',
+          });
+          handler.resolve(
+            Response(requestOptions: options, data: {'data': []}),
+          );
+        }),
+      ),
+      tokenStorage: _MemoryTokenStorage(),
+    );
+
+    await repository.resetPassword(
+      email: 'user@test',
+      token: 'reset-token',
+      password: 'PasswordBaru123',
+      passwordConfirmation: 'PasswordBaru123',
+    );
+  });
+
+  test(
+    'delete account keeps local token when backend rejects password',
+    () async {
+      final storage = _MemoryTokenStorage()..token = 'safe-test-token';
+      final repository = AuthRepositoryImpl(
+        remoteDataSource: AuthRemoteDataSource(
+          _dio((options, handler) {
+            handler.reject(
+              DioException(
+                requestOptions: options,
+                response: Response(
+                  requestOptions: options,
+                  statusCode: 422,
+                  data: {'message': 'Password lama tidak sesuai.'},
+                ),
+              ),
+            );
+          }),
+        ),
+        tokenStorage: storage,
+      );
+
+      await expectLater(
+        repository.deleteAccount(currentPassword: 'salah'),
+        throwsA(isA<AppError>()),
+      );
+      expect(storage.token, 'safe-test-token');
+    },
+  );
+
   test('session user parses unknown role safely', () {
     final user = SessionUser.fromJson(_user(role: 'owner'));
 

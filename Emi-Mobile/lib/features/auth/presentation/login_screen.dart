@@ -114,6 +114,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           TextButton(
                             onPressed: auth.isLoading
                                 ? null
+                                : () => context.go('/forgot-password'),
+                            child: const Text('Lupa Kata Sandi'),
+                          ),
+                          TextButton(
+                            onPressed: auth.isLoading
+                                ? null
                                 : () => context.go('/register'),
                             child: const Text('Daftar akun Guru/Siswa'),
                           ),

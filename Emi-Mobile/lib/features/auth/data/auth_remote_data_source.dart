@@ -87,6 +87,30 @@ class AuthRemoteDataSource {
     return (token: token, user: SessionUser.fromJson(userJson));
   }
 
+  Future<void> forgotPassword({required String email}) async {
+    await _dio.post<Map<String, dynamic>>(
+      '/auth/forgot-password',
+      data: {'email': email},
+    );
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String token,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    await _dio.post<Map<String, dynamic>>(
+      '/auth/reset-password',
+      data: {
+        'email': email,
+        'token': token,
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      },
+    );
+  }
+
   Future<SessionUser> currentUser() async {
     final response = await _dio.get<Map<String, dynamic>>('/auth/me');
     final payload = ApiResponse<Map<String, dynamic>>.fromJson(

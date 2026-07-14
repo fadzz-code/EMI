@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\DictionaryController;
 use App\Http\Controllers\Api\DictionaryImportController;
 use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\ModuleTemplateApplyController;
+use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\PublicLookupController;
 use App\Http\Controllers\Api\QuizAttemptController;
 use App\Http\Controllers\Api\QuizQuestionController;
@@ -64,6 +65,8 @@ Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::post('register', [AuthController::class, 'register'])->middleware('throttle:emi-register');
         Route::post('login', [AuthController::class, 'login'])->middleware('throttle:emi-login');
+        Route::post('forgot-password', [PasswordResetController::class, 'forgot'])->middleware('throttle:emi-login');
+        Route::post('reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:emi-login');
 
         Route::middleware('auth:sanctum')->group(function () {
             Route::post('logout', [AuthController::class, 'logout']);

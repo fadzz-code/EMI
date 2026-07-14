@@ -21,6 +21,17 @@ class _FakeAuthRepository implements AuthRepository {
   ) async => const AuthRegistrationResult(userId: '1', status: 'pending');
 
   @override
+  Future<void> forgotPassword({required String email}) async {}
+
+  @override
+  Future<void> resetPassword({
+    required String email,
+    required String token,
+    required String password,
+    required String passwordConfirmation,
+  }) async {}
+
+  @override
   Future<SessionUser> currentUser() async => _student;
 
   @override

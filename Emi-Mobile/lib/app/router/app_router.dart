@@ -10,8 +10,10 @@ import '../../features/admin/presentation/admin_settings_screen.dart';
 import '../../features/auth/presentation/account_status_screen.dart';
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/auth_state.dart';
+import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
+import '../../features/auth/presentation/reset_password_screen.dart';
 import '../../features/chatbot/presentation/student_chatbot_screen.dart';
 import '../../features/culture/data/culture_models.dart';
 import '../../features/culture/presentation/student_culture_detail_screen.dart';
@@ -41,7 +43,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final auth = ref.read(authControllerProvider);
       final location = state.uri.path;
 
-      final isAuthRoute = location == '/login' || location == '/register';
+      final isAuthRoute =
+          location == '/login' ||
+          location == '/register' ||
+          location == '/forgot-password' ||
+          location == '/reset-password';
       final isStatusRoute = location == '/account-status';
 
       if (auth.status == AuthStatus.initializing) {
@@ -91,6 +97,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (_, _) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/reset-password',
+        builder: (_, _) => const ResetPasswordScreen(),
+      ),
       GoRoute(
         path: '/account-status',
         builder: (_, _) => const AccountStatusScreen(),

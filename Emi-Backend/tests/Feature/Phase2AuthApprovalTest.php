@@ -8,8 +8,11 @@ use App\Models\SchoolClass;
 use App\Models\StudentClassMembership;
 use App\Models\TeacherClassAssignment;
 use App\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Tests\TestCase;
 
 class Phase2AuthApprovalTest extends TestCase
@@ -299,6 +302,42 @@ class Phase2AuthApprovalTest extends TestCase
         $this->withToken($this->tokenFor($admin))->deleteJson('/api/v1/auth/account', [
             'current_password' => 'Password123',
         ])->assertConflict()->assertJsonPath('code', 'LAST_ADMIN_ACCOUNT');
+    }
+
+    public function test_forgot_password_uses_safe_response_and_sends_reset_notification(): void
+    {
+        Notification::fake();
+        $user = User::factory()->student()->approved()->create(['email' => 'reset@example.test']);
+
+        $this->postJson('/api/v1/auth/forgot-password', [
+            'email' => 'reset@example.test',
+        ])->assertOk()->assertJsonPath('message', 'Jika email terdaftar, petunjuk akan dikirim.');
+
+        $this->postJson('/api/v1/auth/forgot-password', [
+            'email' => 'missing@example.test',
+        ])->assertOk()->assertJsonPath('message', 'Jika email terdaftar, petunjuk akan dikirim.');
+
+        Notification::assertSentTo($user, ResetPassword::class);
+    }
+
+    public function test_reset_password_changes_password_and_revokes_tokens(): void
+    {
+        $user = User::factory()->student()->approved()->create([
+            'email' => 'reset@example.test',
+            'password' => 'Password123',
+        ]);
+        $token = Password::broker()->createToken($user);
+        $accessToken = $this->tokenFor($user);
+
+        $this->postJson('/api/v1/auth/reset-password', [
+            'email' => 'reset@example.test',
+            'token' => $token,
+            'password' => 'PasswordBaru123',
+            'password_confirmation' => 'PasswordBaru123',
+        ])->assertOk()->assertJsonPath('message', 'Kata sandi berhasil diubah.');
+
+        $this->assertTrue(Hash::check('PasswordBaru123', $user->refresh()->password));
+        $this->withToken($accessToken)->getJson('/api/v1/auth/me')->assertUnauthorized();
     }
 
     public function test_logout_revokes_current_token(): void
