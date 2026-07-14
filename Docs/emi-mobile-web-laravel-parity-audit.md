@@ -144,6 +144,23 @@ Privacy technical decision: current mobile feature must be named as deactivation
 | Activity logs | recent logs | settings | `/admin/settings` response `activity_logs` | GET | admin | `/admin/settings` | PLACEHOLDER | none | Mobile says activity unavailable. |
 | Profile Admin | profile/password/avatar | settings | `/auth/me`, `/auth/password`, avatar | GET/PATCH/PUT/POST/DELETE | auth | PARTIAL | auth tests | Profile mixed into settings; no full admin profile parity. |
 
+## Admin Approvals update 2026-07-15
+
+Status: `PARTIAL`.
+
+- Route Flutter: `/admin/approvals`, `/admin/approvals/:id`.
+- API aktual: `GET /admin/registration-requests` dengan `search`, `status`, `requested_role`, `school_id`, `class_id`, `page`, `per_page`; `GET /admin/registration-requests/{id}`; `POST /approve` body `review_note?`; `POST /reject` body `review_note` wajib.
+- Navigasi: menu drawer dan menu cepat `Persetujuan Akun` membuka route nyata; active state memakai prefix `/admin/approvals` sehingga detail tetap aktif.
+- List: API nyata, default `pending`, search debounce 400 ms, filter role/status, pagination `Muat Lagi`, empty/error Bahasa Indonesia, tanpa raw enum.
+- Detail: data akun, sekolah/kelas, informasi pengajuan, tombol `Setujui Akun`/`Tolak Akun`; alasan penolakan wajib karena backend mewajibkan `review_note` untuk reject.
+- Keputusan: approve/reject tidak optimistic; tombol disabled saat request; response conflict dipetakan ke `Status akun sudah berubah. Data terbaru telah dimuat.`; provider list/detail/dashboard/users diinvalidate setelah dialog selesai.
+- Backend security: middleware `auth:sanctum` + `role:admin` + policy; transaksi dan row lock; hanya pending dapat diproses; field password/remember token tidak tampil di resource/test.
+- Dashboard pending count dan Admin Pengguna: provider mobile diinvalidate setelah approve/reject; perubahan data aktual mengikuti backend.
+- Back navigation: detail memakai `context.push`, AppBar fallback `context.pop()` lalu `/admin/approvals` jika tidak ada history.
+- Test coverage: backend `Phase2AuthApprovalTest` 25 pass / 141 assertions; Flutter `flutter analyze --no-pub` No issues found; `flutter test` 82 pass.
+- Smoke test HP: `NOT_TESTED` pada sesi ini; jangan naik ke `PARITY_COMPLETE` sebelum manual device smoke approve/reject.
+- Gap tersisa: widget/navigation exhaustive matrix belum lengkap; device smoke pending.
+
 ## Admin Users update 2026-07-15
 
 Status: `PARTIAL`.

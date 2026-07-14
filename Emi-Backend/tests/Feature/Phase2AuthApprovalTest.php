@@ -363,22 +363,35 @@ class Phase2AuthApprovalTest extends TestCase
             ->assertJsonPath('code', 'FORBIDDEN');
     }
 
-    public function test_admin_can_list_and_show_registration_requests(): void
+    public function test_admin_can_list_search_filter_show_registration_requests_without_sensitive_fields(): void
     {
         $admin = User::factory()->admin()->create();
-        $registrationRequest = $this->pendingRegistrationRequest('student');
+        $registrationRequest = $this->pendingRegistrationRequest('student', ['full_name' => 'Siti Kolaka', 'email' => 'siti@example.test']);
+        $teacherRequest = $this->pendingRegistrationRequest('teacher', ['full_name' => 'Guru Mekongga', 'email' => 'guru-mekongga@example.test']);
 
-        $this->withToken($this->tokenFor($admin))
-            ->getJson('/api/v1/admin/registration-requests?status=pending&requested_role=student')
+        $response = $this->withToken($this->tokenFor($admin))
+            ->getJson('/api/v1/admin/registration-requests?status=pending&requested_role=student&search=siti&per_page=1')
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.0.id', $registrationRequest->id);
+            ->assertJsonPath('data.0.id', $registrationRequest->id)
+            ->assertJsonPath('data.0.requested_role', 'student')
+            ->assertJsonPath('meta.per_page', 1)
+            ->assertJsonMissingPath('data.0.user.password')
+            ->assertJsonMissingPath('data.0.user.remember_token');
+
+        $this->assertCount(1, $response->json('data'));
+
+        $this->withToken($this->tokenFor($admin))
+            ->getJson('/api/v1/admin/registration-requests?requested_role=teacher&search=guru-mekongga')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $teacherRequest->id);
 
         $this->withToken($this->tokenFor($admin))
             ->getJson("/api/v1/admin/registration-requests/{$registrationRequest->id}")
             ->assertOk()
             ->assertJsonPath('data.id', $registrationRequest->id)
-            ->assertJsonPath('data.user.id', $registrationRequest->user_id);
+            ->assertJsonPath('data.user.id', $registrationRequest->user_id)
+            ->assertJsonMissingPath('data.user.password');
     }
 
     public function test_admin_can_approve_student_and_create_active_membership_only(): void
@@ -560,10 +573,10 @@ class Phase2AuthApprovalTest extends TestCase
         return $user->createToken('PHPUnit')->plainTextToken;
     }
 
-    private function pendingRegistrationRequest(string $role): RegistrationRequest
+    private function pendingRegistrationRequest(string $role, array $userOverrides = []): RegistrationRequest
     {
         [$school, $schoolClass] = $this->activeSchoolAndClass();
-        $user = User::factory()->{$role}()->pending()->create();
+        $user = User::factory()->{$role}()->pending()->create($userOverrides);
 
         return RegistrationRequest::factory()->create([
             'user_id' => $user->id,

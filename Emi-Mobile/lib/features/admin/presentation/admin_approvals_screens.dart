@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,7 +7,10 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/emi_theme.dart';
 import '../../../core/errors/app_error.dart';
 import '../../../shared/widgets/emi_card.dart';
+import '../../../shared/widgets/role_dashboard_widgets.dart';
 import '../data/admin_crud_providers.dart';
+import '../data/admin_crud_repository.dart';
+import '../data/admin_providers.dart';
 import 'admin_shell.dart';
 
 class AdminApprovalsScreen extends ConsumerStatefulWidget {
@@ -17,107 +22,203 @@ class AdminApprovalsScreen extends ConsumerStatefulWidget {
 }
 
 class _AdminApprovalsScreenState extends ConsumerState<AdminApprovalsScreen> {
-  String? _search;
+  final _search = TextEditingController();
+  Timer? _debounce;
+  String? _searchValue;
   String _status = 'pending';
+  String? _role;
   var _page = 1;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _search.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final query = AdminApprovalQuery(
-      search: _search,
+      search: _searchValue,
       status: _status,
+      role: _role,
       page: _page,
     );
     final data = ref.watch(adminApprovalsProvider(query));
     return AdminShell(
-      title: 'Persetujuan',
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(EmiSpacing.md),
-            child: Column(
-              children: [
-                TextField(
-                  decoration: const InputDecoration(
-                    labelText: 'Cari nama atau email',
-                    prefixIcon: Icon(Icons.search),
+      title: 'Persetujuan Akun',
+      child: RefreshIndicator(
+        onRefresh: () async => ref.invalidate(adminApprovalsProvider(query)),
+        child: ListView(
+          padding: const EdgeInsets.all(EmiSpacing.md),
+          children: [
+            TextField(
+              controller: _search,
+              decoration: InputDecoration(
+                hintText: 'Cari nama atau email',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: IconButton(
+                  tooltip: 'Filter',
+                  onPressed: () => _showFilter(context),
+                  icon: Badge(
+                    isLabelVisible: _role != null || _status != 'pending',
+                    child: const Icon(Icons.tune),
                   ),
-                  onChanged: (v) => setState(() {
-                    _search = v;
-                    _page = 1;
-                  }),
-                ),
-                const SizedBox(height: EmiSpacing.sm),
-                DropdownButtonFormField<String>(
-                  initialValue: _status,
-                  decoration: const InputDecoration(labelText: 'Status'),
-                  items: const [
-                    DropdownMenuItem(value: 'pending', child: Text('pending')),
-                    DropdownMenuItem(
-                      value: 'approved',
-                      child: Text('approved'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'rejected',
-                      child: Text('rejected'),
-                    ),
-                  ],
-                  onChanged: (v) => setState(() {
-                    _status = v ?? 'pending';
-                    _page = 1;
-                  }),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () async => ref.invalidate(adminApprovalsProvider),
-              child: data.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => _Message(
-                  text: e.toString(),
-                  action: TextButton(
-                    onPressed: () =>
-                        ref.invalidate(adminApprovalsProvider(query)),
-                    child: const Text('Coba lagi'),
-                  ),
-                ),
-                data: (page) => ListView(
-                  padding: const EdgeInsets.all(EmiSpacing.md),
-                  children: [
-                    if (page.items.isEmpty)
-                      const _Message(text: 'Permintaan pendaftaran kosong.'),
-                    for (final item in page.items)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: EmiSpacing.sm),
-                        child: EmiCard(
-                          child: ListTile(
-                            title: Text(item.userName),
-                            subtitle: Text(
-                              '${item.userEmail}\n${item.requestedRole} • ${item.schoolName ?? '-'} • ${item.className ?? '-'}',
-                            ),
-                            isThreeLine: true,
-                            trailing: Text(item.status),
-                            onTap: () =>
-                                context.go('/admin/approvals/${item.id}'),
-                          ),
-                        ),
-                      ),
-                    if (page.hasMore)
-                      OutlinedButton(
-                        onPressed: () => setState(() => _page++),
-                        child: const Text('Muat lagi'),
-                      ),
-                  ],
                 ),
               ),
+              onChanged: (value) {
+                _debounce?.cancel();
+                _debounce = Timer(const Duration(milliseconds: 400), () {
+                  setState(() {
+                    _searchValue = value.trim().isEmpty ? null : value.trim();
+                    _page = 1;
+                  });
+                });
+              },
             ),
-          ),
-        ],
+            const SizedBox(height: EmiSpacing.md),
+            data.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (_, _) => FriendlyState(
+                icon: Icons.wifi_off_outlined,
+                title: 'Data belum bisa dimuat',
+                message: 'Periksa koneksi internet, lalu coba lagi.',
+                onRetry: () => ref.invalidate(adminApprovalsProvider(query)),
+              ),
+              data: (page) {
+                if (page.items.isEmpty) {
+                  final filtered =
+                      _search.text.trim().isNotEmpty ||
+                      _role != null ||
+                      _status != 'pending';
+                  return FriendlyState(
+                    icon: Icons.how_to_reg_outlined,
+                    title: filtered
+                        ? 'Pengajuan Tidak Ditemukan'
+                        : 'Tidak Ada Permintaan Baru',
+                    message: filtered
+                        ? 'Coba gunakan nama atau filter yang berbeda.'
+                        : 'Semua pengajuan akun sudah diperiksa.',
+                  );
+                }
+                return Column(
+                  children: [
+                    for (final item in page.items) ...[
+                      _ApprovalTile(item: item),
+                      const SizedBox(height: EmiSpacing.sm),
+                    ],
+                    if (page.hasMore)
+                      FilledButton(
+                        onPressed: () => setState(() => _page++),
+                        child: const Text('Muat Lagi'),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
+
+  Future<void> _showFilter(BuildContext context) async {
+    var status = _status;
+    var role = _role;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: const EdgeInsets.all(EmiSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Filter', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: EmiSpacing.md),
+              DropdownButtonFormField<String?>(
+                initialValue: role,
+                decoration: const InputDecoration(labelText: 'Role'),
+                items: const [
+                  DropdownMenuItem(value: null, child: Text('Semua')),
+                  DropdownMenuItem(value: 'teacher', child: Text('Guru')),
+                  DropdownMenuItem(value: 'student', child: Text('Siswa')),
+                ],
+                onChanged: (value) => setSheetState(() => role = value),
+              ),
+              const SizedBox(height: EmiSpacing.md),
+              DropdownButtonFormField<String>(
+                initialValue: status,
+                decoration: const InputDecoration(labelText: 'Status'),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'pending',
+                    child: Text('Menunggu Persetujuan'),
+                  ),
+                  DropdownMenuItem(value: 'approved', child: Text('Disetujui')),
+                  DropdownMenuItem(value: 'rejected', child: Text('Ditolak')),
+                  DropdownMenuItem(value: '', child: Text('Semua Pengajuan')),
+                ],
+                onChanged: (value) =>
+                    setSheetState(() => status = value ?? 'pending'),
+              ),
+              const SizedBox(height: EmiSpacing.lg),
+              FilledButton(
+                onPressed: () {
+                  setState(() {
+                    _role = role;
+                    _status = status;
+                    _page = 1;
+                  });
+                  Navigator.pop(context);
+                },
+                child: const Text('Terapkan'),
+              ),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _role = null;
+                    _status = 'pending';
+                    _page = 1;
+                  });
+                  Navigator.pop(context);
+                },
+                child: const Text('Hapus Filter'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ApprovalTile extends StatelessWidget {
+  const _ApprovalTile({required this.item});
+
+  final RegistrationApprovalAdmin item;
+
+  @override
+  Widget build(BuildContext context) => EmiCard(
+    child: ListTile(
+      leading: CircleAvatar(child: Icon(_roleIcon(item.requestedRole))),
+      title: Text(item.userName, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text(
+        [
+          '${_roleLabel(item.requestedRole)} • ${_statusLabel(item.status)}',
+          item.userEmail,
+          item.schoolName ?? 'Belum Memilih Sekolah',
+          if (item.createdAt != null) 'Diajukan ${_dateLabel(item.createdAt!)}',
+        ].join('\n'),
+        maxLines: 4,
+        overflow: TextOverflow.ellipsis,
+      ),
+      isThreeLine: true,
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => context.push('/admin/approvals/${item.id}'),
+    ),
+  );
 }
 
 class AdminApprovalDetailScreen extends ConsumerStatefulWidget {
@@ -132,70 +233,90 @@ class AdminApprovalDetailScreen extends ConsumerStatefulWidget {
 
 class _AdminApprovalDetailScreenState
     extends ConsumerState<AdminApprovalDetailScreen> {
-  final _note = TextEditingController();
   bool _saving = false;
-  AppError? _error;
-
-  @override
-  void dispose() {
-    _note.dispose();
-    super.dispose();
-  }
+  String? _error;
 
   @override
   Widget build(BuildContext context) {
     final detail = ref.watch(adminApprovalDetailProvider(widget.id));
     return AdminShell(
-      title: 'Detail Persetujuan',
+      title: 'Detail Pemohon',
+      fallbackRoute: '/admin/approvals',
       child: detail.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => _Message(
-          text: e.toString(),
-          action: TextButton(
-            onPressed: () =>
-                ref.invalidate(adminApprovalDetailProvider(widget.id)),
-            child: const Text('Coba lagi'),
-          ),
+        error: (_, _) => FriendlyState(
+          icon: Icons.wifi_off_outlined,
+          title: 'Data belum bisa dimuat',
+          message: 'Periksa koneksi internet, lalu coba lagi.',
+          onRetry: () => ref.invalidate(adminApprovalDetailProvider(widget.id)),
         ),
         data: (item) => ListView(
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
-            if (_error != null) _Message(text: _error!.message),
-            EmiCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.userName,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  Text(item.userEmail),
-                  const Divider(),
-                  _Row(label: 'Role', value: item.requestedRole),
-                  _Row(label: 'Status', value: item.status),
-                  _Row(label: 'Sekolah', value: item.schoolName ?? '-'),
-                  _Row(label: 'Kelas', value: item.className ?? '-'),
-                  if (item.reviewNote?.isNotEmpty == true)
-                    _Row(label: 'Catatan', value: item.reviewNote!),
-                ],
+            if (_error != null) ...[
+              FriendlyState(
+                icon: Icons.info_outline,
+                title: _error!,
+                message: '',
               ),
+              const SizedBox(height: EmiSpacing.md),
+            ],
+            EmiCard(
+              child: ListTile(
+                leading: CircleAvatar(
+                  child: Icon(_roleIcon(item.requestedRole)),
+                ),
+                title: Text(
+                  item.userName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Text(
+                  '${_roleLabel(item.requestedRole)} • ${_statusLabel(item.status)}',
+                ),
+              ),
+            ),
+            const SizedBox(height: EmiSpacing.md),
+            _InfoSection(
+              title: 'Data Akun',
+              rows: {
+                'Nama': item.userName,
+                'Email': item.userEmail,
+                'Role': _roleLabel(item.requestedRole),
+                'Status': _statusLabel(item.status),
+              },
+            ),
+            const SizedBox(height: EmiSpacing.md),
+            _InfoSection(
+              title: 'Sekolah dan Kelas',
+              rows: {
+                'Sekolah': item.schoolName ?? 'Belum Memilih Sekolah',
+                'Kelas': item.className ?? 'Belum Ditempatkan ke Kelas',
+              },
+            ),
+            const SizedBox(height: EmiSpacing.md),
+            _InfoSection(
+              title: 'Informasi Pengajuan',
+              rows: {
+                'Tanggal Pengajuan': item.createdAt == null
+                    ? 'Belum Diisi'
+                    : _dateLabel(item.createdAt!),
+                if (item.reviewNote?.isNotEmpty == true)
+                  'Alasan Penolakan': item.reviewNote!,
+              },
             ),
             if (item.status == 'pending') ...[
               const SizedBox(height: EmiSpacing.md),
-              TextField(
-                controller: _note,
-                decoration: const InputDecoration(labelText: 'Catatan review'),
-                minLines: 2,
-                maxLines: 4,
-              ),
-              const SizedBox(height: EmiSpacing.md),
+              Text('Tindakan', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: EmiSpacing.sm),
               FilledButton(
-                onPressed: _saving ? null : () => _submit('approve'),
-                child: Text(_saving ? 'Memproses...' : 'Setujui'),
+                onPressed: _saving ? null : () => _confirmApprove(item),
+                child: Text(_saving ? 'Memproses...' : 'Setujui Akun'),
               ),
-              TextButton(
-                onPressed: _saving ? null : () => _submit('reject'),
-                child: const Text('Tolak'),
+              const SizedBox(height: EmiSpacing.sm),
+              OutlinedButton(
+                onPressed: _saving ? null : () => _confirmReject(item),
+                child: const Text('Tolak Akun'),
               ),
             ],
           ],
@@ -204,7 +325,84 @@ class _AdminApprovalDetailScreenState
     );
   }
 
-  Future<void> _submit(String action) async {
+  Future<void> _confirmApprove(RegistrationApprovalAdmin item) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Setujui akun ini?'),
+        content: const Text(
+          'Pengguna dapat masuk dan menggunakan EMI setelah akun disetujui.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Setujui'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) await _submit('approve', null);
+  }
+
+  Future<void> _confirmReject(RegistrationApprovalAdmin item) async {
+    final note = TextEditingController();
+    String? validation;
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Tolak akun ini?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Pengguna belum dapat menggunakan EMI setelah pengajuan ditolak.',
+              ),
+              const SizedBox(height: EmiSpacing.md),
+              TextField(
+                controller: note,
+                decoration: InputDecoration(
+                  labelText: 'Alasan Penolakan',
+                  hintText:
+                      'Tuliskan alasan singkat agar pengguna memahami keputusan ini.',
+                  errorText: validation,
+                ),
+                minLines: 2,
+                maxLines: 4,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final value = note.text.trim();
+                if (value.isEmpty) {
+                  setDialogState(
+                    () => validation = 'Alasan penolakan wajib diisi.',
+                  );
+                  return;
+                }
+                Navigator.pop(context, value);
+              },
+              child: const Text('Simpan'),
+            ),
+          ],
+        ),
+      ),
+    );
+    note.dispose();
+    if (reason != null) await _submit('reject', reason);
+  }
+
+  Future<void> _submit(String action, String? note) async {
     setState(() {
       _saving = true;
       _error = null;
@@ -212,21 +410,31 @@ class _AdminApprovalDetailScreenState
     try {
       await ref
           .read(adminCrudRepositoryProvider)
-          .reviewApproval(
-            widget.id,
-            action,
-            _note.text.trim().isEmpty ? null : _note.text.trim(),
-          );
+          .reviewApproval(widget.id, action, note);
+      if (!mounted) return;
       ref.invalidate(adminApprovalsProvider);
       ref.invalidate(adminApprovalDetailProvider(widget.id));
-      if (mounted) context.go('/admin/approvals');
+      ref.invalidate(adminDashboardProvider);
+      ref.invalidate(adminUsersProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            action == 'approve'
+                ? 'Akun berhasil disetujui.'
+                : 'Pengajuan akun telah ditolak.',
+          ),
+        ),
+      );
+      if (context.canPop()) {
+        context.pop(true);
+      } else {
+        context.go('/admin/approvals');
+      }
     } catch (e) {
+      final message = _actionError(e);
       if (mounted) {
-        setState(
-          () => _error = e is AppError
-              ? e
-              : AppError(type: AppErrorType.unknown, message: e.toString()),
-        );
+        setState(() => _error = message);
+        ref.invalidate(adminApprovalDetailProvider(widget.id));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -234,42 +442,69 @@ class _AdminApprovalDetailScreenState
   }
 }
 
-class _Row extends StatelessWidget {
-  const _Row({required this.label, required this.value});
+class _InfoSection extends StatelessWidget {
+  const _InfoSection({required this.title, required this.rows});
 
-  final String label;
-  final String value;
+  final String title;
+  final Map<String, String> rows;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: EmiSpacing.xs),
-    child: Row(
+  Widget build(BuildContext context) => EmiCard(
+    child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(width: 96, child: Text(label)),
-        Expanded(child: Text(value)),
+        Text(title, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: EmiSpacing.sm),
+        for (final row in rows.entries)
+          Padding(
+            padding: const EdgeInsets.only(bottom: EmiSpacing.xs),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(width: 132, child: Text(row.key)),
+                Expanded(
+                  child: Text(row.value.isEmpty ? 'Belum Diisi' : row.value),
+                ),
+              ],
+            ),
+          ),
       ],
     ),
   );
 }
 
-class _Message extends StatelessWidget {
-  const _Message({required this.text, this.action});
+IconData _roleIcon(String value) => switch (value) {
+  'teacher' => Icons.school_outlined,
+  'student' => Icons.person_outline,
+  _ => Icons.account_circle_outlined,
+};
 
-  final String text;
-  final Widget? action;
+String _roleLabel(String value) => switch (value) {
+  'teacher' => 'Guru',
+  'student' => 'Siswa',
+  _ => 'Belum Diisi',
+};
 
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(EmiSpacing.md),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(text, textAlign: TextAlign.center),
-          ?action,
-        ],
-      ),
-    ),
-  );
+String _statusLabel(String value) => switch (value) {
+  'pending' => 'Menunggu Persetujuan',
+  'approved' => 'Disetujui',
+  'rejected' => 'Ditolak',
+  'inactive' => 'Tidak Aktif',
+  _ => 'Belum Diisi',
+};
+
+String _dateLabel(String value) =>
+    value.length >= 10 ? value.substring(0, 10) : value;
+
+String _actionError(Object error) {
+  final message = error is AppError ? error.message : error.toString();
+  if (message.contains('REGISTRATION_ALREADY_PROCESSED') ||
+      message.contains('sudah diproses')) {
+    return 'Status akun sudah berubah. Data terbaru telah dimuat.';
+  }
+  if (message.contains('VALIDATION_ERROR') || message.contains('wajib')) {
+    return 'Data belum lengkap. Periksa kembali isian.';
+  }
+  if (message.contains('FORBIDDEN')) return 'Anda tidak memiliki izin.';
+  return 'Keputusan belum bisa disimpan. Coba lagi.';
 }

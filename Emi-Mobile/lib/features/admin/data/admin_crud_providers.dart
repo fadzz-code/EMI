@@ -65,6 +65,7 @@ final adminApprovalsProvider =
           .approvals(
             search: query.search,
             status: query.status,
+            role: query.role,
             page: query.page,
           ),
     );
@@ -90,10 +91,12 @@ class AdminApprovalQuery {
   const AdminApprovalQuery({
     this.search,
     this.status = 'pending',
+    this.role,
     this.page = 1,
   });
   final String? search;
   final String status;
+  final String? role;
   final int page;
   @override
   bool operator ==(Object other) =>
@@ -101,9 +104,10 @@ class AdminApprovalQuery {
       other is AdminApprovalQuery &&
           other.search == search &&
           other.status == status &&
+          other.role == role &&
           other.page == page;
   @override
-  int get hashCode => Object.hash(search, status, page);
+  int get hashCode => Object.hash(search, status, role, page);
 }
 
 class AdminReportQuery {

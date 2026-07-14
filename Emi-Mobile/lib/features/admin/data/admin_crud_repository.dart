@@ -4,9 +4,18 @@ import '../../../core/errors/app_error.dart';
 import '../../../core/errors/dio_error_mapper.dart';
 
 class AdminCrudPage<T> {
-  const AdminCrudPage({required this.items, this.hasMore = false});
+  const AdminCrudPage({
+    required this.items,
+    this.hasMore = false,
+    this.currentPage = 1,
+    this.lastPage = 1,
+    this.total = 0,
+  });
   final List<T> items;
   final bool hasMore;
+  final int currentPage;
+  final int lastPage;
+  final int total;
 }
 
 class DictionaryCategory {
@@ -158,6 +167,9 @@ class RegistrationApprovalAdmin {
     this.schoolName,
     this.className,
     this.reviewNote,
+    this.createdAt,
+    this.reviewedAt,
+    this.userStatus,
   });
   final String id;
   final String requestedRole;
@@ -167,6 +179,9 @@ class RegistrationApprovalAdmin {
   final String? schoolName;
   final String? className;
   final String? reviewNote;
+  final String? createdAt;
+  final String? reviewedAt;
+  final String? userStatus;
   factory RegistrationApprovalAdmin.fromJson(Map<String, dynamic> json) {
     final user = json['user'] is Map<String, dynamic>
         ? json['user'] as Map<String, dynamic>
@@ -186,6 +201,9 @@ class RegistrationApprovalAdmin {
       schoolName: school['name'] as String?,
       className: schoolClass['name'] as String?,
       reviewNote: json['review_note'] as String?,
+      createdAt: json['created_at'] as String?,
+      reviewedAt: json['reviewed_at'] as String?,
+      userStatus: user['status'] as String?,
     );
   }
 }
@@ -320,6 +338,7 @@ class AdminCrudRepository {
   Future<AdminCrudPage<RegistrationApprovalAdmin>> approvals({
     String? search,
     String? status,
+    String? role,
     int page = 1,
   }) async {
     try {
@@ -330,6 +349,7 @@ class AdminCrudRepository {
           'per_page': 15,
           if (search?.trim().isNotEmpty == true) 'search': search!.trim(),
           if (status?.trim().isNotEmpty == true) 'status': status!.trim(),
+          if (role?.trim().isNotEmpty == true) 'requested_role': role!.trim(),
         },
       );
       return _page(res.data, RegistrationApprovalAdmin.fromJson);
@@ -393,14 +413,21 @@ class AdminCrudRepository {
     T Function(Map<String, dynamic>) parse,
   ) {
     final meta = json?['meta'];
+    final currentPage = meta is Map<String, dynamic>
+        ? (_int(meta['current_page']) ?? 1)
+        : 1;
+    final lastPage = meta is Map<String, dynamic>
+        ? (_int(meta['last_page']) ?? 1)
+        : 1;
     return AdminCrudPage(
       items: (json?['data'] as List? ?? const [])
           .whereType<Map<String, dynamic>>()
           .map(parse)
           .toList(),
-      hasMore:
-          meta is Map<String, dynamic> &&
-          (_int(meta['current_page']) ?? 1) < (_int(meta['last_page']) ?? 1),
+      hasMore: currentPage < lastPage,
+      currentPage: currentPage,
+      lastPage: lastPage,
+      total: meta is Map<String, dynamic> ? (_int(meta['total']) ?? 0) : 0,
     );
   }
 
