@@ -15,7 +15,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         if (app()->environment('local', 'testing', 'development')) {
-            $this->call(ThreeRoleAccountSeeder::class);
+            $this->call(DevDemoDataSeeder::class);
         } else {
             $this->call(AdminSeeder::class);
         }

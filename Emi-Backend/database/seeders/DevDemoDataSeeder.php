@@ -23,19 +23,23 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 class DevDemoDataSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->call(DevAccountSeeder::class);
+        if (! app()->environment('local', 'testing', 'development')) {
+            throw new InvalidArgumentException('Seeder demo development hanya boleh dijalankan di environment local, testing, atau development.');
+        }
 
         DB::transaction(function (): void {
             $now = now();
-            $admin = User::query()->where('email', 'admin@emi.test')->firstOrFail();
-            $teacher = User::query()->where('email', 'guru@emi.test')->firstOrFail();
-            $student = User::query()->where('email', 'siswa@emi.test')->firstOrFail();
+            $admin = $this->upsertAccount('admin@emi.test', 'Administrator EMI', 'admin', null);
+            $teacher = $this->upsertAccount('teacher@emi.test', 'Guru Demo EMI', 'teacher', $admin->id);
+            $student = $this->upsertAccount('student@emi.test', 'Siswa Demo EMI', 'student', $admin->id);
 
             $school = $this->updateOrCreateWithUuid(School::class, ['name' => 'SDN Kolaka'], [
                 'address' => 'Kolaka',
@@ -82,22 +86,33 @@ class DevDemoDataSeeder extends Seeder
             $this->seedClassQuiz($class, $quizTemplate, $templateQuestions, $teacher, $now);
             $this->seedSpeakingExercises($class, $teacher);
         });
+
+        $this->call([
+            DemoAccountSeeder::class,
+            DemoSchoolClassSeeder::class,
+            DemoDictionarySeeder::class,
+            DemoKnowledgeSeeder::class,
+            DemoLearningSeeder::class,
+            DemoQuizSeeder::class,
+            DemoSpeakingSeeder::class,
+            DemoCultureSeeder::class,
+            DemoProgressSeeder::class,
+        ]);
     }
 
     private function seedDictionary(User $admin): void
     {
         $entries = [
-            ['Selamat pagi', 'Good morning', 'Sapaan'],
-            ['Terima kasih', 'Thank you', 'Sapaan'],
-            ['Rumah', 'House', 'Benda'],
-            ['Air', 'Water', 'Benda'],
-            ['Makan', 'Eat', 'Aktivitas'],
-            ['Belajar', 'Study', 'Aktivitas'],
-            ['Guru', 'Teacher', 'Sekolah'],
-            ['Siswa', 'Student', 'Sekolah'],
+            ['Selamat pagi', 'Good morning', 'mompesuka', 'Sapaan'],
+            ['Terima kasih', 'Thank you', 'mombesara', 'Sapaan'],
+            ['Rumah', 'House', 'laika', 'Benda'],
+            ['Air', 'Water', 'Air', 'Benda'],
+            ['Makan', 'Eat', 'mekoni', 'Aktivitas'],
+            ['Guru', 'Teacher', 'guru', 'Sekolah'],
+            ['Siswa', 'Student', 'siswa', 'Sekolah'],
         ];
 
-        foreach (array_unique(array_column($entries, 2)) as $categoryName) {
+        foreach (array_unique(array_column($entries, 3)) as $categoryName) {
             $this->updateOrCreateWithUuid(DictionaryCategory::class, ['slug' => Str::slug($categoryName)], [
                 'name' => $categoryName,
                 'description' => 'Kategori demo '.$categoryName,
@@ -107,17 +122,17 @@ class DevDemoDataSeeder extends Seeder
             ]);
         }
 
-        foreach ($entries as [$indonesia, $english, $categoryName]) {
+        foreach ($entries as [$indonesia, $english, $mekongga, $categoryName]) {
             $category = DictionaryCategory::query()->where('slug', Str::slug($categoryName))->firstOrFail();
             $this->updateOrCreateWithUuid(DictionaryEntry::class, [
                 'indonesia_normalized' => Str::lower($indonesia),
                 'english_normalized' => Str::lower($english),
-                'mekongga_normalized' => Str::lower($indonesia),
+                'mekongga_normalized' => Str::lower($mekongga),
             ], [
                 'category_id' => $category->id,
                 'indonesia' => $indonesia,
                 'english' => $english,
-                'mekongga' => $indonesia,
+                'mekongga' => $mekongga,
                 'example_mekongga' => null,
                 'example_indonesia' => null,
                 'audio_media_id' => null,
@@ -360,6 +375,24 @@ class DevDemoDataSeeder extends Seeder
                 'metadata' => ['source' => 'demo'],
             ]);
         }
+    }
+
+    private function upsertAccount(string $email, string $name, string $role, ?string $adminId): User
+    {
+        return User::query()->updateOrCreate(
+            ['email' => $email],
+            [
+                'full_name' => $name,
+                'password' => Hash::make('12345678'),
+                'role' => $role,
+                'status' => 'approved',
+                'phone' => null,
+                'email_verified_at' => now(),
+                'approved_by' => $adminId,
+                'approved_at' => now(),
+                'rejected_reason' => null,
+            ]
+        );
     }
 
     private function updateOrCreateWithUuid(string $modelClass, array $attributes, array $values)
