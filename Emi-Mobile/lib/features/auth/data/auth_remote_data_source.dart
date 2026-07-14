@@ -22,7 +22,7 @@ class AuthRemoteDataSource {
     );
     final payload = ApiResponse<Map<String, dynamic>>.fromJson(
       response.data ?? {},
-      (value) => value as Map<String, dynamic>,
+      _requiredMap,
     );
     final data = payload.data ?? {};
     final token = data['token'] as String? ?? '';
@@ -39,7 +39,7 @@ class AuthRemoteDataSource {
     final response = await _dio.get<Map<String, dynamic>>('/auth/me');
     final payload = ApiResponse<Map<String, dynamic>>.fromJson(
       response.data ?? {},
-      (value) => value as Map<String, dynamic>,
+      _requiredMap,
     );
     final data = payload.data;
     if (data == null) throw StateError('Response profil tidak lengkap.');
@@ -56,7 +56,7 @@ class AuthRemoteDataSource {
     );
     final payload = ApiResponse<Map<String, dynamic>>.fromJson(
       response.data ?? {},
-      (value) => value as Map<String, dynamic>,
+      _requiredMap,
     );
     final data = payload.data;
     if (data == null) throw StateError('Response profil tidak lengkap.');
@@ -78,7 +78,7 @@ class AuthRemoteDataSource {
     );
     final payload = ApiResponse<Map<String, dynamic>>.fromJson(
       response.data ?? {},
-      (value) => value as Map<String, dynamic>,
+      _requiredMap,
     );
     final data = payload.data;
     if (data == null) throw StateError('Response profil tidak lengkap.');
@@ -99,7 +99,7 @@ class AuthRemoteDataSource {
     );
     final payload = ApiResponse<Map<String, dynamic>>.fromJson(
       response.data ?? {},
-      (value) => value as Map<String, dynamic>,
+      _requiredMap,
     );
     final data = payload.data;
     if (data == null) throw StateError('Response profil tidak lengkap.');
@@ -110,7 +110,7 @@ class AuthRemoteDataSource {
     final response = await _dio.delete<Map<String, dynamic>>('/auth/me/avatar');
     final payload = ApiResponse<Map<String, dynamic>>.fromJson(
       response.data ?? {},
-      (value) => value as Map<String, dynamic>,
+      _requiredMap,
     );
     final data = payload.data;
     if (data == null) throw StateError('Response profil tidak lengkap.');
@@ -120,4 +120,9 @@ class AuthRemoteDataSource {
   Future<void> logout() async {
     await _dio.post<Map<String, dynamic>>('/auth/logout');
   }
+}
+
+Map<String, dynamic> _requiredMap(Object? value) {
+  if (value is Map<String, dynamic>) return value;
+  throw StateError('Response autentikasi tidak lengkap.');
 }
