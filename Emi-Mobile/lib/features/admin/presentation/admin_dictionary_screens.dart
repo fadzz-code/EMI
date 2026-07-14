@@ -712,8 +712,9 @@ class _AdminDictionaryImportScreenState
             importType: _importType,
             duplicateStrategy: _duplicateStrategy,
             onSendProgress: (sent, total) {
-              if (mounted && total > 0)
+              if (mounted && total > 0) {
                 setState(() => _progress = sent / total);
+              }
             },
           );
       final confirmed = await ref
@@ -935,7 +936,7 @@ class _PagedList extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(EmiSpacing.md),
     children: [
-      if (header != null) header!,
+      ?header,
       if (children.isEmpty)
         EmiCard(child: Text(empty))
       else ...[
@@ -1099,16 +1100,20 @@ String _categoryError(Object error) {
 
 String _importError(Object error) {
   final message = error is AppError ? error.message : error.toString();
-  if (message.contains('INVALID_CSV_HEADER'))
+  if (message.contains('INVALID_CSV_HEADER')) {
     return 'Susunan kolom CSV belum sesuai dengan format Kamus EMI.';
-  if (message.contains('INVALID_ZIP'))
+  }
+  if (message.contains('INVALID_ZIP')) {
     return 'File ZIP tidak dapat dibaca atau formatnya belum sesuai.';
+  }
   if (message.contains('413')) return 'Ukuran file terlalu besar.';
   if (message.contains('415')) return 'Format file belum didukung.';
-  if (message.contains('AUDIO') && message.contains('MISSING'))
+  if (message.contains('AUDIO') && message.contains('MISSING')) {
     return 'Beberapa file audio yang disebutkan pada CSV tidak ditemukan di dalam ZIP.';
-  if (error is AppError && error.type == AppErrorType.networkUnavailable)
+  }
+  if (error is AppError && error.type == AppErrorType.networkUnavailable) {
     return 'Import belum berhasil. Periksa koneksi internet, lalu coba lagi.';
+  }
   return 'Data belum dapat diproses. Silakan periksa file dan coba kembali.';
 }
 
