@@ -32,6 +32,8 @@ class ThreeRoleAccountSeederTest extends TestCase
         $this->assertSame('approved', $teacher->status);
         $this->assertTrue(Hash::check('12345678', $teacher->password));
         $this->assertNotNull($teacher->activeTeacherClassAssignment);
+        $this->assertSame('Kelas VII A', $teacher->activeTeacherClassAssignment->schoolClass->name);
+        $this->assertDatabaseMissing('classes', ['name' => 'Kelas Demo Tiga Role']);
 
         $student = User::where('email', 'student@emi.test')->firstOrFail();
         $this->assertSame('student', $student->role);

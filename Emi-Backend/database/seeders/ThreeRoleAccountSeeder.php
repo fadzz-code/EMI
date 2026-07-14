@@ -27,9 +27,9 @@ class ThreeRoleAccountSeeder extends Seeder
             // They need an active school and class assignment/membership.
             // Without an active class, the frontend might show empty placeholders or fail to load scoped resources.
             $school = School::firstOrCreate(
-                ['name' => 'Sekolah Demo ThreeRole'],
+                ['name' => 'SMP Negeri 1 Kolaka'],
                 [
-                    'address' => 'Jl. Demo Tiga Role',
+                    'address' => 'Jl. Pendidikan Kolaka',
                     'status' => 'active',
                     'created_by' => $admin->id,
                 ]
@@ -42,7 +42,7 @@ class ThreeRoleAccountSeeder extends Seeder
             $class = SchoolClass::firstOrCreate(
                 [
                     'school_id' => $school->id,
-                    'name' => 'Kelas Demo Tiga Role',
+                    'name' => 'Kelas VII A',
                 ],
                 [
                     'grade_level' => '7',
