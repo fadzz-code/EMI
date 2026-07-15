@@ -66,7 +66,7 @@ class VectorChunkRetriever
                         'similarity_score' => max(0, 1 - $distance),
                     ];
                 })
-                ->filter(fn (array $result): bool => $result['item'] !== null && $result['item']->status === 'published')
+                ->filter(fn (array $result): bool => $result['item'] !== null && $result['item']->status === 'published' && $result['item']->isReadyForPublication())
                 ->values()
                 ->all();
         } catch (Throwable) {

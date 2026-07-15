@@ -17,6 +17,7 @@ class AiKnowledgeItemResource extends JsonResource
             'source_type' => $this->source_type,
             'source_url' => $this->source_url,
             'status' => $this->status,
+            'processing_status' => $this->processingStatus(),
             'created_by' => $this->created_by,
             'updated_by' => $this->updated_by,
             'created_at' => $this->created_at?->toISOString(),

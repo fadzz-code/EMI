@@ -14,7 +14,7 @@ class StoreAiKnowledgeItemRequest extends ApiFormRequest
             'category' => ['nullable', 'string', 'max:255'],
             'content' => ['required', 'string'],
             'source_type' => ['required', Rule::in(['manual', 'link', 'pdf'])],
-            'source_url' => ['nullable', 'required_if:source_type,link', 'url', 'max:2048'],
+            'source_url' => ['nullable', 'required_if:source_type,link,pdf', 'string', 'max:2048'],
             'status' => ['nullable', Rule::in(['draft', 'published', 'archived'])],
         ];
     }

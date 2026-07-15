@@ -17,6 +17,8 @@ class AiSourceIngestionService
 
     private const TIMEOUT_SECONDS = 5;
 
+    private const MAX_REDIRECTS = 3;
+
     public function extract(string $type, string $url): array
     {
         $this->validateUrlSecurity($url);
@@ -40,59 +42,116 @@ class AiSourceIngestionService
             throw new Exception('URL tidak valid.');
         }
 
-        if (! in_array(strtolower($parsed['scheme']), ['http', 'https'])) {
+        if (! in_array(strtolower($parsed['scheme']), ['http', 'https'], true)) {
             throw new Exception('Hanya URL HTTP/HTTPS yang diizinkan.');
         }
 
-        $host = $parsed['host'];
+        $host = trim($parsed['host'], '[]');
+        $lowerHost = strtolower($host);
 
-        if (in_array(strtolower($host), ['localhost', '127.0.0.1', '0.0.0.0', '::1'])) {
+        if (in_array($lowerHost, ['localhost', 'metadata.google.internal'], true) || str_contains($lowerHost, 'metadata')) {
             throw new Exception('URL tidak valid.');
         }
 
-        $ip = gethostbyname($host);
-
-        if ($this->isPrivateIp($ip)) {
-            throw new Exception('URL tidak valid.');
+        foreach ($this->resolveHostIps($host) as $ip) {
+            if ($this->isUnsafeIp($ip)) {
+                throw new Exception('URL tidak valid.');
+            }
         }
     }
 
-    private function isPrivateIp(string $ip): bool
+    private function resolveHostIps(string $host): array
     {
-        if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-            return false;
+        $host = trim($host, '[]');
+
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            return [$host];
         }
 
-        $parts = explode('.', $ip);
+        $records = dns_get_record($host, DNS_A + DNS_AAAA) ?: [];
+        $ips = collect($records)
+            ->map(fn (array $record): ?string => $record['ip'] ?? $record['ipv6'] ?? null)
+            ->filter()
+            ->values()
+            ->all();
 
-        if ($parts[0] === '10') {
-            return true;
+        $fallback = gethostbynamel($host) ?: [];
+
+        return array_values(array_unique([...$ips, ...$fallback]));
+    }
+
+    private function isUnsafeIp(string $ip): bool
+    {
+        if (str_starts_with($ip, '::ffff:')) {
+            $mapped = substr($ip, 7);
+
+            return $this->isUnsafeIp($mapped);
         }
 
-        if ($parts[0] === '172' && $parts[1] >= 16 && $parts[1] <= 31) {
-            return true;
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            return ! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)
+                || str_starts_with($ip, '100.')
+                || str_starts_with($ip, '169.254.')
+                || $ip === '255.255.255.255';
         }
 
-        if ($parts[0] === '192' && $parts[1] === '168') {
-            return true;
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+            $lower = strtolower($ip);
+
+            return ! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)
+                || $lower === '::'
+                || str_starts_with($lower, 'fe80:')
+                || str_starts_with($lower, 'fc')
+                || str_starts_with($lower, 'fd')
+                || str_starts_with($lower, 'ff');
         }
 
-        if ($parts[0] === '169' && $parts[1] === '254') {
-            return true;
+        return true;
+    }
+
+    private function guardedGet(string $url)
+    {
+        $current = $url;
+
+        for ($redirects = 0; $redirects <= self::MAX_REDIRECTS; $redirects++) {
+            $this->validateUrlSecurity($current);
+            $response = Http::timeout(self::TIMEOUT_SECONDS)
+                ->withoutRedirecting()
+                ->withUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
+                ->get($current);
+
+            if (! $response->redirect()) {
+                return $response;
+            }
+
+            $location = $response->header('Location');
+            if (! is_string($location) || $location === '') {
+                throw new Exception('Redirect sumber tidak valid.');
+            }
+
+            $current = $this->absoluteUrl($current, $location);
         }
 
-        if ($parts[0] === '127') {
-            return true;
+        throw new Exception('Terlalu banyak redirect.');
+    }
+
+    private function absoluteUrl(string $base, string $location): string
+    {
+        if (parse_url($location, PHP_URL_SCHEME) !== null) {
+            return $location;
         }
 
-        return false;
+        $parts = parse_url($base);
+        $scheme = $parts['scheme'] ?? 'https';
+        $host = $parts['host'] ?? '';
+        $port = isset($parts['port']) ? ':'.$parts['port'] : '';
+
+        return $scheme.'://'.$host.$port.'/'.ltrim($location, '/');
     }
 
     private function extractFromLink(string $url): array
     {
-        $response = Http::timeout(self::TIMEOUT_SECONDS)
-            ->withUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
-            ->get($url);
+        $response = $this->guardedGet($url);
 
         if (! $response->successful()) {
             throw new Exception('Gagal mengunduh halaman: HTTP '.$response->status());
@@ -174,12 +233,15 @@ class AiSourceIngestionService
 
     private function extractFromPdf(string $url): array
     {
-        $response = Http::timeout(self::TIMEOUT_SECONDS)
-            ->withUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
-            ->get($url);
+        $response = $this->guardedGet($url);
 
         if (! $response->successful()) {
             throw new Exception('Gagal mengunduh PDF: HTTP '.$response->status());
+        }
+
+        $contentType = strtolower((string) $response->header('Content-Type'));
+        if ($contentType !== '' && ! str_contains($contentType, 'pdf') && ! str_contains($contentType, 'octet-stream')) {
+            throw new Exception('File dari tautan tersebut bukan PDF yang didukung.');
         }
 
         $pdfContent = $response->body();

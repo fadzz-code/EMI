@@ -135,6 +135,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('ai/knowledge/{id}', [AdminAiKnowledgeController::class, 'destroy']);
         Route::post('ai/knowledge/{id}/publish', [AdminAiKnowledgeController::class, 'publish']);
         Route::post('ai/knowledge/{id}/archive', [AdminAiKnowledgeController::class, 'archive']);
+        Route::post('ai/knowledge/{id}/retry-processing', [AdminAiKnowledgeController::class, 'retryProcessing']);
         Route::get('module-templates', [AdminModuleTemplateController::class, 'index']);
         Route::post('module-templates', [AdminModuleTemplateController::class, 'store']);
         Route::get('module-templates/{id}', [AdminModuleTemplateController::class, 'show']);

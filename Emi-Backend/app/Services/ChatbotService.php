@@ -61,6 +61,7 @@ class ChatbotService
             ->published()
             ->doesntHave('chunks')
             ->get()
+            ->filter(fn (AiKnowledgeItem $item): bool => $item->source_type === 'manual' || ($item->sourcePages()->doesntExist() && ! str_starts_with(trim((string) $item->content), 'Dokumen PDF telah diproses')))
             ->each(fn (AiKnowledgeItem $item) => $this->chunkingService->rebuild($item));
 
         $vectorMatches = (bool) config('ai.vector_retrieval.enabled', false)

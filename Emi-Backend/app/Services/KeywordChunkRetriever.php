@@ -27,6 +27,7 @@ class KeywordChunkRetriever
             ->with('knowledgeItem')
             ->whereHas('knowledgeItem', fn ($query) => $query->published())
             ->get()
+            ->filter(fn (AiKnowledgeChunk $chunk): bool => $chunk->knowledgeItem?->isReadyForPublication() === true)
             ->filter(fn (AiKnowledgeChunk $chunk): bool => ($chunk->metadata['searchable'] ?? true) !== false)
             ->map(function (AiKnowledgeChunk $chunk) use ($keywords, $message): array {
                 $item = $chunk->knowledgeItem;

@@ -68,4 +68,36 @@ class AiKnowledgeItem extends Model
     {
         return $query->where('status', 'archived');
     }
+
+    public function processingStatus(): ?string
+    {
+        if (! in_array($this->source_type, ['pdf', 'link'], true)) {
+            return null;
+        }
+
+        return $this->isReadyForPublication() ? 'ready' : 'failed';
+    }
+
+    public function isReadyForPublication(): bool
+    {
+        if (in_array($this->source_type, ['manual', 'link'], true)) {
+            return trim((string) $this->content) !== '' && $this->chunks()->exists();
+        }
+
+        if ($this->source_type === 'pdf') {
+            if ($this->sourcePages()->exists()) {
+                return $this->chunks()
+                    ->where(fn ($query) => $query->whereNull('metadata->searchable')->orWhere('metadata->searchable', true))
+                    ->exists();
+            }
+
+            $content = trim((string) $this->content);
+
+            return $content !== ''
+                && ! str_starts_with($content, 'Dokumen PDF telah diproses')
+                && $this->chunks()->exists();
+        }
+
+        return false;
+    }
 }

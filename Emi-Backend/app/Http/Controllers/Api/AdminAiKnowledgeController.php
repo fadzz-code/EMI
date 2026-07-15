@@ -39,6 +39,7 @@ class AdminAiKnowledgeController extends Controller
             ->when($validated['search'] ?? null, fn ($query, $search) => $query->where(fn ($inner) => $inner->where('title', 'ilike', "%{$search}%")->orWhere('category', 'ilike', "%{$search}%")->orWhere('content', 'ilike', "%{$search}%")))
             ->when($validated['category'] ?? null, fn ($query, $category) => $query->where('category', 'ilike', "%{$category}%"))
             ->when($validated['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($validated['source_type'] ?? null, fn ($query, $sourceType) => $query->where('source_type', $sourceType))
             ->orderBy($sortBy, $sortDirection)
             ->paginate($perPage);
 
@@ -91,6 +92,14 @@ class AdminAiKnowledgeController extends Controller
         Gate::authorize('update', $item);
 
         return ApiResponse::success('Basis AI berhasil diarsipkan.', new AiKnowledgeItemResource($this->service->archive($item, $request->user(), $request)));
+    }
+
+    public function retryProcessing(Request $request, string $id): JsonResponse
+    {
+        $item = AiKnowledgeItem::query()->findOrFail($id);
+        Gate::authorize('update', $item);
+
+        return ApiResponse::success('PDF sedang disiapkan kembali.', new AiKnowledgeItemResource($this->service->retryProcessing($item, $request->user(), $request)));
     }
 
     public function extractSource(ExtractSourceAiKnowledgeRequest $request): JsonResponse
