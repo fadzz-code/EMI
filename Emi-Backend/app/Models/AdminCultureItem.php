@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class AdminCultureItem extends Model
@@ -21,5 +22,11 @@ class AdminCultureItem extends Model
     public function media(): BelongsTo
     {
         return $this->belongsTo(MediaFile::class);
+    }
+
+    public function classItems(): HasMany
+    {
+        return $this->hasMany(ClassCultureItem::class, 'admin_group_id', 'admin_group_id')
+            ->where('created_scope', 'admin');
     }
 }

@@ -263,7 +263,7 @@ enum AdminFeature {
   dictionary('Kamus', '/admin/dictionary/entries', '/admin/dictionary'),
   knowledge('Basis AI', '/admin/ai/knowledge', '/admin/knowledge'),
   quizzes('Kuis', '/admin/quiz-templates', '/admin/quizzes'),
-  culture('Budaya', '/admin/culture/items', '/admin/culture'),
+  culture('Budaya Mekongga', '/admin/culture/items', '/admin/culture'),
   speaking('Template Speaking', '/admin/speaking/exercises', '/admin/speaking'),
   reports('Laporan', '/admin/reports/progress/students', '/admin/reports'),
   settings('Pengaturan', '/admin/settings', '/admin/settings');
@@ -274,18 +274,5 @@ enum AdminFeature {
   final String endpoint;
   final String route;
 
-  bool get isMobileImplemented => switch (this) {
-    AdminFeature.approvals ||
-    AdminFeature.users ||
-    AdminFeature.schools ||
-    AdminFeature.classes ||
-    AdminFeature.modules ||
-    AdminFeature.dictionary ||
-    AdminFeature.knowledge ||
-    AdminFeature.quizzes ||
-    AdminFeature.speaking ||
-    AdminFeature.reports ||
-    AdminFeature.settings => true,
-    _ => false,
-  };
+  bool get isMobileImplemented => true;
 }

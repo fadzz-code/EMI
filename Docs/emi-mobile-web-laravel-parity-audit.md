@@ -126,7 +126,7 @@ Privacy technical decision: current mobile feature must be named as deactivation
 | Reorder pertanyaan | drag/reorder | quiz builder | `/admin/quiz-templates/{id}/questions/reorder` | PATCH | policy | PARTIAL | backend feature + Flutter admin test | Mobile has reorder bottom sheet using `question_ids`; drag gesture not implemented, up/down controls used. |
 | Apply quiz | apply template | quiz action | `/admin/quiz-templates/{id}/apply` | POST | admin | PARTIAL | backend feature + Flutter admin test | Mobile applies template to selected active classes and backend creates draft Class Quiz snapshots. |
 | Publish/status quiz | publish/archive | quiz action | `/admin/quiz-templates/{id}/publish|archive` | POST | policy | PARTIAL | backend feature + Flutter admin test | Mobile exposes publish/archive; backend enforces valid questions and content lock. |
-| Budaya | global culture item CRUD/status | `/admin/culture/templates` and culture services | `/admin/culture/items*` | GET/POST/PUT/DELETE | culture policy | MISSING | none | No mobile admin culture. |
+| Budaya | global culture item CRUD/status | `/admin/culture/templates` and culture services | `/admin/culture/items*` | GET/POST/PUT/DELETE | admin role | `/admin/culture*` | PARTIAL | backend + Flutter tests | Mobile mengelola Admin Global Culture; smoke HP masih `NOT_TESTED`. |
 | Culture item | template item CRUD | edit template | `/admin/culture-templates*`, `/admin/culture-template-items*` | mixed | culture policy | MISSING | none | No mobile culture template editor. |
 | Speaking exercise | template/list/create/edit/archive/media | `/admin/speaking/exercises` | `/admin/speaking/exercises*`, `/media` | GET/POST/PATCH | admin | `/admin/speaking*` | PARTIAL | backend + Flutter tests | Mobile mengelola template global, audio contoh, publish/archive; smoke HP masih `NOT_TESTED`. |
 | Laporan progress | school/class/student reports | `/admin/progress*` | `/admin/reports/progress/*` | GET | admin scope | `/admin/reports` | READ_ONLY | admin tests | Mobile reports are basic/read-only; export absent. |
@@ -279,6 +279,22 @@ Status: `PARTIAL`.
 - Test coverage: backend `Phase7QuizzesAssessmentTest` mencakup validation/publish lock/reorder/apply/media usage; Flutter `admin_quiz_templates_test.dart` mencakup list/detail/actions/questions/reorder/apply/media. `flutter analyze --no-pub` bersih untuk perubahan saat ini.
 - Smoke test HP: `PASS`; alur Admin Kuis dan perbaikan urutan pertanyaan telah diverifikasi pengguna.
 - Gap tersisa: UI polish lanjutan ditunda; UI drag reorder asli tidak dibuat, memakai tombol naik/turun; class picker apply belum punya search; widget/navigation exhaustive test belum lengkap; Class Quiz/Guru/Siswa tidak disentuh fase ini.
+
+## Admin Budaya Mekongga update 2026-07-15
+
+Status: `PARTIAL`.
+
+- Scope: mobile memakai Admin Global Culture `/admin/culture/items*`; Class Culture `/classes/{class_id}/culture` dan `/class-culture-items*` tetap terpisah dan tidak diubah.
+- Route Flutter: `/admin/culture`, `/admin/culture/create`, `/admin/culture/:id`, `/admin/culture/:id/edit`; menu `Budaya Mekongga` aktif untuk seluruh prefix.
+- API aktual: list/create/detail/update/soft-delete, endpoint publish, endpoint archive; group ID tetap dipakai sebagai `id` publik tanpa menampilkan `admin_group_id` atau internal primary key.
+- List: pencarian judul, filter status dan jenis konten, pagination backend-side, pull-to-refresh, dedupe Muat Lagi; item menampilkan thumbnail, judul, kategori jenis konten, status, dan tanggal ubah.
+- Field aktual: `title`, `description`, `content_type`, optional media atau URL, `display_order`, `status`; backend tidak memiliki kategori/ringkasan/isi artikel terpisah.
+- Media: upload `/media` memakai `purpose=culture_media`, `visibility=public`; MIME disesuaikan dengan jenis konten; ukuran mengikuti batas backend; edit tanpa penggantian mempertahankan media lama.
+- Publish/archive/delete: create/update berstatus Terbit dan endpoint publish memakai validasi kesiapan yang sama; archive menyimpan data; delete memakai soft delete master dan salinan global yang masih terhubung.
+- Keamanan response: UI/API admin tidak menampilkan group ID, media ID, created scope, storage path, SQLSTATE, atau raw enum.
+- Authorization: admin route memakai `auth:sanctum` + `role:admin`; Guru/Siswa/guest ditolak.
+- Tests: Backend `Phase9CultureGlobalIsolationTest` 11 pass / 89 assertions; Flutter khusus `admin_culture_test.dart` 20 pass; Flutter penuh 141 pass; analyzer `No issues found!`.
+- Smoke test HP: `PASS`; list/search/filter/pagination, detail, create/edit, media, publish/archive/delete, dirty form, serta Back HP/AppBar telah diverifikasi pengguna.
 
 ## Admin Template Speaking update 2026-07-15
 

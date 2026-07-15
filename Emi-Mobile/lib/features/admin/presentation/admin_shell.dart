@@ -13,11 +13,13 @@ class AdminShell extends ConsumerWidget {
     required this.title,
     required this.child,
     this.fallbackRoute,
+    this.onBack,
   });
 
   final String title;
   final Widget child;
   final String? fallbackRoute;
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -52,7 +54,7 @@ class AdminShell extends ConsumerWidget {
                     IconButton(
                       key: const Key('adminBackButton'),
                       tooltip: 'Kembali',
-                      onPressed: () => _back(context, fallbackRoute!),
+                      onPressed: onBack ?? () => _back(context, fallbackRoute!),
                       icon: const Icon(Icons.arrow_back),
                     ),
                   const SizedBox(width: EmiSpacing.sm),

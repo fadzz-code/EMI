@@ -177,10 +177,11 @@ Auth notation:
 | GET/PUT/DELETE | `/class-culture-items/{id}` | `ClassCultureItemController` | Auth + scoped | Class culture detail/update/delete | Later |  |
 | POST | `/class-culture-items/{id}/publish` | `ClassCultureItemController@publish` | Auth + scoped | Publish culture item | Low |  |
 | POST | `/class-culture-items/{id}/archive` | `ClassCultureItemController@archive` | Auth + scoped | Archive culture item | Low |  |
-| GET/POST | `/admin/culture/items` | `AdminCultureItemController@index/store` | Admin | Global culture CRUD | Low |  |
-| GET/PUT/DELETE | `/admin/culture/items/{group_id}` | `AdminCultureItemController` | Admin | Global culture detail/update/delete | Low |  |
-| POST | `/admin/culture/items/{group_id}/publish` | `AdminCultureItemController@publish` | Admin | Publish global culture | Low |  |
-| POST | `/admin/culture/items/{group_id}/archive` | `AdminCultureItemController@archive` | Admin | Archive global culture | Low |  |
+| GET | `/admin/culture/items` | `AdminCultureItemController@index` | Admin | Global culture list | Medium | Query: `search`, `status`, `content_type`, `page`, `per_page`; response paginated dan tidak mengekspos ID teknis. |
+| POST | `/admin/culture/items` | `AdminCultureItemController@store` | Admin | Create global culture | Medium | Field: `title`, `description`, `content_type`, `media_id` atau `external_url`, `display_order`, `status`; disalin ke kelas aktif. |
+| GET/PUT/DELETE | `/admin/culture/items/{group_id}` | `AdminCultureItemController` | Admin | Global culture detail/update/soft-delete | Medium | Path memakai group ID sebagai `id` publik; bukan Class Culture. |
+| POST | `/admin/culture/items/{group_id}/publish` | `AdminCultureItemController@publish` | Admin | Publish global culture | Medium | Memvalidasi judul dan sumber konten; propagasi ke salinan kelas yang masih terhubung. |
+| POST | `/admin/culture/items/{group_id}/archive` | `AdminCultureItemController@archive` | Admin | Archive global culture | Medium | Data tetap tersimpan; status salinan terhubung ikut berubah. |
 | `/admin/culture-templates*` | `AdminCultureTemplateController`, `AdminCultureTemplateItemController`, `CultureTemplateApplyController` | Admin | Culture template CRUD/apply | Low | Web admin primary. |
 
 ## Speaking

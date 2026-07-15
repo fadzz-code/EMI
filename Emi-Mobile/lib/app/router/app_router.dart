@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/admin/data/admin_providers.dart';
 import '../../features/admin/presentation/admin_approvals_screens.dart';
+import '../../features/admin/presentation/admin_culture_screens.dart';
 import '../../features/admin/presentation/admin_dictionary_screens.dart';
 import '../../features/admin/presentation/admin_knowledge_screens.dart';
 import '../../features/admin/presentation/admin_modules_screens.dart';
@@ -362,6 +363,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           quizId: state.pathParameters['quizId'] ?? '',
           id: state.pathParameters['id'],
         ),
+      ),
+      GoRoute(
+        path: '/admin/culture',
+        builder: (_, _) => const AdminCultureScreen(),
+      ),
+      GoRoute(
+        path: '/admin/culture/create',
+        builder: (_, _) => const AdminCultureFormScreen(),
+      ),
+      GoRoute(
+        path: '/admin/culture/:id/edit',
+        builder: (_, state) =>
+            AdminCultureFormScreen(id: state.pathParameters['id']),
+      ),
+      GoRoute(
+        path: '/admin/culture/:id',
+        builder: (_, state) =>
+            AdminCultureDetailScreen(id: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
         path: '/admin/speaking',

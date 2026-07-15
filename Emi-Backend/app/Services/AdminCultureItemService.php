@@ -17,16 +17,20 @@ class AdminCultureItemService
 {
     public function __construct(private readonly AuditLogService $auditLogService) {}
 
-    public function list(): array
+    public function list(array $filters)
     {
         return AdminCultureItem::query()
             ->with('media')
+            ->withCount([
+                'classItems as classes_count',
+                'classItems as published_classes_count' => fn ($query) => $query->where('status', 'published'),
+            ])
+            ->when($filters['search'] ?? null, fn ($query, $search) => $query->where('title', 'like', "%{$search}%"))
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['content_type'] ?? null, fn ($query, $contentType) => $query->where('content_type', $contentType))
             ->orderBy('display_order')
             ->orderBy('created_at')
-            ->get()
-            ->map(fn (AdminCultureItem $item) => $this->masterPayload($item))
-            ->values()
-            ->all();
+            ->paginate($filters['per_page'] ?? 15);
     }
 
     public function show(string $groupId): array
@@ -37,6 +41,9 @@ class AdminCultureItemService
     public function create(array $data, User $actor, Request $request): array
     {
         $this->validateContent($data);
+        if (($data['status'] ?? 'draft') === 'published') {
+            $this->validatePublishReadiness($data);
+        }
         $classes = $this->activeClasses();
 
         if ($classes->isEmpty()) {
@@ -65,6 +72,9 @@ class AdminCultureItemService
         $master = $this->masterItem($groupId);
         $merged = array_merge($master->toArray(), $data);
         $this->validateContent($merged);
+        if (($merged['status'] ?? 'draft') === 'published') {
+            $this->validatePublishReadiness($merged);
+        }
 
         DB::transaction(function () use ($master, $data, $actor, $request, $groupId) {
             $this->fillCultureItem($master, $data, $actor);
@@ -83,6 +93,9 @@ class AdminCultureItemService
 
     public function publish(string $groupId, User $actor, Request $request): array
     {
+        $item = $this->masterItem($groupId);
+        $this->validatePublishReadiness($item->toArray());
+
         return $this->setStatus($groupId, 'published', $actor, $request, 'admin_culture_item.published');
     }
 
@@ -179,16 +192,13 @@ class AdminCultureItemService
 
         return [
             'id' => $item->admin_group_id,
-            'admin_group_id' => $item->admin_group_id,
             'title' => $item->title,
             'description' => $item->description,
             'content_type' => $item->content_type,
-            'media_id' => $item->media_id,
             'media' => $item->relationLoaded('media') && $item->media ? new MediaFileResource($item->media) : null,
             'external_url' => $item->external_url,
             'display_order' => $item->display_order,
             'status' => $item->status,
-            'created_scope' => 'admin',
             'classes_count' => $attachedItems->count(),
             'published_classes_count' => $attachedItems->where('status', 'published')->count(),
             'created_at' => $item->created_at?->toISOString(),
@@ -230,9 +240,20 @@ class AdminCultureItemService
             throw new ApiException('Media wajib diisi untuk tipe konten file.', 'VALIDATION_ERROR', 422);
         }
         if (in_array($type, ['image', 'audio', 'pdf', 'video'], true) && ! empty($data['media_id'])) {
-            $media = MediaFile::query()->find($data['media_id']);
+            $media = MediaFile::query()->active()->find($data['media_id']);
             if (! $media || $media->purpose !== 'culture_media') {
-                throw new ApiException('Media budaya harus menggunakan purpose culture_media.', 'VALIDATION_ERROR', 422);
+                throw new ApiException('Media budaya harus menggunakan media culture_media yang aktif.', 'VALIDATION_ERROR', 422);
+            }
+
+            $mimeMatches = match ($type) {
+                'image' => str_starts_with($media->mime_type, 'image/'),
+                'audio' => str_starts_with($media->mime_type, 'audio/'),
+                'video' => str_starts_with($media->mime_type, 'video/'),
+                'pdf' => $media->mime_type === 'application/pdf',
+                default => false,
+            };
+            if (! $mimeMatches) {
+                throw new ApiException('Jenis media tidak sesuai dengan tipe konten.', 'VALIDATION_ERROR', 422);
             }
         }
         if (in_array($type, ['youtube', 'article', 'link'], true) && empty($data['external_url'])) {
@@ -240,10 +261,19 @@ class AdminCultureItemService
         }
     }
 
+    private function validatePublishReadiness(array $data): void
+    {
+        if (trim((string) ($data['title'] ?? '')) === '') {
+            throw new ApiException('Judul wajib diisi sebelum publikasi.', 'VALIDATION_ERROR', 422);
+        }
+
+        $this->validateContent($data);
+    }
+
     private function applyStatusTimestamps(AdminCultureItem|ClassCultureItem $item): void
     {
-        if ($item->status === 'published' && $item->published_at === null) {
-            $item->published_at = now();
+        if ($item->status === 'published') {
+            $item->published_at ??= now();
             $item->archived_at = null;
         }
 

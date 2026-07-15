@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Culture\ListAdminCultureItemsRequest;
 use App\Http\Requests\Culture\StoreClassCultureItemRequest;
 use App\Http\Requests\Culture\UpdateClassCultureItemRequest;
+use App\Http\Resources\AdminCultureItemResource;
 use App\Services\AdminCultureItemService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,9 +16,11 @@ class AdminCultureItemController extends Controller
 {
     public function __construct(private readonly AdminCultureItemService $service) {}
 
-    public function index(): JsonResponse
+    public function index(ListAdminCultureItemsRequest $request): JsonResponse
     {
-        return ApiResponse::success('Data konten budaya admin berhasil diambil.', $this->service->list());
+        $items = $this->service->list($request->validated());
+
+        return ApiResponse::paginated('Data konten budaya admin berhasil diambil.', $items, AdminCultureItemResource::collection($items));
     }
 
     public function store(StoreClassCultureItemRequest $request): JsonResponse
