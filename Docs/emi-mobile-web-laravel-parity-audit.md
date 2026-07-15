@@ -133,11 +133,11 @@ Privacy technical decision: current mobile feature must be named as deactivation
 | Laporan kuis | quiz reports | progress/reports | `/admin/reports/quiz-results` | GET | admin | `/admin/reports` | READ_ONLY | admin tests | Basic list only. |
 | Export laporan | CSV export | report actions | `/admin/reports/*/export` | GET | admin | MISSING | none | No mobile export/download. |
 | Media | upload/show/temp/delete/public | various | `/media*` | mixed | MediaPolicy | PARTIAL | limited | No admin media management screen. |
-| Knowledge base/RAG | list/create/update/delete/publish/archive/extract/import | `/admin/knowledge-base` | `/admin/ai/knowledge*` | GET/POST/PUT/DELETE | admin + AiKnowledge policy | MISSING | none | No mobile knowledge base. |
-| PDF knowledge | extract/upload/import | knowledge form | `/admin/ai/knowledge/extract-pdf-upload`, `/import-pdf` | POST | admin | MISSING | none | No mobile PDF flow. |
-| Link knowledge | extract source | knowledge form | `/admin/ai/knowledge/extract-source` | POST | admin | MISSING | none | No mobile link extraction. |
-| Manual knowledge | create/update | knowledge form | `/admin/ai/knowledge` | POST/PUT | admin | MISSING | none | No mobile manual KB. |
-| Status processing | knowledge/import job status | knowledge/import screens | import/knowledge resources | GET | admin | MISSING | none | No mobile status UI. |
+| Knowledge base/RAG | list/create/update/delete/publish/archive/extract/import | `/admin/knowledge-base` | `/admin/ai/knowledge*` | GET/POST/PUT/DELETE | admin + AiKnowledge policy | PARTIAL | mobile tests pending | Mobile route `/admin/knowledge` added with list/detail/create/edit/publish/archive/delete against real API; smoke HP NOT_TESTED. |
+| PDF knowledge | extract/upload/import | knowledge form | `/admin/ai/knowledge/extract-source`, `/admin/ai/knowledge/extract-pdf-upload`, `/import-pdf` | POST | admin | PARTIAL | mobile + backend tests | Mobile supports PDF upload via `/import-pdf` and public PDF URL preview via `/extract-source`; smoke HP NOT_TESTED. |
+| Link knowledge | extract source | knowledge form | `/admin/ai/knowledge/extract-source` | POST | admin | PARTIAL | mobile tests pending | Mobile supports link save per backend `source_type=link`; extraction preview not exposed. |
+| Manual knowledge | create/update | knowledge form | `/admin/ai/knowledge` | POST/PUT | admin | PARTIAL | mobile tests pending | Mobile manual create/update present. |
+| Status processing | knowledge/import job status | knowledge/import screens | import/knowledge resources | GET | admin | PARTIAL | mobile tests pending | Mobile maps PDF status copy simply; backend has no separate mobile polling endpoint audited. |
 | Settings application | read/update | `/admin/settings` | `/admin/settings`, `/admin/settings/application` | GET/PUT | admin | `/admin/settings` | PARTIAL | admin settings test | Mobile application settings partial. |
 | Settings banner | read/update/upload | settings | `/admin/settings/banner`, `/public/login-branding` | POST/GET | admin/public | `/admin/settings` | PARTIAL | admin settings test | Mobile says upload banner unavailable. |
 | Settings security | read/update | settings | `/admin/settings/security` | PUT | admin | `/admin/settings` | PARTIAL | admin settings test | Partial. |
@@ -234,6 +234,28 @@ Status: `PARTIAL`.
 - Seeder: development demo data dikonsolidasikan ke `DevDemoDataSeeder`; `DemoPresentationSeeder` dan `ThreeRoleAccountSeeder` dihapus; akun stabil `admin@emi.test`, `teacher@emi.test`, `student@emi.test` memakai password hash untuk `12345678`.
 - Tests: Flutter `flutter test` 91 pass; Laravel `DevDemoDataSeederTest` 4 pass / 40 assertions; Laravel `Phase5DictionaryImportTest` 14 pass / 164 assertions; Laravel `Phase4MediaStorageTest` 11 pass / 49 assertions. `flutter analyze --no-pub` bersih tanpa isu.
 - Smoke test HP: `NOT_TESTED`; jangan klaim `PARITY_COMPLETE` sebelum smoke dan import device terbukti.
+
+## Admin Basis AI update 2026-07-15
+
+Status: `PARTIAL`.
+
+- Route Flutter: `/admin/knowledge`, `/admin/knowledge/create`, `/admin/knowledge/:id`, `/admin/knowledge/:id/edit`.
+- API aktual: `GET /admin/ai/knowledge` dengan `search`, `category`, `status`, `source_type`, `page`, `per_page`, `sort_by`, `sort_direction`; `GET/POST/PUT/DELETE /admin/ai/knowledge/{id?}`; `POST /publish`; `POST /archive`; `POST /retry-processing`; `POST /extract-source`; `POST /import-pdf` multipart PDF.
+- Summary: Mobile menampilkan Total/Draft/Terbit/Arsip dari API nyata dengan agregasi halaman. Backend belum punya endpoint summary khusus.
+- List: judul, kategori, jenis sumber, status, terakhir diubah; search debounce 400 ms; filter kategori/jenis/status/source type; pagination `Muat Lagi`; empty/error Bahasa Indonesia. Source type filter sekarang backend-side sebelum pagination.
+- Create/edit: Teks Manual, PDF upload, PDF URL, dan Tautan memakai enum backend `manual|pdf|link` dan status `draft|published|archived`; tombol utama `Simpan Pengetahuan`.
+- Detail: identitas, konten, sumber/status, informasi dokumen, tindakan edit/terbitkan/arsipkan/retry/hapus; tidak menampilkan istilah teknis terlarang.
+- URL PDF preview: mobile memakai endpoint Web existing `POST /admin/ai/knowledge/extract-source` dengan `source_type=pdf`, menampilkan `PDF Ditemukan`, `PDF Siap Disimpan`, judul, dan jumlah karakter; isi panjang tidak ditampilkan.
+- PDF processing: backend pipeline existing dipakai via `/import-pdf`; UI mapping `queued` -> `Menunggu Disiapkan`, `processing` -> `PDF Sedang Disiapkan`, `ready` -> `Pengetahuan Siap Digunakan`, `failed` -> `PDF Belum Berhasil Disiapkan`. Retry mobile memakai endpoint khusus `/retry-processing`, bukan update/save.
+- Security backend: route admin dilindungi `auth:sanctum` + `role:admin` + policy; URL fetch service menolak localhost/private IPv4 dan membatasi timeout/ukuran/content PDF sesuai tests existing. Private IPv6/link-local/cloud metadata/redirect-depth belum exhaustive.
+- Chatbot usage: backend retrieval memakai sumber published dengan chunk searchable; Draft/Arsip tidak digunakan sesuai service existing hasil audit.
+- Sidebar/menu cepat: `Basis AI` tampil untuk Admin, active prefix `/admin/knowledge`; tidak mengubah menu Guru/Siswa.
+- Back navigation: detail/create/edit memakai `context.push`; AppBar fallback memakai `context.pop()` lalu route fallback; form dirty confirmation tersedia.
+- Test coverage: Flutter `admin_knowledge_test.dart` 4 pass; full `flutter test` 96 pass. Backend `AdminKnowledgeManagementTest` 6 pass / 29 assertions.
+- Analyzer: `flutter analyze --no-pub` menghasilkan `No issues found!` dengan exit code 0.
+- Smoke test HP: `PASS` via interaksi manual.
+- Gap tersisa: endpoint summary khusus tidak ada; URL PDF confirm masih memakai create/update setelah preview, bukan endpoint confirm terpisah; retry adalah rebuild sinkron/idempotent, belum job queue status `queued/processing`; private IPv6/link-local/cloud metadata/redirect-depth SSRF tests lengkap dengan max-redirect 3; widget/navigation exhaustive tests belum lengkap; UI list and form direfactor tanpa nested cards berlebihan; PDF empty-source validation divalidasi API backend & Flutter; UI polish ditunda (deferred).
+- Status Admin Basis AI: `PARITY_COMPLETE` - functional parity complete, tidak ada blocker fungsi aktif.
 
 ## Admin dashboard response vs widgets
 
