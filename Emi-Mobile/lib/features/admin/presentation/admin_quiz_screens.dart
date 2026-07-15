@@ -51,7 +51,7 @@ class _AdminQuizScreenState extends ConsumerState<AdminQuizScreen> {
             ),
             const SizedBox(height: EmiSpacing.md),
             FilledButton.icon(
-              onPressed: () => context.push('/admin/quizzes/new'),
+              onPressed: () => context.push('/admin/quizzes/create'),
               icon: const Icon(Icons.add),
               label: const Text('Tambah Template Kuis'),
             ),
@@ -268,7 +268,7 @@ class _AdminQuizFormScreenState extends ConsumerState<AdminQuizFormScreen> {
   bool _saving = false;
   bool _hydrated = false;
   AppError? _error;
-  bool get _editing => widget.id != null && widget.id != 'new';
+  bool get _editing => widget.id != null;
   @override
   void dispose() {
     _title.dispose();
@@ -337,7 +337,7 @@ class _AdminQuizFormScreenState extends ConsumerState<AdminQuizFormScreen> {
                         TextFormField(
                           controller: _attempts,
                           decoration: const InputDecoration(
-                            labelText: 'Max attempts',
+                            labelText: 'Maksimal percobaan',
                           ),
                           keyboardType: TextInputType.number,
                           validator: _num,
@@ -459,7 +459,10 @@ class _AdminQuizFormScreenState extends ConsumerState<AdminQuizFormScreen> {
         setState(
           () => _error = e is AppError
               ? e
-              : AppError(type: AppErrorType.unknown, message: e.toString()),
+              : const AppError(
+                  type: AppErrorType.unknown,
+                  message: 'Template Kuis gagal diproses. Silakan coba lagi.',
+                ),
         );
       }
     } finally {
@@ -483,7 +486,10 @@ class _AdminQuizFormScreenState extends ConsumerState<AdminQuizFormScreen> {
         setState(
           () => _error = e is AppError
               ? e
-              : AppError(type: AppErrorType.unknown, message: e.toString()),
+              : const AppError(
+                  type: AppErrorType.unknown,
+                  message: 'Template Kuis gagal diproses. Silakan coba lagi.',
+                ),
         );
       }
     }
@@ -561,7 +567,10 @@ class _AdminQuizFormScreenState extends ConsumerState<AdminQuizFormScreen> {
         setState(
           () => _error = e is AppError
               ? e
-              : AppError(type: AppErrorType.unknown, message: e.toString()),
+              : const AppError(
+                  type: AppErrorType.unknown,
+                  message: 'Template Kuis gagal diproses. Silakan coba lagi.',
+                ),
         );
       }
     }
@@ -599,7 +608,7 @@ class AdminQuestionListScreen extends ConsumerWidget {
                 ),
                 FilledButton.icon(
                   onPressed: () =>
-                      context.push('/admin/quizzes/$quizId/questions/new'),
+                      context.push('/admin/quizzes/$quizId/questions/create'),
                   icon: const Icon(Icons.add),
                   label: const Text('Tambah Pertanyaan'),
                 ),
@@ -610,7 +619,9 @@ class AdminQuestionListScreen extends ConsumerWidget {
             child: data.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => _Error(
-                message: e.toString(),
+                message: e is AppError
+                    ? e.message
+                    : 'Pertanyaan belum bisa dimuat. Silakan coba lagi.',
                 onRetry: () =>
                     ref.invalidate(adminQuizQuestionsProvider(quizId)),
               ),
@@ -679,7 +690,7 @@ class _AdminQuestionFormScreenState
   bool _saving = false;
   bool _hydrated = false;
   AppError? _error;
-  bool get _editing => widget.id != null && widget.id != 'new';
+  bool get _editing => widget.id != null;
   @override
   void dispose() {
     _text.dispose();
@@ -1037,7 +1048,7 @@ class _AdminQuestionFormScreenState
       if (mounted) context.go('/admin/quizzes/${widget.quizId}/questions');
     } catch (e) {
       if (mounted) {
-        String msg = e.toString();
+        var msg = 'Pertanyaan belum berhasil disimpan. Silakan coba lagi.';
         if (e is AppError) {
           if (e.message.contains('QUIZ_QUESTION_ORDER_ALREADY_USED') ||
               e.message.contains('urutan')) {

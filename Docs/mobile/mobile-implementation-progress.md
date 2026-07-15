@@ -298,7 +298,7 @@ Status: Selesai sebagian.
 - Audit backend Admin dilakukan pada routes/controllers/resources/requests/policies/services. Endpoint READY dipakai tanpa mengarang kontrak.
 - Auth role guard diperluas: Admin masuk `/admin/dashboard`; Admin tidak masuk route siswa; role selain Admin/Siswa tetap unsupported.
 - Admin Shell dibuat tanpa bottom navigation, memakai AppBar + drawer/sidebar dengan header avatar, nama, email, role, active menu, close-before-navigate, no duplicate route, dan logout.
-- Menu Admin terpusat: Dashboard, Pengguna, Kelas, Modul, Kamus, Kuis, Budaya, Speaking, Laporan, Pengaturan.
+- Menu Admin terpusat: Dashboard, Persetujuan Akun, Guru dan Siswa, Sekolah, Kelas, Modul, Kamus, Basis AI, Kuis, Budaya Mekongga, Template Speaking, Progress, Pengaturan. Parity fungsi utama aktif; debt UI tersisa pada form panjang, tabel/kartu padat di layar sempit, serta verifikasi manual export laporan.
 - Dashboard Admin memakai `GET /api/v1/admin/dashboard/summary` dan hanya menampilkan metrik yang dikirim backend.
 - Fitur list/detail read-only dibuat untuk endpoint inti: users, classes, module templates, dictionary entries, quiz templates, culture items, speaking exercises, progress reports, settings. CRUD destruktif/form panjang belum diaktifkan di mobile core.
 - Manual login Admin production dilakukan user langsung di emulator; password tidak dikirim ke chat. App berjalan di `emulator-5554`; logcat tidak menemukan crash fatal atau token/password tercetak. Pembukaan setiap menu/data nyata masih perlu verifikasi manual lanjutan karena UI dump Flutter tidak memberi bukti teks detail.

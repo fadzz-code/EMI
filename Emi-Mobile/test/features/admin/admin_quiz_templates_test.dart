@@ -1,10 +1,74 @@
 import 'package:dio/dio.dart';
 import 'package:emi_mobile/core/errors/dio_error_mapper.dart';
 import 'package:emi_mobile/core/errors/app_error.dart';
+import 'package:emi_mobile/app/theme/emi_theme.dart';
+import 'package:emi_mobile/features/admin/data/admin_crud_providers.dart';
 import 'package:emi_mobile/features/admin/data/admin_crud_repository.dart';
+import 'package:emi_mobile/features/admin/presentation/admin_quiz_screens.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 void main() {
+  testWidgets('admin quiz create actions use explicit create routes', (
+    tester,
+  ) async {
+    final router = GoRouter(
+      initialLocation: '/admin/quizzes',
+      routes: [
+        GoRoute(
+          path: '/admin/quizzes',
+          builder: (_, _) => const AdminQuizScreen(),
+        ),
+        GoRoute(
+          path: '/admin/quizzes/create',
+          builder: (_, _) => const Text('FORM TEMPLATE BARU'),
+        ),
+        GoRoute(
+          path: '/admin/quizzes/:quizId/questions',
+          builder: (_, state) =>
+              AdminQuestionListScreen(quizId: state.pathParameters['quizId']!),
+        ),
+        GoRoute(
+          path: '/admin/quizzes/:quizId/questions/create',
+          builder: (_, _) => const Text('FORM PERTANYAAN BARU'),
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          adminQuizProvider(
+            const AdminSearchQuery(),
+          ).overrideWith((_) => const AdminCrudPage(items: [])),
+          adminQuizQuestionsProvider(
+            'q1',
+          ).overrideWith((_) => const <QuizQuestionAdmin>[]),
+        ],
+        child: MaterialApp.router(
+          theme: EmiTheme.light(),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Tambah Template Kuis'));
+    await tester.pumpAndSettle();
+    expect(find.text('FORM TEMPLATE BARU'), findsOneWidget);
+
+    router.go('/admin/quizzes/q1/questions');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tambah Pertanyaan'));
+    await tester.pumpAndSettle();
+    expect(find.text('FORM PERTANYAAN BARU'), findsOneWidget);
+    expect(
+      router.routeInformationProvider.value.uri.path,
+      isNot(contains('/new')),
+    );
+  });
+
   test('admin quiz templates duplicate order handled', () async {
     final repository = AdminCrudRepository(
       Dio(BaseOptions(baseUrl: 'https://example.test'))

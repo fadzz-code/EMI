@@ -516,20 +516,15 @@ class AdminDictionaryDetailScreen extends ConsumerWidget {
               title: 'Data Admin',
               icon: Icons.info_outline,
               children: [
-                if (item.audioMediaId?.isNotEmpty == true)
-                  _InfoLine(
-                    icon: Icons.perm_media_outlined,
-                    text: 'Audio Media ID: ${item.audioMediaId}',
-                  ),
                 if (item.createdAt?.isNotEmpty == true)
                   _InfoLine(
                     icon: Icons.event_outlined,
-                    text: 'Dibuat: ${item.createdAt}',
+                    text: 'Dibuat: ${_shortDate(item.createdAt)}',
                   ),
                 if (item.updatedAt?.isNotEmpty == true)
                   _InfoLine(
                     icon: Icons.update,
-                    text: 'Terakhir Diubah: ${item.updatedAt}',
+                    text: 'Terakhir Diubah: ${_shortDate(item.updatedAt)}',
                   ),
               ],
             ),
@@ -1634,6 +1629,12 @@ String _statusLabel(String? status) => switch (status) {
   'inactive' => 'Tidak Aktif',
   _ => 'Status tidak tersedia',
 };
+
+String _shortDate(String? value) {
+  final date = DateTime.tryParse(value ?? '')?.toLocal();
+  if (date == null) return '-';
+  return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+}
 
 String _categoryError(Object error) {
   final message = error is AppError ? error.message : error.toString();

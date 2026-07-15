@@ -106,6 +106,47 @@ void main() {
     },
   );
 
+  testWidgets('admin dictionary detail hides media ID and formats dates', (
+    tester,
+  ) async {
+    const entry = DictionaryEntryAdmin(
+      id: '1',
+      mekongga: 'Air',
+      indonesia: 'Air',
+      english: 'Water',
+      categoryId: 'c1',
+      audioMediaId: 'raw-media-id',
+      createdAt: '2026-07-15T00:00:00Z',
+      updatedAt: '2026-07-16T00:00:00Z',
+    );
+    final router = GoRouter(
+      initialLocation: '/admin/dictionary/1',
+      routes: [
+        GoRoute(
+          path: '/admin/dictionary/:id',
+          builder: (_, state) =>
+              AdminDictionaryDetailScreen(id: state.pathParameters['id']!),
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          adminDictionaryDetailProvider('1').overrideWith((_) => entry),
+        ],
+        child: MaterialApp.router(
+          theme: EmiTheme.light(),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('raw-media-id'), findsNothing);
+    expect(find.text('Dibuat: 15/07/2026'), findsOneWidget);
+    expect(find.text('Terakhir Diubah: 16/07/2026'), findsOneWidget);
+  });
+
   testWidgets('admin dictionary UI audio form displays correct state', (
     tester,
   ) async {

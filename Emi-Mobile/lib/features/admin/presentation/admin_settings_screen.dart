@@ -463,7 +463,10 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
         setState(
           () => _error = error is AppError
               ? error
-              : AppError(type: AppErrorType.unknown, message: error.toString()),
+              : const AppError(
+                  type: AppErrorType.unknown,
+                  message: 'Pengaturan gagal diproses. Coba lagi.',
+                ),
         );
       }
     } finally {
