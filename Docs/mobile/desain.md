@@ -53,6 +53,11 @@ Aturan:
   - File berhasil diakses sekali lewat Figma MCP.
   - Drill-down node berikutnya terblokir rate limit Figma API `429`; detail token yang belum terbaca diberi status `Needs Figma Verification`.
 
+Update verifikasi fase Admin Kuis:
+
+- Admin Kuis mobile mengikuti pola Admin Modul yang sudah dismoke: list berbasis card, search bar, filter bottom sheet, form card, action buttons, dan bottom sheet reorder/apply dengan token `EmiSpacing`, `EmiColors.surface`, `EmiColors.border`.
+- Belum ada drill-down Figma khusus Admin Kuis pada sesi ini; UI tidak menambah token visual baru dan memakai komponen Flutter existing.
+
 Update verifikasi fase Dashboard/Modul:
 
 - File Figma aktif: `Untitled`.

@@ -20,7 +20,19 @@ class QuizTemplateQuestionService
         $this->validationService->validate($data);
 
         return DB::transaction(function () use ($template, $data, $actor, $request) {
-            $question = $template->questions()->create($this->payload($data) + ['created_by' => $actor->id]);
+            $payload = $this->payload($data);
+
+            if (! isset($data['order_number'])) {
+                $maxOrder = $template->questions()->lockForUpdate()->orderByDesc('order_number')->value('order_number') ?? 0;
+                $payload['order_number'] = $maxOrder + 1;
+            } else {
+                $exists = $template->questions()->lockForUpdate()->where('order_number', $data['order_number'])->exists();
+                if ($exists) {
+                    throw new ApiException('Urutan pertanyaan tersebut sudah digunakan.', 'QUIZ_QUESTION_ORDER_ALREADY_USED', 422);
+                }
+            }
+
+            $question = $template->questions()->create($payload + ['created_by' => $actor->id]);
             $this->syncOptions($question, $data['options'] ?? []);
             $this->auditLogService->record('quiz_template_question.created', $question, $actor, null, ['question_type' => $question->question_type], [], $request);
 
@@ -85,9 +97,6 @@ class QuizTemplateQuestionService
     private function payload(array $data, bool $creating = true): array
     {
         $payload = collect($data)->only(['question_type', 'question_text', 'image_media_id', 'correct_answer_text', 'use_fuzzy_matching', 'fuzzy_threshold', 'points', 'order_number', 'explanation'])->all();
-        if ($creating && ! isset($payload['order_number'])) {
-            $payload['order_number'] = 1;
-        }
         if (($payload['question_type'] ?? null) === 'multiple_choice') {
             $payload['correct_answer_text'] = null;
             $payload['use_fuzzy_matching'] = false;

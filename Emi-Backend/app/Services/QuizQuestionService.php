@@ -22,7 +22,19 @@ class QuizQuestionService
         $this->validationService->validate($data);
 
         return DB::transaction(function () use ($quiz, $data, $actor, $request) {
-            $question = $quiz->questions()->create($this->payload($data) + ['created_by' => $actor->id]);
+            $payload = $this->payload($data);
+
+            if (! isset($data['order_number'])) {
+                $maxOrder = $quiz->questions()->lockForUpdate()->orderByDesc('order_number')->value('order_number') ?? 0;
+                $payload['order_number'] = $maxOrder + 1;
+            } else {
+                $exists = $quiz->questions()->lockForUpdate()->where('order_number', $data['order_number'])->exists();
+                if ($exists) {
+                    throw new ApiException('Urutan pertanyaan tersebut sudah digunakan.', 'QUIZ_QUESTION_ORDER_ALREADY_USED', 422);
+                }
+            }
+
+            $question = $quiz->questions()->create($payload + ['created_by' => $actor->id]);
             $this->syncOptions($question, $data['options'] ?? []);
             $this->auditLogService->record('quiz_question.created', $question, $actor, null, $question->only(['class_quiz_id', 'question_type', 'order_number']), [], $request);
 

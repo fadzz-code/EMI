@@ -17,7 +17,7 @@ class StoreQuizQuestionRequest extends ApiFormRequest
             'use_fuzzy_matching' => ['nullable', 'boolean'],
             'fuzzy_threshold' => ['nullable', 'integer', 'min:1', 'max:100'],
             'points' => ['required', 'integer', 'min:1'],
-            'order_number' => ['required', 'integer', 'min:1'],
+            'order_number' => ['nullable', 'integer', 'min:1'],
             'explanation' => ['nullable', 'string'],
             'options' => ['nullable', 'array'],
             'options.*.option_text' => ['required_with:options', 'string'],

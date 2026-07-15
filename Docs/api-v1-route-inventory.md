@@ -152,7 +152,20 @@ Auth notation:
 | PATCH | `/class-quizzes/{id}/questions/reorder` | `QuizQuestionController@reorder` | Auth + scoped | Reorder questions | Low |  |
 | GET | `/class-quizzes/{id}/attempts` | `QuizAttemptController@indexForQuiz` | Auth + scoped | Attempts for quiz | Later | Teacher/admin reporting. |
 | GET | `/class-quizzes/{id}/report` | `QuizReportController@show` | Auth + scoped | Quiz report | Later |  |
-| `/admin/quiz-templates*` | `AdminQuizTemplateController`, `AdminQuizTemplateQuestionController`, `QuizTemplateApplyController` | Admin | Quiz template CRUD/apply | Low | Web admin primary. |
+| GET | `/admin/quiz-templates` | `AdminQuizTemplateController@index` | Admin | Admin quiz template list | Medium | Query: `search`, `status`, `created_by`, `page`, `per_page`, `sort_by`, `sort_direction`. |
+| POST | `/admin/quiz-templates` | `AdminQuizTemplateController@store` | Admin | Create admin quiz template | Medium | Body: `title`, `description`, `instructions`, `duration_minutes`, `max_attempts`, `show_result`, `status=draft`. |
+| GET | `/admin/quiz-templates/{id}` | `AdminQuizTemplateController@show` | Admin | Admin quiz template detail | Medium | Includes questions/options when loaded. |
+| PUT | `/admin/quiz-templates/{id}` | `AdminQuizTemplateController@update` | Admin | Update admin quiz template | Medium | Published templates are content-locked. |
+| DELETE | `/admin/quiz-templates/{id}` | `AdminQuizTemplateController@destroy` | Admin | Delete admin quiz template | Medium | Soft delete. |
+| POST | `/admin/quiz-templates/{id}/publish` | `AdminQuizTemplateController@publish` | Admin | Publish admin quiz template | Medium | Requires valid questions. |
+| POST | `/admin/quiz-templates/{id}/archive` | `AdminQuizTemplateController@archive` | Admin | Archive admin quiz template | Medium |  |
+| POST | `/admin/quiz-templates/{id}/apply` | `QuizTemplateApplyController` | Admin | Apply quiz template to classes | Medium | Creates draft Class Quiz snapshots. |
+| GET | `/admin/quiz-templates/{quiz_template_id}/questions` | `AdminQuizTemplateQuestionController@index` | Admin | List template questions | Medium | Ordered by `order_number`. |
+| POST | `/admin/quiz-templates/{quiz_template_id}/questions` | `AdminQuizTemplateQuestionController@store` | Admin | Create template question | Medium | Types: `multiple_choice`, `short_answer`. |
+| PATCH | `/admin/quiz-templates/{id}/questions/reorder` | `AdminQuizTemplateQuestionController@reorder` | Admin | Reorder template questions | Medium | Payload: `question_ids`; exact active template question IDs. |
+| GET | `/admin/quiz-template-questions/{id}` | `AdminQuizTemplateQuestionController@show` | Admin | Question detail | Medium |  |
+| PUT | `/admin/quiz-template-questions/{id}` | `AdminQuizTemplateQuestionController@update` | Admin | Update template question | Medium | Options replace only when sent. |
+| DELETE | `/admin/quiz-template-questions/{id}` | `AdminQuizTemplateQuestionController@destroy` | Admin | Delete template question | Medium |  |
 
 ## Culture
 

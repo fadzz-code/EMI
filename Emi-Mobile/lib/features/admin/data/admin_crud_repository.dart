@@ -209,6 +209,9 @@ class QuizTemplateAdmin {
     this.description,
     this.instructions,
     this.status,
+    this.questionsCount = 0,
+    this.createdAt,
+    this.updatedAt,
   });
   final String id;
   final String title;
@@ -218,6 +221,9 @@ class QuizTemplateAdmin {
   final int maxAttempts;
   final bool showResult;
   final String? status;
+  final int questionsCount;
+  final String? createdAt;
+  final String? updatedAt;
   factory QuizTemplateAdmin.fromJson(Map<String, dynamic> json) =>
       QuizTemplateAdmin(
         id: json['id'] as String? ?? '',
@@ -228,6 +234,11 @@ class QuizTemplateAdmin {
         maxAttempts: _int(json['max_attempts']) ?? 1,
         showResult: json['show_result'] == true,
         status: json['status'] as String?,
+        questionsCount:
+            _int(json['questions_count']) ??
+            ((json['questions'] as List?)?.length ?? 0),
+        createdAt: json['created_at'] as String?,
+        updatedAt: json['updated_at'] as String?,
       );
 }
 
@@ -241,6 +252,9 @@ class QuizQuestionAdmin {
     required this.options,
     this.correctAnswerText,
     this.explanation,
+    this.imageMediaId,
+    this.useFuzzyMatching = false,
+    this.fuzzyThreshold,
   });
   final String id;
   final String type;
@@ -249,6 +263,9 @@ class QuizQuestionAdmin {
   final int orderNumber;
   final String? correctAnswerText;
   final String? explanation;
+  final String? imageMediaId;
+  final bool useFuzzyMatching;
+  final int? fuzzyThreshold;
   final List<QuizOptionAdmin> options;
   factory QuizQuestionAdmin.fromJson(Map<String, dynamic> json) =>
       QuizQuestionAdmin(
@@ -259,6 +276,9 @@ class QuizQuestionAdmin {
         orderNumber: _int(json['order_number']) ?? 1,
         correctAnswerText: json['correct_answer_text'] as String?,
         explanation: json['explanation'] as String?,
+        imageMediaId: json['image_media_id'] as String?,
+        useFuzzyMatching: json['use_fuzzy_matching'] == true,
+        fuzzyThreshold: _int(json['fuzzy_threshold']),
         options: (json['options'] as List? ?? const [])
             .whereType<Map<String, dynamic>>()
             .map(QuizOptionAdmin.fromJson)
@@ -493,6 +513,7 @@ class AdminCrudRepository {
 
   Future<AdminCrudPage<QuizTemplateAdmin>> quizzes({
     String? search,
+    String? status,
     int page = 1,
   }) async {
     try {
@@ -502,6 +523,9 @@ class AdminCrudRepository {
           'page': page,
           'per_page': 15,
           if (search?.trim().isNotEmpty == true) 'search': search!.trim(),
+          if (status?.trim().isNotEmpty == true) 'status': status!.trim(),
+          'sort_by': 'created_at',
+          'sort_direction': 'desc',
         },
       );
       return _page(res.data, QuizTemplateAdmin.fromJson);
@@ -556,6 +580,46 @@ class AdminCrudRepository {
   );
   Future<void> deleteQuestion(String id) =>
       _delete('/admin/quiz-template-questions/$id');
+
+  Future<void> reorderQuestions(String quizId, List<String> questionIds) async {
+    try {
+      await _dio.patch<Map<String, dynamic>>(
+        '/admin/quiz-templates/$quizId/questions/reorder',
+        data: {'question_ids': questionIds},
+      );
+    } catch (e) {
+      throw _map(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> applyQuiz(
+    String quizId,
+    List<String> classIds,
+  ) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/admin/quiz-templates/$quizId/apply',
+        data: {'class_ids': classIds},
+      );
+      return _dataObject(res.data);
+    } catch (e) {
+      throw _map(e);
+    }
+  }
+
+  Future<String> uploadQuestionImage(String path, String name) async {
+    try {
+      final form = FormData.fromMap({
+        'file': await MultipartFile.fromFile(path, filename: name),
+        'purpose': 'question_image',
+        'visibility': 'public',
+      });
+      final res = await _dio.post<Map<String, dynamic>>('/media', data: form);
+      return _string(_dataObject(res.data)['id']);
+    } catch (e) {
+      throw _map(e);
+    }
+  }
 
   Future<AdminCrudPage<RegistrationApprovalAdmin>> approvals({
     String? search,
@@ -706,6 +770,12 @@ class AdminCrudRepository {
   }
 
   Object _map(Object e) => e is AppError ? e : _mapper.map(e);
+}
+
+String _string(Object? value) {
+  if (value is String && value.trim().isNotEmpty) return value.trim();
+  if (value is num) return '$value';
+  return '';
 }
 
 int? _int(Object? value) => value is int

@@ -120,12 +120,12 @@ Privacy technical decision: current mobile feature must be named as deactivation
 | Media pembelajaran | upload/content URL | module/culture/speaking forms | `/media*` | POST/GET/DELETE | MediaPolicy | PARTIAL | speaking/profile validators | Upload helpers exist in some features; admin media library absent. |
 | Apply module | apply template to class | module actions | `/admin/module-templates/{id}/apply` | POST | admin | MISSING | none | No mobile apply module. |
 | Publish/status module | publish/archive | module actions | `/admin/module-templates/{id}/publish|archive` | POST | policy | MISSING | none | No mobile status actions. |
-| Kuis template | list/create/edit/delete | `/admin/quizzes` | `/admin/quiz-templates*` | GET/POST/PUT/DELETE | QuizTemplatePolicy | PARTIAL | admin quiz tests | Mobile quiz templates exist, builder partial. |
-| Pertanyaan | CRUD | quiz builder | `/admin/quiz-templates/{id}/questions`, `/admin/quiz-template-questions/{id}` | GET/POST/PUT/DELETE | question policy | PARTIAL | admin quiz tests | Basic mobile question routes; reorder/options parity unclear. |
-| Pilihan jawaban | within question form | quiz builder | same question endpoints | mixed | policy | PARTIAL | admin quiz tests | Need field validation parity. |
-| Reorder pertanyaan | drag/reorder | quiz builder | `/admin/quiz-templates/{id}/questions/reorder` | PATCH | policy | MISSING | none | No mobile reorder proven. |
-| Apply quiz | apply template | quiz action | `/admin/quiz-templates/{id}/apply` | POST | admin | MISSING | none | No mobile apply. |
-| Publish/status quiz | publish/archive | quiz action | `/admin/quiz-templates/{id}/publish|archive` | POST | policy | PARTIAL | admin quiz tests | Some actions exist; parity not proven. |
+| Kuis template | list/create/edit/delete/filter | `/admin/quizzes` | `/admin/quiz-templates*` | GET/POST/PUT/DELETE | QuizTemplatePolicy | PARTIAL | backend feature + Flutter admin test | Mobile list/search/status filter/detail/create/edit/delete uses real API; smoke HP NOT_TESTED. |
+| Pertanyaan | CRUD | quiz builder | `/admin/quiz-templates/{id}/questions`, `/admin/quiz-template-questions/{id}` | GET/POST/PUT/DELETE | question policy | PARTIAL | backend feature + Flutter admin test | Mobile supports multiple choice, short answer, image media id, explanation, points, order; published lock handled by backend error. |
+| Pilihan jawaban | within question form | quiz builder | same question endpoints | mixed | policy | PARTIAL | backend feature + Flutter admin test | Mobile can add/remove choices and select one correct option; backend validation remains source of truth. |
+| Reorder pertanyaan | drag/reorder | quiz builder | `/admin/quiz-templates/{id}/questions/reorder` | PATCH | policy | PARTIAL | backend feature + Flutter admin test | Mobile has reorder bottom sheet using `question_ids`; drag gesture not implemented, up/down controls used. |
+| Apply quiz | apply template | quiz action | `/admin/quiz-templates/{id}/apply` | POST | admin | PARTIAL | backend feature + Flutter admin test | Mobile applies template to selected active classes and backend creates draft Class Quiz snapshots. |
+| Publish/status quiz | publish/archive | quiz action | `/admin/quiz-templates/{id}/publish|archive` | POST | policy | PARTIAL | backend feature + Flutter admin test | Mobile exposes publish/archive; backend enforces valid questions and content lock. |
 | Budaya | global culture item CRUD/status | `/admin/culture/templates` and culture services | `/admin/culture/items*` | GET/POST/PUT/DELETE | culture policy | MISSING | none | No mobile admin culture. |
 | Culture item | template item CRUD | edit template | `/admin/culture-templates*`, `/admin/culture-template-items*` | mixed | culture policy | MISSING | none | No mobile culture template editor. |
 | Speaking exercise | template/list/create/edit/archive/media | `/admin/speaking/exercises` | `/admin/speaking/exercises*`, `/media` | GET/POST/PATCH | admin | MISSING | none | No mobile admin speaking templates. |
@@ -260,6 +260,25 @@ Status: `PARITY_COMPLETE`.
 - Tests: Backend `Phase6ModulesLessonsTest` 6 pass / 109 assertions; Flutter full `flutter test` 99 pass; Flutter khusus `admin_modules_test.dart` 2 pass; `flutter analyze --no-pub` menghasilkan `No issues found!`.
 - Smoke test HP: `PASS` untuk alur utama Admin Modul, termasuk list/search/filter/pagination/detail/create/edit/materi/media/reorder/publish/archive/delete/back navigation.
 - Gap aktual: UI polish Modul ditunda atas keputusan pengguna; apply module to class belum dibuat di mobile; widget/navigation exhaustive tests belum lengkap. Tidak ada blocker fungsi aktif.
+
+## Admin Kuis update 2026-07-15
+
+Status: `PARTIAL`.
+
+- Route Flutter: `/admin/quizzes`, `/admin/quizzes/:id`, `/admin/quizzes/:quizId/questions`, `/admin/quizzes/:quizId/questions/:id`.
+- API aktual: `GET /admin/quiz-templates` dengan `search`, `status`, `created_by`, `page`, `per_page`, `sort_by`, `sort_direction`; `POST/GET/PUT/DELETE /admin/quiz-templates/{id?}`; `POST /publish`; `POST /archive`; `POST /apply`; `GET/POST /admin/quiz-templates/{id}/questions`; `PATCH /questions/reorder`; `GET/PUT/DELETE /admin/quiz-template-questions/{id}`.
+- Field template aktual: `title`, `description`, `instructions`, `duration_minutes`, `max_attempts`, `show_result`, `status`; create mobile memaksa status awal `draft`.
+- Status aktual: `draft`, `published`, `archived`, dipetakan menjadi Draft, Terbit, Arsip; published template dikunci oleh backend untuk perubahan konten.
+- List: API nyata, search debounce 400 ms, filter status backend-side, pagination `Muat Lagi`, empty/error Bahasa Indonesia, jumlah pertanyaan, durasi, max attempt, dan tanggal ubah.
+- Template create/edit/delete/status: mobile memakai endpoint nyata; publish/archive dengan konfirmasi; backend menolak publish tanpa pertanyaan valid.
+- Pertanyaan: mobile supports `multiple_choice` dan `short_answer`, `question_text`, `points`, `order_number`, `explanation`, optional `image_media_id`, fuzzy matching untuk jawaban singkat, opsi pilihan ganda add/remove dan satu jawaban benar.
+- Media pertanyaan: mobile upload gambar via `POST /media` dengan `purpose=question_image`, `visibility=public`; backend memvalidasi purpose media.
+- Reorder: mobile menyediakan bottom sheet Atur Urutan Pertanyaan dengan tombol naik/turun dan mengirim payload `question_ids`; rollback lokal jika gagal.
+- Apply: mobile memilih kelas aktif via API kelas dan memanggil `/admin/quiz-templates/{id}/apply`; backend membuat snapshot Class Quiz draft dan skip template yang sudah diterapkan.
+- Authorization: admin routes dilindungi `auth:sanctum` + `role:admin` + policy; backend tests menolak Guru pada endpoint admin quiz.
+- Test coverage: backend `Phase7QuizzesAssessmentTest` mencakup validation/publish lock/reorder/apply/media usage; Flutter `admin_quiz_templates_test.dart` mencakup list/detail/actions/questions/reorder/apply/media. `flutter analyze --no-pub` bersih untuk perubahan saat ini.
+- Smoke test HP: `PASS`; alur Admin Kuis dan perbaikan urutan pertanyaan telah diverifikasi pengguna.
+- Gap tersisa: UI polish lanjutan ditunda; UI drag reorder asli tidak dibuat, memakai tombol naik/turun; class picker apply belum punya search; widget/navigation exhaustive test belum lengkap; Class Quiz/Guru/Siswa tidak disentuh fase ini.
 
 ## Admin Basis AI update 2026-07-15
 

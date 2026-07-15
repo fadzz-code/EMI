@@ -8,6 +8,7 @@ use App\Models\QuizAttempt;
 use App\Models\QuizOption;
 use App\Models\QuizQuestion;
 use App\Models\QuizTemplate;
+use App\Models\QuizTemplateQuestion;
 use App\Models\School;
 use App\Models\SchoolClass;
 use App\Models\StudentClassMembership;
@@ -84,15 +85,20 @@ class Phase7QuizzesAssessmentTest extends TestCase
 
         $firstQuestion = $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/quiz-templates/{$templateId}/questions", $this->multipleChoicePayload([
             'image_media_id' => $questionImage->id,
-            'order_number' => 1,
         ]))->assertCreated()->json('data.id');
 
         $secondQuestion = $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/quiz-templates/{$templateId}/questions", $this->shortAnswerPayload([
-            'order_number' => 2,
             'correct_answer_text' => 'mekongga',
             'use_fuzzy_matching' => true,
             'fuzzy_threshold' => 80,
         ]))->assertCreated()->json('data.id');
+
+        $this->assertSame(1, QuizQuestion::query()->whereKey($firstQuestion)->value('order_number') ?? QuizTemplateQuestion::query()->whereKey($firstQuestion)->value('order_number'));
+        $this->assertSame(2, QuizQuestion::query()->whereKey($secondQuestion)->value('order_number') ?? QuizTemplateQuestion::query()->whereKey($secondQuestion)->value('order_number'));
+
+        $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/quiz-templates/{$templateId}/questions", $this->multipleChoicePayload([
+            'order_number' => 2,
+        ]))->assertUnprocessable()->assertJsonPath('code', 'QUIZ_QUESTION_ORDER_ALREADY_USED');
 
         $this->withToken($this->tokenFor($admin))->patchJson("/api/v1/admin/quiz-templates/{$templateId}/questions/reorder", [
             'question_ids' => [$secondQuestion],
@@ -391,7 +397,6 @@ class Phase7QuizzesAssessmentTest extends TestCase
             'question_type' => 'multiple_choice',
             'question_text' => 'Apa arti kata ini?',
             'points' => 5,
-            'order_number' => 1,
             'options' => [
                 ['option_text' => 'Benar', 'is_correct' => true, 'order_number' => 1],
                 ['option_text' => 'Salah', 'is_correct' => false, 'order_number' => 2],
@@ -407,7 +412,6 @@ class Phase7QuizzesAssessmentTest extends TestCase
             'correct_answer_text' => 'mekongga',
             'use_fuzzy_matching' => false,
             'points' => 5,
-            'order_number' => 1,
         ], $overrides);
     }
 

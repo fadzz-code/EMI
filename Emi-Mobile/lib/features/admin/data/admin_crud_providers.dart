@@ -36,7 +36,11 @@ final adminQuizProvider =
     FutureProvider.family<AdminCrudPage<QuizTemplateAdmin>, AdminSearchQuery>(
       (ref, query) => ref
           .watch(adminCrudRepositoryProvider)
-          .quizzes(search: query.search, page: query.page),
+          .quizzes(
+            search: query.search,
+            status: query.status,
+            page: query.page,
+          ),
     );
 
 final adminQuizDetailProvider =
