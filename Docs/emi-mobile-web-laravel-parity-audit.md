@@ -235,6 +235,32 @@ Status: `PARTIAL`.
 - Tests: Flutter `flutter test` 91 pass; Laravel `DevDemoDataSeederTest` 4 pass / 40 assertions; Laravel `Phase5DictionaryImportTest` 14 pass / 164 assertions; Laravel `Phase4MediaStorageTest` 11 pass / 49 assertions. `flutter analyze --no-pub` bersih tanpa isu.
 - Smoke test HP: `NOT_TESTED`; jangan klaim `PARITY_COMPLETE` sebelum smoke dan import device terbukti.
 
+## Admin Modul update 2026-07-15
+
+Status: `PARITY_COMPLETE`.
+
+- Route Flutter: `/admin/modules`, `/admin/modules/create`, `/admin/modules/:id`, `/admin/modules/:id/edit`, `/admin/modules/:moduleId/materials/create`, `/admin/modules/:moduleId/materials/:id/edit`.
+- API aktual: `GET /admin/module-templates` dengan `search`, `status`, `page`, `per_page`, `sort_by`, `sort_direction`; `GET/POST/PUT/DELETE /admin/module-templates/{id?}`; `POST /publish`; `POST /archive`; `GET/POST /admin/module-templates/{id}/lessons`; `PUT/DELETE/POST /admin/lesson-templates/{id}`; `PATCH /admin/module-templates/{id}/lessons/reorder`.
+- Field Modul aktual: `title`, `description`, `status`, `lessons_count`, `lessons`, `published_at`, `archived_at`, `created_at`, `updated_at`; tidak ada kategori, tingkat, kelas, bahasa, thumbnail, atau lampiran langsung pada Modul template.
+- Status aktual: `draft`, `published`, `archived`, dipetakan menjadi Draft, Terbit, Arsip.
+- Summary: Mobile menampilkan Total/Draft/Terbit/Arsip dari agregasi list API; backend belum punya endpoint summary khusus.
+- List: judul, jumlah materi, status, terakhir diubah; search debounce 400 ms; filter status backend-side; pagination `Muat Lagi`; empty/error Bahasa Indonesia; item list ringkas horizontal.
+- Detail: section Informasi Modul, Materi Modul, Media dan Lampiran, Status dan Riwayat, Tindakan.
+- Create/update: field `title`, `description`, `status`; create archived dipaksa draft karena backend store hanya menerima draft/published; publish readiness tetap dari backend.
+- Materi: field `title`, `description`, `content_type`, `content_body`, `media_id`, `external_url`, `sort_order`, `status`; jenis konten Teks/Gambar/Audio/PDF/Video/Tautan mengikuti backend.
+- Reorder: endpoint bulk `PATCH /admin/module-templates/{id}/lessons/reorder` tersedia; mobile menyediakan mode `Atur Urutan Materi` dengan tombol Naik/Turun, `Simpan Urutan`, dan rollback lokal jika gagal.
+- Media/lampiran: relasi media ada pada materi; mobile memakai picker/upload `POST /media` untuk Gambar (`purpose=lesson_image`, public), Audio (`purpose=audio`, private), PDF (`purpose=document`, private). Video dan Tautan URL-only HTTPS sesuai backend. Media ID tidak ditampilkan kepada pengguna.
+- Preview media: gambar lokal tampil preview; audio lokal punya Putar/Jeda/Berhenti memakai `just_audio`; PDF menampilkan nama/ukuran; private temporary URL tersedia di repository.
+- Edit media: media lama dipertahankan jika tidak diganti; media baru diupload sebelum update lesson; media lama tidak dihapus otomatis sesuai service backend; pindah jenis materi menghapus state media tersembunyi dari payload.
+- Publish readiness: backend menolak Modul tanpa materi published dengan `MODULE_HAS_NO_PUBLISHED_LESSONS`; mobile memetakan ke pesan siap-terbit Bahasa Indonesia.
+- Archive/delete: publish/archive/delete memakai endpoint backend; delete adalah soft delete template.
+- Authorization: admin routes dilindungi `auth:sanctum` + `role:admin` + policy; Guru/Siswa/guest ditolak oleh backend tests existing.
+- Back navigation: list-to-detail/create/edit memakai `context.push`; AppBar back memakai `context.pop()` fallback shell.
+- Provider/cache: `adminModuleDetailProvider(moduleId)` dan `adminModuleMaterialsProvider(moduleId)` tersedia; list, summary, detail, materials diinvalidate setelah mutasi relevan.
+- Tests: Backend `Phase6ModulesLessonsTest` 6 pass / 109 assertions; Flutter full `flutter test` 99 pass; Flutter khusus `admin_modules_test.dart` 2 pass; `flutter analyze --no-pub` menghasilkan `No issues found!`.
+- Smoke test HP: `PASS` untuk alur utama Admin Modul, termasuk list/search/filter/pagination/detail/create/edit/materi/media/reorder/publish/archive/delete/back navigation.
+- Gap aktual: UI polish Modul ditunda atas keputusan pengguna; apply module to class belum dibuat di mobile; widget/navigation exhaustive tests belum lengkap. Tidak ada blocker fungsi aktif.
+
 ## Admin Basis AI update 2026-07-15
 
 Status: `PARTIAL`.

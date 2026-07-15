@@ -114,8 +114,23 @@ Auth notation:
 | GET | `/class-lessons/{id}/content-url` | `ClassLessonController@contentUrl` | Auth + scoped | Lesson media/content URL | High | Mobile should use for protected content. |
 | POST | `/class-lessons/{id}/publish` | `ClassLessonController@publish` | Auth + scoped | Publish lesson | Low |  |
 | POST | `/class-lessons/{id}/archive` | `ClassLessonController@archive` | Auth + scoped | Archive lesson | Low |  |
-| PATCH | `/class-modules/{id}/lessons/reorder` | `ClassLessonController@reorder` | Auth + scoped | Reorder lessons | Low |  |
-| `/admin/module-templates*` | `AdminModuleTemplateController`, `AdminLessonTemplateController`, `ModuleTemplateApplyController` | Admin | Template CRUD/apply | Low | Web admin primary. |
+| PATCH | `/class-modules/{id}/lessons/reorder` | `ClassLessonController@reorder` | Auth + scoped | Reorder lessons | Low | Class Module, not Admin Module Template. |
+| GET | `/admin/module-templates` | `AdminModuleTemplateController@index` | Admin | Admin module template list | Medium | Query: `search`, `status`, `created_by`, `page`, `per_page`, `sort_by`, `sort_direction`. |
+| POST | `/admin/module-templates` | `AdminModuleTemplateController@store` | Admin | Create admin module template | Medium | Body: `title`, `description`, `status` draft/published. |
+| GET | `/admin/module-templates/{id}` | `AdminModuleTemplateController@show` | Admin | Admin module template detail | Medium | Includes lessons when loaded. |
+| PUT | `/admin/module-templates/{id}` | `AdminModuleTemplateController@update` | Admin | Update admin module template | Medium | Status can be draft/published/archived. |
+| DELETE | `/admin/module-templates/{id}` | `AdminModuleTemplateController@destroy` | Admin | Soft delete admin module template | Medium |  |
+| POST | `/admin/module-templates/{id}/publish` | `AdminModuleTemplateController@publish` | Admin | Publish admin module template | Medium | Requires at least one published lesson. |
+| POST | `/admin/module-templates/{id}/archive` | `AdminModuleTemplateController@archive` | Admin | Archive admin module template | Medium |  |
+| POST | `/admin/module-templates/{id}/apply` | `ModuleTemplateApplyController` | Admin | Apply template to class modules | Low | Creates Class Module snapshots. |
+| GET | `/admin/module-templates/{module_template_id}/lessons` | `AdminLessonTemplateController@index` | Admin | List lesson templates | Medium | Ordered by `sort_order`. |
+| POST | `/admin/module-templates/{module_template_id}/lessons` | `AdminLessonTemplateController@store` | Admin | Create lesson template | Medium | Content types: text/image/audio/pdf/video/link. |
+| PATCH | `/admin/module-templates/{id}/lessons/reorder` | `AdminLessonTemplateController@reorder` | Admin | Reorder lesson templates | Medium | Payload: `lesson_ids`; must exactly match active lessons in template. |
+| GET | `/admin/lesson-templates/{id}` | `AdminLessonTemplateController@show` | Admin | Lesson template detail | Medium |  |
+| PUT | `/admin/lesson-templates/{id}` | `AdminLessonTemplateController@update` | Admin | Update lesson template | Medium | Media replace by new `media_id`; old media not deleted. |
+| DELETE | `/admin/lesson-templates/{id}` | `AdminLessonTemplateController@destroy` | Admin | Delete lesson template | Medium |  |
+| POST | `/admin/lesson-templates/{id}/publish` | `AdminLessonTemplateController@publish` | Admin | Publish lesson template | Medium | Validates content. |
+| POST | `/admin/lesson-templates/{id}/archive` | `AdminLessonTemplateController@archive` | Admin | Archive lesson template | Medium |  |
 
 ## Quizzes
 
