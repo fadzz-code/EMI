@@ -14,6 +14,7 @@ class ModuleTemplateResource extends JsonResource
             'title' => $this->title,
             'description' => $this->description,
             'status' => $this->status,
+            'lessons_count' => $this->whenCounted('lessons'),
             'created_by' => $this->created_by,
             'updated_by' => $this->updated_by,
             'published_at' => $this->published_at?->toISOString(),
