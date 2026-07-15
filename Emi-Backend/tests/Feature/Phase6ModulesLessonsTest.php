@@ -76,6 +76,18 @@ class Phase6ModulesLessonsTest extends TestCase
         $this->withToken($this->tokenFor($teacher))->postJson('/api/v1/admin/module-templates', ['title' => 'Dasar'])
             ->assertForbidden();
 
+        $this->withToken($this->tokenFor($admin))->post('/api/v1/media', [
+            'file' => UploadedFile::fake()->create('bad.txt', 1, 'text/plain'),
+            'purpose' => 'lesson_image',
+            'visibility' => 'public',
+        ])->assertUnprocessable();
+
+        $this->withToken($this->tokenFor($admin))->post('/api/v1/media', [
+            'file' => UploadedFile::fake()->create('big.png', 5121, 'image/png'),
+            'purpose' => 'lesson_image',
+            'visibility' => 'public',
+        ])->assertUnprocessable();
+
         $templateId = $this->withToken($this->tokenFor($admin))->postJson('/api/v1/admin/module-templates', [
             'title' => 'Kosakata Dasar',
             'description' => 'Modul global',
@@ -92,6 +104,7 @@ class Phase6ModulesLessonsTest extends TestCase
             'status' => 'published',
         ])->assertCreated()->json('data.id');
 
+        $imageLessonId = null;
         foreach ([
             ['Image', 'image', $image->id, null],
             ['Audio', 'audio', $audio->id, null],
@@ -102,8 +115,24 @@ class Phase6ModulesLessonsTest extends TestCase
             $payload = ['title' => $title, 'content_type' => $type, 'status' => 'published'];
             $payload['media_id'] = $mediaId;
             $payload['external_url'] = $url;
-            $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/module-templates/{$templateId}/lessons", $payload)->assertCreated();
+            $createdId = $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/module-templates/{$templateId}/lessons", $payload)
+                ->assertCreated()
+                ->assertJsonMissingPath('data.media.path')
+                ->json('data.id');
+            if ($type === 'image') {
+                $imageLessonId = $createdId;
+            }
         }
+
+        $this->withToken($this->tokenFor($admin))->putJson("/api/v1/admin/lesson-templates/{$imageLessonId}", [
+            'title' => 'Image Renamed',
+        ])->assertOk()->assertJsonPath('data.media.id', $image->id);
+
+        $replacement = $this->media($admin, 'lesson_image', $this->pngFile('replacement.png'), 'public');
+        $this->withToken($this->tokenFor($admin))->putJson("/api/v1/admin/lesson-templates/{$imageLessonId}", [
+            'media_id' => $replacement->id,
+        ])->assertOk()->assertJsonPath('data.media.id', $replacement->id);
+        $this->assertDatabaseHas('media_files', ['id' => $image->id]);
 
         $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/module-templates/{$templateId}/lessons", [
             'title' => 'Salah',
@@ -138,9 +167,18 @@ class Phase6ModulesLessonsTest extends TestCase
         ])->assertUnprocessable()->assertJsonPath('code', 'INVALID_ORDER');
 
         $ids = LessonTemplate::query()->where('module_template_id', $templateId)->orderByDesc('sort_order')->pluck('id')->all();
+        $this->withToken($this->tokenFor($teacher))->patchJson("/api/v1/admin/module-templates/{$templateId}/lessons/reorder", [
+            'lesson_ids' => $ids,
+        ])->assertForbidden();
+        $this->withToken($this->tokenFor($admin))->patchJson("/api/v1/admin/module-templates/{$templateId}/lessons/reorder", [
+            'lesson_ids' => [$ids[0], $ids[0]],
+        ])->assertUnprocessable()->assertJsonPath('code', 'INVALID_ORDER');
         $this->withToken($this->tokenFor($admin))->patchJson("/api/v1/admin/module-templates/{$templateId}/lessons/reorder", [
             'lesson_ids' => $ids,
         ])->assertOk();
+        foreach ($ids as $index => $id) {
+            $this->assertDatabaseHas('lesson_templates', ['id' => $id, 'sort_order' => $index + 1]);
+        }
 
         $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/module-templates/{$templateId}/publish")
             ->assertOk()
