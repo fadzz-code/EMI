@@ -155,6 +155,26 @@ class AdminSettingsRepository {
     }
   }
 
+  Future<BannerSettings> updateBanner({
+    required bool enabled,
+    String? path,
+    String? fileName,
+  }) async {
+    try {
+      final data = <String, dynamic>{'enabled': enabled ? '1' : '0'};
+      if (path != null && fileName != null) {
+        data['file'] = await MultipartFile.fromFile(path, filename: fileName);
+      }
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/admin/settings/banner',
+        data: FormData.fromMap(data),
+      );
+      return BannerSettings.fromJson(_data(res.data));
+    } catch (e) {
+      throw _map(e);
+    }
+  }
+
   Future<SecuritySettings> updateSecurity(SecuritySettings settings) async {
     try {
       final res = await _dio.put<Map<String, dynamic>>(

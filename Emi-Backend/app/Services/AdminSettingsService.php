@@ -48,6 +48,8 @@ class AdminSettingsService
 
     public function updateBanner(User $admin, array $data, ?UploadedFile $file, Request $request): array
     {
+        unset($data['file']);
+
         return DB::transaction(function () use ($admin, $data, $file, $request) {
             $current = SystemSetting::query()->find('banner')?->value ?? $this->defaults()['banner'];
 
@@ -68,10 +70,12 @@ class AdminSettingsService
 
     private function save(string $key, array $data, User $admin, string $action, string $title): array
     {
-        SystemSetting::query()->updateOrCreate(['key' => $key], ['value' => $data]);
-        $this->log($admin, $action, $title, $data);
+        return DB::transaction(function () use ($key, $data, $admin, $action, $title) {
+            SystemSetting::query()->updateOrCreate(['key' => $key], ['value' => $data]);
+            $this->log($admin, $action, $title, $data);
 
-        return $data;
+            return $data;
+        });
     }
 
     private function bannerData(array $banner): array

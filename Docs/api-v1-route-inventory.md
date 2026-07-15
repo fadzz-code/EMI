@@ -31,6 +31,7 @@ Auth notation:
 | GET | `/public/schools` | `PublicLookupController@schools` | Public | Active school lookup | Medium | Used during registration. |
 | GET | `/public/schools/{school_id}/classes` | `PublicLookupController@classes` | Public | Active class lookup | Medium | Used during registration. |
 | GET | `/public/media/{id}/content` | `MediaController@publicContent` | Public | Public media content | High | Only public media; private media forbidden. |
+| GET | `/public/login-branding` | `AdminSettingsController@publicBranding` | Public | Active login banner branding | Medium | Returns only `enabled` and conditional public `image_url`; no security settings or internal media ID. |
 
 ## Admin
 
@@ -45,6 +46,10 @@ Auth notation:
 | POST/PUT/DELETE | `/schools*`, `/classes*`, `/users*` | Same controllers | Auth + scoped | Manage schools/classes/users | Low | Mobile admin not v1 priority. |
 | POST | `/classes/{id}/assign-teacher` | `ClassAssignmentController@assignTeacher` | Auth + scoped | Assign teacher | Low | Admin management. |
 | POST | `/classes/{id}/assign-student` | `ClassAssignmentController@assignStudent` | Auth + scoped | Assign student | Low | Admin management. |
+| GET | `/admin/settings` | `AdminSettingsController@index` | Admin | Read application, banner, security, and recent activity settings | High | Typed mobile settings source. |
+| PUT | `/admin/settings/application` | `AdminSettingsController@updateApplication` | Admin | Update name, subtitle, academic year, and timezone | High | Full validated application payload. |
+| POST | `/admin/settings/banner` | `AdminSettingsController@updateBanner` | Admin | Enable/disable and optionally replace login banner | High | Multipart image; omitted file retains current banner. |
+| PUT | `/admin/settings/security` | `AdminSettingsController@updateSecurity` | Admin | Update login-alert and weekly-report preferences | High | Preferences are persisted booleans. |
 
 ## Teacher
 
