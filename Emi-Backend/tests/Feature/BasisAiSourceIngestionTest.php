@@ -188,13 +188,21 @@ class BasisAiSourceIngestionTest extends TestCase
 
     public function test_uploaded_pdf_extracted_content_can_be_saved_and_used_by_student_chatbot()
     {
-        AiKnowledgeItem::factory()->create([
+        $item = AiKnowledgeItem::factory()->create([
             'title' => 'Artikel Rumbia',
             'content' => 'Sagu rumbia adalah bahan pangan tradisional penting di Sulawesi Tenggara.',
             'source_type' => 'link',
             'source_url' => 'https://example.com/rumbia',
             'status' => 'published',
             'created_by' => $this->admin->id,
+        ]);
+        $item->chunks()->create([
+            'chunk_index' => 0,
+            'content' => 'Sagu rumbia adalah bahan pangan tradisional penting di Sulawesi Tenggara.',
+            'content_hash' => hash('sha256', 'Sagu rumbia adalah bahan pangan tradisional penting di Sulawesi Tenggara.'),
+            'character_count' => 80,
+            'token_estimate' => 20,
+            'metadata' => ['searchable' => true],
         ]);
 
         $response = $this->actingAs($this->student)->postJson('/api/v1/student/chatbot/messages', [
@@ -284,6 +292,49 @@ class BasisAiSourceIngestionTest extends TestCase
 
         $this->assertSame('table_of_contents', $page->fresh()->metadata['page_type']);
         $this->assertFalse($page->fresh()->metadata['searchable']);
+    }
+
+    public function test_source_extraction_rejects_unsafe_url_variants(): void
+    {
+        foreach ([
+            'file:///etc/passwd',
+            'ftp://example.com/file.pdf',
+            'http://localhost/secret',
+            'http://127.0.0.1/secret',
+            'http://10.0.0.5/secret',
+            'http://172.16.0.5/secret',
+            'http://192.168.1.5/secret',
+            'http://169.254.169.254/latest/meta-data',
+            'http://metadata.google.internal/computeMetadata/v1',
+            'http://[::1]/secret',
+            'http://[fc00::1]/secret',
+            'http://[fe80::1]/secret',
+            'http://[::ffff:127.0.0.1]/secret',
+        ] as $url) {
+            $this->actingAs($this->admin)->postJson('/api/v1/admin/ai/knowledge/extract-source', [
+                'source_type' => 'pdf',
+                'source_url' => $url,
+            ])->assertStatus(422);
+        }
+    }
+
+    public function test_pdf_url_rejects_redirect_to_private_and_non_pdf_content(): void
+    {
+        Http::fake([
+            'https://example.com/redirect-private.pdf' => Http::response('', 302, ['Location' => 'http://127.0.0.1/private.pdf']),
+            'https://example.com/not-pdf.pdf' => Http::response('plain', 200, ['Content-Type' => 'text/plain']),
+        ]);
+
+        $this->actingAs($this->admin)->postJson('/api/v1/admin/ai/knowledge/extract-source', [
+            'source_type' => 'pdf',
+            'source_url' => 'https://example.com/redirect-private.pdf',
+        ])->assertStatus(422);
+
+        $this->actingAs($this->admin)->postJson('/api/v1/admin/ai/knowledge/extract-source', [
+            'source_type' => 'pdf',
+            'source_url' => 'https://example.com/not-pdf.pdf',
+        ])->assertStatus(422)
+            ->assertJsonPath('errors.source_url.0', 'File dari tautan tersebut bukan PDF yang didukung.');
     }
 
     public function test_import_empty_pdf_returns_clear_error(): void
