@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/admin/data/admin_providers.dart';
 import '../../features/admin/presentation/admin_approvals_screens.dart';
 import '../../features/admin/presentation/admin_dictionary_screens.dart';
+import '../../features/admin/presentation/admin_knowledge_screens.dart';
 import '../../features/admin/presentation/admin_quiz_screens.dart';
 import '../../features/admin/presentation/admin_reports_screen.dart';
 import '../../features/admin/presentation/admin_screens.dart';
@@ -288,6 +289,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/admin/dictionary/:id',
         builder: (_, state) =>
             AdminDictionaryDetailScreen(id: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
+        path: '/admin/knowledge',
+        builder: (_, _) => const AdminKnowledgeScreen(),
+      ),
+      GoRoute(
+        path: '/admin/knowledge/create',
+        builder: (_, _) => const AdminKnowledgeFormScreen(),
+      ),
+      GoRoute(
+        path: '/admin/knowledge/:id/edit',
+        builder: (_, state) =>
+            AdminKnowledgeFormScreen(id: state.pathParameters['id']),
+      ),
+      GoRoute(
+        path: '/admin/knowledge/:id',
+        builder: (_, state) =>
+            AdminKnowledgeDetailScreen(id: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
         path: '/admin/quizzes',

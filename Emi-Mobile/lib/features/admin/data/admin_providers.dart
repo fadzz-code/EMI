@@ -261,6 +261,7 @@ enum AdminFeature {
   classes('Kelas', '/classes', '/admin/classes'),
   modules('Modul', '/admin/module-templates', '/admin/modules'),
   dictionary('Kamus', '/admin/dictionary/entries', '/admin/dictionary'),
+  knowledge('Basis AI', '/admin/ai/knowledge', '/admin/knowledge'),
   quizzes('Kuis', '/admin/quiz-templates', '/admin/quizzes'),
   culture('Budaya', '/admin/culture/items', '/admin/culture'),
   speaking('Rekaman Speaking', '/admin/speaking/exercises', '/admin/speaking'),
@@ -279,6 +280,7 @@ enum AdminFeature {
     AdminFeature.schools ||
     AdminFeature.classes ||
     AdminFeature.dictionary ||
+    AdminFeature.knowledge ||
     AdminFeature.quizzes ||
     AdminFeature.reports ||
     AdminFeature.settings => true,

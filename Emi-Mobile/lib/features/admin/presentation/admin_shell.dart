@@ -155,6 +155,7 @@ class _AdminDrawer extends ConsumerWidget {
     AdminFeature.classes => Icons.school_outlined,
     AdminFeature.modules => Icons.menu_book_outlined,
     AdminFeature.dictionary => Icons.translate_outlined,
+    AdminFeature.knowledge => Icons.psychology_alt_outlined,
     AdminFeature.quizzes => Icons.quiz_outlined,
     AdminFeature.culture => Icons.public_outlined,
     AdminFeature.speaking => Icons.mic_none_outlined,

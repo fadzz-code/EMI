@@ -117,6 +117,7 @@ class AdminDashboardScreen extends ConsumerWidget {
     AdminFeature.schools => Icons.apartment_outlined,
     AdminFeature.classes => Icons.school_outlined,
     AdminFeature.dictionary => Icons.translate_outlined,
+    AdminFeature.knowledge => Icons.psychology_alt_outlined,
     AdminFeature.quizzes => Icons.quiz_outlined,
     AdminFeature.reports => Icons.bar_chart_outlined,
     AdminFeature.settings => Icons.settings_outlined,
