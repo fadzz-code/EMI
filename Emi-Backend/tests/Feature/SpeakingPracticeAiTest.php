@@ -228,6 +228,7 @@ class SpeakingPracticeAiTest extends TestCase
         $media = MediaFile::factory()->create([
             'uploaded_by' => $admin->id,
             'purpose' => 'speaking_reference_audio',
+            'mime_type' => 'audio/mpeg',
             'visibility' => 'public',
         ]);
 
@@ -254,6 +255,178 @@ class SpeakingPracticeAiTest extends TestCase
         $this->withToken($this->tokenFor($admin))->patchJson('/api/v1/admin/speaking/exercises/'.$created['id'].'/archive')
             ->assertOk()
             ->assertJsonPath('data.status', 'archived');
+    }
+
+    public function test_admin_can_list_and_view_only_global_speaking_exercises(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $global = $this->globalExercise();
+        $classExercise = $this->exercise(SchoolClass::factory()->create());
+
+        $this->withToken($this->tokenFor($admin))->getJson('/api/v1/admin/speaking/exercises')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $global->id])
+            ->assertJsonMissing(['id' => $classExercise->id]);
+
+        $this->withToken($this->tokenFor($admin))->getJson('/api/v1/admin/speaking/exercises/'.$global->id)
+            ->assertOk()
+            ->assertJsonPath('data.id', $global->id);
+
+        $this->withToken($this->tokenFor($admin))->getJson('/api/v1/admin/speaking/exercises/'.$classExercise->id)
+            ->assertForbidden();
+    }
+
+    public function test_admin_list_supports_search_status_and_validated_pagination(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $title = $this->globalExercise(['title' => 'Nanas unik', 'status' => 'draft']);
+        $target = $this->globalExercise(['target_text' => 'Nanas target', 'status' => 'draft']);
+        $prompt = $this->globalExercise(['prompt_text' => 'Nanas prompt', 'status' => 'draft']);
+        $this->globalExercise(['title' => 'Nanas terbit', 'status' => 'published']);
+
+        $response = $this->withToken($this->tokenFor($admin))->getJson('/api/v1/admin/speaking/exercises?search=Nanas&status=draft&per_page=2&page=2')
+            ->assertOk()
+            ->assertJsonPath('meta.per_page', 2)
+            ->assertJsonPath('meta.current_page', 2);
+
+        $this->assertEqualsCanonicalizing([$title->id, $target->id, $prompt->id], collect($response->json('data'))->pluck('id')->merge(
+            $this->withToken($this->tokenFor($admin))->getJson('/api/v1/admin/speaking/exercises?search=Nanas&status=draft&per_page=2&page=1')->json('data.*.id')
+        )->all());
+
+        $this->withToken($this->tokenFor($admin))->getJson('/api/v1/admin/speaking/exercises?status=bad&per_page=101')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['status', 'per_page']);
+    }
+
+    public function test_admin_creates_global_draft_with_server_owned_fields(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $other = User::factory()->admin()->create();
+        $class = SchoolClass::factory()->create();
+
+        $created = $this->withToken($this->tokenFor($admin))->postJson('/api/v1/admin/speaking/exercises', [
+            'title' => 'Draft global',
+            'target_text' => 'Target draft',
+            'classroom_id' => $class->id,
+            'created_by_id' => $other->id,
+        ])->assertCreated()
+            ->assertJsonPath('data.status', 'draft')
+            ->assertJsonPath('data.classroom_id', null)
+            ->assertJsonPath('data.created_by_id', $admin->id)
+            ->json('data');
+
+        $this->assertDatabaseHas('speaking_exercises', ['id' => $created['id'], 'classroom_id' => null, 'created_by_id' => $admin->id]);
+    }
+
+    public function test_admin_updates_and_publishes_ready_global_exercise(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $exercise = $this->globalExercise(['status' => 'draft']);
+
+        $this->withToken($this->tokenFor($admin))->patchJson('/api/v1/admin/speaking/exercises/'.$exercise->id, [
+            'title' => 'Siap terbit',
+            'target_text' => 'Target siap',
+            'status' => 'published',
+        ])->assertOk()
+            ->assertJsonPath('data.title', 'Siap terbit')
+            ->assertJsonPath('data.status', 'published');
+    }
+
+    public function test_admin_cannot_publish_unready_global_exercise(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $exercise = $this->globalExercise(['status' => 'draft']);
+        $exercise->forceFill(['title' => '', 'target_text' => ''])->save();
+
+        $this->withToken($this->tokenFor($admin))->patchJson('/api/v1/admin/speaking/exercises/'.$exercise->id, ['status' => 'published'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['title', 'target_text']);
+    }
+
+    public function test_admin_archives_without_deleting_global_exercise(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $exercise = $this->globalExercise();
+
+        $this->withToken($this->tokenFor($admin))->patchJson('/api/v1/admin/speaking/exercises/'.$exercise->id.'/archive')
+            ->assertOk()
+            ->assertJsonPath('data.status', 'archived');
+
+        $this->assertDatabaseHas('speaking_exercises', ['id' => $exercise->id, 'status' => 'archived', 'deleted_at' => null]);
+    }
+
+    public function test_admin_accepts_only_active_speaking_reference_audio(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $valid = MediaFile::factory()->audio()->create(['purpose' => 'speaking_reference_audio']);
+
+        $this->withToken($this->tokenFor($admin))->postJson('/api/v1/admin/speaking/exercises', [
+            'title' => 'Dengan audio',
+            'target_text' => 'Target audio',
+            'reference_audio_media_id' => $valid->id,
+        ])->assertCreated()->assertJsonPath('data.reference_audio_media_id', $valid->id);
+
+        $wrongPurpose = MediaFile::factory()->audio()->create();
+        $wrongMime = MediaFile::factory()->create(['purpose' => 'speaking_reference_audio', 'mime_type' => 'application/pdf']);
+        $deleted = MediaFile::factory()->audio()->create(['purpose' => 'speaking_reference_audio']);
+        $deleted->delete();
+
+        foreach ([$wrongPurpose, $wrongMime, $deleted] as $media) {
+            $this->withToken($this->tokenFor($admin))->postJson('/api/v1/admin/speaking/exercises', [
+                'title' => 'Audio invalid',
+                'target_text' => 'Target',
+                'reference_audio_media_id' => $media->id,
+            ])->assertUnprocessable()->assertJsonValidationErrors('reference_audio_media_id');
+        }
+    }
+
+    public function test_admin_update_without_audio_retains_existing_audio(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $media = MediaFile::factory()->audio()->create(['purpose' => 'speaking_reference_audio']);
+        $exercise = $this->globalExercise(['reference_audio_media_id' => $media->id]);
+
+        $this->withToken($this->tokenFor($admin))->patchJson('/api/v1/admin/speaking/exercises/'.$exercise->id, ['title' => 'Audio tetap'])
+            ->assertOk()
+            ->assertJsonPath('data.reference_audio_media_id', $media->id);
+
+        $this->assertDatabaseHas('speaking_exercises', ['id' => $exercise->id, 'reference_audio_media_id' => $media->id]);
+    }
+
+    public function test_non_admins_and_guest_cannot_access_admin_speaking_api(): void
+    {
+        $exercise = $this->globalExercise();
+
+        $this->getJson('/api/v1/admin/speaking/exercises')->assertUnauthorized();
+
+        foreach ([User::factory()->teacher()->approved()->create(), User::factory()->student()->approved()->create()] as $user) {
+            $this->withToken($this->tokenFor($user))->getJson('/api/v1/admin/speaking/exercises')->assertForbidden();
+            $this->withToken($this->tokenFor($user))->patchJson('/api/v1/admin/speaking/exercises/'.$exercise->id, ['title' => 'Ditolak'])->assertForbidden();
+        }
+    }
+
+    public function test_admin_speaking_has_no_hard_delete_route(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $exercise = $this->globalExercise();
+
+        $this->withToken($this->tokenFor($admin))->deleteJson('/api/v1/admin/speaking/exercises/'.$exercise->id)->assertMethodNotAllowed();
+        $this->assertDatabaseHas('speaking_exercises', ['id' => $exercise->id, 'deleted_at' => null]);
+    }
+
+    public function test_admin_speaking_response_does_not_expose_storage_fields(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $media = MediaFile::factory()->audio()->create(['purpose' => 'speaking_reference_audio', 'path' => 'private/secret/audio.mp3']);
+        $exercise = $this->globalExercise(['reference_audio_media_id' => $media->id]);
+
+        $content = $this->withToken($this->tokenFor($admin))->getJson('/api/v1/admin/speaking/exercises/'.$exercise->id)
+            ->assertOk()
+            ->assertJsonMissingPath('data.reference_audio.path')
+            ->assertJsonMissingPath('data.reference_audio.disk')
+            ->content();
+
+        $this->assertStringNotContainsString('private/secret/audio.mp3', $content);
     }
 
     public function test_teacher_can_list_published_global_speaking_templates_only(): void

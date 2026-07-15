@@ -264,7 +264,7 @@ enum AdminFeature {
   knowledge('Basis AI', '/admin/ai/knowledge', '/admin/knowledge'),
   quizzes('Kuis', '/admin/quiz-templates', '/admin/quizzes'),
   culture('Budaya', '/admin/culture/items', '/admin/culture'),
-  speaking('Rekaman Speaking', '/admin/speaking/exercises', '/admin/speaking'),
+  speaking('Template Speaking', '/admin/speaking/exercises', '/admin/speaking'),
   reports('Laporan', '/admin/reports/progress/students', '/admin/reports'),
   settings('Pengaturan', '/admin/settings', '/admin/settings');
 
@@ -283,6 +283,7 @@ enum AdminFeature {
     AdminFeature.dictionary ||
     AdminFeature.knowledge ||
     AdminFeature.quizzes ||
+    AdminFeature.speaking ||
     AdminFeature.reports ||
     AdminFeature.settings => true,
     _ => false,

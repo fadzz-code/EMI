@@ -10,6 +10,7 @@ import '../../features/admin/presentation/admin_quiz_screens.dart';
 import '../../features/admin/presentation/admin_reports_screen.dart';
 import '../../features/admin/presentation/admin_screens.dart';
 import '../../features/admin/presentation/admin_settings_screen.dart';
+import '../../features/admin/presentation/admin_speaking_screens.dart';
 import '../../features/auth/presentation/account_status_screen.dart';
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/auth_state.dart';
@@ -361,6 +362,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           quizId: state.pathParameters['quizId'] ?? '',
           id: state.pathParameters['id'],
         ),
+      ),
+      GoRoute(
+        path: '/admin/speaking',
+        builder: (_, _) => const AdminSpeakingScreen(),
+      ),
+      GoRoute(
+        path: '/admin/speaking/create',
+        builder: (_, _) => const AdminSpeakingFormScreen(),
+      ),
+      GoRoute(
+        path: '/admin/speaking/:id/edit',
+        builder: (_, state) =>
+            AdminSpeakingFormScreen(id: state.pathParameters['id']),
+      ),
+      GoRoute(
+        path: '/admin/speaking/:id',
+        builder: (_, state) =>
+            AdminSpeakingDetailScreen(id: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
         path: '/admin/reports',

@@ -4,26 +4,30 @@ namespace App\Http\Controllers\Api;
 
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Speaking\ListAdminSpeakingExercisesRequest;
 use App\Http\Requests\Speaking\StoreAdminSpeakingExerciseRequest;
 use App\Http\Requests\Speaking\UpdateAdminSpeakingExerciseRequest;
 use App\Http\Resources\SpeakingExerciseResource;
 use App\Models\SpeakingExercise;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class AdminSpeakingExerciseController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(ListAdminSpeakingExercisesRequest $request): JsonResponse
     {
-        $perPage = (int) ($request->query('per_page') ?? 15);
-        $status = $request->query('status');
+        $data = $request->validated();
+        $search = $data['search'] ?? null;
 
         $exercises = SpeakingExercise::query()
             ->with(['referenceAudio', 'creator'])
             ->whereNull('classroom_id')
-            ->when($status, fn ($query) => $query->where('status', $status))
+            ->when($data['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($search, fn ($query) => $query->where(fn ($query) => $query
+                ->where('title', 'like', "%{$search}%")
+                ->orWhere('target_text', 'like', "%{$search}%")
+                ->orWhere('prompt_text', 'like', "%{$search}%")))
             ->latest()
-            ->paginate($perPage);
+            ->paginate($data['per_page'] ?? 15);
 
         return ApiResponse::paginated(
             'Data target speaking global berhasil diambil.',

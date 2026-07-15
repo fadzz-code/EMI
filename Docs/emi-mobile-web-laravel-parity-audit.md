@@ -128,7 +128,7 @@ Privacy technical decision: current mobile feature must be named as deactivation
 | Publish/status quiz | publish/archive | quiz action | `/admin/quiz-templates/{id}/publish|archive` | POST | policy | PARTIAL | backend feature + Flutter admin test | Mobile exposes publish/archive; backend enforces valid questions and content lock. |
 | Budaya | global culture item CRUD/status | `/admin/culture/templates` and culture services | `/admin/culture/items*` | GET/POST/PUT/DELETE | culture policy | MISSING | none | No mobile admin culture. |
 | Culture item | template item CRUD | edit template | `/admin/culture-templates*`, `/admin/culture-template-items*` | mixed | culture policy | MISSING | none | No mobile culture template editor. |
-| Speaking exercise | template/list/create/edit/archive/media | `/admin/speaking/exercises` | `/admin/speaking/exercises*`, `/media` | GET/POST/PATCH | admin | MISSING | none | No mobile admin speaking templates. |
+| Speaking exercise | template/list/create/edit/archive/media | `/admin/speaking/exercises` | `/admin/speaking/exercises*`, `/media` | GET/POST/PATCH | admin | `/admin/speaking*` | PARTIAL | backend + Flutter tests | Mobile mengelola template global, audio contoh, publish/archive; smoke HP masih `NOT_TESTED`. |
 | Laporan progress | school/class/student reports | `/admin/progress*` | `/admin/reports/progress/*` | GET | admin scope | `/admin/reports` | READ_ONLY | admin tests | Mobile reports are basic/read-only; export absent. |
 | Laporan kuis | quiz reports | progress/reports | `/admin/reports/quiz-results` | GET | admin | `/admin/reports` | READ_ONLY | admin tests | Basic list only. |
 | Export laporan | CSV export | report actions | `/admin/reports/*/export` | GET | admin | MISSING | none | No mobile export/download. |
@@ -279,6 +279,22 @@ Status: `PARTIAL`.
 - Test coverage: backend `Phase7QuizzesAssessmentTest` mencakup validation/publish lock/reorder/apply/media usage; Flutter `admin_quiz_templates_test.dart` mencakup list/detail/actions/questions/reorder/apply/media. `flutter analyze --no-pub` bersih untuk perubahan saat ini.
 - Smoke test HP: `PASS`; alur Admin Kuis dan perbaikan urutan pertanyaan telah diverifikasi pengguna.
 - Gap tersisa: UI polish lanjutan ditunda; UI drag reorder asli tidak dibuat, memakai tombol naik/turun; class picker apply belum punya search; widget/navigation exhaustive test belum lengkap; Class Quiz/Guru/Siswa tidak disentuh fase ini.
+
+## Admin Template Speaking update 2026-07-15
+
+Status: `PARTIAL`.
+
+- Route Flutter: `/admin/speaking`, `/admin/speaking/create`, `/admin/speaking/:id`, `/admin/speaking/:id/edit`; menu `Template Speaking` aktif pada seluruh prefix tersebut.
+- API aktual: `GET/POST /admin/speaking/exercises`; `GET/PUT/PATCH /admin/speaking/exercises/{exercise}`; `PATCH /admin/speaking/exercises/{exercise}/archive`; tidak ada hard delete atau endpoint publish terpisah.
+- Kontrak list: query backend-side `search`, `status`, `page`, `per_page`; pencarian mencakup judul, kalimat target, dan prompt; status `draft|published|archived`.
+- Field aktual: `title`, `prompt_text`, `target_text`, `target_translation`, optional `reference_audio_media_id`, `difficulty`, `status`, `metadata`; `classroom_id` selalu null, `created_by_id` ditentukan server, dan `language_code` dibuat sebagai `mekongga`.
+- Publish/archive: publish melalui create/update `status=published` dengan validasi data wajib; archive memakai endpoint khusus dan tidak menghapus row.
+- Audio contoh: mobile upload `/media` dengan `purpose=speaking_reference_audio`, `visibility=public`; format dan ukuran divalidasi; preview lokal/server menyediakan Putar/Jeda/Berhenti; private audio memakai temporary URL; edit tanpa perubahan mempertahankan audio lama.
+- UI: list card tunggal menampilkan judul, kalimat target maksimal dua baris, status, audio availability, tanggal ubah, dan menu tindakan; detail dan form memakai single scroll, section spacing 24, field spacing 16, tanpa Media ID/storage path/raw exception.
+- Authorization: admin routes dilindungi `auth:sanctum` + `role:admin`; Guru/Siswa/guest ditolak; controller hanya mengelola exercise global.
+- Tests: Backend `SpeakingPracticeAiTest` 30 pass / 141 assertions; Flutter khusus `admin_speaking_templates_test.dart` 20 pass; Flutter penuh 121 pass; `flutter analyze --no-pub` menghasilkan `No issues found!`.
+- Smoke test HP: `PASS`; daftar/search/filter/pagination, tambah/edit, audio contoh, playback, publish, archive, serta Back HP/AppBar telah diverifikasi pengguna.
+- Scope sengaja tidak mencakup Guru/Siswa Speaking atau review percobaan.
 
 ## Admin Basis AI update 2026-07-15
 

@@ -201,11 +201,11 @@ Auth notation:
 | GET | `/teacher/speaking/attempts` | `TeacherSpeakingController@attempts` | Teacher | Review speaking attempts | Later | Attempts for active assigned classes. |
 | GET | `/teacher/speaking/attempts/{attempt}` | `TeacherSpeakingController@showAttempt` | Teacher | Speaking attempt detail | Later | Scoped by active class assignment. |
 | PATCH | `/teacher/speaking/attempts/{attempt}/feedback` | `TeacherSpeakingController@feedback` | Teacher | Save teacher review | Later | Teacher final feedback remains separate from AI initial score. |
-| GET | `/admin/speaking/exercises` | `AdminSpeakingExerciseController@index` | Admin | Admin speaking global target list | Later | `classroom_id` forced null. |
-| POST | `/admin/speaking/exercises` | `AdminSpeakingExerciseController@store` | Admin | Create global speaking target | Later | `created_by_id` is server-side. Reference audio nullable. |
-| GET | `/admin/speaking/exercises/{exercise}` | `AdminSpeakingExerciseController@show` | Admin | Global speaking target detail | Later | Scoped to global exercises only. |
-| PUT/PATCH | `/admin/speaking/exercises/{exercise}` | `AdminSpeakingExerciseController@update` | Admin | Update global speaking target | Later | `classroom_id` remains null. |
-| PATCH | `/admin/speaking/exercises/{exercise}/archive` | `AdminSpeakingExerciseController@archive` | Admin | Archive global speaking target | Later | No hard delete; status becomes `archived`. |
+| GET | `/admin/speaking/exercises` | `AdminSpeakingExerciseController@index` | Admin | Admin speaking global template list | Medium | Query tervalidasi: `search`, `status`, `page`, `per_page`; hanya `classroom_id=null`. |
+| POST | `/admin/speaking/exercises` | `AdminSpeakingExerciseController@store` | Admin | Create global speaking template | Medium | Field: `title`, `prompt_text`, `target_text`, `target_translation`, `reference_audio_media_id`, `difficulty`, `status`, `metadata`; `created_by_id` server-side. |
+| GET | `/admin/speaking/exercises/{exercise}` | `AdminSpeakingExerciseController@show` | Admin | Global speaking template detail | Medium | Scoped ke template global; response tidak mengekspos storage path. |
+| PUT/PATCH | `/admin/speaking/exercises/{exercise}` | `AdminSpeakingExerciseController@update` | Admin | Update/publish global speaking template | Medium | Publish melalui `status=published`; audio yang tidak dikirim tetap dipertahankan. |
+| PATCH | `/admin/speaking/exercises/{exercise}/archive` | `AdminSpeakingExerciseController@archive` | Admin | Archive global speaking template | Medium | Tidak ada hard delete; status menjadi `archived`. |
 | POST | `/media` | `MediaController@store` | Auth | Upload media, including `speaking_recording` | Partial | Generic private media upload. |
 | GET | `/media/{id}` | `MediaController@show` | Auth | Media metadata | Partial | Protected by policy. |
 | POST | `/media/{id}/temporary-url` | `MediaController@temporaryUrl` | Auth | Private media access URL | Partial | Useful for playback if authorized. |
