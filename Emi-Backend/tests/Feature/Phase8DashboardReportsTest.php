@@ -134,6 +134,47 @@ class Phase8DashboardReportsTest extends TestCase
         $this->assertNull($studentQuiz->json('data.rows.0.best_score_percent'));
     }
 
+    public function test_admin_report_filters_aggregates_attempt_semantics_and_four_export_parity(): void
+    {
+        [$admin, , $student, $school, $class, $quiz] = $this->seedLearningAndQuizDataset();
+        QuizAttempt::factory()->create([
+            'class_quiz_id' => $quiz->id,
+            'student_id' => $student->id,
+            'attempt_number' => 3,
+            'status' => 'submitted',
+            'score_percent' => 90,
+            'submitted_at' => '2026-06-16 08:00:00',
+        ]);
+
+        $token = $this->tokenFor($admin);
+        $this->withToken($token)->getJson('/api/v1/admin/reports/progress/students?quiz_status=completed&date_from=2026-06-16&date_to=2026-06-16')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.student_id', $student->id)
+            ->assertJsonPath('data.0.quizzes_completed', 1);
+        $this->withToken($token)->getJson("/api/v1/admin/reports/quiz-results?quiz_id={$quiz->id}&student_id={$student->id}&date_from=2026-06-16&date_to=2026-06-16")
+            ->assertOk()
+            ->assertJsonPath('data.rows.0.best_score_percent', 90)
+            ->assertJsonPath('data.rows.0.best_attempt_number', 3)
+            ->assertJsonPath('data.rows.0.latest_submitted_at', fn ($value) => str_contains($value, '2026-06-16'))
+            ->assertJsonPath('data.summary.submitted_attempts', 1);
+        $this->withToken($token)->getJson("/api/v1/admin/reports/progress/schools?search={$school->name}&per_page=1")
+            ->assertOk()
+            ->assertJsonPath('data.0.published_modules', 2)
+            ->assertJsonPath('data.0.published_quizzes', 1)
+            ->assertJsonPath('meta.per_page', 1);
+        $this->withToken($token)->getJson("/api/v1/admin/reports/progress/classes?school_id={$school->id}&search={$class->name}")
+            ->assertOk()
+            ->assertJsonPath('data.0.class_id', $class->id);
+
+        foreach (['progress/schools', 'progress/classes', 'progress/students', 'quiz-results'] as $report) {
+            $response = $this->withToken($token)->get("/api/v1/admin/reports/{$report}/export?date_from=2026-06-16&date_to=2026-06-16")
+                ->assertOk();
+            $this->assertStringContainsString('attachment;', $response->headers->get('content-disposition'));
+            $this->assertStringNotContainsString('password', $response->streamedContent());
+        }
+    }
+
     public function test_validation_csv_export_formula_sanitization_and_route_security(): void
     {
         [$admin, $teacher] = $this->seedLearningAndQuizDataset(studentName: '=Formula Student');

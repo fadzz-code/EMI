@@ -265,7 +265,7 @@ enum AdminFeature {
   quizzes('Kuis', '/admin/quiz-templates', '/admin/quizzes'),
   culture('Budaya Mekongga', '/admin/culture/items', '/admin/culture'),
   speaking('Template Speaking', '/admin/speaking/exercises', '/admin/speaking'),
-  reports('Laporan', '/admin/reports/progress/students', '/admin/reports'),
+  reports('Progress', '/admin/reports/progress/overview', '/admin/reports'),
   settings('Pengaturan', '/admin/settings', '/admin/settings');
 
   const AdminFeature(this.label, this.endpoint, this.route);

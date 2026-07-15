@@ -129,9 +129,9 @@ Privacy technical decision: current mobile feature must be named as deactivation
 | Budaya | global culture item CRUD/status | `/admin/culture/templates` and culture services | `/admin/culture/items*` | GET/POST/PUT/DELETE | admin role | `/admin/culture*` | PARTIAL | backend + Flutter tests | Mobile mengelola Admin Global Culture; smoke HP masih `NOT_TESTED`. |
 | Culture item | template item CRUD | edit template | `/admin/culture-templates*`, `/admin/culture-template-items*` | mixed | culture policy | MISSING | none | No mobile culture template editor. |
 | Speaking exercise | template/list/create/edit/archive/media | `/admin/speaking/exercises` | `/admin/speaking/exercises*`, `/media` | GET/POST/PATCH | admin | `/admin/speaking*` | PARTIAL | backend + Flutter tests | Mobile mengelola template global, audio contoh, publish/archive; smoke HP masih `NOT_TESTED`. |
-| Laporan progress | school/class/student reports | `/admin/progress*` | `/admin/reports/progress/*` | GET | admin scope | `/admin/reports` | READ_ONLY | admin tests | Mobile reports are basic/read-only; export absent. |
-| Laporan kuis | quiz reports | progress/reports | `/admin/reports/quiz-results` | GET | admin | `/admin/reports` | READ_ONLY | admin tests | Basic list only. |
-| Export laporan | CSV export | report actions | `/admin/reports/*/export` | GET | admin | MISSING | none | No mobile export/download. |
+| Progress Admin | ADMIN-17 overview + ADMIN-18 detail siswa/kelas | `/admin/progress*` | `/admin/reports/progress/*` | GET | admin scope | `/admin/reports*` | PARITY_COMPLETE | backend + Flutter tests + smoke | Mobile mengikuti Web: satu overview Progress, detail siswa/kelas, filter, dua pagination, dan PDF; smoke fungsi, desain, dan PDF lulus. |
+| Riwayat kuis siswa | bagian detail siswa ADMIN-18 | student progress detail | `/admin/reports/progress/students/{student}` | GET | admin | detail siswa | PARITY_COMPLETE | backend + Flutter tests + smoke | Quiz summary dan riwayat paginated memakai best final attempt; bukan tab laporan terpisah. |
+| Cetak PDF | global, siswa, kelas | Web `window.print()` | `/admin/reports/progress/pdf`, detail PDF routes | GET | admin | tombol Cetak PDF | PARITY_COMPLETE | backend + Flutter tests + smoke | Backend menghasilkan PDF terautentikasi dan terstruktur; mobile menyimpan sementara lalu membuka chooser share/save Android. |
 | Media | upload/show/temp/delete/public | various | `/media*` | mixed | MediaPolicy | PARTIAL | limited | No admin media management screen. |
 | Knowledge base/RAG | list/create/update/delete/publish/archive/extract/import | `/admin/knowledge-base` | `/admin/ai/knowledge*` | GET/POST/PUT/DELETE | admin + AiKnowledge policy | PARTIAL | mobile tests pending | Mobile route `/admin/knowledge` added with list/detail/create/edit/publish/archive/delete against real API; smoke HP NOT_TESTED. |
 | PDF knowledge | extract/upload/import | knowledge form | `/admin/ai/knowledge/extract-source`, `/admin/ai/knowledge/extract-pdf-upload`, `/import-pdf` | POST | admin | PARTIAL | mobile + backend tests | Mobile supports PDF upload via `/import-pdf` and public PDF URL preview via `/extract-source`; smoke HP NOT_TESTED. |
@@ -333,6 +333,26 @@ Status: `PARTIAL`.
 - Smoke test HP: `PASS` via interaksi manual.
 - Gap tersisa: endpoint summary khusus tidak ada; URL PDF confirm masih memakai create/update setelah preview, bukan endpoint confirm terpisah; retry adalah rebuild sinkron/idempotent, belum job queue status `queued/processing`; private IPv6/link-local/cloud metadata/redirect-depth SSRF tests lengkap dengan max-redirect 3; widget/navigation exhaustive tests belum lengkap; UI list and form direfactor tanpa nested cards berlebihan; PDF empty-source validation divalidasi API backend & Flutter; UI polish ditunda (deferred).
 - Status Admin Basis AI: `PARITY_COMPLETE` - functional parity complete, tidak ada blocker fungsi aktif.
+
+## Admin Progress update 2026-07-15
+
+Status: `PARITY_COMPLETE`.
+
+- Struktur mengikuti Web ADMIN-17/18, bukan empat tab laporan. Menu bernama `Progress`; root mobile tetap `/admin/reports` demi kompatibilitas, dengan detail `/admin/reports/students/:id` dan `/admin/reports/classes/:id`.
+- ADMIN-17: satu scroll berisi header `Progress Siswa`, Cetak PDF, ringkasan global datar, filter bersama, daftar siswa paginated, lalu ringkasan kelas paginated.
+- Ringkasan global: total siswa approved dengan membership aktif, rata-rata progress modul, rata-rata best final quiz score, dan capability `speaking_reports=false` yang ditampilkan sebagai `Belum tersedia`.
+- Filter: search nama siswa/kelas, sekolah, kelas, status belajar, serta periode; school change membersihkan dan memuat ulang pilihan kelas; filter diterapkan backend sebelum pagination.
+- Daftar siswa: identitas/email/sekolah/kelas, progress modul, completion modul/kuis, best average quiz score, status belajar, aktivitas terakhir; pagination `Sebelumnya | Halaman X dari Y | Berikutnya`.
+- Ringkasan kelas: identitas kelas/sekolah, total siswa, rata-rata progress modul/nilai kuis, completion modul, dan partisipasi siswa; pagination terpisah dari siswa.
+- ADMIN-18 siswa: identitas/status akun, ringkasan progress/lesson/kuis/status, quiz summary dan riwayat quiz paginated memakai best final attempt, serta speaking unavailable tanpa data palsu.
+- ADMIN-18 kelas: identitas sekolah/tahun akademik/Guru, ringkasan total siswa/progress/nilai/status counts/aktivitas terakhir, dan daftar siswa kelas paginated yang membuka detail siswa.
+- API komposit baru: `/admin/reports/progress/overview`, `/admin/reports/progress/students/{student}`, dan `/admin/reports/progress/classes/{class}`. Perhitungan memakai service report yang sama, bukan agregasi dari halaman mobile.
+- UI Progress memakai model typed dan section khusus; renderer map generik/raw response dihapus. Status, nilai kosong, aktivitas kosong, dan tanggal dipetakan ke teks Bahasa Indonesia tanpa UUID, snake_case, `null`, atau `-infinity` di layar.
+- PDF: endpoint global, siswa, dan kelas mengembalikan `application/pdf`, attachment filename aman, `private, no-store`, tercatat audit, dan admin-only. Mobile mengunduh dengan bearer header ke direktori sementara lalu membuka chooser Android melalui `share_plus`; token tidak masuk URL dan file tidak ditulis langsung ke storage publik.
+- PDF global/siswa/kelas memakai renderer laporan terstruktur bersama yang mengikuti struktur print Web ADMIN-17/18: identitas/filter, grid ringkasan, tabel ber-header, status speaking, dan footer. Header tabel diulang pada halaman lanjutan; pemisahan halaman diperbaiki agar tidak menghasilkan halaman kosong tambahan.
+- Koreksi backend: periode diterapkan, search siswa/kelas konsisten, agregat tidak mengganda, best attempt terikat best score, class-wide last activity dihitung server-side, dan response tidak memuat jawaban kuis/password.
+- Tests: `AdminProgressDetailPdfTest` 8 pass / 121 assertions; `Phase8DashboardReportsTest` 4 pass / 94 assertions; Flutter penuh 167 pass; analyzer `No issues found!`; Pint dan `git diff --check` bersih.
+- Smoke test fungsi, typed UI, desain metric cards, PDF global/siswa/kelas, dan navigasi: `PASS`. Parity Admin Progress selesai.
 
 ## Admin dashboard response vs widgets
 

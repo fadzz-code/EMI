@@ -358,7 +358,7 @@ Status breakpoint: implementation decision, bukan token Figma.
 | Kuis | `SCREEN 10 — Kuis & LKPD` node `109:415` | Ready | Quiz cards | P0. |
 | Attempt kuis | `SCREEN 11 — Pengerjaan Kuis` node `109:617` | Ready | Transactional screen; contextual action bar | Bottom nav diganti action bar. |
 | Hasil kuis | `SCREEN 12 — Hasil Kuis` node `109:719` | Ready | Score/result card | P0. |
-| Progress | `SCREEN 16 — Progress Belajar` node `109:1179` | Ready | Progress summary cards | P0. |
+| Progress | `SCREEN 16 — Progress Belajar` node `109:1179` | Ready | Progress summary typed, metric cards responsif, item ringkas, progress bar, detail siswa/kelas tanpa raw response | P0; smoke fungsi dan desain lulus. |
 | Profil | `SCREEN 17 — Profil Saya` node `109:1328` | Ready | Profile card/form | P0. |
 | Chatbot | `SCREEN 15 — Chatbot AI` node `109:1100` | Partial | Chat surface | Detail chat children belum terbaca. |
 | Budaya | `SCREEN 13 — Budaya Mekongga` node `109:871`, `SCREEN 14 — Detail Konten Budaya` node `109:997` | Ready | Feed + optional detail | Detail route belum P0 API. |

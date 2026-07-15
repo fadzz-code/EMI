@@ -362,17 +362,6 @@ class RegistrationApprovalAdmin {
   }
 }
 
-class ReportPage {
-  const ReportPage({
-    required this.rows,
-    this.summary = const {},
-    this.hasMore = false,
-  });
-  final List<Map<String, dynamic>> rows;
-  final Map<String, dynamic> summary;
-  final bool hasMore;
-}
-
 class AdminCrudRepository {
   const AdminCrudRepository(this._dio, this._mapper);
   final Dio _dio;
@@ -659,40 +648,6 @@ class AdminCrudRepository {
     {'review_note': note},
     RegistrationApprovalAdmin.fromJson,
   );
-
-  Future<ReportPage> report(String kind, {int page = 1}) async {
-    final path = switch (kind) {
-      'quiz' => '/admin/reports/quiz-results',
-      'schools' => '/admin/reports/progress/schools',
-      'classes' => '/admin/reports/progress/classes',
-      _ => '/admin/reports/progress/students',
-    };
-    try {
-      final res = await _dio.get<Map<String, dynamic>>(
-        path,
-        queryParameters: {'page': page, 'per_page': 15},
-      );
-      final data = res.data?['data'];
-      final rows = data is Map<String, dynamic> ? data['rows'] : data;
-      final summary =
-          data is Map<String, dynamic> &&
-              data['summary'] is Map<String, dynamic>
-          ? data['summary'] as Map<String, dynamic>
-          : <String, dynamic>{};
-      final meta = res.data?['meta'];
-      return ReportPage(
-        rows: (rows as List? ?? const [])
-            .whereType<Map<String, dynamic>>()
-            .toList(),
-        summary: summary,
-        hasMore:
-            meta is Map<String, dynamic> &&
-            (_int(meta['current_page']) ?? 1) < (_int(meta['last_page']) ?? 1),
-      );
-    } catch (e) {
-      throw _map(e);
-    }
-  }
 
   AdminCrudPage<T> _page<T>(
     Map<String, dynamic>? json,

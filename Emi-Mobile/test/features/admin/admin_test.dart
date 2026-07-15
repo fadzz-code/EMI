@@ -288,15 +288,11 @@ void main() {
   test('crud query keeps stable provider identity', () {
     const a = AdminSearchQuery(search: 'kata');
     const b = AdminSearchQuery(search: 'kata');
-    const reportA = AdminReportQuery(kind: 'quiz');
-    const reportB = AdminReportQuery(kind: 'quiz');
-
     expect(a, b);
     expect(a.hashCode, b.hashCode);
     const approvalA = AdminApprovalQuery(search: 'guru');
     const approvalB = AdminApprovalQuery(search: 'guru');
 
-    expect(reportA, reportB);
     expect(approvalA, approvalB);
   });
 
@@ -511,7 +507,6 @@ void main() {
       (await repository.reviewApproval('req-1', 'approve', null)).status,
       'approved',
     );
-    expect((await repository.report('quiz')).summary['eligible_students'], 1);
     expect(requests, contains('POST /admin/dictionary/entries'));
     expect(requests, contains('POST /admin/quiz-templates/quiz-1/questions'));
     expect(requests, contains('GET /admin/registration-requests'));
@@ -520,7 +515,6 @@ void main() {
       requests,
       contains('POST /admin/registration-requests/req-1/approve'),
     );
-    expect(requests, contains('GET /admin/reports/quiz-results'));
   });
 
   testWidgets('admin user edit success without exception', (tester) async {

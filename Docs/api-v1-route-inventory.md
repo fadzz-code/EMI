@@ -247,11 +247,17 @@ Auth notation:
 | GET | `/student/reports/quiz-results` | `StudentQuizResultReportController@index` | Student | Student quiz results | High |  |
 | GET | `/teacher/reports/progress/students` | `TeacherProgressReportController@students` | Teacher | Teacher progress report | Later |  |
 | GET | `/teacher/reports/quiz-results` | `TeacherQuizResultReportController@index` | Teacher | Teacher quiz report | Later |  |
-| GET | `/admin/reports/progress/schools` | `AdminProgressReportController@schools` | Admin | Admin school progress report | Low |  |
-| GET | `/admin/reports/progress/classes` | `AdminProgressReportController@classes` | Admin | Admin class progress report | Low |  |
-| GET | `/admin/reports/progress/students` | `AdminProgressReportController@students` | Admin | Admin student progress report | Low |  |
-| GET | `/admin/reports/quiz-results` | `AdminQuizResultReportController@index` | Admin | Admin quiz results | Low |  |
-| GET | `*/export` report routes | `ReportExportController` | Admin/Teacher | CSV export | Low | Usually not needed in student mobile. |
+| GET | `/admin/reports/progress/overview` | `AdminProgressReportController@overview` | Admin | ADMIN-17 Progress overview | High | Ringkasan global, siswa dan kelas dengan filter bersama serta pagination independen. |
+| GET | `/admin/reports/progress/students/{student}` | `AdminProgressReportController@student` | Admin | ADMIN-18 student progress detail | High | Identitas/status, progress, quiz summary/history paginated, speaking capability. |
+| GET | `/admin/reports/progress/classes/{class}` | `AdminProgressReportController@class` | Admin | ADMIN-18 class progress detail | High | Identitas/Guru, aggregate kelas, status counts, aktivitas terakhir, siswa paginated. |
+| GET | `/admin/reports/progress/pdf` | `AdminProgressReportController@pdf` | Admin | Global Progress PDF | Medium | `application/pdf`, authenticated attachment, private no-store. |
+| GET | `/admin/reports/progress/students/{student}/pdf` | `AdminProgressReportController@studentPdf` | Admin | Student Progress PDF | Medium | Menggunakan report service dan scope siswa yang sama. |
+| GET | `/admin/reports/progress/classes/{class}/pdf` | `AdminProgressReportController@classPdf` | Admin | Class Progress PDF | Medium | Menggunakan report service dan scope kelas yang sama. |
+| GET | `/admin/reports/progress/schools` | `AdminProgressReportController@schools` | Admin | Admin school progress report | Medium | Search/status/date/sort/page/per_page; aggregate sekolah, hanya data pembelajaran sesuai scope. |
+| GET | `/admin/reports/progress/classes` | `AdminProgressReportController@classes` | Admin | Admin class progress report | Medium | Filter sekolah, search/status/date/sort/page/per_page. |
+| GET | `/admin/reports/progress/students` | `AdminProgressReportController@students` | Admin | Admin student progress report | Medium | Filter sekolah/kelas/siswa, search, status belajar/kuis, tanggal, sort, pagination. |
+| GET | `/admin/reports/quiz-results` | `AdminQuizResultReportController@index` | Admin | Admin quiz results | Medium | Filter sekolah/kelas/kuis/siswa/status attempt/tanggal; response summary + rows paginated. |
+| GET | `/admin/reports/progress/{schools|classes|students}/export`, `/admin/reports/quiz-results/export` | `ReportExportController` | Admin | CSV report export | Low | CSV attachment mengikuti filter; mobile download ditunda sampai flow save/share Android aman tersedia. |
 
 ## Other Shared Management Routes
 

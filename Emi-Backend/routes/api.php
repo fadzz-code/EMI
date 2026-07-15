@@ -100,6 +100,10 @@ Route::prefix('v1')->group(function () {
         Route::patch('speaking/exercises/{exercise}/archive', [AdminSpeakingExerciseController::class, 'archive']);
 
         Route::get('dashboard/summary', [AdminDashboardController::class, 'summary']);
+        Route::get('reports/progress/overview', [AdminProgressReportController::class, 'overview']);
+        Route::get('reports/progress/pdf', [AdminProgressReportController::class, 'pdf']);
+        Route::get('reports/progress/students/{student}/pdf', [AdminProgressReportController::class, 'studentPdf']);
+        Route::get('reports/progress/classes/{class}/pdf', [AdminProgressReportController::class, 'classPdf']);
         Route::get('reports/progress/schools', [AdminProgressReportController::class, 'schools']);
         Route::get('reports/progress/classes', [AdminProgressReportController::class, 'classes']);
         Route::get('reports/progress/students', [AdminProgressReportController::class, 'students']);
@@ -108,6 +112,8 @@ Route::prefix('v1')->group(function () {
         Route::get('reports/progress/classes/export', [ReportExportController::class, 'adminClasses']);
         Route::get('reports/progress/students/export', [ReportExportController::class, 'adminStudents']);
         Route::get('reports/quiz-results/export', [ReportExportController::class, 'adminQuizResults']);
+        Route::get('reports/progress/students/{student}', [AdminProgressReportController::class, 'student']);
+        Route::get('reports/progress/classes/{class}', [AdminProgressReportController::class, 'class']);
         Route::get('dictionary/categories', [AdminDictionaryCategoryController::class, 'index']);
         Route::post('dictionary/categories', [AdminDictionaryCategoryController::class, 'store']);
         Route::get('dictionary/categories/{id}', [AdminDictionaryCategoryController::class, 'show']);

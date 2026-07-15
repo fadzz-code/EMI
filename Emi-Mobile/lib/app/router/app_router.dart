@@ -8,6 +8,7 @@ import '../../features/admin/presentation/admin_dictionary_screens.dart';
 import '../../features/admin/presentation/admin_knowledge_screens.dart';
 import '../../features/admin/presentation/admin_modules_screens.dart';
 import '../../features/admin/presentation/admin_quiz_screens.dart';
+import '../../features/admin/presentation/admin_progress_detail_screens.dart';
 import '../../features/admin/presentation/admin_reports_screen.dart';
 import '../../features/admin/presentation/admin_screens.dart';
 import '../../features/admin/presentation/admin_settings_screen.dart';
@@ -403,6 +404,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/admin/reports',
         builder: (_, _) => const AdminReportsScreen(),
+      ),
+      GoRoute(
+        path: '/admin/reports/students/:id',
+        builder: (_, state) =>
+            AdminStudentProgressScreen(id: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
+        path: '/admin/reports/classes/:id',
+        builder: (_, state) =>
+            AdminClassProgressScreen(id: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
         path: '/admin/settings',

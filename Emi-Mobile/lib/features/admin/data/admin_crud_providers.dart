@@ -58,12 +58,6 @@ final adminQuestionDetailProvider =
       (ref, id) => ref.watch(adminCrudRepositoryProvider).questionDetail(id),
     );
 
-final adminReportProvider = FutureProvider.family<ReportPage, AdminReportQuery>(
-  (ref, query) => ref
-      .watch(adminCrudRepositoryProvider)
-      .report(query.kind, page: query.page),
-);
-
 final adminApprovalsProvider =
     FutureProvider.family<
       AdminCrudPage<RegistrationApprovalAdmin>,
@@ -128,16 +122,4 @@ class AdminApprovalQuery {
           other.page == page;
   @override
   int get hashCode => Object.hash(search, status, role, page);
-}
-
-class AdminReportQuery {
-  const AdminReportQuery({required this.kind, this.page = 1});
-  final String kind;
-  final int page;
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is AdminReportQuery && other.kind == kind && other.page == page;
-  @override
-  int get hashCode => Object.hash(kind, page);
 }

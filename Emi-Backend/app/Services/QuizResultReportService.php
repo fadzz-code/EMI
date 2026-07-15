@@ -21,7 +21,7 @@ class QuizResultReportService
             return $query->limit((int) config('dashboard.export_max_rows') + 1)->get()->map(fn ($row) => $this->formatRow($row));
         }
 
-        $paginator = $query->paginate($this->perPage($filters));
+        $paginator = $query->paginate($this->perPage($filters), ['*'], $filters['_page_name'] ?? 'page', $filters['page'] ?? null);
         $paginator->getCollection()->transform(fn ($row) => $this->formatRow($row));
 
         return $paginator;
@@ -68,15 +68,17 @@ class QuizResultReportService
     public function baseQuery(array $filters = [], ?string $forcedClassId = null, ?string $forcedStudentId = null): Builder
     {
         $attempts = DB::table('quiz_attempts')
+            ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->whereRaw('coalesce(submitted_at, updated_at, created_at) >= ?', [$date.' 00:00:00']))
+            ->when($filters['date_to'] ?? null, fn ($query, $date) => $query->whereRaw('coalesce(submitted_at, updated_at, created_at) <= ?', [$date.' 23:59:59.999999']))
             ->selectRaw('class_quiz_id, student_id')
             ->selectRaw('count(*)::int as attempt_count')
             ->selectRaw("count(*) filter (where status in ('submitted', 'expired'))::int as final_attempt_count")
             ->selectRaw("count(*) filter (where status = 'submitted')::int as submitted_attempts")
             ->selectRaw("count(*) filter (where status = 'expired')::int as expired_attempts")
             ->selectRaw("count(*) filter (where status = 'in_progress')::int as in_progress_attempts")
-            ->selectRaw("max(score_percent) filter (where status in ('submitted', 'expired')) as best_score_percent")
-            ->selectRaw('max(attempt_number) filter (where status in (\'submitted\', \'expired\')) as best_attempt_number')
-            ->selectRaw('max(coalesce(submitted_at, updated_at)) as latest_submitted_at')
+            ->selectRaw("(array_agg(score_percent order by score_percent desc nulls last, attempt_number asc, id asc) filter (where status in ('submitted', 'expired')))[1] as best_score_percent")
+            ->selectRaw("(array_agg(attempt_number order by score_percent desc nulls last, attempt_number asc, id asc) filter (where status in ('submitted', 'expired')))[1] as best_attempt_number")
+            ->selectRaw("max(submitted_at) filter (where status in ('submitted', 'expired')) as latest_submitted_at")
             ->selectRaw('(array_agg(status order by coalesce(submitted_at, updated_at) desc, id desc))[1] as latest_status')
             ->groupBy('class_quiz_id', 'student_id');
 
