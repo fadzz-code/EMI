@@ -5,6 +5,7 @@ import '../../features/admin/data/admin_providers.dart';
 import '../../features/admin/presentation/admin_approvals_screens.dart';
 import '../../features/admin/presentation/admin_dictionary_screens.dart';
 import '../../features/admin/presentation/admin_knowledge_screens.dart';
+import '../../features/admin/presentation/admin_modules_screens.dart';
 import '../../features/admin/presentation/admin_quiz_screens.dart';
 import '../../features/admin/presentation/admin_reports_screen.dart';
 import '../../features/admin/presentation/admin_screens.dart';
@@ -307,6 +308,37 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/admin/knowledge/:id',
         builder: (_, state) =>
             AdminKnowledgeDetailScreen(id: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
+        path: '/admin/modules',
+        builder: (_, _) => const AdminModulesScreen(),
+      ),
+      GoRoute(
+        path: '/admin/modules/create',
+        builder: (_, _) => const AdminModuleFormScreen(),
+      ),
+      GoRoute(
+        path: '/admin/modules/:id/edit',
+        builder: (_, state) =>
+            AdminModuleFormScreen(id: state.pathParameters['id']),
+      ),
+      GoRoute(
+        path: '/admin/modules/:moduleId/materials/create',
+        builder: (_, state) => AdminLessonFormScreen(
+          moduleId: state.pathParameters['moduleId'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/admin/modules/:moduleId/materials/:id/edit',
+        builder: (_, state) => AdminLessonFormScreen(
+          moduleId: state.pathParameters['moduleId'] ?? '',
+          id: state.pathParameters['id'],
+        ),
+      ),
+      GoRoute(
+        path: '/admin/modules/:id',
+        builder: (_, state) =>
+            AdminModuleDetailScreen(id: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
         path: '/admin/quizzes',

@@ -279,6 +279,7 @@ enum AdminFeature {
     AdminFeature.users ||
     AdminFeature.schools ||
     AdminFeature.classes ||
+    AdminFeature.modules ||
     AdminFeature.dictionary ||
     AdminFeature.knowledge ||
     AdminFeature.quizzes ||
