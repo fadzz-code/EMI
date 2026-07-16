@@ -243,6 +243,7 @@ export type SpeakingAttempt = {
   ai_alignment?: Array<{ operation?: string; target?: string | null; transcription?: string | null }> | Record<string, number> | null;
   ai_warnings?: string[];
   ai_error?: string | null;
+  ai_error_code?: string | null;
   teacher_score?: number | null;
   teacher_feedback?: string | null;
   reviewed_at?: string | null;

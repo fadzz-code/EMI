@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\SpeakingAiException;
 use App\Models\SpeakingAttempt;
 use App\Services\SpeakingAiClient;
 use Illuminate\Bus\Queueable;
@@ -68,6 +69,9 @@ class AnalyzeSpeakingAttemptJob implements ShouldQueue
             $attempt->forceFill([
                 'status' => 'failed',
                 'ai_error' => in_array($exception->getMessage(), $publicErrors, true) ? $exception->getMessage() : 'Analisis speaking AI gagal.',
+                'ai_raw_response' => array_filter([
+                    'error_code' => $exception instanceof SpeakingAiException ? $exception->errorCode : 'SPEAKING_AI_RESPONSE_INVALID',
+                ]),
             ])->save();
         }
     }

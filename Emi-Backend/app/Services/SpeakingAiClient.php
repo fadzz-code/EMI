@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\SpeakingAiException;
 use App\Models\SpeakingAttempt;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
@@ -25,16 +26,16 @@ class SpeakingAiClient
 
         $media = $attempt->audioMedia;
         if (! $media) {
-            throw new RuntimeException('Media audio speaking tidak ditemukan.');
+            throw new SpeakingAiException('SPEAKING_AUDIO_RELATION_MISSING', 'Media audio speaking tidak ditemukan.');
         }
 
         if (! Storage::disk($media->disk)->exists($media->path)) {
-            throw new RuntimeException('Audio speaking tidak ditemukan pada penyimpanan.');
+            throw new SpeakingAiException('SPEAKING_AUDIO_FILE_MISSING', 'Audio speaking tidak ditemukan pada penyimpanan.');
         }
 
         $stream = Storage::disk($media->disk)->readStream($media->path);
         if ($stream === false) {
-            throw new RuntimeException('Audio speaking tidak dapat dibaca.');
+            throw new SpeakingAiException('SPEAKING_AUDIO_FILE_UNREADABLE', 'Audio speaking tidak dapat dibaca.');
         }
 
         try {
@@ -48,7 +49,7 @@ class SpeakingAiClient
                     'target_text' => $attempt->target_text_snapshot,
                 ]);
         } catch (ConnectionException) {
-            throw new RuntimeException('Layanan analisis speaking tidak dapat dihubungi.');
+            throw new SpeakingAiException('SPEAKING_AI_UNAVAILABLE', 'Layanan analisis speaking tidak dapat dihubungi.');
         } catch (Throwable) {
             throw new RuntimeException('Analisis speaking AI gagal.');
         } finally {
@@ -58,13 +59,22 @@ class SpeakingAiClient
         }
 
         if (! $response->successful()) {
-            throw new RuntimeException(match ($response->status()) {
-                401, 403 => 'Autentikasi layanan analisis speaking gagal.',
-                408, 504 => 'Layanan analisis speaking melewati batas waktu.',
-                422 => 'Audio speaking tidak dapat dianalisis.',
-                503 => 'Layanan analisis speaking sedang tidak tersedia.',
-                default => 'Analisis speaking AI gagal.',
-            });
+            $upstreamCode = $response->json('code');
+            [$code, $message] = match ($upstreamCode) {
+                'SPEAKING_AI_UNAUTHORIZED' => ['SPEAKING_AI_UNAUTHORIZED', 'Autentikasi layanan analisis speaking gagal.'],
+                'SPEAKING_AI_VALIDATION_ERROR' => ['SPEAKING_AI_INVALID_AUDIO', 'Audio speaking tidak dapat dianalisis.'],
+                'SPEAKING_AI_TIMEOUT' => ['SPEAKING_AI_TIMEOUT', 'Layanan analisis speaking melewati batas waktu.'],
+                'SPEAKING_AI_UNAVAILABLE' => ['SPEAKING_AI_UNAVAILABLE', 'Layanan analisis speaking sedang tidak tersedia.'],
+                default => match ($response->status()) {
+                    401, 403 => ['SPEAKING_AI_UNAUTHORIZED', 'Autentikasi layanan analisis speaking gagal.'],
+                    408, 504 => ['SPEAKING_AI_TIMEOUT', 'Layanan analisis speaking melewati batas waktu.'],
+                    422 => ['SPEAKING_AI_INVALID_AUDIO', 'Audio speaking tidak dapat dianalisis.'],
+                    503 => ['SPEAKING_AI_UNAVAILABLE', 'Layanan analisis speaking sedang tidak tersedia.'],
+                    default => ['SPEAKING_AI_RESPONSE_INVALID', 'Analisis speaking AI gagal.'],
+                },
+            };
+
+            throw new SpeakingAiException($code, $message);
         }
 
         $result = $response->json();
@@ -75,7 +85,7 @@ class SpeakingAiClient
             || ! is_array($result['alignment'])
             || (float) $result['score'] < 0
             || (float) $result['score'] > 100) {
-            throw new RuntimeException('Analisis speaking AI gagal.');
+            throw new SpeakingAiException('SPEAKING_AI_RESPONSE_INVALID', 'Respons layanan analisis speaking tidak valid.');
         }
 
         return $result;

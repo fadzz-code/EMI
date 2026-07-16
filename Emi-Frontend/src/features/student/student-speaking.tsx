@@ -367,7 +367,7 @@ export function StudentSpeaking() {
             {activeAttempt.ai_transcription ? <p className="mt-4 text-sm leading-6"><span className="font-black">Transkripsi AI:</span> {activeAttempt.ai_transcription}</p> : null}
             {activeAttempt.ai_alignment ? <p className="mt-2 text-sm font-bold text-muted">Alignment AI tersedia untuk membantu tinjauan pengucapan.</p> : null}
             {activeAttempt.ai_warnings?.map((warning) => <Alert key={warning} tone="info">{warning}</Alert>)}
-            {activeAttempt.status === "failed" ? <div className="grid gap-3"><Alert tone="error">{activeAttempt.ai_error || "Analisis belum berhasil. Audio tetap tersimpan dan dapat dicoba lagi."}</Alert><Button onClick={() => setActiveAttempt(null)} type="button" variant="secondary">Coba lagi</Button></div> : null}
+            {activeAttempt.status === "failed" ? <div className="grid gap-3"><Alert tone="error">{activeAttempt.ai_error || "Analisis belum berhasil. Audio tetap tersimpan dan dapat dicoba lagi."}</Alert><Button onClick={() => { setError(null); setActiveAttempt(null); }} type="button" variant="secondary">Coba lagi</Button></div> : null}
             {activeAttempt.teacher_feedback ? <Alert tone="success">Feedback guru: {activeAttempt.teacher_feedback}</Alert> : <p className="mt-4 text-sm font-bold text-muted">Menunggu tinjauan guru.</p>}
           </CardContent>
         </Card>

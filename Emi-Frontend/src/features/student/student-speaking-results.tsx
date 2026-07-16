@@ -8,6 +8,7 @@ import { Alert, Badge, Card, CardContent, EmptyState } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
+import { latestSpeakingAttempt } from "./speaking-result";
 import { studentService } from "./student-service";
 import type { SpeakingAttempt } from "./types";
 
@@ -58,7 +59,7 @@ export function StudentSpeakingResults() {
   }, [token]);
 
   const reviewedCount = attempts.filter((attempt) => attempt.status === "reviewed").length;
-  const latest = attempts[0];
+  const latest = latestSpeakingAttempt(attempts);
 
   return (
     <div className="mx-auto grid max-w-5xl gap-6 pb-24 lg:pb-0">
