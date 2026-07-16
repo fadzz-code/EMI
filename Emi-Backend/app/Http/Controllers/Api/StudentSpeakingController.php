@@ -65,6 +65,7 @@ class StudentSpeakingController extends Controller
             $request->file('file'),
             $request,
             $request->validated('audio_duration_seconds'),
+            $request->validated('capture_source', 'web_microphone'),
         );
 
         return ApiResponse::success('Percobaan speaking berhasil dikirim.', new SpeakingAttemptResource($attempt), 201);

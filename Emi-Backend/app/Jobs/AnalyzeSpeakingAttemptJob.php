@@ -45,10 +45,10 @@ class AnalyzeSpeakingAttemptJob implements ShouldQueue
                 'ai_raw_response' => $result,
                 'ai_error' => null,
             ])->save();
-        } catch (Throwable $e) {
+        } catch (Throwable) {
             $attempt->forceFill([
                 'status' => 'failed',
-                'ai_error' => $e->getMessage(),
+                'ai_error' => 'Analisis speaking AI gagal.',
             ])->save();
         }
     }

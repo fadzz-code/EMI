@@ -22,6 +22,7 @@ class SpeakingAttemptResource extends JsonResource
             'teacher_feedback' => $this->teacher_feedback,
             'reviewed_at' => $this->reviewed_at?->toISOString(),
             'audio_media_id' => $this->audio_media_id,
+            'capture_source' => $this->capture_source,
             'audio_url' => $this->audio_media_id ? '/api/v1/media/'.$this->audio_media_id : null,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

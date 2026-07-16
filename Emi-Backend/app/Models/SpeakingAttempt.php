@@ -21,6 +21,7 @@ class SpeakingAttempt extends Model
         'audio_mime_type',
         'audio_size_bytes',
         'audio_duration_seconds',
+        'capture_source',
         'target_text_snapshot',
         'status',
         'ai_engine',

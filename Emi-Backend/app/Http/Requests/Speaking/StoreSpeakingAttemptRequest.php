@@ -5,6 +5,7 @@ namespace App\Http\Requests\Speaking;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\Rule;
 
 class StoreSpeakingAttemptRequest extends FormRequest
 {
@@ -43,6 +44,12 @@ class StoreSpeakingAttemptRequest extends FormRequest
         return [
             'file' => ['required', 'file', 'max:'.$maxKb, $this->audioFileRule()],
             'audio_duration_seconds' => ['nullable', 'integer', 'min:1', 'max:'.(int) config('speaking.max_duration_seconds', 30)],
+            'capture_source' => ['sometimes', 'string', Rule::in([
+                'web_microphone',
+                'web_esp32_serial',
+                'mobile_microphone',
+                'mobile_esp32_bluetooth',
+            ])],
         ];
     }
 
