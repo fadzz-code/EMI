@@ -5,12 +5,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CONTROL_PACKET_TYPE, Esp32SerialService, getSerialSupport, PCM_PACKET_TYPE, PTT_PRESSED, PTT_RELEASED } from "./esp32-serial-service";
 import { MAX_PCM_BYTES, pcmDurationSeconds, pcmS16leToWav } from "./pcm-wav";
 
-export type Esp32CaptureState = "unsupported" | "disconnected" | "connecting" | "ready" | "recording" | "finalizing" | "captured" | "error";
+export type Esp32CaptureState = "unsupported" | "disconnected" | "permitted" | "connecting" | "ready" | "recording" | "finalizing" | "captured" | "error";
 
 export function useEsp32SerialCapture() {
   const support = useMemo(() => typeof window === "undefined" ? { supported: false, reason: null } : getSerialSupport(window, navigator), []);
   const [state, setState] = useState<Esp32CaptureState>(support.supported ? "disconnected" : "unsupported");
   const [error, setError] = useState<string | null>(support.reason);
+  const [notice, setNotice] = useState<string | null>(null);
   const [capture, setCapture] = useState<{ file: File; url: string; duration: number } | null>(null);
   const serviceRef = useRef(new Esp32SerialService());
   const stateRef = useRef<Esp32CaptureState>(state);
@@ -90,14 +91,19 @@ export function useEsp32SerialCapture() {
     } else transition("disconnected");
   }, [clearPartial, transition]);
 
-  const connect = useCallback(async (requestNew = true) => {
+  const connect = useCallback(async (requestNew = false) => {
     if (busyRef.current || stateRef.current === "connecting" || stateRef.current === "recording" || stateRef.current === "finalizing") return;
     busyRef.current = true;
+    const previous = stateRef.current;
     transition("connecting");
-    if (mountedRef.current) setError(null);
+    if (mountedRef.current) { setError(null); setNotice(null); }
     try {
-      const connected = await serviceRef.current.connect(requestNew, handlePacket, handleEnd);
-      if (mountedRef.current) transition(connected ? "ready" : "disconnected");
+      const result = await serviceRef.current.connect(requestNew, handlePacket, handleEnd);
+      if (!mountedRef.current) return;
+      if (result.status === "cancelled") {
+        setNotice(result.message);
+        transition(previous === "permitted" || serviceRef.current.hasPermission ? "permitted" : "disconnected");
+      } else transition(result.status === "connected" ? "ready" : serviceRef.current.hasPermission ? "permitted" : "disconnected");
     } catch (caught) {
       if (mountedRef.current) setError(caught instanceof Error ? caught.message : "Gagal menghubungkan alat.");
       transition("error");
@@ -118,7 +124,8 @@ export function useEsp32SerialCapture() {
     const reconnect = window.setTimeout(async () => {
       if (!support.supported) return;
       try {
-        if (await service.connect(false, handlePacket, handleEnd)) transition("ready");
+        const result = await service.reconnect(handlePacket, handleEnd);
+        transition(result.status === "connected" ? "ready" : service.hasPermission ? "permitted" : "disconnected");
       } catch (caught) {
         if (mountedRef.current) setError(caught instanceof Error ? caught.message : "Gagal menghubungkan alat.");
         transition("error");
@@ -127,12 +134,12 @@ export function useEsp32SerialCapture() {
     return () => {
       mountedRef.current = false;
       window.clearTimeout(reconnect);
-      void service.disconnect();
+      void service.dispose();
       clearPartial();
       if (captureRef.current) URL.revokeObjectURL(captureRef.current.url);
       captureRef.current = null;
     };
   }, [clearPartial, handleEnd, handlePacket, support.supported, transition]);
 
-  return { supported: support.supported, state, error, capture, connect, disconnect, stopPlayback: () => serviceRef.current.stopPlayback() };
+  return { supported: support.supported, state, error, notice, capture, connect, disconnect, stopPlayback: () => serviceRef.current.stopPlayback() };
 }

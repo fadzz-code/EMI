@@ -120,7 +120,7 @@ export function TeacherSpeakingResults() {
     ].filter(Boolean).join(" ").toLowerCase().includes(keyword));
   }, [attempts, search]);
 
-  const alignmentRows = Object.entries(selectedAttempt?.ai_alignment ?? {}).slice(0, 8);
+  const alignmentRows = Array.isArray(selectedAttempt?.ai_alignment) ? [] : Object.entries(selectedAttempt?.ai_alignment ?? {}).slice(0, 8);
   const reviewedCount = attempts.filter((attempt) => attempt.status === "reviewed" || attempt.teacher_score !== null).length;
   const pendingReviewCount = attempts.filter((attempt) => attempt.status === "completed" && attempt.teacher_score === null).length;
   const failedCount = attempts.filter((attempt) => attempt.status === "failed").length;

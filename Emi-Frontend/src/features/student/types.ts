@@ -240,7 +240,8 @@ export type SpeakingAttempt = {
   status: SpeakingAttemptStatus;
   ai_score?: number | null;
   ai_transcription?: string | null;
-  ai_alignment?: Record<string, number> | null;
+  ai_alignment?: Array<{ operation?: string; target?: string | null; transcription?: string | null }> | Record<string, number> | null;
+  ai_warnings?: string[];
   ai_error?: string | null;
   teacher_score?: number | null;
   teacher_feedback?: string | null;

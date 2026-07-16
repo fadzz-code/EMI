@@ -17,6 +17,10 @@ class SpeakingAttemptResource extends JsonResource
             'ai_score' => $this->ai_score !== null ? (float) $this->ai_score : null,
             'ai_transcription' => $this->ai_transcription,
             'ai_alignment' => $this->ai_alignment,
+            'ai_warnings' => array_values(array_filter(
+                is_array($this->ai_raw_response['warnings'] ?? null) ? $this->ai_raw_response['warnings'] : [],
+                fn ($warning) => is_string($warning)
+            )),
             'ai_error' => $this->ai_error,
             'teacher_score' => $this->teacher_score !== null ? (float) $this->teacher_score : null,
             'teacher_feedback' => $this->teacher_feedback,

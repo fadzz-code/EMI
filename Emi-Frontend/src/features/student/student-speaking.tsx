@@ -12,8 +12,8 @@ import { cn } from "@/lib/utils";
 import { studentService } from "./student-service";
 import { useEsp32SerialCapture } from "./use-esp32-serial-capture";
 import type { SpeakingAttempt, SpeakingExercise } from "./types";
-
-const terminalStatuses = new Set(["completed", "failed", "reviewed"]);
+import { createSpeakingPoller, SPEAKING_TERMINAL_STATUSES } from "./speaking-poller";
+import { shouldUseMicrophone } from "./speaking-result";
 
 function statusLabel(status?: string) {
   return {
@@ -93,16 +93,14 @@ export function StudentSpeaking() {
   }, [token]);
 
   useEffect(() => {
-    if (!token || !activeAttempt || terminalStatuses.has(activeAttempt.status)) return;
-    const interval = window.setInterval(async () => {
-      try {
-        const detail = await studentService.speakingAttemptDetail(token, activeAttempt.id);
-        setActiveAttempt(detail);
-      } catch (err) {
-        setError(speakingErrorMessage(err));
-      }
-    }, 2500);
-    return () => window.clearInterval(interval);
+    if (!token || !activeAttempt || SPEAKING_TERMINAL_STATUSES.has(activeAttempt.status)) return;
+    const poller = createSpeakingPoller({
+      attempt: activeAttempt,
+      fetch: (id) => studentService.speakingAttemptDetail(token, id),
+      update: setActiveAttempt,
+      fail: setError,
+    });
+    return poller.stop;
   }, [activeAttempt, token]);
 
   useEffect(() => () => {
@@ -115,6 +113,7 @@ export function StudentSpeaking() {
   }, [recordedUrl]);
 
   async function startRecording() {
+    if (!shouldUseMicrophone(captureSource)) return;
     setError(null);
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
       setError("Browser belum mendukung perekaman audio. Gunakan browser terbaru atau unggah dari perangkat lain.");
@@ -315,11 +314,13 @@ export function StudentSpeaking() {
                 </div> : (
                   <div className="grid gap-4 rounded-[var(--radius-card)] border-2 border-border bg-paper p-6 shadow-[2px_2px_0_var(--border)]">
                     <div><p className="text-lg font-black text-ink">Alat Speaking EMI</p><p className="mt-1 text-sm font-semibold text-muted">Tekan tombol pada alat untuk mulai.</p></div>
+                    {esp32.notice ? <Alert tone="info">{esp32.notice}</Alert> : null}
                     {esp32.error ? <Alert tone="error">{esp32.error}</Alert> : null}
-                    <p className="text-sm font-bold text-muted">Status: {{ unsupported: "Alat belum didukung", disconnected: "Alat belum terhubung", connecting: "Sedang menghubungkan alat...", ready: "Alat siap digunakan", recording: "Sedang merekam...", finalizing: "Menyiapkan rekaman...", captured: "Rekaman siap dikirim", error: "Terjadi masalah pada alat" }[esp32.state]}</p>
+                    <p className="text-sm font-bold text-muted">Status: {{ unsupported: "Alat belum didukung", disconnected: "Alat mati atau belum pernah dipilih", permitted: "Alat tersimpan, belum terhubung", connecting: "Sedang menghubungkan alat...", ready: "Alat siap digunakan", recording: "Sedang merekam...", finalizing: "Menyiapkan rekaman...", captured: "Rekaman siap dikirim", error: "Terjadi masalah pada alat" }[esp32.state]}</p>
                     <div className="flex flex-wrap gap-3">
-                      <Button disabled={!esp32.supported || esp32.state === "connecting" || esp32.state === "recording" || esp32.state === "finalizing" || isSubmitting} onClick={() => esp32.connect(true)} type="button"><Cable className="mr-2 size-4" />Hubungkan Alat EMI</Button>
-                      {esp32.state !== "disconnected" && esp32.state !== "unsupported" ? <Button disabled={esp32.state === "finalizing" || isSubmitting} onClick={esp32.disconnect} type="button" variant="secondary">Putuskan alat</Button> : null}
+                      <Button disabled={!esp32.supported || esp32.state === "connecting" || esp32.state === "recording" || esp32.state === "finalizing" || isSubmitting} onClick={() => esp32.connect(false)} type="button"><Cable className="mr-2 size-4" />Sambungkan ulang</Button>
+                      <Button disabled={!esp32.supported || esp32.state === "connecting" || esp32.state === "recording" || esp32.state === "finalizing" || isSubmitting} onClick={() => esp32.connect(true)} type="button" variant="secondary">Pilih alat lain</Button>
+                      {esp32.state !== "disconnected" && esp32.state !== "permitted" && esp32.state !== "unsupported" ? <Button disabled={esp32.state === "finalizing" || isSubmitting} onClick={esp32.disconnect} type="button" variant="secondary">Putuskan alat</Button> : null}
                     </div>
                   </div>
                 )}
@@ -364,7 +365,9 @@ export function StudentSpeaking() {
               <div className="rounded-xl border-2 border-transparent bg-surface-muted p-4"><p className="text-xs font-black uppercase text-muted">Skor guru</p><p className="mt-1 text-2xl font-black text-ink">{score(activeAttempt.teacher_score)}</p></div>
             </div>
             {activeAttempt.ai_transcription ? <p className="mt-4 text-sm leading-6"><span className="font-black">Transkripsi AI:</span> {activeAttempt.ai_transcription}</p> : null}
-            {activeAttempt.ai_error ? <Alert tone="error">AI gagal menganalisis: {activeAttempt.ai_error}</Alert> : null}
+            {activeAttempt.ai_alignment ? <p className="mt-2 text-sm font-bold text-muted">Alignment AI tersedia untuk membantu tinjauan pengucapan.</p> : null}
+            {activeAttempt.ai_warnings?.map((warning) => <Alert key={warning} tone="info">{warning}</Alert>)}
+            {activeAttempt.status === "failed" ? <Alert tone="error">{activeAttempt.ai_error || "Analisis belum berhasil. Audio tetap tersimpan dan dapat dicoba lagi."}</Alert> : null}
             {activeAttempt.teacher_feedback ? <Alert tone="success">Feedback guru: {activeAttempt.teacher_feedback}</Alert> : <p className="mt-4 text-sm font-bold text-muted">Menunggu tinjauan guru.</p>}
           </CardContent>
         </Card>

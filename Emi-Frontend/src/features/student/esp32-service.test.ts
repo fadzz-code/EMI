@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { CONTROL_PACKET_TYPE, Esp32SerialService, ESP32_BAUD_RATE, getSerialSupport, SERIAL_UNSUPPORTED_MESSAGE, STOP_PLAYBACK, type SerialNavigator, type SerialPortLike } from "./esp32-serial-service";
+import { CONTROL_PACKET_TYPE, Esp32SerialService, ESP32_BAUD_RATE, getSerialSupport, SERIAL_CHOOSER_CANCELLED_MESSAGE, SERIAL_UNSUPPORTED_MESSAGE, STOP_PLAYBACK, type SerialNavigator, type SerialPortLike } from "./esp32-serial-service";
 import { encodeSerialPacket } from "./esp32-serial-parser";
 import { speakingAttemptForm } from "./student-service";
 
@@ -26,7 +26,7 @@ describe("Esp32SerialService", () => {
     const { port } = fakePort();
     const api = { requestPort: vi.fn(async () => port), getPorts: vi.fn(async () => []) };
     const service = new Esp32SerialService(() => api);
-    expect(await service.connect(true, () => undefined)).toBe(true);
+    expect(await service.connect(true, () => undefined)).toEqual({ status: "connected" });
     expect(api.requestPort).toHaveBeenCalledOnce();
     expect(api.getPorts).not.toHaveBeenCalled();
     await service.disconnect();
@@ -35,7 +35,7 @@ describe("Esp32SerialService", () => {
     const { port } = fakePort();
     const api = { requestPort: vi.fn(async () => port), getPorts: vi.fn(async () => [port]) };
     const service = new Esp32SerialService(() => api);
-    expect(await service.connect(false, () => undefined)).toBe(true);
+    expect(await service.connect(false, () => undefined)).toEqual({ status: "connected" });
     expect(api.getPorts).toHaveBeenCalledOnce();
     expect(api.requestPort).not.toHaveBeenCalled();
     expect(port.open).toHaveBeenCalledWith({ baudRate: ESP32_BAUD_RATE });
@@ -43,7 +43,7 @@ describe("Esp32SerialService", () => {
   });
   it("returns false when no permitted port", async () => {
     const api: SerialNavigator = { requestPort: vi.fn(), getPorts: vi.fn(async () => []) };
-    expect(await new Esp32SerialService(() => api).connect(false, () => undefined)).toBe(false);
+    expect(await new Esp32SerialService(() => api).connect(false, () => undefined)).toEqual({ status: "unavailable" });
   });
   it("delivers packets then disconnects safely", async () => {
     const { port } = fakePort([encodeSerialPacket(1, new Uint8Array([3, 4]))]);
@@ -54,6 +54,80 @@ describe("Esp32SerialService", () => {
     expect(received).toEqual([3, 4]);
     await service.disconnect();
     expect(port.close).toHaveBeenCalled();
+  });
+  it("treats cross-realm chooser cancellation as neutral", async () => {
+    const api: SerialNavigator = { requestPort: vi.fn(async () => { throw { name: "NotFoundError" }; }), getPorts: vi.fn(async () => []) };
+    const service = new Esp32SerialService(() => api);
+    expect(await service.chooseOther(() => undefined)).toEqual({ status: "cancelled", message: SERIAL_CHOOSER_CANCELLED_MESSAGE });
+    expect(service.connected).toBe(false);
+  });
+  it("keeps stale permitted port knowledge when open fails", async () => {
+    const { port } = fakePort();
+    vi.mocked(port.open).mockRejectedValueOnce(new Error("gone"));
+    const service = new Esp32SerialService(() => ({ requestPort: vi.fn(), getPorts: vi.fn(async () => [port]) }));
+    expect(await service.reconnect(() => undefined)).toEqual({ status: "permitted" });
+    expect(service.hasPermission).toBe(true);
+    expect(service.connected).toBe(false);
+  });
+  it("deduplicates concurrent connection opens", async () => {
+    const { port } = fakePort();
+    let release!: () => void;
+    vi.mocked(port.open).mockImplementation(() => new Promise<void>((resolve) => { release = resolve; }));
+    const api = { requestPort: vi.fn(async () => port), getPorts: vi.fn(async () => []) };
+    const service = new Esp32SerialService(() => api);
+    const first = service.chooseOther(() => undefined);
+    const second = service.chooseOther(() => undefined);
+    await Promise.resolve(); release();
+    expect(await first).toEqual({ status: "connected" });
+    expect(await second).toEqual({ status: "connected" });
+    expect(api.requestPort).toHaveBeenCalledOnce();
+    expect(port.open).toHaveBeenCalledOnce();
+    await service.disconnect();
+  });
+  it("tears down null readable as permitted", async () => {
+    const { port } = fakePort();
+    port.readable = null;
+    const end = vi.fn();
+    const service = new Esp32SerialService(() => ({ requestPort: vi.fn(async () => port), getPorts: vi.fn(async () => []) }));
+    expect(await service.chooseOther(() => undefined, end)).toEqual({ status: "permitted" });
+    expect(end).toHaveBeenCalledWith("ended");
+    expect(service.connected).toBe(false);
+  });
+  it("reports reader error and preserves permission", async () => {
+    const { port } = fakePort();
+    port.readable = new ReadableStream({ pull() { throw new Error("off"); } });
+    const end = vi.fn();
+    const service = new Esp32SerialService(() => ({ requestPort: vi.fn(async () => port), getPorts: vi.fn(async () => []) }));
+    await service.chooseOther(() => undefined, end);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(end).toHaveBeenCalledWith("error");
+    expect(service.hasPermission).toBe(true);
+  });
+  it("reports EOF once and closes session", async () => {
+    const { port } = fakePort();
+    port.readable = new ReadableStream({ start(controller) { controller.close(); } });
+    const end = vi.fn();
+    const service = new Esp32SerialService(() => ({ requestPort: vi.fn(async () => port), getPorts: vi.fn(async () => []) }));
+    await service.chooseOther(() => undefined, end);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(end).toHaveBeenCalledOnce();
+    expect(service.connected).toBe(false);
+  });
+  it("restores disconnect listener when reused after dispose", async () => {
+    const { port } = fakePort();
+    const listeners = new Set<(event: Event & { port?: SerialPortLike }) => void>();
+    const api: SerialNavigator = {
+      requestPort: vi.fn(async () => port),
+      getPorts: vi.fn(async () => [port]),
+      addEventListener: vi.fn((_type, listener) => listeners.add(listener)),
+      removeEventListener: vi.fn((_type, listener) => listeners.delete(listener)),
+    };
+    const service = new Esp32SerialService(() => api);
+    await service.dispose();
+    await service.reconnect(() => undefined);
+    expect(listeners.size).toBe(1);
+    expect(api.addEventListener).toHaveBeenCalledTimes(2);
+    await service.disconnect();
   });
   it("writes stop playback control packet", async () => {
     const { port, written } = fakePort();

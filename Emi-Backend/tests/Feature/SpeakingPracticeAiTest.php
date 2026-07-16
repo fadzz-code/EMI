@@ -51,7 +51,8 @@ class SpeakingPracticeAiTest extends TestCase
         $response->assertCreated()
             ->assertJsonPath('data.status', 'completed')
             ->assertJsonPath('data.ai_score', 82.5)
-            ->assertJsonPath('data.ai_transcription', 'ari nggiro');
+            ->assertJsonPath('data.ai_transcription', 'ari nggiro')
+            ->assertJsonPath('data.ai_warnings.0', 'Perkiraan model');
 
         $attempt = SpeakingAttempt::query()->firstOrFail();
         $this->assertNotNull($attempt->audio_media_id);
@@ -576,7 +577,7 @@ class SpeakingPracticeAiTest extends TestCase
                     'transcription' => 'ari nggiro',
                     'score' => 82.5,
                     'alignment' => ['0_ari' => 100],
-                    'warnings' => [],
+                    'warnings' => ['Perkiraan model', 123],
                 ];
             }
         });
