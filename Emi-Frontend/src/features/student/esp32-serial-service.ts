@@ -6,6 +6,9 @@ export const CONTROL_PACKET_TYPE = 0x02;
 export const PTT_PRESSED = 0x01;
 export const PTT_RELEASED = 0x00;
 export const STOP_PLAYBACK = 0x02;
+export const PLAYBACK_CHUNK_BYTES = 512;
+export const PLAYBACK_PACING_MS = 16;
+export const PLAYBACK_TIMEOUT_MS = 30_000;
 export const SERIAL_UNSUPPORTED_MESSAGE = "Alat Speaking EMI belum didukung di browser ini. Gunakan Chrome atau Edge desktop melalui HTTPS atau localhost.";
 export const SERIAL_CHOOSER_CANCELLED_MESSAGE = "Pemilihan alat dibatalkan.";
 
@@ -49,6 +52,7 @@ export class Esp32SerialService {
   private onEnd: (reason: SerialEndReason) => void = () => undefined;
   private readonly api: SerialNavigator;
   private listening = false;
+  private playback: AbortController | null = null;
   private readonly disconnectListener = (event: Event & { port?: SerialPortLike; target?: SerialPortLike }) => {
     const disconnected = event.port ?? event.target;
     if (!disconnected || disconnected === this.port) void this.teardown("disconnect", true);
@@ -114,8 +118,36 @@ export class Esp32SerialService {
     return { status: "connected" };
   }
 
+  async playPcm(pcm: Uint8Array, options: { signal?: AbortSignal; timeoutMs?: number; wait?: (milliseconds: number) => Promise<void> } = {}) {
+    if (!this.port?.writable) throw new Error("Alat belum terhubung.");
+    if (this.playback) throw new Error("Playback alat sedang berjalan.");
+    const controller = new AbortController();
+    this.playback = controller;
+    const timeout = setTimeout(() => controller.abort(new Error("Playback alat melewati batas waktu.")), options.timeoutMs ?? PLAYBACK_TIMEOUT_MS);
+    const abort = () => controller.abort(options.signal?.reason);
+    options.signal?.addEventListener("abort", abort, { once: true });
+    const writer = this.port.writable.getWriter();
+    const wait = options.wait ?? ((milliseconds) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
+    try {
+      for (let offset = 0; offset < pcm.length; offset += PLAYBACK_CHUNK_BYTES) {
+        if (controller.signal.aborted) throw controller.signal.reason ?? new DOMException("Playback dibatalkan.", "AbortError");
+        await writer.write(encodeSerialPacket(PCM_PACKET_TYPE, pcm.slice(offset, offset + PLAYBACK_CHUNK_BYTES)));
+        await wait(PLAYBACK_PACING_MS);
+      }
+    } finally {
+      clearTimeout(timeout);
+      options.signal?.removeEventListener("abort", abort);
+      try { await writer.write(encodeSerialPacket(CONTROL_PACKET_TYPE, new Uint8Array([STOP_PLAYBACK]))); }
+      finally {
+        writer.releaseLock();
+        if (this.playback === controller) this.playback = null;
+      }
+    }
+  }
+
   async stopPlayback() {
-    if (!this.port?.writable) return;
+    this.playback?.abort(new DOMException("Playback dibatalkan.", "AbortError"));
+    if (this.playback || !this.port?.writable) return;
     const writer = this.port.writable.getWriter();
     try { await writer.write(encodeSerialPacket(CONTROL_PACKET_TYPE, new Uint8Array([STOP_PLAYBACK]))); }
     finally { writer.releaseLock(); }

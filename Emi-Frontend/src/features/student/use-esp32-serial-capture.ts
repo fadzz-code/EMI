@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { decodeToPlaybackPcm } from "./esp32-playback";
 import { CONTROL_PACKET_TYPE, Esp32SerialService, getSerialSupport, PCM_PACKET_TYPE, PTT_PRESSED, PTT_RELEASED } from "./esp32-serial-service";
 import { MAX_PCM_BYTES, pcmDurationSeconds, pcmS16leToWav } from "./pcm-wav";
 
-export type Esp32CaptureState = "unsupported" | "disconnected" | "permitted" | "connecting" | "ready" | "recording" | "finalizing" | "captured" | "error";
+export type Esp32CaptureState = "unsupported" | "disconnected" | "permitted" | "connecting" | "ready" | "recording" | "finalizing" | "captured" | "playing" | "error";
 
 export function useEsp32SerialCapture() {
   const support = useMemo(() => typeof window === "undefined" ? { supported: false, reason: null } : getSerialSupport(window, navigator), []);
@@ -19,6 +20,7 @@ export function useEsp32SerialCapture() {
   const chunksRef = useRef<Uint8Array[]>([]);
   const byteLengthRef = useRef(0);
   const busyRef = useRef(false);
+  const playbackRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
 
   const transition = useCallback((next: Esp32CaptureState) => {
@@ -59,7 +61,7 @@ export function useEsp32SerialCapture() {
 
   const handlePacket = useCallback((type: number, payload: Uint8Array) => {
     if (type === CONTROL_PACKET_TYPE && payload.length === 1) {
-      if (payload[0] === PTT_PRESSED && stateRef.current !== "recording") {
+      if (payload[0] === PTT_PRESSED && stateRef.current !== "recording" && stateRef.current !== "playing") {
         clearPartial();
         if (captureRef.current) URL.revokeObjectURL(captureRef.current.url);
         captureRef.current = null;
@@ -112,11 +114,36 @@ export function useEsp32SerialCapture() {
     }
   }, [handleEnd, handlePacket, transition]);
 
+  const playAudio = useCallback(async (file: Blob) => {
+    if (busyRef.current || stateRef.current === "recording" || stateRef.current === "finalizing" || stateRef.current === "playing") return false;
+    busyRef.current = true;
+    const controller = new AbortController();
+    playbackRef.current = controller;
+    transition("playing");
+    try {
+      await serviceRef.current.playPcm(await decodeToPlaybackPcm(file), { signal: controller.signal });
+      return true;
+    } catch (caught) {
+      if (mountedRef.current && !(caught instanceof DOMException && caught.name === "AbortError")) setError(caught instanceof Error ? caught.message : "Playback alat gagal. Gunakan speaker komputer.");
+      return false;
+    } finally {
+      if (playbackRef.current === controller) playbackRef.current = null;
+      busyRef.current = false;
+      if (mountedRef.current) transition(serviceRef.current.connected ? "ready" : "disconnected");
+    }
+  }, [transition]);
+
+  const stopPlayback = useCallback(async () => {
+    playbackRef.current?.abort(new DOMException("Playback dibatalkan.", "AbortError"));
+    await serviceRef.current.stopPlayback();
+  }, []);
+
   const disconnect = useCallback(async () => {
+    await stopPlayback();
     await serviceRef.current.disconnect();
     clearPartial();
     transition("disconnected");
-  }, [clearPartial, transition]);
+  }, [clearPartial, stopPlayback, transition]);
 
   useEffect(() => {
     const service = serviceRef.current;
@@ -134,6 +161,8 @@ export function useEsp32SerialCapture() {
     return () => {
       mountedRef.current = false;
       window.clearTimeout(reconnect);
+      playbackRef.current?.abort(new DOMException("Playback dibatalkan.", "AbortError"));
+      void service.stopPlayback();
       void service.dispose();
       clearPartial();
       if (captureRef.current) URL.revokeObjectURL(captureRef.current.url);
@@ -141,5 +170,5 @@ export function useEsp32SerialCapture() {
     };
   }, [clearPartial, handleEnd, handlePacket, support.supported, transition]);
 
-  return { supported: support.supported, state, error, notice, capture, connect, disconnect, stopPlayback: () => serviceRef.current.stopPlayback() };
+  return { supported: support.supported, state, error, notice, capture, connect, disconnect, playAudio, stopPlayback };
 }
