@@ -13,7 +13,7 @@ import { studentService } from "./student-service";
 import { useEsp32SerialCapture } from "./use-esp32-serial-capture";
 import type { SpeakingAttempt, SpeakingExercise } from "./types";
 import { createSpeakingPoller, SPEAKING_TERMINAL_STATUSES } from "./speaking-poller";
-import { shouldUseMicrophone } from "./speaking-result";
+import { shouldUseMicrophone, studentAiWarnings } from "./speaking-result";
 
 function statusLabel(status?: string) {
   return {
@@ -366,7 +366,7 @@ export function StudentSpeaking() {
             </div>
             {activeAttempt.ai_transcription ? <p className="mt-4 text-sm leading-6"><span className="font-black">Transkripsi AI:</span> {activeAttempt.ai_transcription}</p> : null}
             {activeAttempt.ai_alignment ? <p className="mt-2 text-sm font-bold text-muted">Alignment AI tersedia untuk membantu tinjauan pengucapan.</p> : null}
-            {activeAttempt.ai_warnings?.map((warning) => <Alert key={warning} tone="info">{warning}</Alert>)}
+            {studentAiWarnings(activeAttempt.ai_warnings).map((warning) => <Alert key={warning} tone="info">{warning}</Alert>)}
             {activeAttempt.status === "failed" ? <div className="grid gap-3"><Alert tone="error">{activeAttempt.ai_error || "Analisis belum berhasil. Audio tetap tersimpan dan dapat dicoba lagi."}</Alert><Button onClick={() => { setError(null); setActiveAttempt(null); }} type="button" variant="secondary">Coba lagi</Button></div> : null}
             {activeAttempt.teacher_feedback ? <Alert tone="success">Feedback guru: {activeAttempt.teacher_feedback}</Alert> : <p className="mt-4 text-sm font-bold text-muted">Menunggu tinjauan guru.</p>}
           </CardContent>

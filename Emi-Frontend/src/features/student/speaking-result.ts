@@ -1,5 +1,12 @@
 import type { SpeakingAttempt } from "./types";
 
+export const STUDENT_AI_GUIDANCE = "Hasil AI adalah perkiraan awal. Penilaian akhir akan diberikan oleh guru.";
+export const TEACHER_AI_GUIDANCE = "Analisis AI merupakan penilaian awal. Guru tetap menentukan nilai akhir.";
+
+export function studentAiWarnings(warnings: string[] | undefined) {
+  return warnings?.length ? [STUDENT_AI_GUIDANCE] : [];
+}
+
 export function shouldUseMicrophone(source: "microphone" | "esp32") {
   return source === "microphone";
 }

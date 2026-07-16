@@ -131,7 +131,7 @@ export function TeacherSpeakingResults() {
       {error ? <Alert tone="error">{error}</Alert> : null}
       {message ? <Alert tone="success">{message}</Alert> : null}
       <Alert tone="info">
-        Skor AI adalah bantuan awal. Keputusan pembelajaran tetap memakai tinjauan guru setelah mendengar audio siswa.
+        Analisis AI merupakan penilaian awal. Guru tetap menentukan nilai akhir.
       </Alert>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

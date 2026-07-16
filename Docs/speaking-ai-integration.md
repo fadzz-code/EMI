@@ -194,7 +194,7 @@ Troubleshooting:
 
 Automated tests mock browser boundaries and cover framing, fragmentation, multiple packets, noise/footer resync, bounds, WAV headers/validation, secure-context feature detection, and upload metadata. Reconnect uses only `getPorts()` and never opens chooser; **Pilih alat lain** is the only action calling `requestPort()`. Permission knowledge remains after EOF, power-off, or disconnect while connected session is cleared. Result polling is non-overlapping, bounded after repeated failures, guards stale attempts, and stops at `completed`, `failed`, or `reviewed`.
 
-Hardware playback is blocked because firmware has no browser-to-ESP32 audio packet protocol. Laptop `<audio>` playback remains active. Follow-up firmware minimum: define outgoing audio packet type, PCM format/rate, flow control or acknowledgements, buffering limits, playback-complete/error controls, and stop/flush behavior before web hardware playback is added.
+Hardware playback is blocked because firmware has no browser-to-ESP32 audio packet protocol. Repository audit for Batch 2.4 found no `emi_flutter(1).zip`, `converter wav.zip`, Flutter Bluetooth prototype, `.ino`, `.cpp`, `.h`, or `platformio.ini`. Laptop `<audio>` playback remains active. Required input to continue: actual Flutter reference archive and firmware source defining outgoing audio framing/type, PCM format/rate, chunk sizing, flow control or acknowledgements, buffering limits, playback-complete/error controls, and stop/flush behavior.
 
 Physical ESP32 port selection, PTT timing, PCM electrical/audio quality, reconnect behavior, and playback DMA flush remain manual hardware checks.
 
