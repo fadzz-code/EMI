@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\MediaFile;
 use App\Models\User;
 use App\Services\AuditLogService;
+use App\Services\MediaAccessService;
 use App\Services\MediaUploadService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
@@ -188,6 +189,18 @@ class Phase4MediaStorageTest extends TestCase
             ->assertHeader('Content-Type', 'image/png');
         $this->get("/api/v1/public/media/{$privateMedia->id}/content")->assertForbidden();
 
+        $publicAudio = $this->uploadedMedia($admin, 'speaking_reference_audio', $this->mp3File(), 'public');
+        $this->assertSame(url("/api/v1/public/media/{$publicAudio->id}/content"), app(MediaAccessService::class)->publicUrl($publicAudio));
+        $this->get("/api/v1/public/media/{$publicAudio->id}/content")
+            ->assertOk()
+            ->assertHeader('Content-Type', 'audio/mpeg')
+            ->assertHeader('Content-Length', (string) $publicAudio->size_bytes)
+            ->assertStreamedContent($this->mp3Content());
+        Storage::disk($publicAudio->disk)->delete($publicAudio->path);
+        $this->get("/api/v1/public/media/{$publicAudio->id}/content")
+            ->assertNotFound()
+            ->assertJsonPath('code', 'MEDIA_FILE_NOT_AVAILABLE');
+
         $this->withToken($this->tokenFor($owner))->getJson("/api/v1/media/{$privateMedia->id}")
             ->assertOk()
             ->assertJsonMissingPath('data.disk')
@@ -277,7 +290,7 @@ class Phase4MediaStorageTest extends TestCase
         $first = $this->withToken($this->tokenFor($user))->post('/api/v1/auth/me/avatar', [
             'avatar' => $this->pngFile('avatar-one.png'),
         ])->assertCreated()
-            ->assertJsonPath('data.avatar.url', Storage::disk('public')->url(MediaFile::query()->firstOrFail()->path))
+            ->assertJsonPath('data.avatar.url', url('/api/v1/public/media/'.MediaFile::query()->firstOrFail()->id.'/content'))
             ->assertJsonMissingPath('data.avatar.disk');
 
         $firstMedia = MediaFile::query()->findOrFail($first->json('data.avatar.id'));
@@ -363,7 +376,12 @@ class Phase4MediaStorageTest extends TestCase
 
     private function mp3File(string $name = 'audio.mp3'): UploadedFile
     {
-        return UploadedFile::fake()->createWithContent($name, "ID3\x03\x00\x00\x00\x00\x00\x00");
+        return UploadedFile::fake()->createWithContent($name, $this->mp3Content());
+    }
+
+    private function mp3Content(): string
+    {
+        return "ID3\x03\x00\x00\x00\x00\x00\x00";
     }
 
     private function svgFile(): UploadedFile

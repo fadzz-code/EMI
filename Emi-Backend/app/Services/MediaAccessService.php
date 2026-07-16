@@ -18,7 +18,7 @@ class MediaAccessService
             return null;
         }
 
-        return Storage::disk($mediaFile->disk)->url($mediaFile->path);
+        return url("/api/v1/public/media/{$mediaFile->id}/content");
     }
 
     public function temporaryUrl(MediaFile $mediaFile, CarbonInterface $expiresAt, string $disposition): string
