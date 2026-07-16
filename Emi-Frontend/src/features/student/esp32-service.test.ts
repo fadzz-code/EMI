@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { CONTROL_PACKET_TYPE, Esp32SerialService, ESP32_BAUD_RATE, getSerialSupport, SERIAL_CHOOSER_CANCELLED_MESSAGE, SERIAL_UNSUPPORTED_MESSAGE, STOP_PLAYBACK, type SerialNavigator, type SerialPortLike } from "./esp32-serial-service";
 import { encodeSerialPacket } from "./esp32-serial-parser";
+import { pcmS16leToWav } from "./pcm-wav";
 import { speakingAttemptForm } from "./student-service";
 
 function fakePort(chunks: Uint8Array[] = []) {
@@ -145,4 +146,15 @@ describe("speakingAttemptForm", () => {
   it("sends microphone capture source", () => expect(speakingAttemptForm(file, "web_microphone").get("capture_source")).toBe("web_microphone"));
   it("omits duration below backend minimum", () => expect(speakingAttemptForm(file, "web_esp32_serial", 0.5).has("audio_duration_seconds")).toBe(false));
   it("floors valid duration", () => expect(speakingAttemptForm(file, "web_esp32_serial", 1.9).get("audio_duration_seconds")).toBe("1"));
+  it("keeps hardware preview file bytes unchanged in FormData", async () => {
+    const pcm = new Uint8Array(3_200);
+    pcm.set([1, 2, 3, 4]);
+    const preview = new File([pcmS16leToWav(pcm)], "speaking-emi.wav", { type: "audio/wav" });
+    const uploaded = speakingAttemptForm(preview, "web_esp32_serial").get("file");
+    expect(uploaded).toBeInstanceOf(File);
+    expect((uploaded as File).name).toBe("speaking-emi.wav");
+    expect((uploaded as File).type).toBe("audio/wav");
+    expect((uploaded as File).size).toBe(preview.size);
+    expect(new Uint8Array(await (uploaded as File).arrayBuffer())).toEqual(new Uint8Array(await preview.arrayBuffer()));
+  });
 });

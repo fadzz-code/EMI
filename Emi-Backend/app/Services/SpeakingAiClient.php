@@ -24,8 +24,12 @@ class SpeakingAiClient
         }
 
         $media = $attempt->audioMedia;
-        if (! $media || ! Storage::disk($media->disk)->exists($media->path)) {
-            throw new RuntimeException('Audio speaking tidak ditemukan.');
+        if (! $media) {
+            throw new RuntimeException('Media audio speaking tidak ditemukan.');
+        }
+
+        if (! Storage::disk($media->disk)->exists($media->path)) {
+            throw new RuntimeException('Audio speaking tidak ditemukan pada penyimpanan.');
         }
 
         $stream = Storage::disk($media->disk)->readStream($media->path);
@@ -43,6 +47,8 @@ class SpeakingAiClient
                 ->post(rtrim((string) config('speaking.ai.base_url'), '/').'/predict', [
                     'target_text' => $attempt->target_text_snapshot,
                 ]);
+        } catch (ConnectionException) {
+            throw new RuntimeException('Layanan analisis speaking tidak dapat dihubungi.');
         } catch (Throwable) {
             throw new RuntimeException('Analisis speaking AI gagal.');
         } finally {
@@ -52,7 +58,13 @@ class SpeakingAiClient
         }
 
         if (! $response->successful()) {
-            throw new RuntimeException('Analisis speaking AI gagal.');
+            throw new RuntimeException(match ($response->status()) {
+                401, 403 => 'Autentikasi layanan analisis speaking gagal.',
+                408, 504 => 'Layanan analisis speaking melewati batas waktu.',
+                422 => 'Audio speaking tidak dapat dianalisis.',
+                503 => 'Layanan analisis speaking sedang tidak tersedia.',
+                default => 'Analisis speaking AI gagal.',
+            });
         }
 
         $result = $response->json();

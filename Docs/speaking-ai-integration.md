@@ -198,6 +198,10 @@ Hardware playback is blocked because firmware has no browser-to-ESP32 audio pack
 
 Physical ESP32 port selection, PTT timing, PCM electrical/audio quality, reconnect behavior, and playback DMA flush remain manual hardware checks.
 
+Local database queue requires migrated `cache`, `cache_locks`, `jobs`, and `failed_jobs` tables. The speaking stack launcher runs migrations before startup and fails readiness when the queue worker exits. Hardware WAV regression coverage verifies the same persisted private file reaches the Laravel AI client before polling returns score and transcription.
+
+Firmware source is not present in this repository. Hardware playback remains blocked until firmware provides speaker/I2S/DAC output plus explicit `PLAYBACK_START`, bounded `PLAYBACK_CHUNK`, `PLAYBACK_END`, `PLAYBACK_STOP`, ACK/error, buffer-capacity, completion, and DMA flush handling. Message type values must come from actual firmware; web code must not invent them.
+
 ## Security and Current Limits
 
 - FastAPI remains internal/private and bearer-authenticated.

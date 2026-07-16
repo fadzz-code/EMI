@@ -121,10 +121,15 @@ try {
     $npm = Resolve-CommandPath 'npm.cmd'
     & $php (Join-Path $backend 'artisan') config:clear
     if ($LASTEXITCODE -ne 0) { throw 'Laravel config:clear failed' }
+    & $php (Join-Path $backend 'artisan') migrate --force
+    if ($LASTEXITCODE -ne 0) { throw 'Laravel migration failed' }
     Start-Role 'fastapi' $python '-m uvicorn main:app --host 127.0.0.1 --port 8001' $ai 'uvicorn main:app'
     Start-Role 'laravel' $php 'artisan serve --host=127.0.0.1 --port=8000' $backend 'artisan serve'
     Start-Role 'queue' $php 'artisan queue:work' $backend 'artisan queue:work'
     Start-Role 'next' $npm 'run dev -- --hostname 127.0.0.1 --port 3000' $frontend 'npm.cmd'
+    Start-Sleep -Seconds 2
+    $queueRole = @($roles | Where-Object role -eq 'queue')[-1]
+    if (-not (Get-Process -Id $queueRole.pid -ErrorAction SilentlyContinue)) { throw "Queue worker exited during startup. Check: $(Join-Path $stateDir 'queue.out.log')" }
     Wait-Ready 'FastAPI' 'http://127.0.0.1:8001/health' 90
     Wait-Ready 'Laravel' 'http://127.0.0.1:8000' 90
     Wait-Ready 'Next.js' 'http://127.0.0.1:3000' 120
