@@ -21,6 +21,14 @@ function paginated<T>(data: T[] | undefined, meta: unknown): PaginatedResult<T> 
   };
 }
 
+export function speakingAttemptForm(file: File, captureSource: "web_microphone" | "web_esp32_serial", duration?: number) {
+  const formData = new FormData();
+  formData.append("file", file, file.name);
+  formData.append("capture_source", captureSource);
+  if (duration !== undefined && duration >= 1) formData.append("audio_duration_seconds", String(Math.floor(duration)));
+  return formData;
+}
+
 export const studentService = {
   async dashboard(token: string) {
     const response = await apiClient.get<StudentDashboardSummary>("/student/dashboard/summary", {
@@ -157,9 +165,8 @@ export const studentService = {
     return response.data;
   },
 
-  async submitSpeakingAttempt(token: string, exerciseId: string, file: File) {
-    const formData = new FormData();
-    formData.append("file", file, file.name);
+  async submitSpeakingAttempt(token: string, exerciseId: string, file: File, captureSource: "web_microphone" | "web_esp32_serial" = "web_microphone", duration?: number) {
+    const formData = speakingAttemptForm(file, captureSource, duration);
 
     const response = await apiClient.post<SpeakingAttempt>(
       `/student/speaking/exercises/${exerciseId}/attempts`,

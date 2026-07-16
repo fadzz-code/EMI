@@ -164,6 +164,36 @@ Get-ChildItem -Path "$env:LOCALAPPDATA\Microsoft\WinGet" -Recurse -Filter ffmpeg
 
 Then set `SPEAKING_AI_FFMPEG_PATH` to found executable path in same terminal before Uvicorn. First inference can be slow while model loads or downloads.
 
+## ESP32 Web Serial (Batch 2)
+
+Student speaking page keeps browser microphone as default and adds an optional **Perangkat ESP32** source. Web Serial works only in a secure context (HTTPS or localhost) on a supporting desktop browser such as current Chrome or Edge. Port chooser opens only after **Pilih perangkat** is clicked. On page load, reconnect only considers ports previously permitted by the user.
+
+Serial settings and protocol assumptions:
+
+```text
+Baud: 921600
+Packet: AA 55 | TYPE | LENGTH_BE (2 bytes) | PAYLOAD | EE
+TYPE 0x01: raw PCM signed 16-bit little-endian, mono, 16000 Hz
+Incoming TYPE 0x02, payload 0x01: PTT pressed, start capture
+Incoming TYPE 0x02, payload 0x00: PTT released, finish capture
+Outgoing TYPE 0x02, payload 0x02: stop playback and flush DMA
+```
+
+Outgoing `0x02/0x02` never means stop recording. Parser accepts only types `0x01` and `0x02`, discards unknown types, accepts fragmented and adjacent packets, skips noise, and resynchronizes after bad framing/footer. Although length uses an unsigned 16-bit field, firmware packet payload is capped at `32768` bytes. At `921600` baud this limits one packet to roughly 0.36 seconds of wire time, keeps browser latency responsive, and still carries over one second of 16 kHz mono s16le audio. Internal parser storage is capped at `32774` bytes, exactly one maximum framed packet; larger declared lengths are rejected immediately and incoming noise cannot cause unbounded allocation.
+
+ESP32 PCM is accepted only when byte count is even, then wrapped as mono 16 kHz signed 16-bit WAV. Effective PCM maximum is `min(5 MiB - 44-byte WAV header, 30 seconds × 32000 bytes/second) = 960000 bytes`. Minimum is `0.1` second (`3200` PCM bytes), matching FastAPI normalized minimum. Upload uses Laravel student endpoint with `capture_source=web_esp32_serial`; microphone uses `capture_source=web_microphone`. Integer duration metadata is included only for captures of at least one second because Laravel accepts integers from `1`.
+
+Troubleshooting:
+
+- **Web Serial tidak didukung**: use current Chrome/Edge desktop over HTTPS or localhost; embedded browsers and many mobile browsers do not expose Web Serial.
+- **No device in chooser**: connect ESP32 by data-capable USB cable, close serial monitor, verify driver, then click **Pilih perangkat**.
+- **Cannot open port**: close Arduino IDE/other process holding port, disconnect in page, then reconnect.
+- **No recording after PTT**: verify baud `921600`, exact framing, control direction/value, PCM type, and footer `EE`.
+- **Audio distorted or too fast/slow**: firmware must send raw mono `s16le` at exactly `16000 Hz`, without WAV headers inside type `0x01` payloads.
+- **Recording rejected**: capture must be `0.1`–`30` seconds, even-byte PCM, and no more than `960000` PCM bytes.
+
+Automated tests mock browser boundaries and cover framing, fragmentation, multiple packets, noise/footer resync, bounds, WAV headers/validation, secure-context feature detection, and upload metadata. Physical ESP32 port selection, PTT timing, PCM electrical/audio quality, reconnect behavior, and playback DMA flush remain manual hardware checks.
+
 ## Security and Current Limits
 
 - FastAPI remains internal/private and bearer-authenticated.

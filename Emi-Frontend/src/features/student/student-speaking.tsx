@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { LoaderCircle, Mic, Play, Square, UploadCloud } from "lucide-react";
+import { Cable, LoaderCircle, Mic, Play, Square, UploadCloud } from "lucide-react";
 
 import { Alert, Badge, Button, Card, CardContent, EmptyState } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -10,6 +10,7 @@ import { ApiError, getFirstApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 import { studentService } from "./student-service";
+import { useEsp32SerialCapture } from "./use-esp32-serial-capture";
 import type { SpeakingAttempt, SpeakingExercise } from "./types";
 
 const terminalStatuses = new Set(["completed", "failed", "reviewed"]);
@@ -64,12 +65,16 @@ export function StudentSpeaking() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [captureSource, setCaptureSource] = useState<"microphone" | "esp32">("microphone");
   const [recordedFile, setRecordedFile] = useState<File | null>(null);
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
   const [referenceAudioError, setReferenceAudioError] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const submitGuardRef = useRef(false);
+  const esp32 = useEsp32SerialCapture();
 
   useEffect(() => {
     if (!token) return;
@@ -101,6 +106,11 @@ export function StudentSpeaking() {
   }, [activeAttempt, token]);
 
   useEffect(() => () => {
+    if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
+
+  useEffect(() => () => {
     if (recordedUrl) URL.revokeObjectURL(recordedUrl);
   }, [recordedUrl]);
 
@@ -113,6 +123,7 @@ export function StudentSpeaking() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
       const mimeType = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "";
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       chunksRef.current = [];
@@ -128,6 +139,8 @@ export function StudentSpeaking() {
         setRecordedFile(file);
         setRecordedUrl(URL.createObjectURL(blob));
         stream.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+        mediaRecorderRef.current = null;
       };
       mediaRecorderRef.current = recorder;
       recorder.start();
@@ -142,16 +155,25 @@ export function StudentSpeaking() {
     setIsRecording(false);
   }
 
+  async function selectCaptureSource(source: "microphone" | "esp32") {
+    if (isRecording || isSubmitting || esp32.state === "recording" || esp32.state === "finalizing") return;
+    if (source === "microphone") await esp32.disconnect();
+    setCaptureSource(source);
+  }
+
   async function submitAttempt() {
-    if (!token || !selectedExercise || !recordedFile) return;
+    const file = captureSource === "esp32" ? esp32.capture?.file : recordedFile;
+    if (!token || !selectedExercise || !file || submitGuardRef.current) return;
+    submitGuardRef.current = true;
     setIsSubmitting(true);
     setError(null);
     try {
-      const attempt = await studentService.submitSpeakingAttempt(token, selectedExercise.id, recordedFile);
+      const attempt = await studentService.submitSpeakingAttempt(token, selectedExercise.id, file, captureSource === "esp32" ? "web_esp32_serial" : "web_microphone", captureSource === "esp32" ? esp32.capture?.duration : undefined);
       setActiveAttempt(attempt);
     } catch (err) {
       setError(speakingErrorMessage(err));
     } finally {
+      submitGuardRef.current = false;
       setIsSubmitting(false);
     }
   }
@@ -259,7 +281,12 @@ export function StudentSpeaking() {
                   )}
                 </div>
 
-                <div className="flex flex-col items-center gap-4 rounded-[var(--radius-card)] border-2 border-border bg-paper p-6 shadow-[2px_2px_0_var(--border)]">
+                <div className="grid grid-cols-2 gap-3" aria-label="Sumber rekaman">
+                  <Button disabled={isRecording || isSubmitting || esp32.state === "recording" || esp32.state === "finalizing"} onClick={() => selectCaptureSource("microphone")} type="button" variant={captureSource === "microphone" ? "primary" : "secondary"}><Mic className="mr-2 size-4" />Gunakan mikrofon perangkat</Button>
+                  <Button disabled={!esp32.supported || isRecording || isSubmitting || esp32.state === "recording" || esp32.state === "finalizing"} onClick={() => selectCaptureSource("esp32")} type="button" variant={captureSource === "esp32" ? "primary" : "secondary"}><Cable className="mr-2 size-4" />Gunakan Alat Speaking EMI</Button>
+                </div>
+
+                {captureSource === "microphone" ? <div className="flex flex-col items-center gap-4 rounded-[var(--radius-card)] border-2 border-border bg-paper p-6 shadow-[2px_2px_0_var(--border)]">
                   <button
                     aria-label={isRecording ? "Stop rekaman" : "Mulai rekaman"}
                     className={cn(
@@ -285,15 +312,25 @@ export function StudentSpeaking() {
                       />
                     ))}
                   </div>
-                </div>
+                </div> : (
+                  <div className="grid gap-4 rounded-[var(--radius-card)] border-2 border-border bg-paper p-6 shadow-[2px_2px_0_var(--border)]">
+                    <div><p className="text-lg font-black text-ink">Alat Speaking EMI</p><p className="mt-1 text-sm font-semibold text-muted">Tekan tombol pada alat untuk mulai.</p></div>
+                    {esp32.error ? <Alert tone="error">{esp32.error}</Alert> : null}
+                    <p className="text-sm font-bold text-muted">Status: {{ unsupported: "Alat belum didukung", disconnected: "Alat belum terhubung", connecting: "Sedang menghubungkan alat...", ready: "Alat siap digunakan", recording: "Sedang merekam...", finalizing: "Menyiapkan rekaman...", captured: "Rekaman siap dikirim", error: "Terjadi masalah pada alat" }[esp32.state]}</p>
+                    <div className="flex flex-wrap gap-3">
+                      <Button disabled={!esp32.supported || esp32.state === "connecting" || esp32.state === "recording" || esp32.state === "finalizing" || isSubmitting} onClick={() => esp32.connect(true)} type="button"><Cable className="mr-2 size-4" />Hubungkan Alat EMI</Button>
+                      {esp32.state !== "disconnected" && esp32.state !== "unsupported" ? <Button disabled={esp32.state === "finalizing" || isSubmitting} onClick={esp32.disconnect} type="button" variant="secondary">Putuskan alat</Button> : null}
+                    </div>
+                  </div>
+                )}
 
-                {recordedUrl ? (
+                {(captureSource === "microphone" ? recordedUrl : esp32.capture?.url) ? (
                   <div className="rounded-[var(--radius-card)] border-2 border-border bg-surface p-4 shadow-[2px_2px_0_var(--border)]">
                     <div className="mb-3 flex items-center gap-2">
                       <Play className="size-5 text-primary" strokeWidth={3} />
                       <p className="font-black text-ink">Preview audio</p>
                     </div>
-                    <audio className="w-full" controls src={recordedUrl} />
+                    <audio className="w-full" controls src={captureSource === "microphone" ? recordedUrl ?? undefined : esp32.capture?.url} />
                   </div>
                 ) : null}
 
@@ -303,7 +340,7 @@ export function StudentSpeaking() {
                       <p className="font-black text-ink">Kirim untuk dianalisis</p>
                       <p className="mt-1 text-xs font-bold text-muted">Skor AI adalah penilaian awal. Guru tetap dapat meninjau dan memberi umpan balik.</p>
                     </div>
-                    <Button disabled={!recordedFile || isSubmitting || isRecording} onClick={submitAttempt} type="button">
+                    <Button disabled={!(captureSource === "microphone" ? recordedFile : esp32.capture?.file) || isSubmitting || isRecording || esp32.state === "recording"} onClick={submitAttempt} type="button">
                       {isSubmitting ? <LoaderCircle className="mr-2 size-4 animate-spin" /> : <UploadCloud className="mr-2 size-4" />}
                       {isSubmitting ? "Mengirim" : "Kirim audio"}
                     </Button>
