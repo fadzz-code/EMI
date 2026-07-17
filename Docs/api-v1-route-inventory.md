@@ -55,14 +55,14 @@ Auth notation:
 
 | Method | Path | Controller/action | Auth/role | Purpose | Mobile relevance | Notes |
 |---|---|---|---|---|---|---|
-| GET | `/teacher/dashboard/summary` | `TeacherDashboardController@summary` | Teacher | Teacher dashboard | Later | Teacher app optional. |
+| GET | `/teacher/dashboard/summary` | `TeacherDashboardController@summary` | Teacher | Teacher dashboard | High | Metrics aktual: `active_classes`, `active_students`, `published_modules`, `published_quizzes` untuk Kelas Aktif, Siswa Aktif, Modul Terbit, dan Kuis Terbit; scope hanya assignment Guru yang aktif. |
 | GET | `/teacher/reports/progress/students` | `TeacherProgressReportController@students` | Teacher | Student progress report | Later |  |
 | GET | `/teacher/reports/progress/students/export` | `ReportExportController@teacherStudents` | Teacher | CSV export | Low | Less mobile relevant. |
 | GET | `/teacher/reports/quiz-results` | `TeacherQuizResultReportController@index` | Teacher | Quiz result report | Later |  |
 | GET | `/teacher/reports/quiz-results/export` | `ReportExportController@teacherQuizResults` | Teacher | CSV export | Low | Less mobile relevant. |
-| GET | `/classes` | `SchoolClassController@index` | Auth + scoped | Teacher class list | Later | Teacher sees assigned classes. |
-| GET | `/classes/{id}` | `SchoolClassController@show` | Auth + scoped | Class detail | Later |  |
-| GET | `/classes/{id}/students` | `SchoolClassController@students` | Auth + scoped | Class students | Later |  |
+| GET | `/classes` | `SchoolClassController@index` | Auth + scoped | Teacher class list | High | Guru hanya melihat kelas dalam single active assignment scope. |
+| GET | `/classes/{id}` | `SchoolClassController@show` | Auth + scoped | Class detail | High | Detail kelas assignment sendiri; kelas asing menghasilkan 403. Resource boleh memuat email Guru, tetapi phone, password, dan field sensitif lain tidak diekspos. |
+| GET | `/classes/{id}/students` | `SchoolClassController@students` | Auth + scoped | Active class memberships | High | Daftar/search hanya membership Siswa aktif pada kelas assignment sendiri; kelas asing menghasilkan 403. Resource boleh memuat email Siswa, tetapi phone, password, dan field sensitif lain tidak diekspos. |
 
 ## Student
 

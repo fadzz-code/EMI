@@ -11,3 +11,16 @@ final teacherRepositoryProvider = Provider<TeacherRepository>(
 final teacherDashboardProvider = FutureProvider<TeacherDashboardSummary>(
   (ref) => ref.watch(teacherRepositoryProvider).dashboard(),
 );
+
+final teacherClassesProvider = FutureProvider<TeacherClassPage>(
+  (ref) => ref.watch(teacherRepositoryProvider).classes(),
+);
+
+final teacherClassDetailProvider = FutureProvider.family<TeacherClass, String>(
+  (ref, id) => ref.watch(teacherRepositoryProvider).classDetail(id),
+);
+
+final teacherClassStudentsProvider =
+    FutureProvider.family<TeacherClassStudentPage, String>(
+      (ref, id) => ref.watch(teacherRepositoryProvider).classStudents(id),
+    );

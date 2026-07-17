@@ -38,6 +38,7 @@ import '../../features/quizzes/presentation/student_quizzes_screen.dart';
 import '../../features/speaking/presentation/student_speaking_detail_screen.dart';
 import '../../features/speaking/presentation/student_speaking_list_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
+import '../../features/teacher/presentation/teacher_classes_screens.dart';
 import '../../features/teacher/presentation/teacher_dashboard_screen.dart';
 import 'router_refresh_stream.dart';
 import 'unsupported_role_screen.dart';
@@ -119,6 +120,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/teacher/dashboard',
         builder: (_, _) => const TeacherDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/teacher/classes',
+        builder: (_, _) => const TeacherClassesScreen(),
+      ),
+      GoRoute(
+        path: '/teacher/classes/:id',
+        builder: (_, state) =>
+            TeacherClassDetailScreen(id: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
         path: '/teacher/profile',

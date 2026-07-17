@@ -420,10 +420,10 @@ Mobile settings status: `PARTIAL`; implementasi typed mencakup application, prof
 
 | Modul Guru | Subfitur Web | Route Web | Endpoint Laravel | Method | Permission/Ownership | Flutter Status | Test | Gap |
 |---|---|---|---|---|---|---|---|---|
-| Dashboard | class/student/learning/quiz/activity/speaking metrics | `/teacher/dashboard` | `/teacher/dashboard/summary` | GET | teacher assigned active class | PARTIAL | teacher test | Mobile only dashboard foundation; activity placeholder. |
-| Kelas | list classes | `/teacher/classes` | `/classes` | GET | teacher scoped classes | MISSING | none | No mobile class list. |
-| Detail kelas | detail | `/teacher/classes/{id}` | `/classes/{id}` | GET | assigned class | MISSING | none | No mobile detail. |
-| Daftar siswa | list class students | `/teacher/classes/{id}/students`, `/teacher/students` | `/classes/{id}/students` | GET | assigned class | MISSING | none | No mobile students list. |
+| Dashboard | Kelas Aktif/Siswa Aktif/Modul Terbit/Kuis Terbit | `/teacher/dashboard` | `/teacher/dashboard/summary` | GET | single active teacher assignment scope | PARTIAL | backend + Flutter targeted | Mobile memakai metrics aktual; smoke HP belum dijalankan. |
+| Kelas | list classes | `/teacher/classes` | `/classes` | GET | single active teacher assignment scope | PARTIAL | backend + Flutter targeted | Mobile list/search kelas assignment aktif tersedia; smoke HP belum dijalankan. |
+| Detail kelas | detail | `/teacher/classes/{id}` | `/classes/{id}` | GET | own active assignment; foreign 403 | PARTIAL | backend + Flutter targeted | Mobile detail sendiri tersedia; resource boleh memuat email, tetapi phone/password/sensitive omitted. |
+| Daftar siswa | active membership list/search | `/teacher/classes/{id}/students`, `/teacher/students` | `/classes/{id}/students` | GET | own active assignment; active memberships only; foreign 403 | PARTIAL | backend + Flutter targeted | Mobile list/search membership aktif tersedia; email boleh tampil, phone/password/sensitive omitted. |
 | Progress siswa | detail/progress | `/teacher/students/{id}`, reports | `/teacher/reports/progress/students` | GET | assigned class/student | MISSING | none | No mobile progress. |
 | Modul kelas | list | `/teacher/modules`, `/teacher/classes/{id}/modules` | `/classes/{id}/modules`, `/class-modules/{id}` | GET | assigned class | MISSING | none | No mobile teacher modules. |
 | Lesson | edit/publish | lesson edit route | `/class-lessons*` | GET/PUT/POST | assigned class | MISSING | none | No mobile lesson edit. |
@@ -462,6 +462,18 @@ Mobile settings status: `PARTIAL`; implementasi typed mencakup application, prof
 | `/teacher/reports/*` | `role:teacher` | assigned active class | students in assigned class | report scope | Low. |
 | `/teacher/speaking/*` | `role:teacher` | assigned active class | attempts in assigned class | controller/service scope | Low. |
 | `/media*` | auth | via media owner/visibility | n/a | MediaFilePolicy | Medium for leaked signed URLs. |
+
+## FASE C Guru Dashboard/Kelas update 2026-07-16
+
+Status: `PARTIAL`; belum `PARITY_COMPLETE` sebelum smoke HP.
+
+- Endpoint existing: `GET /teacher/dashboard/summary`, `GET /classes`, `GET /classes/{id}`, dan `GET /classes/{id}/students`.
+- Dashboard memakai metrics aktual `active_classes`, `active_students`, `published_modules`, dan `published_quizzes`, ditampilkan sebagai Kelas Aktif, Siswa Aktif, Modul Terbit, dan Kuis Terbit.
+- Scope Guru dibatasi single active assignment. List kelas, detail kelas, dan daftar/search membership Siswa aktif hanya memakai assignment tersebut.
+- Detail kelas sendiri tersedia; akses kelas asing menghasilkan 403. Resource boleh memuat email, tetapi phone, password, dan field sensitif lain dihilangkan.
+- Verifikasi backend: 4 tests / 33 assertions. Flutter targeted: 18 tests saat ini. Analyzer: pass.
+- Smoke test HP: `SIAP UNTUK SMOKE TEST HP` / `NOT_TESTED`. Belum commit.
+- Scope FASE C ini tidak mengubah Modul, Kuis, Budaya, Speaking, atau Laporan Guru.
 
 ---
 

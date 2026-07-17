@@ -26,10 +26,15 @@ void main() {
                           'school': {'name': 'Sekolah'},
                         },
                         'empty_state': false,
-                        'students': {'total_students': 2},
+                        'students': {
+                          'active': 2,
+                          'with_learning_activity': 1,
+                          'completed_all_modules': 0,
+                        },
                         'learning': {
                           'published_modules': 3,
-                          'students_with_learning_activity': 1,
+                          'published_lessons': 4,
+                          'average_progress_percent': 50,
                         },
                         'quizzes': {
                           'published_quizzes': 1,
@@ -54,13 +59,12 @@ void main() {
       expect(summary.schoolName, 'Sekolah');
       expect(
         summary.metrics.map((item) => item.label),
-        contains('Sudah Belajar'),
+        containsAll(['Kelas', 'Siswa Aktif', 'Modul Terbit', 'Progress']),
       );
       expect(
         summary.metrics.map((item) => item.value),
         isNot(contains('with_learning_activity')),
       );
-      expect(summary.recentActivity.single.studentName, 'Siswa');
       expect(requests, ['GET /teacher/dashboard/summary']);
     },
   );

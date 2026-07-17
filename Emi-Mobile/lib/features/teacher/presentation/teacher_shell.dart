@@ -100,6 +100,12 @@ class _TeacherDrawer extends ConsumerWidget {
             selected:
                 location == '/teacher/dashboard' || location == '/teacher',
           ),
+          _Item(
+            label: 'Kelas',
+            icon: Icons.groups_outlined,
+            route: '/teacher/classes',
+            selected: location.startsWith('/teacher/classes'),
+          ),
           const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.logout),

@@ -8,69 +8,199 @@ class TeacherMetric {
     required this.label,
     required this.value,
     required this.iconName,
-    this.highlight = false,
   });
 
   final String label;
   final String value;
   final String iconName;
-  final bool highlight;
+}
+
+class TeacherActivity {
+  const TeacherActivity({
+    required this.type,
+    required this.studentName,
+    required this.title,
+    this.occurredAt,
+  });
+
+  final String type;
+  final String studentName;
+  final String title;
+  final DateTime? occurredAt;
 }
 
 class TeacherDashboardSummary {
   const TeacherDashboardSummary({
     required this.emptyState,
     required this.metrics,
-    required this.recentActivity,
+    required this.activities,
+    this.classId,
     this.className,
     this.schoolName,
-    this.generatedAt,
   });
 
   final bool emptyState;
+  final String? classId;
   final String? className;
   final String? schoolName;
-  final String? generatedAt;
   final List<TeacherMetric> metrics;
-  final List<TeacherRecentActivity> recentActivity;
+  final List<TeacherActivity> activities;
 
   factory TeacherDashboardSummary.fromJson(Map<String, dynamic> json) {
     final klass = _map(json['class']);
     final school = _map(klass['school']);
+    final students = _map(json['students']);
+    final learning = _map(json['learning']);
+    final activities = json['recent_activity'] is List
+        ? (json['recent_activity'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map(
+                (item) => TeacherActivity(
+                  type: _string(item['type']),
+                  studentName: _string(item['student_name'], fallback: 'Siswa'),
+                  title: _string(item['title'], fallback: 'Aktivitas belajar'),
+                  occurredAt: DateTime.tryParse(_string(item['occurred_at'])),
+                ),
+              )
+              .toList()
+        : const <TeacherActivity>[];
+    final progress = _number(learning['average_progress_percent']);
     return TeacherDashboardSummary(
       emptyState: _bool(json['empty_state']),
-      className: klass['name'] as String?,
-      schoolName: school['name'] as String?,
-      generatedAt: json['generated_at'] as String?,
-      metrics: _dashboardMetrics(json),
-      recentActivity: (json['recent_activity'] as List? ?? const [])
-          .whereType<Map<String, dynamic>>()
-          .map(TeacherRecentActivity.fromJson)
-          .toList(),
+      classId: _nullableString(klass['id']),
+      className: _nullableString(klass['name']),
+      schoolName: _nullableString(school['name']),
+      metrics: [
+        TeacherMetric(
+          label: 'Kelas',
+          value: klass.isEmpty ? '0' : '1',
+          iconName: 'class',
+        ),
+        TeacherMetric(
+          label: 'Siswa Aktif',
+          value: '${_int(students['active'])}',
+          iconName: 'students',
+        ),
+        TeacherMetric(
+          label: 'Modul Terbit',
+          value: '${_int(learning['published_modules'])}',
+          iconName: 'learning',
+        ),
+        TeacherMetric(
+          label: 'Progress',
+          value: '${progress.toStringAsFixed(0)}%',
+          iconName: 'progress',
+        ),
+      ],
+      activities: activities,
     );
   }
 }
 
-class TeacherRecentActivity {
-  const TeacherRecentActivity({
-    this.type,
-    this.studentName,
-    this.title,
-    this.occurredAt,
+class TeacherClass {
+  const TeacherClass({
+    required this.id,
+    required this.name,
+    required this.status,
+    required this.studentsCount,
+    this.schoolName,
+    this.gradeLevel,
+    this.academicYear,
   });
 
-  final String? type;
-  final String? studentName;
-  final String? title;
-  final String? occurredAt;
+  final String id;
+  final String name;
+  final String status;
+  final int studentsCount;
+  final String? schoolName;
+  final String? gradeLevel;
+  final String? academicYear;
 
-  factory TeacherRecentActivity.fromJson(Map<String, dynamic> json) =>
-      TeacherRecentActivity(
-        type: json['type'] as String?,
-        studentName: json['student_name'] as String?,
-        title: json['title'] as String?,
-        occurredAt: json['occurred_at'] as String?,
-      );
+  factory TeacherClass.fromJson(Map<String, dynamic> json) {
+    final school = _map(json['school']);
+    return TeacherClass(
+      id: _string(json['id']),
+      name: _string(json['name'], fallback: 'Kelas tanpa nama'),
+      status: _string(json['status']),
+      studentsCount: _int(json['active_students_count']),
+      schoolName: _nullableString(school['name'] ?? json['school_name']),
+      gradeLevel: _nullableString(json['grade_level']),
+      academicYear: _nullableString(json['academic_year']),
+    );
+  }
+}
+
+class TeacherClassPage {
+  const TeacherClassPage({
+    required this.items,
+    required this.currentPage,
+    required this.lastPage,
+    required this.total,
+  });
+
+  final List<TeacherClass> items;
+  final int currentPage;
+  final int lastPage;
+  final int total;
+
+  factory TeacherClassPage.fromJson(Map<String, dynamic>? json) {
+    final rows = json?['data'];
+    final meta = _map(json?['meta']);
+    final items = rows is List
+        ? rows
+              .whereType<Map<String, dynamic>>()
+              .map(TeacherClass.fromJson)
+              .toList()
+        : <TeacherClass>[];
+    return TeacherClassPage(
+      items: items,
+      currentPage: _int(meta['current_page'], fallback: 1),
+      lastPage: _int(meta['last_page'], fallback: 1),
+      total: _int(meta['total'], fallback: items.length),
+    );
+  }
+}
+
+class TeacherClassStudent {
+  const TeacherClassStudent({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.status,
+  });
+
+  final String id;
+  final String name;
+  final String email;
+  final String status;
+
+  factory TeacherClassStudent.fromJson(Map<String, dynamic> json) {
+    final student = _map(json['student']);
+    return TeacherClassStudent(
+      id: _string(student['id']),
+      name: _string(student['full_name'], fallback: 'Nama belum tersedia'),
+      email: _string(student['email'], fallback: 'Email belum tersedia'),
+      status: _string(student['status']),
+    );
+  }
+}
+
+class TeacherClassStudentPage {
+  const TeacherClassStudentPage({required this.items});
+
+  final List<TeacherClassStudent> items;
+
+  factory TeacherClassStudentPage.fromJson(Map<String, dynamic>? json) {
+    final rows = json?['data'];
+    return TeacherClassStudentPage(
+      items: rows is List
+          ? rows
+                .whereType<Map<String, dynamic>>()
+                .map(TeacherClassStudent.fromJson)
+                .toList()
+          : const [],
+    );
+  }
 }
 
 class TeacherRepository {
@@ -79,74 +209,87 @@ class TeacherRepository {
   final Dio _dio;
   final DioErrorMapper _mapper;
 
-  Future<TeacherDashboardSummary> dashboard() async {
+  Future<TeacherDashboardSummary> dashboard() => _request(
+    () => _dio.get<Map<String, dynamic>>('/teacher/dashboard/summary'),
+    (json) => TeacherDashboardSummary.fromJson(_data(json, 'Dashboard guru')),
+  );
+
+  Future<TeacherClassPage> classes({int page = 1, String? search}) => _request(
+    () => _dio.get<Map<String, dynamic>>(
+      '/classes',
+      queryParameters: {
+        'page': page,
+        if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+      },
+    ),
+    TeacherClassPage.fromJson,
+  );
+
+  Future<TeacherClass> classDetail(String id) => _request(
+    () => _dio.get<Map<String, dynamic>>('/classes/$id'),
+    (json) => TeacherClass.fromJson(_data(json, 'Data kelas')),
+  );
+
+  Future<TeacherClassStudentPage> classStudents(
+    String id, {
+    int page = 1,
+    String? search,
+  }) => _request(
+    () => _dio.get<Map<String, dynamic>>(
+      '/classes/$id/students',
+      queryParameters: {
+        'page': page,
+        if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+      },
+    ),
+    TeacherClassStudentPage.fromJson,
+  );
+
+  Future<T> _request<T>(
+    Future<Response<Map<String, dynamic>>> Function() request,
+    T Function(Map<String, dynamic>?) parse,
+  ) async {
     try {
-      final res = await _dio.get<Map<String, dynamic>>(
-        '/teacher/dashboard/summary',
-      );
-      final data = res.data?['data'];
-      if (data is Map<String, dynamic>) {
-        return TeacherDashboardSummary.fromJson(data);
-      }
-      throw const AppError(
-        type: AppErrorType.unknown,
-        message: 'Dashboard guru tidak valid.',
-      );
-    } catch (e) {
-      throw e is AppError ? e : _mapper.map(e);
+      return parse((await request()).data);
+    } catch (error) {
+      throw error is AppError ? error : _mapper.map(error);
     }
   }
 }
 
-List<TeacherMetric> _dashboardMetrics(Map<String, dynamic> json) {
-  final students = _map(json['students']);
-  final learning = _map(json['learning']);
-  final quizzes = _map(json['quizzes']);
-  return [
-    TeacherMetric(
-      label: 'Kelas Saya',
-      value: _value(_map(json['class'])['name'], empty: '-'),
-      iconName: 'class',
-    ),
-    TeacherMetric(
-      label: 'Jumlah Siswa',
-      value: _value(students['total_students'] ?? students['total']),
-      iconName: 'students',
-    ),
-    TeacherMetric(
-      label: 'Sudah Belajar',
-      value: _value(
-        learning['students_with_learning_activity'] ??
-            students['with_learning_activity'],
-      ),
-      iconName: 'learning',
-    ),
-    TeacherMetric(
-      label: 'Perlu Diperiksa',
-      value: _value(
-        quizzes['submitted_attempts'] ??
-            quizzes['pending_review'] ??
-            quizzes['final_attempts'],
-      ),
-      iconName: 'review',
-      highlight: true,
-    ),
-  ];
-}
-
-String _value(Object? value, {String empty = '0'}) {
-  if (value == null) return empty;
-  if (value is String && value.trim().isEmpty) return empty;
-  return value.toString();
+Map<String, dynamic> _data(Map<String, dynamic>? json, String label) {
+  final data = json?['data'];
+  if (data is Map<String, dynamic>) return data;
+  throw AppError(type: AppErrorType.unknown, message: '$label tidak valid.');
 }
 
 Map<String, dynamic> _map(Object? value) =>
-    value is Map<String, dynamic> ? value : const <String, dynamic>{};
+    value is Map<String, dynamic> ? value : const {};
+
+String _string(Object? value, {String fallback = ''}) =>
+    value is String && value.trim().isNotEmpty ? value.trim() : fallback;
+
+String? _nullableString(Object? value) {
+  final text = _string(value);
+  return text.isEmpty ? null : text;
+}
+
+double _number(Object? value) => value is num
+    ? value.toDouble()
+    : value is String
+    ? double.tryParse(value) ?? 0
+    : 0;
+
+int _int(Object? value, {int fallback = 0}) => value is int
+    ? value
+    : value is num
+    ? value.toInt()
+    : value is String
+    ? int.tryParse(value) ?? fallback
+    : fallback;
 
 bool _bool(Object? value) => value is bool
     ? value
     : value is num
     ? value != 0
-    : value is String
-    ? value == '1' || value.toLowerCase() == 'true'
-    : false;
+    : value is String && (value == '1' || value.toLowerCase() == 'true');

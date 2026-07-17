@@ -20,8 +20,11 @@ class TeacherDashboardController extends Controller
 
     public function summary(DashboardSummaryRequest $request): JsonResponse
     {
-        $this->periodService->resolve($request->validated());
-        $class = $this->scopeService->teacherClass($request->user());
+        $validated = $request->validated();
+        $this->periodService->resolve($validated);
+        $class = isset($validated['school_id']) || isset($validated['class_id'])
+            ? $this->scopeService->assertTeacherFilters($request->user(), $validated)
+            : $this->scopeService->teacherClass($request->user());
 
         return ApiResponse::success('Ringkasan dashboard Guru berhasil diambil.', $this->dashboardService->summary($class));
     }

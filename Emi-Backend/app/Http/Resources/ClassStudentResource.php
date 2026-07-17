@@ -18,7 +18,6 @@ class ClassStudentResource extends JsonResource
                 'id' => $student->id,
                 'full_name' => $student->full_name,
                 'email' => $student->email,
-                'phone' => $student->phone,
                 'role' => $student->role,
                 'status' => $student->status,
             ],
