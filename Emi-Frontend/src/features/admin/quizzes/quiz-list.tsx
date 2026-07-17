@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -29,17 +30,17 @@ import { getFirstApiError } from "@/lib/api-client";
 
 import { QuizTemplateForm } from "./quiz-form";
 import { quizTemplateService } from "./quiz-service";
-import { formatDate, statusLabel, statusTone } from "./quiz-utils";
+import { formatDate, newQuizDraft, statusLabel, statusTone } from "./quiz-utils";
 import type { QuizTemplate, QuizTemplatePayload, QuizTemplateStatus } from "./types";
 
 export function QuizList() {
   const { token } = useAuth();
   const queryClient = useQueryClient();
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<QuizTemplateStatus | "">("");
-  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editingQuiz, setEditingQuiz] = useState<QuizTemplate | null>(null);
   const [applyTarget, setApplyTarget] = useState<QuizTemplate | null>(null);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
@@ -72,11 +73,7 @@ export function QuizList() {
   const createMutation = useMutation({
     mutationFn: (payload: QuizTemplatePayload) =>
       quizTemplateService.create(token ?? "", payload),
-    onSuccess: async (quiz) => {
-      setSuccessMessage(`Kuis ${quiz.title} berhasil dibuat.`);
-      setCreateModalOpen(false);
-      await queryClient.invalidateQueries({ queryKey: ["admin", "quiz-templates"] });
-    },
+    onSuccess: (quiz) => router.push(`/admin/quizzes/${quiz.id}/builder`),
   });
 
   const updateMutation = useMutation({
@@ -196,7 +193,12 @@ export function QuizList() {
             Kelola template kuis, metadata LKPD, soal, status terbit, dan distribusi kuis ke kelas aktif.
           </p>
         </div>
-        <Button onClick={() => setCreateModalOpen(true)}>Tambah Kuis</Button>
+        <Button
+          disabled={createMutation.isPending}
+          onClick={() => createMutation.mutate(newQuizDraft())}
+        >
+          {createMutation.isPending ? "Membuat Kuis..." : "Tambah Kuis"}
+        </Button>
       </header>
 
       <Alert tone="info">
@@ -259,6 +261,36 @@ export function QuizList() {
               />
             ) : (
               <div className="grid gap-4">
+                <div className="grid gap-3 md:hidden">
+                  {quizzes.map((quiz) => (
+                    <article className="grid gap-3 rounded-lg border-2 border-ink p-4" key={quiz.id}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="break-words font-black text-ink">{quiz.title}</p>
+                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">
+                            {quiz.description ?? "Tanpa deskripsi."}
+                          </p>
+                        </div>
+                        <Badge tone={statusTone(quiz.status)}>{statusLabel(quiz.status)}</Badge>
+                      </div>
+                      <dl className="grid grid-cols-2 gap-2 text-xs text-slate-600">
+                        <div><dt className="font-bold text-ink">Durasi</dt><dd>{quiz.duration_minutes} menit</dd></div>
+                        <div><dt className="font-bold text-ink">Percobaan</dt><dd>{quiz.max_attempts}x</dd></div>
+                        <div><dt className="font-bold text-ink">Soal</dt><dd>{quiz.questions_count ?? quiz.questions?.length ?? "-"}</dd></div>
+                        <div><dt className="font-bold text-ink">Dibuat</dt><dd>{formatDate(quiz.created_at)}</dd></div>
+                      </dl>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Link className="inline-flex min-h-9 items-center justify-center rounded-lg border-2 border-ink bg-white px-3 py-1 text-xs font-black text-ink hover:bg-yellow-100" href={`/admin/quizzes/${quiz.id}/builder`}>Builder</Link>
+                        <Button className="min-h-9 px-3 py-1 text-xs" onClick={() => setEditingQuiz(quiz)} variant="secondary">Edit</Button>
+                        {quiz.status !== "published" ? <Button className="min-h-9 px-3 py-1 text-xs" disabled={publishMutation.isPending} onClick={() => publishMutation.mutate(quiz.id)} variant="secondary">Terbitkan</Button> : null}
+                        {quiz.status === "published" ? <Button className="min-h-9 px-3 py-1 text-xs" onClick={() => { setApplyTarget(quiz); setSelectedClassIds([]); setPublishAfterApply(true); }} variant="secondary">Terapkan ke Kelas</Button> : null}
+                        {quiz.status !== "archived" ? <Button className="min-h-9 px-3 py-1 text-xs" disabled={archiveMutation.isPending} onClick={() => archiveMutation.mutate(quiz.id)} variant="ghost">Arsipkan</Button> : null}
+                        <Button className="min-h-9 px-3 py-1 text-xs" disabled={deleteMutation.isPending} onClick={() => setDeleteTarget(quiz)} variant="danger">Hapus</Button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+                <div className="hidden md:block">
                 <Table>
                   <TableHeader>
                     <tr>
@@ -349,6 +381,7 @@ export function QuizList() {
                     ))}
                   </tbody>
                 </Table>
+                </div>
                 <Pagination
                   onPageChange={setPage}
                   page={meta?.current_page ?? page}
@@ -359,18 +392,6 @@ export function QuizList() {
           ) : null}
         </CardContent>
       </Card>
-
-      <Modal
-        onClose={() => setCreateModalOpen(false)}
-        open={createModalOpen}
-        title="Tambah Kuis Default"
-      >
-        <QuizTemplateForm
-          isSubmitting={createMutation.isPending}
-          onCancel={() => setCreateModalOpen(false)}
-          onSubmit={(payload) => createMutation.mutate({ ...payload, status: "draft" })}
-        />
-      </Modal>
 
       <Modal
         onClose={() => setEditingQuiz(null)}

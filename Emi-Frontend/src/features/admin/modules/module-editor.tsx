@@ -259,7 +259,7 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
       ) : null}
 
       {moduleTemplate ? (
-        <div className="grid gap-6 xl:grid-cols-[minmax(320px,380px)_1fr]">
+        <div className="grid gap-6">
           <Card>
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -342,112 +342,126 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
                   />
                 ) : (
                   <div className="grid gap-4">
-                    <Table className="min-w-0 md:min-w-[760px]">
-                      <TableHeader className="hidden md:table-header-group">
+                    <Table className="min-w-0">
+                      <TableHeader className="hidden">
                         <tr>
                           <th className="px-4 py-3">Materi</th>
                           <th className="px-4 py-3">Jenis</th>
                           <th className="px-4 py-3">Status</th>
                           <th className="px-4 py-3">Urutan</th>
                           <th className="w-[240px] px-4 py-3">Aksi</th>
+                          <th className="w-[120px] px-4 py-3">Urutkan</th>
                         </tr>
                       </TableHeader>
                       <tbody>
                         {lessons.map((lesson, index) => (
-                          <tr className="grid gap-3 p-4 md:table-row md:p-0" key={lesson.id}>
-                            <TableCell className="border-0 p-0 md:border-t md:px-4 md:py-3">
+                          <tr className="mb-3 grid min-w-0 gap-3 rounded-xl border-2 border-ink bg-white p-4 last:mb-0" key={lesson.id}>
+                            <TableCell className="border-0 p-0">
                               <p className="font-black text-ink">{lesson.title}</p>
                               <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">
                                 {lesson.description ?? "Tanpa deskripsi."}
                               </p>
                             </TableCell>
-                            <TableCell className="border-0 p-0 md:border-t md:px-4 md:py-3">
-                              <span className="font-bold md:hidden">Jenis: </span>
+                            <TableCell className="border-0 p-0">
+                              <span className="font-bold">Jenis: </span>
                               {contentTypeLabel(lesson.content_type)}
                             </TableCell>
-                            <TableCell className="border-0 p-0 md:border-t md:px-4 md:py-3">
+                            <TableCell className="border-0 p-0">
                               <div className="grid justify-items-start gap-2">
                                 <div>
-                                  <span className="mr-2 font-bold md:hidden">Status:</span>
+                                  <span className="mr-2 font-bold">Status:</span>
                                   <Badge tone={statusTone(lesson.status)}>
                                     {statusLabel(lesson.status)}
                                   </Badge>
                                 </div>
-                                <div className="flex flex-wrap gap-1.5">
+                              </div>
+                            </TableCell>
+                            <TableCell className="border-0 p-0">
+                              <span className="font-bold">Urutan: </span>
+                              {lesson.sort_order}
+                            </TableCell>
+                            <TableCell className="border-0 p-0">
+                              <div className="grid gap-1.5">
+                                <div className="grid grid-cols-2 gap-1.5">
+                                  <Button
+                                    aria-label={`Edit ${lesson.title}`}
+                                    className="min-h-8 shrink-0 px-2 py-1 text-xs"
+                                    onClick={() => setEditingLesson(lesson)}
+                                    title="Edit materi"
+                                    variant="secondary"
+                                  >
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    aria-label={`Hapus ${lesson.title}`}
+                                    className="min-h-8 shrink-0 px-2 py-1 text-xs"
+                                    disabled={deleteLessonMutation.isPending}
+                                    onClick={() => setDeleteLessonTarget(lesson)}
+                                    title="Hapus materi"
+                                    variant="danger"
+                                  >
+                                    Hapus
+                                  </Button>
+                                </div>
+                                <div className="grid grid-cols-3 gap-1.5">
                                   {lesson.status !== "published" ? (
                                     <Button
-                                      className="min-h-8 shrink-0 px-2.5 py-1 text-xs"
+                                      className="min-h-8 shrink-0 px-2 py-1 text-xs"
                                       disabled={publishLessonMutation.isPending}
                                       onClick={() => publishLessonMutation.mutate(lesson.id)}
                                       variant="secondary"
                                     >
                                       Terbitkan
                                     </Button>
-                                  ) : null}
+                                  ) : (
+                                    <span />
+                                  )}
+                                  <a
+                                    aria-label={`Preview ${lesson.title}`}
+                                    className="inline-flex min-h-8 shrink-0 items-center justify-center rounded-lg border-2 border-ink bg-white px-2 py-1 text-xs font-bold text-ink transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                                    href={`#preview-${lesson.id}`}
+                                    title="Preview materi"
+                                  >
+                                    Preview
+                                  </a>
                                   {lesson.status !== "archived" ? (
                                     <Button
-                                      className="min-h-8 shrink-0 px-2.5 py-1 text-xs"
+                                      aria-label={`Arsipkan ${lesson.title}`}
+                                      className="min-h-8 shrink-0 px-2 py-1 text-xs"
                                       disabled={archiveLessonMutation.isPending}
                                       onClick={() => archiveLessonMutation.mutate(lesson.id)}
+                                      title="Arsipkan materi"
                                       variant="ghost"
                                     >
                                       Arsipkan
                                     </Button>
-                                  ) : null}
+                                  ) : (
+                                    <span />
+                                  )}
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell className="border-0 p-0 md:border-t md:px-4 md:py-3">
-                              <div className="grid justify-items-start gap-2">
-                                <span><span className="font-bold md:hidden">Urutan: </span>{lesson.sort_order}</span>
-                                <div className="grid grid-cols-2 gap-1.5">
-                                  <Button
-                                    className="min-h-8 shrink-0 px-2.5 py-1 text-xs"
-                                    disabled={index === 0 || reorderLessonMutation.isPending}
-                                    onClick={() => moveLesson(index, -1)}
-                                    variant="ghost"
-                                  >
-                                    Naik
-                                  </Button>
-                                  <Button
-                                    className="min-h-8 shrink-0 px-2.5 py-1 text-xs"
-                                    disabled={index === lessons.length - 1 || reorderLessonMutation.isPending}
-                                    onClick={() => moveLesson(index, 1)}
-                                    variant="ghost"
-                                  >
-                                    Turun
-                                  </Button>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="border-0 p-0 md:w-[240px] md:border-t md:px-4 md:py-3">
-                              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap md:flex-nowrap">
-                                <a
-                                  aria-label={`Preview ${lesson.title}`}
-                                  className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border-2 border-ink bg-white px-3 py-1 text-xs font-bold text-ink transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
-                                  href={`#preview-${lesson.id}`}
-                                  title="Preview materi"
-                                >
-                                  Preview
-                                </a>
+                            <TableCell className="border-0 p-0">
+                              <div className="grid grid-cols-2 gap-1.5">
                                 <Button
-                                  aria-label={`Edit ${lesson.title}`}
-                                  className="min-h-9 shrink-0 px-3 py-1 text-xs"
-                                  onClick={() => setEditingLesson(lesson)}
-                                  title="Edit materi"
-                                  variant="secondary"
+                                  aria-label={`Naikkan urutan ${lesson.title}`}
+                                  className="min-h-8 shrink-0 px-2.5 py-1 text-xs"
+                                  disabled={index === 0 || reorderLessonMutation.isPending}
+                                  onClick={() => moveLesson(index, -1)}
+                                  title="Naikkan urutan"
+                                  variant="ghost"
                                 >
-                                  Edit
+                                  Naik
                                 </Button>
                                 <Button
-                                  aria-label={`Hapus ${lesson.title}`}
-                                  className="min-h-9 shrink-0 px-3 py-1 text-xs"
-                                  disabled={deleteLessonMutation.isPending}
-                                  onClick={() => setDeleteLessonTarget(lesson)}
-                                  title="Hapus materi"
-                                  variant="danger"
+                                  aria-label={`Turunkan urutan ${lesson.title}`}
+                                  className="min-h-8 shrink-0 px-2.5 py-1 text-xs"
+                                  disabled={index === lessons.length - 1 || reorderLessonMutation.isPending}
+                                  onClick={() => moveLesson(index, 1)}
+                                  title="Turunkan urutan"
+                                  variant="ghost"
                                 >
-                                  Hapus
+                                  Turun
                                 </Button>
                               </div>
                             </TableCell>

@@ -13,6 +13,7 @@ export * from "./mobile-role-navigation";
 export * from "./page-header";
 export * from "./pagination";
 export * from "./search-bar";
+export * from "./responsive-list";
 export * from "./select";
 export * from "./sidebar";
 export * from "./states";

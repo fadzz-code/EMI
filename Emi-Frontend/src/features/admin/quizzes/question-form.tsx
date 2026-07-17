@@ -1,6 +1,7 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import Image from "next/image";
+import { type ChangeEvent, type FormEvent, useEffect, useState } from "react";
 
 import {
   Alert,
@@ -15,7 +16,7 @@ import {
 import { getFirstApiError } from "@/lib/api-client";
 
 import { quizQuestionService } from "./quiz-service";
-import { normalizeNullable } from "./quiz-utils";
+import { normalizeNullable, validateQuestionImage } from "./quiz-utils";
 import type { QuestionType, QuizQuestionPayload, QuizTemplateQuestion } from "./types";
 
 type OptionForm = {
@@ -130,21 +131,38 @@ export function QuestionForm({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(question?.image_media?.url ?? null);
 
-  async function uploadImage() {
-    if (!imageFile) {
+  useEffect(() => () => {
+    if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
+
+  async function selectImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    setUploadError(null);
+    setUploadSuccess(null);
+
+    if (!file) return;
+
+    const validationError = validateQuestionImage(file);
+    if (validationError) {
+      setImageFile(null);
+      setUploadError(validationError);
+      event.target.value = "";
       return;
     }
 
-    setUploadError(null);
-    setUploadSuccess(null);
+    setImageFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
     setIsUploading(true);
 
     try {
-      const media = await quizQuestionService.uploadQuestionImage(token, imageFile);
+      const media = await quizQuestionService.uploadQuestionImage(token, file);
       setForm((current) => ({ ...current, image_media_id: media.id }));
       setUploadSuccess(`Gambar ${media.original_name} berhasil diunggah.`);
     } catch (error) {
+      setImageFile(null);
+      setPreviewUrl(question?.image_media?.url ?? null);
       setUploadError(getFirstApiError(error));
     } finally {
       setIsUploading(false);
@@ -182,7 +200,18 @@ export function QuestionForm({
       {uploadError ? <Alert tone="error">{uploadError}</Alert> : null}
       {uploadSuccess ? <Alert tone="success">{uploadSuccess}</Alert> : null}
 
-      <div className="grid gap-4 md:grid-cols-[1fr_190px_140px_130px]">
+      <FormField label="Teks soal">
+        <Textarea
+          className="min-h-32 w-full"
+          onChange={(event) =>
+            setForm((current) => ({ ...current, question_text: event.target.value }))
+          }
+          required
+          value={form.question_text}
+        />
+      </FormField>
+
+      <div className="grid gap-4 md:grid-cols-3">
         <FormField label="Tipe soal">
           <Select
             onChange={(event) =>
@@ -218,43 +247,26 @@ export function QuestionForm({
             value={form.order_number}
           />
         </FormField>
-        <div />
       </div>
 
-      <FormField label="Teks soal">
-        <Textarea
-          className="min-h-32"
-          onChange={(event) =>
-            setForm((current) => ({ ...current, question_text: event.target.value }))
-          }
-          required
-          value={form.question_text}
+      <FormField label="Gambar soal (opsional)">
+        <UploadComponent
+          accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+          disabled={isUploading}
+          onChange={selectImage}
         />
       </FormField>
-
-      <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
-        <FormField label="ID media gambar">
-          <Input
-            onChange={(event) =>
-              setForm((current) => ({ ...current, image_media_id: event.target.value }))
-            }
-            placeholder="Opsional, terisi otomatis setelah upload"
-            value={form.image_media_id}
-          />
-        </FormField>
-        <Button
-          disabled={!imageFile || isUploading}
-          onClick={uploadImage}
-          type="button"
-          variant="secondary"
-        >
-          {isUploading ? "Upload..." : "Upload Gambar"}
-        </Button>
-      </div>
-      <UploadComponent
-        accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-        onChange={(event) => setImageFile(event.target.files?.[0] ?? null)}
-      />
+      {isUploading ? <Alert tone="info">Mengunggah gambar...</Alert> : null}
+      {previewUrl ? (
+        <Image
+          alt="Pratinjau gambar soal"
+          className="max-h-64 w-auto max-w-full rounded-lg border-2 border-ink object-contain"
+          height={256}
+          src={previewUrl}
+          unoptimized
+          width={512}
+        />
+      ) : null}
       {imageFile ? (
         <FilePreview
           name={imageFile.name}
@@ -365,7 +377,7 @@ export function QuestionForm({
         <Button onClick={onCancel} type="button" variant="ghost">
           Batal
         </Button>
-        <Button disabled={isSubmitting} type="submit">
+        <Button disabled={isSubmitting || isUploading} type="submit">
           Simpan Soal
         </Button>
       </div>
