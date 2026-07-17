@@ -26,50 +26,68 @@ class AdminShell extends ConsumerWidget {
     final user = ref.watch(authControllerProvider).user;
     final location = GoRouterState.of(context).uri.path;
 
-    return Scaffold(
-      drawer: _AdminDrawer(user: user, location: location),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Container(
-              height: 64,
-              padding: const EdgeInsets.symmetric(horizontal: EmiSpacing.md),
-              decoration: const BoxDecoration(
-                color: EmiColors.background,
-                border: Border(
-                  bottom: BorderSide(color: EmiColors.border, width: 2),
+    final showQuickNavigation =
+        fallbackRoute == null && MediaQuery.viewInsetsOf(context).bottom == 0;
+
+    return PopScope(
+      canPop: fallbackRoute == null || context.canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && fallbackRoute != null && context.mounted) {
+          context.go(fallbackRoute!);
+        }
+      },
+      child: Scaffold(
+        drawer: _AdminDrawer(user: user, location: location),
+        bottomNavigationBar: showQuickNavigation
+            ? SafeArea(
+                top: false,
+                child: AdminQuickNavigation(location: location),
+              )
+            : null,
+        body: SafeArea(
+          child: Column(
+            children: [
+              Container(
+                height: 64,
+                padding: const EdgeInsets.symmetric(horizontal: EmiSpacing.md),
+                decoration: const BoxDecoration(
+                  color: EmiColors.background,
+                  border: Border(
+                    bottom: BorderSide(color: EmiColors.border, width: 2),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    if (fallbackRoute == null)
+                      Builder(
+                        builder: (context) => IconButton(
+                          key: const Key('adminMenuButton'),
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                          icon: const Icon(Icons.menu),
+                        ),
+                      )
+                    else
+                      IconButton(
+                        key: const Key('adminBackButton'),
+                        tooltip: 'Kembali',
+                        onPressed:
+                            onBack ?? () => _back(context, fallbackRoute!),
+                        icon: const Icon(Icons.arrow_back),
+                      ),
+                    const SizedBox(width: EmiSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleLarge,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Row(
-                children: [
-                  if (fallbackRoute == null)
-                    Builder(
-                      builder: (context) => IconButton(
-                        key: const Key('adminMenuButton'),
-                        onPressed: () => Scaffold.of(context).openDrawer(),
-                        icon: const Icon(Icons.menu),
-                      ),
-                    )
-                  else
-                    IconButton(
-                      key: const Key('adminBackButton'),
-                      tooltip: 'Kembali',
-                      onPressed: onBack ?? () => _back(context, fallbackRoute!),
-                      icon: const Icon(Icons.arrow_back),
-                    ),
-                  const SizedBox(width: EmiSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleLarge,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(child: child),
-          ],
+              Expanded(child: child),
+            ],
+          ),
         ),
       ),
     );
@@ -122,13 +140,53 @@ class _AdminDrawer extends ConsumerWidget {
             const Divider(height: 1),
             _Item(
               label: 'Beranda',
-              icon: Icons.dashboard_outlined,
+              icon: Icons.home_outlined,
               route: '/admin/dashboard',
               selected: location == '/admin/dashboard',
             ),
-            for (final feature in AdminFeature.values.where(
-              (feature) => feature.isMobileImplemented,
-            ))
+            _Item(
+              label: 'Persetujuan',
+              icon: Icons.how_to_reg_outlined,
+              route: AdminFeature.approvals.route,
+              selected: location.startsWith(AdminFeature.approvals.route),
+            ),
+            _Group(
+              label: 'Sekolah & Kelas',
+              icon: Icons.school_outlined,
+              selected:
+                  location.startsWith('/admin/schools') ||
+                  location.startsWith('/admin/classes'),
+              children: [
+                _ItemData(
+                  'Sekolah',
+                  Icons.apartment_outlined,
+                  '/admin/schools',
+                  location.startsWith('/admin/schools'),
+                ),
+                _ItemData(
+                  'Kelas & Penempatan',
+                  Icons.school_outlined,
+                  '/admin/classes',
+                  location.startsWith('/admin/classes'),
+                ),
+              ],
+            ),
+            _Item(
+              label: 'Guru & Siswa',
+              icon: Icons.groups_outlined,
+              route: AdminFeature.users.route,
+              selected: location.startsWith(AdminFeature.users.route),
+            ),
+            for (final feature in [
+              AdminFeature.dictionary,
+              AdminFeature.knowledge,
+              AdminFeature.modules,
+              AdminFeature.quizzes,
+              AdminFeature.speaking,
+              AdminFeature.culture,
+              AdminFeature.reports,
+              AdminFeature.settings,
+            ])
               _Item(
                 label: feature.label,
                 icon: _icon(feature),
@@ -164,6 +222,114 @@ class _AdminDrawer extends ConsumerWidget {
     AdminFeature.reports => Icons.bar_chart_outlined,
     AdminFeature.settings => Icons.settings_outlined,
   };
+}
+
+class AdminQuickNavigation extends StatelessWidget {
+  const AdminQuickNavigation({super.key, required this.location});
+
+  final String location;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      (
+        'Beranda',
+        Icons.home_outlined,
+        '/admin/dashboard',
+        location == '/admin/dashboard',
+        'adminQuickHome',
+      ),
+      (
+        'Persetujuan',
+        Icons.how_to_reg_outlined,
+        '/admin/approvals',
+        location.startsWith('/admin/approvals'),
+        'adminQuickApprovals',
+      ),
+      (
+        'Progress',
+        Icons.bar_chart_outlined,
+        '/admin/reports',
+        location.startsWith('/admin/reports'),
+        'adminQuickProgress',
+      ),
+      (
+        'Pengaturan',
+        Icons.settings_outlined,
+        '/admin/settings',
+        location.startsWith('/admin/settings'),
+        'adminQuickSettings',
+      ),
+    ];
+    return SizedBox(
+      height: 64,
+      child: Row(
+        children: [
+          for (final item in items)
+            Expanded(
+              child: InkWell(
+                key: Key(item.$5),
+                onTap: item.$4 ? null : () => context.go(item.$3),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(item.$2, size: 22),
+                    const SizedBox(height: 2),
+                    Text(
+                      item.$1,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Group extends StatelessWidget {
+  const _Group({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.children,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final List<_ItemData> children;
+
+  @override
+  Widget build(BuildContext context) => ExpansionTile(
+    leading: Icon(icon),
+    title: Text(label),
+    initiallyExpanded: selected,
+    children: [
+      for (final child in children)
+        _Item(
+          label: child.label,
+          icon: child.icon,
+          route: child.route,
+          selected: child.selected,
+          indented: true,
+        ),
+    ],
+  );
+}
+
+class _ItemData {
+  const _ItemData(this.label, this.icon, this.route, this.selected);
+
+  final String label;
+  final IconData icon;
+  final String route;
+  final bool selected;
 }
 
 class _Avatar extends StatelessWidget {
@@ -203,17 +369,23 @@ class _Item extends StatelessWidget {
     required this.icon,
     required this.route,
     required this.selected,
+    this.indented = false,
   });
 
   final String label;
   final IconData icon;
   final String route;
   final bool selected;
+  final bool indented;
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon),
+      contentPadding: EdgeInsets.only(
+        left: indented ? EmiSpacing.lg : EmiSpacing.md,
+        right: EmiSpacing.md,
+      ),
+      leading: Icon(icon, size: 22),
       title: Text(label),
       selected: selected,
       selectedTileColor: EmiColors.secondary,

@@ -334,7 +334,7 @@ void main() {
     _expectConfirmation();
     await tester.tap(find.text('Tetap di Halaman'));
     await tester.pumpAndSettle();
-    expect(find.text('Pengaturan'), findsOneWidget);
+    expect(find.text('Pengaturan').last, findsOneWidget);
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();

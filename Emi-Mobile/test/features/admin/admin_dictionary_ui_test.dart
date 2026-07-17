@@ -89,6 +89,8 @@ void main() {
       );
 
       final itemFinder = find.text('Air');
+      await tester.drag(customScrollFinder, const Offset(0, -400));
+      await tester.pumpAndSettle();
       expect(itemFinder, findsWidgets);
       expect(
         find.descendant(of: customScrollFinder, matching: itemFinder),

@@ -468,6 +468,7 @@ class AdminDictionaryDetailScreen extends ConsumerWidget {
     final detail = ref.watch(adminDictionaryDetailProvider(id));
     return AdminShell(
       title: 'Detail Kosakata',
+      fallbackRoute: '/admin/dictionary',
       child: detail.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => _Error(
@@ -675,6 +676,7 @@ class AdminDictionaryCategoryScreen extends ConsumerWidget {
     final categories = ref.watch(dictionaryCategoriesProvider);
     return AdminShell(
       title: 'Kategori Kamus',
+      fallbackRoute: '/admin/dictionary',
       child: categories.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => _Error(
@@ -774,6 +776,7 @@ class _AdminDictionaryImportScreenState
   @override
   Widget build(BuildContext context) => AdminShell(
     title: 'Import Data',
+    fallbackRoute: '/admin/dictionary',
     child: ListView(
       padding: const EdgeInsets.all(EmiSpacing.md),
       children: [
