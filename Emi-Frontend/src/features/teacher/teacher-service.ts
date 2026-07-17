@@ -5,6 +5,8 @@ import type {
   TeacherClass,
   TeacherClassLesson,
   TeacherClassModule,
+  TeacherLessonMediaPurpose,
+  TeacherLessonUpdatePayload,
   TeacherClassQuiz,
   TeacherCultureItem,
   TeacherCulturePayload,
@@ -132,7 +134,7 @@ export const teacherService = {
     return response.data;
   },
 
-  async updateClassLesson(token: string, lessonId: string, payload: Partial<TeacherClassLesson>) {
+  async updateClassLesson(token: string, lessonId: string, payload: TeacherLessonUpdatePayload) {
     const response = await apiClient.put<TeacherClassLesson>(`/class-lessons/${lessonId}`, payload, { token });
 
     if (!response.data) {
@@ -351,7 +353,7 @@ export const teacherService = {
     return student;
   },
 
-  async uploadMedia(token: string, file: File, purpose: string, visibility: "public" | "private" = "private") {
+  async uploadMedia(token: string, file: File, purpose: TeacherLessonMediaPurpose | "culture_media" | "question_image", visibility: "public" | "private" = "private") {
     const formData = new FormData();
     formData.append("file", file, file.name);
     formData.append("purpose", purpose);

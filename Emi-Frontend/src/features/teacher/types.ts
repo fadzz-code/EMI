@@ -46,12 +46,24 @@ export type TeacherRecentActivity = {
 export type TeacherClass = SchoolClass;
 export type TeacherClassStudent = ClassStudent;
 
+export type TeacherLessonContentType = "text" | "video" | "link" | "pdf" | "image" | "audio";
+export type TeacherLessonMediaPurpose = "document" | "lesson_image" | "audio";
+
+export type TeacherLessonUpdatePayload = {
+  title?: string;
+  description?: string | null;
+  content_body?: string | null;
+  external_url?: string | null;
+  media_id?: string | null;
+  sort_order?: number;
+};
+
 export type TeacherClassLesson = {
   id: string;
   class_module_id: string;
   title: string;
   description?: string | null;
-  content_type?: string | null;
+  content_type?: TeacherLessonContentType | null;
   content_body?: string | null;
   external_url?: string | null;
   media?: {
