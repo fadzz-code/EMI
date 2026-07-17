@@ -150,17 +150,17 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
     <div className="grid gap-6">
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <Badge tone="yellow">ADMIN-16</Badge>
+          <Badge tone="blue">ADMIN-16</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">
             {quiz?.title ?? "Builder Soal Kuis"}
           </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+          <p className="mt-2 max-w-3xl text-sm leading-6 font-semibold text-muted">
             Bangun soal template kuis default, atur urutan, poin, gambar soal,
             dan pembahasan sebelum kuis diterbitkan.
           </p>
         </div>
         <Link
-          className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-white px-4 py-2 text-sm font-bold text-ink hover:bg-slate-100"
+          className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-border bg-surface px-4 py-2 text-sm font-bold text-ink hover:bg-surface-muted"
           href="/admin/quizzes"
         >
           Kembali ke Daftar
@@ -186,17 +186,17 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
       ) : null}
 
       {quiz ? (
-        <div className="grid gap-6 xl:grid-cols-[minmax(320px,380px)_1fr]">
+        <div className="grid items-start gap-6 xl:grid-cols-[minmax(320px,380px)_1fr]">
           <Card>
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-xl font-black text-ink">Metadata Kuis</h2>
                 <Badge tone={statusTone(quiz.status)}>{statusLabel(quiz.status)}</Badge>
               </div>
-              <p className="text-xs text-slate-600">
+              <p className="text-xs font-semibold text-muted">
                 Dibuat: {formatDate(quiz.created_at)} | Diubah: {formatDate(quiz.updated_at)}
               </p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
+              <p className="mt-2 text-sm leading-6 font-semibold text-muted">
                 Simpan metadata kuis terpisah dari daftar soal agar perubahan mudah diperiksa.
               </p>
             </CardHeader>
@@ -207,7 +207,7 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
                 onSubmit={(payload) => updateQuizMutation.mutate(payload)}
                 quiz={quiz}
               />
-              <div className="mt-5 flex flex-col gap-2 border-t-2 border-ink pt-4 sm:flex-row">
+              <div className="mt-5 flex flex-col gap-2 border-t-2 border-border pt-4 sm:flex-row">
                 <Button
                   disabled={publishQuizMutation.isPending || quiz.status === "published"}
                   onClick={() => publishQuizMutation.mutate()}
@@ -232,7 +232,7 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
                     <h2 className="text-xl font-black text-ink">Daftar Soal</h2>
-                    <p className="mt-1 text-sm text-slate-600">
+                    <p className="mt-1 text-sm font-semibold text-muted">
                       Total soal aktif: {questions.length}
                     </p>
                   </div>

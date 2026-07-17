@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Search, UserRound } from "lucide-react";
 
 import { Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState, PageHeader, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -32,7 +33,7 @@ export function TeacherStudentList() {
   }, [search, students]);
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       <PageHeader
         badge="Guru"
         description="Cari siswa, lihat progress modul, dan buka detail belajar dari kelas aktif Anda."
@@ -59,7 +60,7 @@ export function TeacherStudentList() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid gap-6">
             <section className="grid gap-4 sm:grid-cols-3">
               <StatsCard helper={user?.active_class?.name ?? "Kelas aktif"} label="Total siswa" value={formatCount(students.length)} />
               <StatsCard helper="Rata-rata kelas" label="Progress belajar" value={formatPercent(
@@ -74,7 +75,10 @@ export function TeacherStudentList() {
 
             <Card>
               <CardContent>
-                <Input onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama siswa atau kelas..." value={search} />
+                <div className="flex items-center gap-3">
+                  <Search className="size-5 shrink-0 text-muted" strokeWidth={2.5} />
+                  <Input onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama siswa atau kelas..." value={search} />
+                </div>
               </CardContent>
             </Card>
 
@@ -88,35 +92,36 @@ export function TeacherStudentList() {
 
             <div className="grid gap-4 md:grid-cols-2">
               {filteredStudents.map((student) => (
-                <Card key={student.student_id}>
-                  <CardHeader>
+                <Card className="group flex h-full flex-col transition hover:-translate-y-1 hover:shadow-emi" key={student.student_id}>
+                  <CardHeader className="flex-1">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <h2 className="text-xl font-black text-ink">{formatOptional(student.full_name)}</h2>
-                        <p className="mt-1 text-sm text-slate-600">{formatOptional(student.class?.name)}</p>
+                        <h2 className="text-xl font-black text-foreground">{formatOptional(student.full_name)}</h2>
+                        <p className="mt-1 text-sm font-semibold text-muted">{formatOptional(student.class?.name)}</p>
                       </div>
                       <Link
-                        className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-brutal hover:bg-blue-700"
+                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-primary px-4 py-2 text-sm font-black text-primary-foreground shadow-emi transition hover:-translate-y-0.5"
                         href={teacherRoutes.studentDetail(student.student_id ?? "")}
                       >
                         Lihat Detail
+                        <UserRound className="size-4" strokeWidth={2.5} />
                       </Link>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <dl className="grid gap-3 text-sm sm:grid-cols-2">
-                      <div className="rounded-xl bg-slate-50 p-3">
-                        <dt className="font-black uppercase text-slate-500">Progress Modul</dt>
+                      <div className="rounded-xl border-2 border-border bg-surface-muted p-3">
+                        <dt className="font-black uppercase text-muted">Progress Modul</dt>
                         <dd className="mt-1 flex items-center justify-between">
-                          <span className="font-bold text-ink">
+                          <span className="font-bold text-foreground">
                             {formatCount(student.completed_modules)} / {formatCount(student.published_modules)}
                           </span>
                           <Badge tone="blue">{formatPercent(student.overall_learning_progress_percent)}</Badge>
                         </dd>
                       </div>
-                      <div className="rounded-xl bg-slate-50 p-3">
-                        <dt className="font-black uppercase text-slate-500">Penyelesaian Kuis</dt>
-                        <dd className="mt-1 font-bold text-ink">
+                      <div className="rounded-xl border-2 border-border bg-surface-muted p-3">
+                        <dt className="font-black uppercase text-muted">Penyelesaian Kuis</dt>
+                        <dd className="mt-1 font-bold text-foreground">
                           {formatCount(student.quizzes_completed)} / {formatCount(student.published_quizzes)} kuis
                         </dd>
                       </div>

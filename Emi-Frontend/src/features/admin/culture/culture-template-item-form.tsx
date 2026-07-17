@@ -72,7 +72,7 @@ export function CultureTemplateItemForm({ editingItem, onCancel, onSaved, templa
           <FormField label="Urutan Tampil"><Input defaultValue={editingItem?.display_order ?? 1} min={1} name="display_order" required type="number" /></FormField>
 
           {isFileBased ? (
-            <div className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="grid gap-4 rounded-2xl border-2 border-border bg-surface-muted p-4">
               <h3 className="font-black text-ink">Upload Media</h3>
               {uploadError ? <Alert tone="error">{uploadError}</Alert> : null}
               {uploadSuccess ? <Alert tone="success">{uploadSuccess}</Alert> : null}
@@ -86,7 +86,7 @@ export function CultureTemplateItemForm({ editingItem, onCancel, onSaved, templa
           ) : null}
 
           {isLinkBased ? (
-            <div className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="grid gap-4 rounded-2xl border-2 border-border bg-surface-muted p-4">
               <FormField label="URL Eksternal"><Input defaultValue={editingItem?.external_url ?? ""} name="external_url" required type="url" /></FormField>
             </div>
           ) : null}

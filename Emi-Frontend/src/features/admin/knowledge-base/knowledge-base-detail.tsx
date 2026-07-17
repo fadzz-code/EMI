@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 import {
   Alert,
@@ -15,7 +16,7 @@ import { KnowledgeBaseEmptyState } from "./knowledge-base-empty-state";
 import { KnowledgeBaseStatusBadge } from "./knowledge-base-status-badge";
 import { knowledgeEndpointMessage, unavailableKnowledgeActions } from "./knowledge-base-utils";
 
-const disabledControlClass = "bg-slate-100 text-slate-500";
+const disabledControlClass = "bg-surface-muted text-muted";
 
 function DisabledInput({ value = "Belum tersedia" }: { value?: string }) {
   return <Input className={disabledControlClass} disabled value={value} />;
@@ -30,19 +31,19 @@ export function KnowledgeBaseDetail({ knowledgeId }: { knowledgeId: string }) {
     <div className="grid gap-6">
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <Badge tone="yellow">ADMIN-12</Badge>
+          <Badge tone="blue">ADMIN-12</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">Detail Pengetahuan AI</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+          <p className="mt-2 max-w-3xl text-sm leading-6 font-semibold text-muted">
             Halaman detail ini menjaga rute admin tetap tersedia. Untuk saat ini,
             pengelolaan sumber aktif dilakukan dari daftar Basis AI.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Link
-            className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-white px-4 py-2 text-sm font-bold text-ink hover:bg-yellow-100"
+            className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-ink transition hover:-translate-y-0.5 hover:bg-surface-muted hover:shadow-emi"
             href="/admin/knowledge-base"
           >
-            Kembali
+            <ArrowLeft className="mr-2 size-4" strokeWidth={2.5} />Kembali
           </Link>
           <KnowledgeBaseStatusBadge />
         </div>
@@ -58,7 +59,7 @@ export function KnowledgeBaseDetail({ knowledgeId }: { knowledgeId: string }) {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="text-xl font-black text-ink">Metadata Sumber</h2>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
+              <p className="mt-1 text-sm leading-6 font-semibold text-muted">
                 Field detail masih read-only. Gunakan daftar Basis AI untuk tambah, edit,
                 terbitkan, arsipkan, dan hapus pengetahuan.
               </p>
@@ -126,11 +127,11 @@ export function KnowledgeBaseDetail({ knowledgeId }: { knowledgeId: string }) {
           <div className="grid gap-3 md:grid-cols-2">
             {unavailableKnowledgeActions.map((action) => (
               <div
-                className="rounded-lg border-2 border-dashed border-ink bg-slate-50 p-4"
+                className="rounded-2xl border-2 border-dashed border-border bg-surface-muted p-4"
                 key={action.label}
               >
                 <p className="text-sm font-black text-ink">{action.label}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-600">{action.description}</p>
+                <p className="mt-1 text-xs leading-5 font-semibold text-muted">{action.description}</p>
               </div>
             ))}
           </div>

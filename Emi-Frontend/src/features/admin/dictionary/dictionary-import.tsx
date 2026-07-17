@@ -137,9 +137,9 @@ export function DictionaryImport() {
     <div className="grid gap-6">
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <Badge tone="yellow">Admin</Badge>
+          <Badge tone="blue">Admin</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">Impor Kamus</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
             Buat pratinjau CSV dan ZIP audio terlebih dahulu, lalu konfirmasi hanya
             jika ringkasan baris valid sudah sesuai.
           </p>
@@ -162,7 +162,7 @@ export function DictionaryImport() {
                   ["vocabulary", "Import Kosakata", "Untuk data kata utama dan ZIP audio opsional."],
                   ["sentence_examples", "Import Contoh Kalimat", "Untuk menempelkan banyak contoh kalimat ke kode kosakata yang sudah ada."],
                 ] as const).map(([type, title, description]) => (
-                  <div key={type} className={`flex h-full flex-col rounded-xl border-2 p-4 ${importType === type ? "border-ink bg-yellow-100" : "border-border bg-white"}`}>
+                  <div key={type} className={`flex h-full min-h-48 flex-col rounded-[var(--radius-card)] border-2 p-4 transition hover:-translate-y-0.5 hover:shadow-emi ${importType === type ? "border-primary bg-[var(--color-primary-muted)]" : "border-border bg-surface"}`}>
                     <button
                       className="block w-full text-left"
                       onClick={() => {
@@ -173,7 +173,7 @@ export function DictionaryImport() {
                       type="button"
                     >
                       <p className="text-lg font-black text-ink">{title}</p>
-                      <p className="mt-1 text-xs font-bold leading-5 text-slate-600">{description}</p>
+                      <p className="mt-1 text-xs font-bold leading-5 text-muted">{description}</p>
                     </button>
                     <Button
                       className="mt-auto w-full"
@@ -214,7 +214,7 @@ export function DictionaryImport() {
                       accept=".zip,application/zip,application/x-zip-compressed"
                       onChange={(event) => setAudioZip(event.target.files?.[0] ?? null)}
                     />
-                    <p className="mt-2 text-xs font-bold leading-5 text-slate-600">
+                    <p className="mt-2 text-xs font-bold leading-5 text-muted">
                       ZIP audio bersifat opsional untuk Kosakata. Jika tidak diunggah, data kata tetap bisa diimpor tanpa audio. Jika ingin menyertakan audio, pastikan nama file di CSV sama persis dengan nama file di ZIP.
                     </p>
                   </FormField>
@@ -277,7 +277,7 @@ export function DictionaryImport() {
                   <Alert tone="error">{selectedJob.failure_message}</Alert>
                 ) : null}
 
-                <div className="grid gap-3 rounded-lg border-2 border-ink bg-white p-4 text-sm font-bold text-ink md:grid-cols-2">
+                <div className="grid gap-3 rounded-lg border-2 border-border bg-surface p-4 text-sm font-bold text-ink md:grid-cols-2">
                   <p>CSV: {selectedJob.csv_original_name ?? "-"} ({formatBytes(selectedJob.csv_size_bytes)})</p>
                   <p>ZIP: {selectedJob.audio_zip_original_name ?? "-"} ({formatBytes(selectedJob.audio_zip_size_bytes)})</p>
                   <p>Jenis: {selectedJob.import_type === "sentence_examples" ? "Contoh Kalimat" : "Kosakata"}</p>
@@ -303,7 +303,7 @@ export function DictionaryImport() {
                   </Button>
                   {(selectedJob.status === "completed" || selectedJob.status === "completed_with_errors") ? (
                     <Link
-                      className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-white px-4 py-2 text-sm font-bold text-ink shadow-brutal hover:bg-yellow-100"
+                      className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-bold text-ink shadow-emi hover:bg-surface-muted"
                       href="/admin/dictionary"
                     >
                       Lihat Kamus
@@ -431,7 +431,7 @@ export function DictionaryImport() {
                           <div className="grid gap-1">
                             <p>{error.message}</p>
                             {error.code === "AUDIO_FILE_NOT_FOUND" ? (
-                              <p className="text-xs font-bold text-slate-600">
+                              <p className="text-xs font-bold text-muted">
                                 Kolom: audio. Masalah: File audio tidak ditemukan atau ZIP audio tidak diunggah. Solusi: Kata tetap bisa diimpor tanpa audio. Untuk menambahkan audio, unggah ZIP berisi file dengan nama yang sama seperti di CSV.
                               </p>
                             ) : null}

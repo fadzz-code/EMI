@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, BarChart3, LockKeyhole } from "lucide-react";
 
 import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState, PageHeader, Textarea } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -64,16 +65,16 @@ export function TeacherQuizBuilder({ classQuizId }: { classQuizId: string }) {
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-wrap gap-3"><Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href={teacherRoutes.quizzes}>Kembali ke Daftar Kuis</Link><Link className="w-fit rounded-lg border-2 border-ink bg-yellow-300 px-3 py-2 text-sm font-black text-ink shadow-brutal hover:bg-yellow-200" href={teacherRoutes.quizResults(classQuizId)}>Lihat Hasil</Link></div>
+      <div className="flex flex-wrap gap-3"><Link className="inline-flex w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 py-2 text-sm font-black text-ink transition-colors hover:bg-surface-muted" href={teacherRoutes.quizzes}><ArrowLeft className="size-4" />Kembali ke Daftar Kuis</Link><Link className="inline-flex w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-primary px-3 py-2 text-sm font-black text-primary-foreground shadow-emi transition-transform hover:-translate-y-0.5" href={teacherRoutes.quizResults(classQuizId)}><BarChart3 className="size-4" />Lihat Hasil</Link></div>
       <PageHeader badge="Guru" description="Atur informasi kuis, jadwal pengerjaan, visibilitas hasil, dan daftar soal kelas." title="Quiz Builder" />
 
       {quizQuery.isLoading ? <LoadingState title="Memuat detail kuis" /> : null}
       {quizQuery.isError ? <ErrorState description={getFirstApiError(quizQuery.error)} onRetry={() => void quizQuery.refetch()} title="Gagal memuat kuis" /> : null}
 
       {quiz ? (
-        <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+        <div className="grid items-start gap-6 lg:grid-cols-2">
           <Card>
-            <CardHeader><div className="flex items-center justify-between"><h2 className="text-xl font-black text-ink">Metadata Kuis</h2><div className="flex gap-2"><Badge tone={quiz.status === "published" ? "blue" : "neutral"}>{statusLabel(quiz.status)}</Badge>{locked ? <Badge tone="yellow">Terkunci</Badge> : <Badge tone="blue">Draft bisa diedit</Badge>}</div></div></CardHeader>
+            <CardHeader><div className="flex items-center justify-between"><h2 className="text-xl font-black text-ink">Metadata Kuis</h2><div className="flex gap-2"><Badge tone={quiz.status === "published" ? "blue" : "neutral"}>{statusLabel(quiz.status)}</Badge>{locked ? <Badge tone="yellow"><LockKeyhole className="mr-1 size-3" />Terkunci</Badge> : <Badge tone="blue">Draft bisa diedit</Badge>}</div></div></CardHeader>
             <CardContent>
               <form className="grid gap-4" onSubmit={(event) => {
                 event.preventDefault();
@@ -97,7 +98,7 @@ export function TeacherQuizBuilder({ classQuizId }: { classQuizId: string }) {
                 {updateMutation.error ? <Alert tone="error">{getFirstApiError(updateMutation.error)}</Alert> : null}
                 {publishMutation.error ? <Alert tone="error">{getFirstApiError(publishMutation.error)}</Alert> : null}
                 {locked ? <Alert tone="warning">{lockedMessage}</Alert> : null}
-                <p className="text-sm font-bold text-slate-500">Kelas: {quiz.class?.name ?? quiz.class_id}</p>
+                <p className="text-sm font-bold text-muted">Kelas: {quiz.class?.name ?? quiz.class_id}</p>
                 <label className="grid gap-2 text-sm font-black text-ink">Judul<Input defaultValue={quiz.title} disabled={locked} name="title" required /></label>
                 <label className="grid gap-2 text-sm font-black text-ink">Deskripsi<Textarea defaultValue={quiz.description ?? ""} disabled={locked} name="description" rows={3} /></label>
                 <label className="grid gap-2 text-sm font-black text-ink">Instruksi<Textarea defaultValue={quiz.instructions ?? ""} disabled={locked} name="instructions" rows={3} /></label>
@@ -123,13 +124,13 @@ export function TeacherQuizBuilder({ classQuizId }: { classQuizId: string }) {
               {questions.length === 0 ? <EmptyState description="Belum ada soal." title="Soal kosong" /> : (
                 <div className="grid gap-3">
                   {questions.map((question) => (
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3" key={question.id}>
-                      <div className="flex items-start justify-between gap-3"><div><p className="font-black text-ink">{question.order_number}. {question.question_text}</p><p className="text-xs font-bold text-slate-500">{question.question_type} | {question.points ?? 0} poin</p></div><Badge>{question.options?.length ?? 0} opsi</Badge></div>
-                      {question.options?.length ? <ol className="mt-2 grid gap-1 text-sm text-slate-600">{question.options.map((option) => <li key={`${question.id}-${option.order_number}`}>{option.order_number}. {option.option_text}{option.is_correct ? " (benar)" : ""}</li>)}</ol> : null}
+                    <div className="rounded-xl border-2 border-border bg-surface-muted p-4" key={question.id}>
+                      <div className="flex items-start justify-between gap-3"><div><p className="font-black text-ink">{question.order_number}. {question.question_text}</p><p className="text-xs font-bold text-muted">{question.question_type} | {question.points ?? 0} poin</p></div><Badge>{question.options?.length ?? 0} opsi</Badge></div>
+                      {question.options?.length ? <ol className="mt-2 grid gap-1 text-sm text-muted">{question.options.map((option) => <li key={`${question.id}-${option.order_number}`}>{option.order_number}. {option.option_text}{option.is_correct ? " (benar)" : ""}</li>)}</ol> : null}
                       {question.image_media?.url ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img alt="Gambar soal" className="mt-3 max-h-48 w-fit rounded-lg border-2 border-ink bg-white object-contain" src={question.image_media.url} />
-                      ) : question.image_media_id ? <p className="mt-3 rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-600">Gambar terhubung: {question.image_media_id}</p> : null}
+                        <img alt="Gambar soal" className="mt-3 max-h-48 w-fit rounded-lg border-2 border-border bg-surface object-contain" src={question.image_media.url} />
+                      ) : question.image_media_id ? <p className="mt-3 rounded-lg border-2 border-border bg-surface p-2 text-xs text-muted">Gambar terhubung: {question.image_media_id}</p> : null}
                       <div className="mt-3 flex gap-2"><Button disabled={locked} onClick={() => setEditingQuestion(question)} type="button" variant="secondary">Edit</Button><Button disabled={locked || deleteMutation.isPending} onClick={() => { if (confirm("Hapus soal ini?")) { deleteMutation.mutate(question.id); } }} type="button" variant="danger">Hapus</Button></div>
                     </div>
                   ))}
@@ -139,7 +140,7 @@ export function TeacherQuizBuilder({ classQuizId }: { classQuizId: string }) {
           </Card>
 
           {locked ? (
-            <Card className="lg:col-span-2"><CardContent><Alert tone="warning">{lockedMessage}</Alert><Link className="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-yellow-300 px-4 py-2 text-sm font-bold text-ink shadow-brutal hover:bg-yellow-200" href={teacherRoutes.quizzes}>Buat Kuis Baru</Link></CardContent></Card>
+            <Card className="lg:col-span-2"><CardContent><Alert tone="warning">{lockedMessage}</Alert><Link className="mt-4 inline-flex min-h-11 items-center justify-center rounded-[var(--radius-control)] border-2 border-border bg-primary px-4 py-2 text-sm font-black text-primary-foreground shadow-emi transition-transform hover:-translate-y-0.5" href={teacherRoutes.quizzes}>Buat Kuis Baru</Link></CardContent></Card>
           ) : (
             <TeacherQuizQuestionForm classQuizId={classQuizId} defaultOrder={questions.length + 1} editingQuestion={editingQuestion} key={editingQuestion?.id ?? `new-${questions.length + 1}`} onCancelEdit={() => setEditingQuestion(null)} onSaved={() => { setSuccessMsg(editingQuestion ? "Soal berhasil diperbarui." : "Soal berhasil ditambahkan."); setEditingQuestion(null); queryClient.invalidateQueries({ queryKey: ["teacher", "class-quizzes", classQuizId] }); queryClient.invalidateQueries({ queryKey: ["teacher", "quizzes"] }); }} token={token ?? ""} />
           )}

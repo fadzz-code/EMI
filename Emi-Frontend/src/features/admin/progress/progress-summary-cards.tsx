@@ -5,7 +5,7 @@ import type { DashboardSummary } from "./types";
 
 export function ProgressSummaryCards({ summary }: { summary?: DashboardSummary | null }) {
   return (
-    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <section className="grid auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-4">
       <StatsCard
         helper="Akun siswa approved dengan membership aktif."
         label="Total Siswa Aktif"
@@ -35,8 +35,8 @@ export function ProgressBar({ value }: { value?: number | null }) {
 
   return (
     <div className="grid gap-2">
-      <div className="h-3 overflow-hidden rounded-full border-2 border-ink bg-white">
-        <div className="h-full bg-blue-500" style={{ width: `${percent}%` }} />
+      <div className="h-3 overflow-hidden rounded-full bg-border/20">
+        <div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }} />
       </div>
       <span className="text-xs font-black text-ink">{formatPercent(value)}</span>
     </div>

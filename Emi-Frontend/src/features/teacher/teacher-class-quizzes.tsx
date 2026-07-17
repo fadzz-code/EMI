@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, BarChart3, LockKeyhole, Pencil } from "lucide-react";
 
 import { Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, PageHeader, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -30,8 +31,8 @@ export function TeacherClassQuizzes({ classId }: { classId: string }) {
 
   return (
     <div className="grid gap-6">
-      <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href={teacherRoutes.classes}>
-        Kembali ke Daftar Kelas
+      <Link className="inline-flex w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 py-2 text-sm font-black text-ink transition-colors hover:bg-surface-muted" href={teacherRoutes.classes}>
+        <ArrowLeft className="size-4" />Kembali ke Daftar Kelas
       </Link>
       <PageHeader badge="Guru" description="Kelola kuis kelas, pantau attempt siswa, dan buka hasil penilaian." title="Kuis Kelas" />
 
@@ -50,29 +51,29 @@ export function TeacherClassQuizzes({ classId }: { classId: string }) {
               <StatsCard helper="Status published" label="Kuis terbit" value={formatCount(publishedCount)} />
               <StatsCard helper="Percobaan siswa yang tercatat" label="Attempt" value={formatCount(quizzes.reduce((sum, quiz) => sum + (quiz.attempts_count ?? 0), 0))} />
             </section>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid auto-rows-fr gap-4 md:grid-cols-2">
               {quizzes.map((quiz) => {
                 const locked = isQuizLocked(quiz);
                 return (
-                  <Card key={quiz.id}>
+                  <Card className="flex h-full flex-col transition hover:-translate-y-1 hover:shadow-emi" key={quiz.id}>
                     <CardHeader>
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <div className="flex flex-wrap gap-2"><Badge tone={quiz.status === "published" ? "blue" : "neutral"}>{statusLabel(quiz.status)}</Badge>{locked ? <Badge tone="yellow">Terkunci</Badge> : <Badge tone="blue">Draft bisa diedit</Badge>}</div>
+                          <div className="flex flex-wrap gap-2"><Badge tone={quiz.status === "published" ? "blue" : "neutral"}>{statusLabel(quiz.status)}</Badge>{locked ? <Badge tone="yellow"><LockKeyhole className="mr-1 size-3" />Terkunci</Badge> : <Badge tone="blue"><Pencil className="mr-1 size-3" />Draft bisa diedit</Badge>}</div>
                           <h2 className="mt-2 text-xl font-black text-ink">{quiz.title}</h2>
                         </div>
-                        <span className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-black text-slate-500">{formatCount(quiz.duration_minutes)} menit</span>
+                        <span className="rounded-lg border-2 border-border bg-surface-muted px-2 py-1 text-xs font-black text-muted">{formatCount(quiz.duration_minutes)} menit</span>
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      <p className="text-sm leading-6 text-slate-600">{formatOptional(quiz.description)}</p>
+                    <CardContent className="flex flex-1 flex-col">
+                      <p className="text-sm font-semibold leading-6 text-muted">{formatOptional(quiz.description)}</p>
                       <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                        <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Soal</dt><dd className="mt-1 font-bold text-ink">{formatCount(quiz.questions_count)}</dd></div>
-                        <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Attempt</dt><dd className="mt-1 font-bold text-ink">{formatCount(quiz.attempts_count)}</dd></div>
-                        <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Buka</dt><dd className="mt-1 font-bold text-ink">{formatDate(quiz.open_at)}</dd></div>
-                        <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Tutup</dt><dd className="mt-1 font-bold text-ink">{formatDate(quiz.close_at)}</dd></div>
+                        <div className="rounded-xl border-2 border-border bg-surface-muted p-3"><dt className="font-black uppercase text-muted">Soal</dt><dd className="mt-1 font-bold text-ink">{formatCount(quiz.questions_count)}</dd></div>
+                        <div className="rounded-xl border-2 border-border bg-surface-muted p-3"><dt className="font-black uppercase text-muted">Attempt</dt><dd className="mt-1 font-bold text-ink">{formatCount(quiz.attempts_count)}</dd></div>
+                        <div className="rounded-xl border-2 border-border bg-surface-muted p-3"><dt className="font-black uppercase text-muted">Buka</dt><dd className="mt-1 font-bold text-ink">{formatDate(quiz.open_at)}</dd></div>
+                        <div className="rounded-xl border-2 border-border bg-surface-muted p-3"><dt className="font-black uppercase text-muted">Tutup</dt><dd className="mt-1 font-bold text-ink">{formatDate(quiz.close_at)}</dd></div>
                       </dl>
-                      <div className="mt-4 flex flex-wrap gap-2"><Link className={`inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink px-4 py-2 text-sm font-bold text-ink shadow-brutal ${locked ? "bg-white hover:bg-slate-50" : "bg-yellow-300 hover:bg-yellow-200"}`} href={teacherRoutes.quizBuilder(quiz.id)}>{locked ? "Lihat Detail" : "Buka Builder"}</Link><Link className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-white px-4 py-2 text-sm font-bold text-ink shadow-brutal hover:bg-slate-50" href={teacherRoutes.quizResults(quiz.id)}>Hasil</Link></div>
+                      <div className="mt-auto flex flex-wrap gap-2 pt-4"><Link className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-primary px-4 py-2 text-sm font-black text-primary-foreground shadow-emi transition-transform hover:-translate-y-0.5" href={teacherRoutes.quizBuilder(quiz.id)}>{locked ? <LockKeyhole className="size-4" /> : <Pencil className="size-4" />}{locked ? "Lihat Detail" : "Buka Builder"}</Link><Link className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-ink transition-colors hover:bg-surface-muted" href={teacherRoutes.quizResults(quiz.id)}><BarChart3 className="size-4" />Hasil</Link></div>
                     </CardContent>
                   </Card>
                 );

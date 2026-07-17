@@ -18,7 +18,7 @@ export function SettingsSectionCard({
           <div>
             <h2 className="text-xl font-black text-ink">{title}</h2>
             {description ? (
-              <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
+              <p className="mt-1 text-sm leading-6 font-semibold text-muted">{description}</p>
             ) : null}
           </div>
           {badge ? <Badge tone="neutral">{badge}</Badge> : null}

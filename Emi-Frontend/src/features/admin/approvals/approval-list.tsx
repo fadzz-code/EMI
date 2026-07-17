@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, Eye, Search, X } from "lucide-react";
 
 import {
   Alert,
@@ -146,7 +147,7 @@ export function ApprovalList() {
     <ApprovalPageShell>
       <ApprovalHero
         action={
-          <div className="rounded-[8px] border-2 border-[#241914] bg-[#9a4600] px-5 py-3 text-sm font-black text-white shadow-[4px_4px_0_#241914]">
+          <div className="rounded-[8px] border-2 border-border bg-primary px-5 py-3 text-sm font-black text-primary-foreground shadow-emi">
             {pendingCount} request menunggu
           </div>
         }
@@ -158,7 +159,7 @@ export function ApprovalList() {
         Siswa dan guru baru dapat masuk ke sistem setelah akun disetujui admin.
       </ApprovalInfoBox>
 
-      <FilterPanel className="rounded-[12px] border-2 border-[#241914] bg-[#fff8f6] p-5 shadow-[4px_4px_0_#241914] md:grid-cols-3">
+      <FilterPanel className="rounded-[12px] border-2 border-border bg-surface p-5 shadow-emi md:grid-cols-3">
         <div className="flex flex-wrap gap-2 md:col-span-3">
           {[
             { label: "Semua", value: "" },
@@ -167,10 +168,10 @@ export function ApprovalList() {
           ].map((item) => (
             <button
               className={[
-                "rounded-full border-2 border-[#241914] px-4 py-2 text-xs font-black shadow-[2px_2px_0_#241914] transition hover:-translate-y-0.5",
+                "rounded-full border-2 border-border px-4 py-2 text-xs font-black shadow-emi transition hover:-translate-y-0.5",
                 requestedRole === item.value
-                  ? "bg-[#9a4600] text-white"
-                  : "bg-[#fff8f6] text-[#241914]",
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-surface text-muted",
               ].join(" ")}
               key={item.label}
               onClick={() => updateRole(item.value as RegistrationRequestedRole | "")}
@@ -180,10 +181,10 @@ export function ApprovalList() {
             </button>
           ))}
         </div>
-        <label className="grid gap-2 text-sm font-bold text-[#241914]">
+        <label className="grid gap-2 text-sm font-bold text-ink">
           <span>Cari nama atau email</span>
           <Input
-            className="min-h-12 rounded-[8px] border-2 border-[#241914] bg-[#fff8f6] shadow-[2px_2px_0_#241914] focus:ring-[#fdd758]"
+            className="min-h-12 rounded-[8px] border-2 border-border bg-surface shadow-emi focus:ring-primary"
             onChange={(event) => setSearchInput(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
@@ -194,10 +195,10 @@ export function ApprovalList() {
             value={searchInput}
           />
         </label>
-        <label className="grid gap-2 text-sm font-bold text-[#241914]">
+        <label className="grid gap-2 text-sm font-bold text-ink">
           <span>Role</span>
           <Select
-            className="min-h-12 rounded-[8px] border-2 border-[#241914] bg-[#fff8f6] shadow-[2px_2px_0_#241914] focus:ring-[#fdd758]"
+            className="min-h-12 rounded-[8px] border-2 border-border bg-surface shadow-emi focus:ring-primary"
             onChange={(event) => updateRole(event.target.value as RegistrationRequestedRole | "")}
             value={requestedRole}
           >
@@ -208,10 +209,11 @@ export function ApprovalList() {
         </label>
         <div className="flex items-end">
           <Button
-            className="w-full border-2 border-[#241914] bg-[#fdd758] text-[#241914] shadow-[3px_3px_0_#241914] hover:bg-[#ffe078]"
+            className="w-full border-2 border-border bg-[var(--color-primary-muted)] text-ink shadow-emi hover:bg-primary/20"
             onClick={applySearch}
             variant="secondary"
           >
+            <Search aria-hidden="true" className="mr-2 size-4" />
             Terapkan Filter
           </Button>
         </div>
@@ -219,7 +221,7 @@ export function ApprovalList() {
 
       {successMessage ? (
         <Alert
-          className="border-2 border-[#241914] font-bold shadow-[3px_3px_0_#241914]"
+          className="border-2 border-border font-bold shadow-emi"
           tone="success"
         >
           {successMessage}
@@ -227,7 +229,7 @@ export function ApprovalList() {
       ) : null}
       {actionError ? (
         <Alert
-          className="border-2 border-[#241914] font-bold shadow-[3px_3px_0_#241914]"
+          className="border-2 border-border font-bold shadow-emi"
           tone="error"
         >
           {getFirstApiError(actionError)}
@@ -251,11 +253,11 @@ export function ApprovalList() {
             title="Belum ada permintaan pending"
           />
         ) : (
-          <Card className="overflow-hidden rounded-[12px] border-2 border-[#241914] bg-[#fff8f6] shadow-[6px_6px_0_#241914]">
-            <div className="h-4 border-b-2 border-[#241914] bg-[#ff8a3d]" />
+          <Card className="overflow-hidden rounded-[12px] border-2 border-border bg-surface shadow-emi">
+            <div className="h-4 border-b-2 border-border bg-primary" />
             <CardContent className="p-0">
               <Table>
-                <TableHeader className="bg-[#feeae0]">
+                <TableHeader className="bg-surface-muted">
                   <tr>
                     <th className="px-4 py-3">Nama Lengkap</th>
                     <th className="px-4 py-3">Peran</th>
@@ -270,7 +272,7 @@ export function ApprovalList() {
                 <tbody>
                   {rows.map((request) => (
                     <tr key={request.id}>
-                      <TableCell className="border-[#241914] font-black text-[#241914]">
+                      <TableCell className="border-border font-black text-ink">
                         <div className="flex items-center gap-3">
                           <ApprovalAvatar
                             name={request.user?.full_name}
@@ -282,13 +284,13 @@ export function ApprovalList() {
                       <TableCell>
                         <ApprovalRoleBadge role={request.requested_role} />
                       </TableCell>
-                      <TableCell className="text-[#564338]">
+                      <TableCell className="text-muted">
                         {request.user?.email ?? "-"}
                       </TableCell>
-                      <TableCell className="font-semibold text-[#241914]">
+                      <TableCell className="font-semibold text-ink">
                         {request.school?.name ?? "-"}
                       </TableCell>
-                      <TableCell className="text-[#564338]">
+                      <TableCell className="text-muted">
                         {request.school_class?.name ?? "-"}
                       </TableCell>
                       <TableCell>
@@ -298,23 +300,26 @@ export function ApprovalList() {
                       <TableCell>
                         <div className="flex flex-wrap gap-2">
                           <Link
-                            className="inline-flex min-h-10 items-center rounded-[6px] border-2 border-[#241914] bg-[#fff8f6] px-3 py-2 text-xs font-black text-[#564338] shadow-[2px_2px_0_#241914] hover:bg-white"
+                             className="inline-flex min-h-10 items-center rounded-[6px] border-2 border-border bg-surface px-3 py-2 text-xs font-black text-muted shadow-emi hover:bg-surface-muted"
                             href={`/admin/approvals/${request.id}`}
                           >
+                            <Eye aria-hidden="true" className="mr-1 size-4" />
                             Detail
                           </Link>
                           <Button
-                            className="min-h-10 rounded-[6px] border-2 border-[#241914] bg-[#94f990] px-3 py-2 text-xs text-[#004910] shadow-[2px_2px_0_#241914] hover:bg-[#b5ffb2]"
+                             className="min-h-10 rounded-[6px] border-2 border-border bg-success px-3 py-2 text-xs text-success-foreground shadow-emi hover:bg-success/80"
                             onClick={() => setPendingAction({ action: "approve", request })}
                             variant="secondary"
                           >
+                            <Check aria-hidden="true" className="mr-1 size-4" />
                             Setujui
                           </Button>
                           <Button
-                            className="min-h-10 rounded-[6px] border-2 border-[#241914] bg-[#ffdad6] px-3 py-2 text-xs text-[#93000a] shadow-[2px_2px_0_#241914] hover:bg-[#ffe6e2]"
+                             className="min-h-10 rounded-[6px] border-2 border-border bg-danger-muted px-3 py-2 text-xs text-danger shadow-emi hover:bg-danger/20"
                             onClick={() => setPendingAction({ action: "reject", request })}
                             variant="danger"
                           >
+                            <X aria-hidden="true" className="mr-1 size-4" />
                             Tolak
                           </Button>
                         </div>
@@ -323,7 +328,7 @@ export function ApprovalList() {
                   ))}
                 </tbody>
               </Table>
-              <div className="border-t-2 border-[#241914] bg-[#fff1eb] p-4">
+              <div className="border-t-2 border-border bg-surface-muted p-4">
                 <Pagination
                   onPageChange={setPage}
                   page={meta?.current_page ?? page}

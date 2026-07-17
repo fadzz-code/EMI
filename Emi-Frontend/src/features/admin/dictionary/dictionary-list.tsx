@@ -3,6 +3,7 @@
 import { type FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Download, Eye, Plus, Search, Trash2 } from "lucide-react";
 
 import {
   Alert,
@@ -137,23 +138,24 @@ export function DictionaryList() {
     <div className="grid gap-6">
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <Badge tone="yellow">Admin</Badge>
+          <Badge tone="blue">Admin</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">Kelola Kamus Mekongga</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
             Kelola kosakata Mekongga beserta terjemahan, kategori, status, dan audio pendukung.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Link
-            className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-white px-4 py-2 text-sm font-bold text-ink shadow-brutal hover:bg-yellow-100"
+            className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-bold text-ink shadow-emi hover:bg-surface-muted"
             href="/admin/dictionary/import"
           >
+            <Download aria-hidden="true" className="mr-2 size-4" />
             Impor CSV/ZIP
           </Link>
           <Button onClick={() => setCategoryModalOpen(true)} variant="secondary">
             Tambah Kategori
           </Button>
-          <Button onClick={() => setEntryModalOpen(true)}>Tambah Kata</Button>
+          <Button onClick={() => setEntryModalOpen(true)}><Plus aria-hidden="true" className="mr-2 size-4" />Tambah Kata</Button>
         </div>
       </header>
 
@@ -222,6 +224,7 @@ export function DictionaryList() {
         </label>
         <div className="flex items-end md:col-span-5">
           <Button className="w-full md:w-fit" onClick={applySearch} variant="secondary">
+            <Search aria-hidden="true" className="mr-2 size-4" />
             Terapkan Filter
           </Button>
         </div>
@@ -271,9 +274,10 @@ export function DictionaryList() {
                         <TableCell>
                           <div className="flex flex-wrap gap-2">
                             <Link
-                              className="inline-flex min-h-9 items-center rounded-lg border-2 border-ink bg-white px-3 py-1 text-xs font-black text-ink hover:bg-yellow-100"
+                              className="inline-flex min-h-9 items-center rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 py-1 text-xs font-black text-ink hover:bg-surface-muted"
                               href={`/admin/dictionary/${entry.id}`}
                             >
+                              <Eye aria-hidden="true" className="mr-1 size-4" />
                               Detail
                             </Link>
                             <Button
@@ -282,6 +286,7 @@ export function DictionaryList() {
                               onClick={() => deleteEntryMutation.mutate(entry.id)}
                               variant="danger"
                             >
+                              <Trash2 aria-hidden="true" className="mr-1 size-4" />
                               Hapus
                             </Button>
                           </div>
@@ -310,7 +315,7 @@ export function DictionaryList() {
             src={entries.find((entry) => entry.audio)?.audio?.url}
             title="audio kamus"
           />
-          <p className="mt-3 text-sm text-slate-600">
+          <p className="mt-3 text-sm text-muted">
             Audio pertama yang tersedia dari hasil filter ditampilkan untuk pemeriksaan cepat.
           </p>
         </CardContent>

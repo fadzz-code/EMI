@@ -242,11 +242,11 @@ export function TeacherSpeakingExercises() {
   }
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       <section className="flex flex-col gap-2">
         <p className="text-sm font-black uppercase tracking-[0.08em] text-muted">Kelola Target Speaking</p>
         <h1 className="text-3xl font-black leading-tight text-ink md:text-4xl">Target bacaan per kelas</h1>
-        <p className="max-w-3xl text-sm font-semibold leading-6 text-muted">
+        <p className="max-w-3xl text-base font-semibold leading-6 text-muted">
           Guru mengelola target bacaan untuk kelas aktifnya sendiri. Target yang dipublikasikan akan muncul di latihan speaking siswa kelas Anda.
         </p>
       </section>
@@ -298,10 +298,10 @@ export function TeacherSpeakingExercises() {
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {exercises.map((exercise) => (
-          <Card key={exercise.id} className="overflow-hidden">
-            <CardContent>
+          <Card key={exercise.id} className="group flex h-full flex-col overflow-hidden transition hover:-translate-y-1 hover:shadow-emi">
+            <CardContent className="flex flex-1 flex-col">
               <div className="flex items-start justify-between gap-3">
-                <span className="flex size-11 items-center justify-center rounded-full border-2 border-border bg-accent text-accent-foreground shadow-[2px_2px_0_var(--border)]">
+                <span className="flex size-12 items-center justify-center rounded-xl border-2 border-border bg-surface-muted text-ink transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                   <ListChecks className="size-5" strokeWidth={3} />
                 </span>
                 <Badge tone={statusTone(exercise.status)}>{statusLabel(exercise.status)}</Badge>
@@ -314,7 +314,7 @@ export function TeacherSpeakingExercises() {
                 {exercise.target_translation ? <p className="mt-1 text-sm font-semibold text-muted">{exercise.target_translation}</p> : null}
               </div>
               {exercise.prompt_text ? <p className="mt-3 text-sm font-semibold leading-6 text-muted">{exercise.prompt_text}</p> : null}
-              <div className="mt-5 flex flex-wrap gap-2">
+              <div className="mt-auto flex flex-wrap gap-2 pt-5">
                 <Button onClick={() => openEdit(exercise)} type="button" variant="secondary">
                   <Pencil className="mr-2 size-4" /> Edit
                 </Button>

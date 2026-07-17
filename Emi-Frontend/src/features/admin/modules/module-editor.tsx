@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Archive, ArrowDown, ArrowUp, Eye, Pencil, Send, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -40,8 +41,8 @@ import type { LessonTemplate, LessonTemplatePayload, ModuleTemplatePayload } fro
 function LessonPreview({ lesson }: { lesson: LessonTemplate }) {
   if (lesson.content_type === "text") {
     return (
-      <div className="rounded-lg border-2 border-ink bg-white p-4">
-        <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">
+      <div className="rounded-lg border-2 border-border bg-surface p-4">
+        <p className="whitespace-pre-wrap text-sm leading-6 text-muted">
           {lesson.content_body ?? "Konten teks belum diisi."}
         </p>
       </div>
@@ -51,7 +52,7 @@ function LessonPreview({ lesson }: { lesson: LessonTemplate }) {
   if (lesson.content_type === "video" || lesson.content_type === "link") {
     return lesson.external_url ? (
       <a
-        className="text-sm font-black text-blue-700 underline"
+        className="text-sm font-black text-primary underline"
         href={lesson.external_url}
         rel="noreferrer"
         target="_blank"
@@ -59,17 +60,17 @@ function LessonPreview({ lesson }: { lesson: LessonTemplate }) {
         Buka URL materi
       </a>
     ) : (
-      <p className="text-sm text-slate-600">URL belum diisi.</p>
+      <p className="text-sm font-semibold text-muted">URL belum diisi.</p>
     );
   }
 
   if (!lesson.media) {
-    return <p className="text-sm text-slate-600">Media belum dihubungkan.</p>;
+    return <p className="text-sm font-semibold text-muted">Media belum dihubungkan.</p>;
   }
 
   if (lesson.media.visibility === "private") {
     return (
-      <p className="text-sm text-slate-600">
+      <p className="text-sm font-semibold text-muted">
         Media private terhubung dengan ID {lesson.media.id}. Preview langsung tidak tersedia
         untuk template admin.
       </p>
@@ -84,7 +85,7 @@ function LessonPreview({ lesson }: { lesson: LessonTemplate }) {
 
   return (
     <a
-      className="text-sm font-black text-blue-700 underline"
+      className="text-sm font-black text-primary underline"
       href={mediaUrl}
       rel="noreferrer"
       target="_blank"
@@ -229,17 +230,17 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
     <div className="grid gap-6">
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <Badge tone="yellow">ADMIN-14</Badge>
+          <Badge tone="blue">ADMIN-14</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">
             {moduleTemplate?.title ?? "Editor Modul"}
           </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+          <p className="mt-2 max-w-3xl text-sm leading-6 font-semibold text-muted">
             Edit metadata dan materi template modul. Modul siap dibagikan setelah minimal
             satu materi valid diterbitkan.
           </p>
         </div>
         <Link
-          className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-white px-4 py-2 text-sm font-bold text-ink hover:bg-slate-100"
+          className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-border bg-surface px-4 py-2 text-sm font-bold text-ink hover:bg-surface-muted"
           href="/admin/modules"
         >
           Kembali ke Daftar
@@ -259,7 +260,7 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
       ) : null}
 
       {moduleTemplate ? (
-        <div className="grid gap-6 xl:grid-cols-[minmax(320px,380px)_1fr]">
+        <div className="grid items-start gap-6 xl:grid-cols-[minmax(320px,380px)_1fr]">
           <Card>
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -268,10 +269,10 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
                   {statusLabel(moduleTemplate.status)}
                 </Badge>
               </div>
-              <p className="text-xs text-slate-600">
+              <p className="text-xs font-semibold text-muted">
                 Diubah terakhir: {formatDate(moduleTemplate.updated_at)}
               </p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
+              <p className="mt-2 text-sm leading-6 font-semibold text-muted">
                 Simpan perubahan metadata lebih dulu, lalu terbitkan atau arsipkan modul sesuai
                 kesiapan materi.
               </p>
@@ -284,11 +285,11 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
                 onSubmit={(payload) => updateModuleMutation.mutate(payload)}
               />
               {!hasPublishedLesson ? (
-                <p className="mt-4 text-sm text-slate-600">
+                <p className="mt-4 text-sm font-semibold text-muted">
                   Tambahkan minimal satu materi sebelum menerbitkan modul.
                 </p>
               ) : null}
-              <div className="mt-5 flex flex-col gap-2 border-t-2 border-ink pt-4 sm:flex-row">
+              <div className="mt-5 flex flex-col gap-2 border-t-2 border-border pt-4 sm:flex-row">
                 <Button
                   disabled={
                     publishModuleMutation.isPending ||
@@ -318,7 +319,7 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                   <h2 className="text-xl font-black text-ink">Materi Modul</h2>
-                  <p className="mt-1 text-sm text-slate-600">
+                  <p className="mt-1 text-sm font-semibold text-muted">
                     Total materi aktif di halaman ini: {lessons.length}
                   </p>
                 </div>
@@ -342,22 +343,22 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
                   />
                 ) : (
                   <div className="grid gap-4">
-                    <Table className="min-w-0 md:min-w-[760px]">
+                    <Table className="w-full table-fixed">
                       <TableHeader className="hidden md:table-header-group">
                         <tr>
-                          <th className="px-4 py-3">Materi</th>
-                          <th className="px-4 py-3">Jenis</th>
-                          <th className="px-4 py-3">Status</th>
-                          <th className="px-4 py-3">Urutan</th>
-                          <th className="w-[240px] px-4 py-3">Aksi</th>
+                          <th className="w-[24%] px-4 py-3">Materi</th>
+                          <th className="w-[13%] px-4 py-3">Jenis</th>
+                          <th className="w-[13%] px-4 py-3">Status</th>
+                          <th className="w-[250px] px-4 py-3">Aksi</th>
+                          <th className="w-[116px] px-4 py-3 text-right">Urutan</th>
                         </tr>
                       </TableHeader>
-                      <tbody>
+                      <tbody className="grid gap-4 md:table-row-group">
                         {lessons.map((lesson, index) => (
-                          <tr className="grid gap-3 p-4 md:table-row md:p-0" key={lesson.id}>
-                            <TableCell className="border-0 p-0 md:border-t md:px-4 md:py-3">
-                              <p className="font-black text-ink">{lesson.title}</p>
-                              <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">
+                          <tr className="grid min-w-0 gap-3 rounded-xl border-2 border-border p-4 md:table-row md:rounded-none md:border-0 md:p-0" key={lesson.id}>
+                            <TableCell className="min-w-0 border-0 p-0 md:border-t md:px-4 md:py-3">
+                              <p className="truncate font-black text-ink">{lesson.title}</p>
+                              <p className="mt-1 line-clamp-2 text-xs leading-5 font-semibold text-muted">
                                 {lesson.description ?? "Tanpa deskripsi."}
                               </p>
                             </TableCell>
@@ -366,89 +367,41 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
                               {contentTypeLabel(lesson.content_type)}
                             </TableCell>
                             <TableCell className="border-0 p-0 md:border-t md:px-4 md:py-3">
-                              <div className="grid justify-items-start gap-2">
-                                <div>
-                                  <span className="mr-2 font-bold md:hidden">Status:</span>
-                                  <Badge tone={statusTone(lesson.status)}>
-                                    {statusLabel(lesson.status)}
-                                  </Badge>
-                                </div>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {lesson.status !== "published" ? (
-                                    <Button
-                                      className="min-h-8 shrink-0 px-2.5 py-1 text-xs"
-                                      disabled={publishLessonMutation.isPending}
-                                      onClick={() => publishLessonMutation.mutate(lesson.id)}
-                                      variant="secondary"
-                                    >
-                                      Terbitkan
-                                    </Button>
-                                  ) : null}
-                                  {lesson.status !== "archived" ? (
-                                    <Button
-                                      className="min-h-8 shrink-0 px-2.5 py-1 text-xs"
-                                      disabled={archiveLessonMutation.isPending}
-                                      onClick={() => archiveLessonMutation.mutate(lesson.id)}
-                                      variant="ghost"
-                                    >
-                                      Arsipkan
-                                    </Button>
-                                  ) : null}
-                                </div>
+                              <span className="mr-2 font-bold md:hidden">Status:</span>
+                              <Badge tone={statusTone(lesson.status)}>{statusLabel(lesson.status)}</Badge>
+                            </TableCell>
+                            <TableCell className="border-0 p-0 md:border-t md:px-4 md:py-3">
+                              <div className="grid w-full max-w-[232px] grid-cols-2 gap-2">
+                                <a className="inline-flex h-9 w-28 items-center justify-center gap-1.5 rounded-lg border-2 border-border text-xs font-bold text-ink hover:border-primary hover:text-primary" href={`#preview-${lesson.id}`}>
+                                  <Eye aria-hidden="true" size={15} /> Preview
+                                </a>
+                                <button className="inline-flex h-9 w-28 items-center justify-center gap-1.5 rounded-lg border-2 border-border text-xs font-bold text-ink hover:border-primary hover:text-primary" onClick={() => setEditingLesson(lesson)} type="button">
+                                  <Pencil aria-hidden="true" size={15} /> Edit
+                                </button>
+                                {lesson.status !== "published" ? (
+                                  <button className="inline-flex h-9 w-28 items-center justify-center gap-1.5 rounded-lg border-2 border-border text-xs font-bold text-ink hover:border-primary hover:text-primary disabled:opacity-50" disabled={publishLessonMutation.isPending} onClick={() => publishLessonMutation.mutate(lesson.id)} type="button">
+                                    <Send aria-hidden="true" size={15} /> Terbitkan
+                                  </button>
+                                ) : null}
+                                {lesson.status !== "archived" ? (
+                                  <button className="inline-flex h-9 w-28 items-center justify-center gap-1.5 rounded-lg border-2 border-border text-xs font-bold text-ink hover:border-primary hover:text-primary disabled:opacity-50" disabled={archiveLessonMutation.isPending} onClick={() => archiveLessonMutation.mutate(lesson.id)} type="button">
+                                    <Archive aria-hidden="true" size={15} /> Arsipkan
+                                  </button>
+                                ) : null}
+                                <button className="inline-flex h-9 w-28 items-center justify-center gap-1.5 rounded-lg border-2 border-danger/40 text-xs font-bold text-danger hover:border-danger disabled:opacity-50" disabled={deleteLessonMutation.isPending} onClick={() => setDeleteLessonTarget(lesson)} type="button">
+                                  <Trash2 aria-hidden="true" size={15} /> Hapus
+                                </button>
                               </div>
                             </TableCell>
                             <TableCell className="border-0 p-0 md:border-t md:px-4 md:py-3">
-                              <div className="grid justify-items-start gap-2">
-                                <span><span className="font-bold md:hidden">Urutan: </span>{lesson.sort_order}</span>
-                                <div className="grid grid-cols-2 gap-1.5">
-                                  <Button
-                                    className="min-h-8 shrink-0 px-2.5 py-1 text-xs"
-                                    disabled={index === 0 || reorderLessonMutation.isPending}
-                                    onClick={() => moveLesson(index, -1)}
-                                    variant="ghost"
-                                  >
-                                    Naik
-                                  </Button>
-                                  <Button
-                                    className="min-h-8 shrink-0 px-2.5 py-1 text-xs"
-                                    disabled={index === lessons.length - 1 || reorderLessonMutation.isPending}
-                                    onClick={() => moveLesson(index, 1)}
-                                    variant="ghost"
-                                  >
-                                    Turun
-                                  </Button>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="border-0 p-0 md:w-[240px] md:border-t md:px-4 md:py-3">
-                              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap md:flex-nowrap">
-                                <a
-                                  aria-label={`Preview ${lesson.title}`}
-                                  className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border-2 border-ink bg-white px-3 py-1 text-xs font-bold text-ink transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
-                                  href={`#preview-${lesson.id}`}
-                                  title="Preview materi"
-                                >
-                                  Preview
-                                </a>
-                                <Button
-                                  aria-label={`Edit ${lesson.title}`}
-                                  className="min-h-9 shrink-0 px-3 py-1 text-xs"
-                                  onClick={() => setEditingLesson(lesson)}
-                                  title="Edit materi"
-                                  variant="secondary"
-                                >
-                                  Edit
-                                </Button>
-                                <Button
-                                  aria-label={`Hapus ${lesson.title}`}
-                                  className="min-h-9 shrink-0 px-3 py-1 text-xs"
-                                  disabled={deleteLessonMutation.isPending}
-                                  onClick={() => setDeleteLessonTarget(lesson)}
-                                  title="Hapus materi"
-                                  variant="danger"
-                                >
-                                  Hapus
-                                </Button>
+                              <div className="flex items-center justify-end gap-2">
+                                <span className="text-xs text-muted">{lesson.sort_order}</span>
+                                <button aria-label={`Naikkan ${lesson.title}`} className="inline-flex size-9 items-center justify-center rounded-lg border-2 border-border text-ink hover:border-primary hover:text-primary disabled:opacity-30" disabled={index === 0 || reorderLessonMutation.isPending} onClick={() => moveLesson(index, -1)} type="button">
+                                  <ArrowUp aria-hidden="true" size={18} />
+                                </button>
+                                <button aria-label={`Turunkan ${lesson.title}`} className="inline-flex size-9 items-center justify-center rounded-lg border-2 border-border text-ink hover:border-primary hover:text-primary disabled:opacity-30" disabled={index === lessons.length - 1 || reorderLessonMutation.isPending} onClick={() => moveLesson(index, 1)} type="button">
+                                  <ArrowDown aria-hidden="true" size={18} />
+                                </button>
                               </div>
                             </TableCell>
                           </tr>
@@ -459,7 +412,7 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
                     <div className="grid gap-4">
                       {lessons.map((lesson) => (
                           <div
-                            className="scroll-mt-4 rounded-lg border-2 border-ink bg-yellow-50 p-4"
+                            className="scroll-mt-4 rounded-lg border-2 border-border bg-[var(--color-primary-muted)] p-4"
                             id={`preview-${lesson.id}`}
                             key={`preview-${lesson.id}`}
                           >

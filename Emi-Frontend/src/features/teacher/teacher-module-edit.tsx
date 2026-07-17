@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Pencil } from "lucide-react";
 
 import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState, PageHeader, Textarea } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -45,9 +46,9 @@ export function TeacherModuleEdit({ moduleId }: { moduleId: string }) {
   const moduleData = moduleQuery.data;
 
   return (
-    <div className="grid gap-6">
-      <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href={teacherRoutes.modules}>
-        Kembali ke Daftar Modul
+    <div className="grid gap-8">
+      <Link className="inline-flex min-h-11 w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-primary transition hover:-translate-y-0.5 hover:bg-[var(--color-primary-muted)] hover:shadow-emi" href={teacherRoutes.modules}>
+        <ArrowLeft className="size-5" strokeWidth={2.5} /> Kembali ke Daftar Modul
       </Link>
       <PageHeader badge="Guru" description="Ubah judul, deskripsi, atau urutan modul kelas Anda." title="Edit Modul" />
 
@@ -59,7 +60,7 @@ export function TeacherModuleEdit({ moduleId }: { moduleId: string }) {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-black text-ink">Form Edit Modul</h2>
+                <h2 className="text-xl font-black text-primary">Form Edit Modul</h2>
                 <Badge tone={moduleData.status === "published" ? "blue" : "neutral"}>{statusLabel(moduleData.status)}</Badge>
               </div>
             </CardHeader>
@@ -81,15 +82,15 @@ export function TeacherModuleEdit({ moduleId }: { moduleId: string }) {
                 {successMsg ? <Alert tone="success">{successMsg}</Alert> : null}
                 {updateMutation.error ? <Alert tone="error">{getFirstApiError(updateMutation.error)}</Alert> : null}
                 
-                <label className="grid gap-2 text-sm font-black text-ink">
+                <label className="grid gap-2 text-sm font-black text-primary">
                   Judul Modul
                   <Input defaultValue={moduleData.title} name="title" required />
                 </label>
-                <label className="grid gap-2 text-sm font-black text-ink">
+                <label className="grid gap-2 text-sm font-black text-primary">
                   Deskripsi Modul
                   <Textarea defaultValue={moduleData.description ?? ""} name="description" rows={4} />
                 </label>
-                <label className="grid gap-2 text-sm font-black text-ink">
+                <label className="grid gap-2 text-sm font-black text-primary">
                   Urutan Tampil (Sort Order)
                   <Input defaultValue={moduleData.sort_order ?? 1} min={1} name="sort_order" type="number" required />
                 </label>
@@ -120,22 +121,22 @@ export function TeacherModuleEdit({ moduleId }: { moduleId: string }) {
           </Card>
 
           <Card>
-            <CardHeader><h2 className="text-xl font-black text-ink">Daftar Materi (Lessons)</h2></CardHeader>
+            <CardHeader><h2 className="text-xl font-black text-primary">Daftar Materi (Lessons)</h2></CardHeader>
             <CardContent>
               {moduleData.lessons && moduleData.lessons.length > 0 ? (
                 <div className="grid gap-3">
                   {moduleData.lessons.map((lesson) => (
-                    <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3" key={lesson.id}>
+                    <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface-muted p-3" key={lesson.id}>
                       <div className="flex items-start justify-between gap-3">
-                        <div className="font-bold text-ink">{lesson.title}</div>
+                        <div className="font-bold text-primary">{lesson.title}</div>
                         <Badge tone={lesson.status === "published" ? "blue" : "neutral"}>{statusLabel(lesson.status)}</Badge>
                       </div>
-                      <div className="text-xs text-slate-500">Tipe: {lesson.content_type || "-"} | Urutan: {lesson.sort_order}</div>
+                      <div className="text-xs text-muted">Tipe: {lesson.content_type || "-"} | Urutan: {lesson.sort_order}</div>
                       <Link
-                        className="mt-2 inline-flex min-h-9 items-center justify-center rounded-lg border-2 border-ink bg-white px-3 text-xs font-bold text-ink shadow-brutal hover:bg-slate-100"
+                        className="mt-2 inline-flex min-h-10 items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 text-xs font-black text-primary transition hover:-translate-y-0.5 hover:bg-primary hover:text-primary-foreground hover:shadow-emi"
                         href={teacherRoutes.lessonEdit(moduleId, lesson.id)}
                       >
-                        Edit Materi
+                        <Pencil className="size-4" strokeWidth={2.5} /> Edit Materi
                       </Link>
                     </div>
                   ))}

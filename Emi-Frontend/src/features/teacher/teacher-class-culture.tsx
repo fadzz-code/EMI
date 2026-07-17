@@ -2,8 +2,9 @@
 
 import { type FormEvent, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { LibraryBig } from "lucide-react";
 
-import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, FormField, Input, LoadingState, PageHeader, Select, Textarea, UploadComponent } from "@/components/ui";
+import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, FormField, Input, LoadingState, Select, Textarea, UploadComponent } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
@@ -27,8 +28,12 @@ export function TeacherClassCulture({ classId }: { classId: string }) {
   const items = query.data?.items ?? [];
 
   return (
-    <div className="grid gap-6">
-      <PageHeader badge="Guru" description="Kelola konten budaya untuk kelas ini, termasuk media, artikel, tautan, dan status terbit." title="Konten Budaya Kelas" />
+    <div className="grid gap-8">
+      <section className="flex flex-col gap-2">
+        <p className="text-sm font-black uppercase tracking-[0.08em] text-muted">Guru</p>
+        <h1 className="text-3xl font-black leading-tight text-ink md:text-4xl">Konten Budaya Kelas</h1>
+        <p className="max-w-3xl text-base font-semibold leading-6 text-muted">Kelola konten budaya untuk kelas ini, termasuk media, artikel, tautan, dan status terbit.</p>
+      </section>
       <TeacherClassNav classId={classId} />
       <CultureForm classId={classId} item={editing} key={editing?.id ?? "new"} onDone={() => { setEditing(null); void invalidate(); }} />
       {query.isLoading ? <LoadingState title="Memuat Budaya Mekongga" /> : null}
@@ -36,13 +41,13 @@ export function TeacherClassCulture({ classId }: { classId: string }) {
       {!query.isLoading && !query.isError ? items.length === 0 ? <Card><CardContent><EmptyState description="Belum ada konten budaya untuk kelas ini." title="Budaya Mekongga kosong" /></CardContent></Card> : (
         <div className="grid gap-4 md:grid-cols-2">
           {items.map((item) => (
-            <Card key={item.id}>
-              <CardHeader><div className="flex flex-wrap gap-2"><Badge tone={item.status === "published" ? "blue" : item.status === "archived" ? "neutral" : "yellow"}>{statusLabel(item.status)}</Badge><Badge tone="neutral">{item.content_type}</Badge></div><h2 className="mt-2 text-xl font-black text-ink">{item.title}</h2></CardHeader>
-              <CardContent>
-                <p className="text-sm text-slate-600">{item.description ?? "Tanpa deskripsi"}</p>
-                {item.source_template_item_id ? <p className="mt-2 text-xs font-black uppercase text-slate-500">Salinan dari template admin</p> : <p className="mt-2 text-xs font-black uppercase text-slate-500">Dibuat guru untuk kelas ini</p>}
+            <Card className="group flex h-full flex-col transition hover:-translate-y-1 hover:shadow-emi" key={item.id}>
+              <CardHeader><div className="flex items-start justify-between gap-3"><span className="flex size-12 shrink-0 items-center justify-center rounded-xl border-2 border-border bg-surface-muted text-ink transition-colors group-hover:bg-primary group-hover:text-primary-foreground"><LibraryBig className="size-6" strokeWidth={2.5} /></span><div className="flex flex-wrap justify-end gap-2"><Badge tone={item.status === "published" ? "blue" : item.status === "archived" ? "neutral" : "yellow"}>{statusLabel(item.status)}</Badge><Badge tone="neutral">{item.content_type}</Badge></div></div><h2 className="mt-2 text-xl font-black text-ink">{item.title}</h2></CardHeader>
+              <CardContent className="flex flex-1 flex-col">
+                <p className="text-sm font-semibold text-muted">{item.description ?? "Tanpa deskripsi"}</p>
+                {item.source_template_item_id ? <p className="mt-2 text-xs font-black uppercase text-muted">Salinan dari template admin</p> : <p className="mt-2 text-xs font-black uppercase text-muted">Dibuat guru untuk kelas ini</p>}
                 <CultureLink item={item} />
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-auto flex flex-wrap gap-2 pt-4">
                   <Button type="button" variant="secondary" onClick={() => setEditing(item)}>Edit</Button>
                   {item.status !== "published" ? <Button type="button" onClick={() => publishMutation.mutate(item.id)}>Publish</Button> : null}
                   {item.status !== "archived" ? <Button type="button" variant="secondary" onClick={() => archiveMutation.mutate(item.id)}>Arsipkan</Button> : null}
@@ -99,9 +104,9 @@ function CultureForm({ classId, item, onDone }: { classId: string; item: Teacher
 
 function CultureLink({ item }: { item: TeacherCultureItem }) {
   const url = item.media?.url ?? item.external_url;
-  if (!url) return <p className="mt-3 text-sm font-bold text-slate-500">Konten belum memiliki URL publik.</p>;
-  if (item.content_type === "image") return <img alt={item.title} className="mt-3 max-h-64 rounded-xl border-2 border-ink object-cover" src={url} />;
+  if (!url) return <p className="mt-3 text-sm font-bold text-muted">Konten belum memiliki URL publik.</p>;
+  if (item.content_type === "image") return <img alt={item.title} className="mt-3 max-h-64 rounded-xl border-2 border-border object-cover" src={url} />;
   if (item.content_type === "audio") return <audio className="mt-3 w-full" controls src={url} />;
-  if (item.content_type === "video") return <video className="mt-3 w-full rounded-xl border-2 border-ink" controls src={url} />;
-  return <a className="mt-3 inline-flex font-black text-blue-700 underline" href={url} rel="noreferrer" target="_blank">Buka konten</a>;
+  if (item.content_type === "video") return <video className="mt-3 w-full rounded-xl border-2 border-border" controls src={url} />;
+  return <a className="mt-3 inline-flex font-black text-primary underline" href={url} rel="noreferrer" target="_blank">Buka konten</a>;
 }

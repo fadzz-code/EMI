@@ -34,7 +34,7 @@ export function TeacherDashboard() {
   const teacherClass = summary?.class;
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       <section className="flex flex-col gap-2">
         <p className="text-sm font-black uppercase tracking-[0.08em] text-muted">
           Beranda Guru
@@ -65,20 +65,20 @@ export function TeacherDashboard() {
             <StatsCard helper="Rata-rata progress kelas" label="Progress" value={formatPercent(summary.learning.average_progress_percent)} />
           </section>
 
-          <section className="grid gap-6 grid-cols-1 lg:grid-cols-3">
-            <Card className="h-fit">
+          <section className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-3">
+            <Card className="flex h-full flex-col">
               <CardHeader>
                 <h2 className="text-xl font-black text-ink">Tindakan Cepat</h2>
                 <p className="mt-1 text-sm font-semibold text-muted">Akses pintas tugas guru.</p>
               </CardHeader>
-              <CardContent>
-                <div className="grid gap-3">
+              <CardContent className="flex flex-1 flex-col">
+                <div className="grid flex-1 gap-3">
                   <Link
-                    className="group flex items-center justify-between gap-3 rounded-[var(--radius-control)] border-2 border-transparent bg-surface px-4 py-3 shadow-emi transition-all hover:-translate-y-1 hover:border-border hover:shadow-[2px_2px_0px_0px_var(--border)]"
+                    className="group flex items-center gap-3 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-3 transition hover:-translate-y-1 hover:shadow-emi"
                     href={teacherRoutes.modules}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="flex size-10 items-center justify-center rounded-full bg-accent/20 text-accent-foreground group-hover:bg-accent">
+                      <span className="flex size-12 items-center justify-center rounded-xl border-2 border-border bg-surface-muted text-ink transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                         <BookOpen className="size-5" strokeWidth={2.5} />
                       </span>
                       <span className="text-sm font-black text-ink">Modul Kelas</span>
@@ -86,11 +86,11 @@ export function TeacherDashboard() {
                   </Link>
 
                   <Link
-                    className="group flex items-center justify-between gap-3 rounded-[var(--radius-control)] border-2 border-transparent bg-surface px-4 py-3 shadow-emi transition-all hover:-translate-y-1 hover:border-border hover:shadow-[2px_2px_0px_0px_var(--border)]"
+                    className="group flex items-center gap-3 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-3 transition hover:-translate-y-1 hover:shadow-emi"
                     href={teacherRoutes.quizzes}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="flex size-10 items-center justify-center rounded-full bg-accent/20 text-accent-foreground group-hover:bg-accent">
+                      <span className="flex size-12 items-center justify-center rounded-xl border-2 border-border bg-surface-muted text-ink transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                         <ClipboardList className="size-5" strokeWidth={2.5} />
                       </span>
                       <span className="text-sm font-black text-ink">Kuis Kelas</span>
@@ -98,11 +98,11 @@ export function TeacherDashboard() {
                   </Link>
 
                   <Link
-                    className="group flex items-center justify-between gap-3 rounded-[var(--radius-control)] border-2 border-transparent bg-surface px-4 py-3 shadow-emi transition-all hover:-translate-y-1 hover:border-border hover:shadow-[2px_2px_0px_0px_var(--border)]"
+                    className="group flex items-center gap-3 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-3 transition hover:-translate-y-1 hover:shadow-emi"
                     href={teacherRoutes.speakingResults}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="flex size-10 items-center justify-center rounded-full bg-accent/20 text-accent-foreground group-hover:bg-accent">
+                      <span className="flex size-12 items-center justify-center rounded-xl border-2 border-border bg-surface-muted text-ink transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                         <Mic className="size-5" strokeWidth={2.5} />
                       </span>
                       <span className="text-sm font-black text-ink">Hasil Speaking</span>
@@ -112,7 +112,7 @@ export function TeacherDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="lg:col-span-2">
+            <Card className="flex h-full flex-col lg:col-span-2">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-black text-ink">Aktivitas & Progress Siswa</h2>
@@ -134,7 +134,7 @@ export function TeacherDashboard() {
 
                       return (
                         <div className="flex items-center gap-4 rounded-xl border-2 border-transparent bg-surface-muted p-3 transition-colors hover:border-border hover:shadow-[2px_2px_0px_0px_var(--border)]" key={`${activity.occurred_at}-${index}`}>
-                          <div className="flex size-10 shrink-0 items-center justify-center rounded-full border-2 border-border bg-white text-sm font-black text-ink">
+                          <div className="flex size-10 shrink-0 items-center justify-center rounded-full border-2 border-border bg-surface text-sm font-black text-ink">
                             {initials}
                           </div>
                           <div className="flex flex-col gap-0.5 min-w-0 flex-1">

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Plus_Jakarta_Sans, Quicksand } from "next/font/google";
 
+import { CopyrightFooter } from "@/components/layout/copyright-footer";
 import { AppProviders } from "@/components/providers/app-providers";
 import { env } from "@/lib/env";
 
@@ -40,6 +41,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col">
         <AppProviders>{children}</AppProviders>
+        <CopyrightFooter />
       </body>
     </html>
   );

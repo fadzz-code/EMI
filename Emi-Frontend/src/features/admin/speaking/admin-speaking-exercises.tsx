@@ -30,10 +30,10 @@ const defaultForm: FormState = {
   reference_audio_media_id: "",
 };
 
-function statusTone(status?: string | null): "yellow" | "blue" | "orange" {
+function statusTone(status?: string | null): "neutral" | "blue" | "orange" {
   if (status === "published") return "blue";
   if (status === "archived") return "orange";
-  return "yellow";
+  return "neutral";
 }
 
 function statusLabel(status?: string | null) {
@@ -237,12 +237,12 @@ export function AdminSpeakingExercises() {
         <EmptyState description="Buat template global pertama untuk latihan speaking." title="Belum ada template speaking" />
       ) : null}
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <section className="grid auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-3">
         {exercises.map((exercise) => (
-          <Card key={exercise.id} className="overflow-hidden">
-            <CardContent>
+          <Card key={exercise.id} className="flex h-full overflow-hidden transition-transform hover:-translate-y-1 hover:shadow-emi">
+            <CardContent className="flex w-full flex-col">
               <div className="flex items-start justify-between gap-3">
-                <span className="flex size-11 items-center justify-center rounded-full border-2 border-border bg-accent text-accent-foreground shadow-[2px_2px_0_var(--border)]">
+                <span className="flex size-11 items-center justify-center rounded-full border-2 border-border bg-[var(--color-primary-muted)] text-ink shadow-[2px_2px_0_var(--border)]">
                   <Headphones className="size-5" strokeWidth={3} />
                 </span>
                 <Badge tone={statusTone(exercise.status)}>{statusLabel(exercise.status)}</Badge>
@@ -264,7 +264,7 @@ export function AdminSpeakingExercises() {
                   <p className="mt-1 text-sm font-semibold text-muted">Belum ada audio</p>
                 )}
               </div>
-              <div className="mt-5 flex flex-wrap gap-2">
+              <div className="mt-auto flex flex-wrap gap-2 pt-5">
                 <Button onClick={() => openEdit(exercise)} type="button" variant="secondary">
                   <Pencil className="mr-2 size-4" /> Edit
                 </Button>

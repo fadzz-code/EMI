@@ -18,7 +18,7 @@ export function TeacherClassNav({ classId }: { classId: string }) {
   const pathname = usePathname();
 
   return (
-    <nav className="grid gap-2 sm:grid-cols-5">
+    <nav aria-label="Navigasi kelas" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
       {items.map((item) => {
         const href = item.href(classId);
         const isActive = pathname === href;
@@ -26,8 +26,8 @@ export function TeacherClassNav({ classId }: { classId: string }) {
         return (
           <Link
             className={cn(
-              "inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-white px-4 py-2 text-sm font-bold text-ink shadow-brutal hover:bg-yellow-100",
-              isActive && "bg-yellow-300",
+              "inline-flex min-h-12 items-center justify-center rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-center text-sm font-black text-ink transition hover:-translate-y-0.5 hover:bg-surface-muted hover:shadow-emi",
+              isActive && "bg-primary text-primary-foreground shadow-emi hover:bg-primary",
             )}
             href={href}
             key={href}

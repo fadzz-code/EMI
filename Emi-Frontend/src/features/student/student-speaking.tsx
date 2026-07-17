@@ -194,7 +194,7 @@ export function StudentSpeaking() {
   }
 
   return (
-    <div className="mx-auto grid max-w-5xl gap-6 pb-24 lg:pb-0">
+    <div className="mx-auto grid max-w-5xl gap-8 pb-24 lg:pb-0">
       <section className="flex flex-col gap-2">
         <p className="text-sm font-black uppercase tracking-[0.08em] text-muted">Latihan Speaking</p>
         <h1 className="text-3xl font-black leading-tight text-ink md:text-4xl">Latih pelafalan Mekongga</h1>
@@ -304,7 +304,7 @@ export function StudentSpeaking() {
                   <Button disabled={!esp32.supported || isRecording || isSubmitting || esp32.state === "recording" || esp32.state === "finalizing" || esp32.state === "playing"} onClick={() => selectCaptureSource("esp32")} type="button" variant={captureSource === "esp32" ? "primary" : "secondary"}><Cable className="mr-2 size-4" />Gunakan Alat Speaking EMI</Button>
                 </div>
 
-                {captureSource === "microphone" ? <div className="flex flex-col items-center gap-4 rounded-[var(--radius-card)] border-2 border-border bg-paper p-6 shadow-[2px_2px_0_var(--border)]">
+                {captureSource === "microphone" ? <div className="flex flex-col items-center gap-4 rounded-[var(--radius-card)] border-2 border-border bg-surface p-6 shadow-[2px_2px_0_var(--border)]">
                   <button
                     aria-label={isRecording ? "Stop rekaman" : "Mulai rekaman"}
                     className={cn(
@@ -331,8 +331,16 @@ export function StudentSpeaking() {
                     ))}
                   </div>
                 </div> : (
-                  <div className="grid gap-4 rounded-[var(--radius-card)] border-2 border-border bg-paper p-6 shadow-[2px_2px_0_var(--border)]">
-                    <div><p className="text-lg font-black text-ink">Alat Speaking EMI</p><p className="mt-1 text-sm font-semibold text-muted">Tekan tombol pada alat untuk mulai.</p></div>
+                  <div className="grid gap-4 rounded-[var(--radius-card)] border-2 border-border bg-surface p-6 shadow-[2px_2px_0_var(--border)]">
+                    <div className="flex items-start gap-3">
+                      <span className="flex size-12 shrink-0 items-center justify-center rounded-xl border-2 border-border bg-surface-muted text-ink">
+                        <Mic className="size-6" strokeWidth={2.5} />
+                      </span>
+                      <div>
+                        <p className="text-lg font-black text-ink">Alat Speaking EMI</p>
+                        <p className="mt-1 text-sm font-semibold text-muted">Tekan tombol pada alat untuk mulai.</p>
+                      </div>
+                    </div>
                     {esp32.notice ? <Alert tone="info">{esp32.notice}</Alert> : null}
                     {esp32.error ? <Alert tone="error">{esp32.error}</Alert> : null}
                     <p className="text-sm font-bold text-muted">Status: {{ unsupported: "Alat belum didukung", disconnected: "Alat mati atau belum pernah dipilih", permitted: "Alat tersimpan, belum terhubung", connecting: "Sedang menghubungkan alat...", ready: "Alat siap digunakan", recording: "Sedang merekam...", finalizing: "Menyiapkan rekaman...", captured: "Rekaman siap dikirim", playing: "Sedang memutar melalui alat...", error: "Terjadi masalah pada alat" }[esp32.state]}</p>

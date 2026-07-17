@@ -1,6 +1,8 @@
 "use client";
 
-import { Card, CardContent, CardHeader, EmptyState, PageHeader, StatsCard } from "@/components/ui";
+import { GraduationCap, School } from "lucide-react";
+
+import { Card, CardContent, CardHeader, EmptyState, PageHeader } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { roleLabels } from "@/lib/roles";
 
@@ -32,14 +34,39 @@ export function StudentProfile() {
   const className = user?.active_class?.name;
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       <PageHeader badge="Siswa" description="Kelola dan lihat informasi akun belajar Anda." title="Profil Saya" />
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatsCard helper="Nama akun belajar" label="Nama" value={formatOptional(user?.full_name)} />
-        <StatsCard helper="Email login" label="Email" value={formatOptional(user?.email)} />
-        <StatsCard helper="Role akun" label="Role" value={user?.role ? roleLabels[user.role] : "Belum tersedia"} />
-        <StatsCard helper="Status akun" label="Status" value={statusLabel(user?.status)} />
+      <section className="grid auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <Card className="min-w-0">
+          <CardContent className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">Nama</p>
+            <p className="mt-3 break-words text-xl font-black leading-7 text-ink sm:text-2xl">{formatOptional(user?.full_name)}</p>
+            <p className="mt-2 text-sm text-muted">Nama akun belajar</p>
+          </CardContent>
+        </Card>
+        <Card className="min-w-0 md:col-span-2 xl:col-span-1">
+          <CardContent className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">Email</p>
+            <p className="mt-3 break-all text-base font-black leading-6 text-ink sm:text-lg">{formatOptional(user?.email)}</p>
+            <p className="mt-2 text-sm text-muted">Email login</p>
+          </CardContent>
+        </Card>
+        <Card className="min-w-0">
+          <CardContent>
+            <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">Akun</p>
+            <div className="mt-3 grid grid-cols-2 gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-muted">Role</p>
+                <p className="mt-1 break-words text-lg font-black text-ink">{user?.role ? roleLabels[user.role] : "Belum tersedia"}</p>
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-muted">Status</p>
+                <p className="mt-1 break-words text-lg font-black text-ink">{statusLabel(user?.status)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
       <Card>
@@ -48,14 +75,24 @@ export function StudentProfile() {
         </CardHeader>
         <CardContent>
           {schoolName || className ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border-2 border-ink bg-white p-4">
-                <p className="text-xs font-black uppercase text-slate-500">Sekolah</p>
-                <p className="mt-2 text-2xl font-black text-ink">{formatOptional(schoolName)}</p>
+            <div className="grid auto-rows-fr gap-4 sm:grid-cols-2">
+              <div className="flex h-full items-center gap-4 rounded-2xl border-2 border-border bg-surface-muted p-5">
+                <div className="inline-flex size-12 shrink-0 items-center justify-center rounded-xl border-2 border-border bg-surface text-ink">
+                  <School className="size-6" strokeWidth={2.5} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">Sekolah</p>
+                  <p className="mt-1 break-words text-xl font-black leading-7 text-ink sm:text-2xl">{formatOptional(schoolName)}</p>
+                </div>
               </div>
-              <div className="rounded-2xl border-2 border-ink bg-white p-4">
-                <p className="text-xs font-black uppercase text-slate-500">Kelas</p>
-                <p className="mt-2 text-2xl font-black text-ink">{formatOptional(className)}</p>
+              <div className="flex h-full items-center gap-4 rounded-2xl border-2 border-border bg-surface-muted p-5">
+                <div className="inline-flex size-12 shrink-0 items-center justify-center rounded-xl border-2 border-border bg-surface text-ink">
+                  <GraduationCap className="size-6" strokeWidth={2.5} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">Kelas</p>
+                  <p className="mt-1 break-words text-xl font-black leading-7 text-ink sm:text-2xl">{formatOptional(className)}</p>
+                </div>
               </div>
             </div>
           ) : (

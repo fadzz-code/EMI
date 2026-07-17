@@ -83,7 +83,7 @@ export function ProgressStudentDetail({ studentId }: { studentId: string }) {
   return (
     <div className="grid gap-6">
       <Link
-        className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100"
+        className="w-fit rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 py-2 text-sm font-black text-ink transition-colors hover:bg-primary hover:text-primary-foreground"
         href="/admin/progress"
       >
         Kembali ke Progress
@@ -102,11 +102,11 @@ export function ProgressStudentDetail({ studentId }: { studentId: string }) {
         <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <div className="flex flex-wrap gap-2">
-              <Badge tone="yellow">ADMIN-18</Badge>
+              <Badge tone="blue">ADMIN-18</Badge>
               <Badge tone={statusTone(user.status)}>{userStatusLabel(user.status)}</Badge>
             </div>
             <h1 className="mt-2 text-3xl font-black text-ink">{user.full_name}</h1>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
+            <p className="mt-2 text-sm leading-6 font-semibold text-muted">
               {user.email} | {user.active_school?.name ?? "Sekolah belum tersedia"} |{" "}
               {user.active_class?.name ?? "Kelas belum tersedia"}
             </p>
@@ -135,44 +135,44 @@ export function ProgressStudentDetail({ studentId }: { studentId: string }) {
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Card>
               <CardContent>
-                <p className="text-xs font-black uppercase text-slate-500">Progress Modul</p>
+                <p className="text-xs font-black uppercase text-muted">Progress Modul</p>
                 <div className="mt-3">
                   <ProgressBar value={progress.overall_learning_progress_percent} />
                 </div>
-                <p className="mt-2 text-sm text-slate-600">
+                <p className="mt-2 text-sm font-semibold text-muted">
                   {progress.completed_modules}/{progress.published_modules} modul selesai.
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent>
-                <p className="text-xs font-black uppercase text-slate-500">Pelajaran Selesai</p>
+                <p className="text-xs font-black uppercase text-muted">Pelajaran Selesai</p>
                 <p className="mt-3 text-3xl font-black text-ink">
                   {formatNumber(progress.completed_lessons)}
                 </p>
-                <p className="mt-2 text-sm text-slate-600">
+                <p className="mt-2 text-sm font-semibold text-muted">
                   Dari {formatNumber(progress.total_published_lessons)} pelajaran terbit.
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent>
-                <p className="text-xs font-black uppercase text-slate-500">Rata-rata Kuis</p>
+                <p className="text-xs font-black uppercase text-muted">Rata-rata Kuis</p>
                 <p className="mt-3 text-3xl font-black text-ink">
                   {formatPercent(progress.average_best_quiz_score_percent)}
                 </p>
-                <p className="mt-2 text-sm text-slate-600">
+                <p className="mt-2 text-sm font-semibold text-muted">
                   {progress.quizzes_completed}/{progress.published_quizzes} kuis selesai.
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent>
-                <p className="text-xs font-black uppercase text-slate-500">Status Belajar</p>
+                <p className="text-xs font-black uppercase text-muted">Status Belajar</p>
                 <div className="mt-3">
                   <Badge tone={statusTone(status)}>{learningStatusLabel(status)}</Badge>
                 </div>
-                <p className="mt-2 text-sm text-slate-600">
+                <p className="mt-2 text-sm font-semibold text-muted">
                   Aktivitas terakhir: {formatDateTime(latestActivity(progress))}
                 </p>
               </CardContent>
@@ -189,7 +189,7 @@ export function ProgressStudentDetail({ studentId }: { studentId: string }) {
       <Card>
         <CardHeader>
           <h2 className="text-xl font-black text-ink">Riwayat Kuis</h2>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm font-semibold text-muted">
             Satu baris per siswa dan class quiz; backend memilih best final attempt.
           </p>
         </CardHeader>
@@ -214,7 +214,7 @@ export function ProgressStudentDetail({ studentId }: { studentId: string }) {
                   <div className="grid gap-4 md:grid-cols-3">
                     <Card>
                       <CardContent>
-                        <p className="text-xs font-black uppercase text-slate-500">Partisipasi</p>
+                        <p className="text-xs font-black uppercase text-muted">Partisipasi</p>
                         <p className="mt-3 text-2xl font-black text-ink">
                           {formatPercent(quizSummary.participation_rate_percent)}
                         </p>
@@ -222,7 +222,7 @@ export function ProgressStudentDetail({ studentId }: { studentId: string }) {
                     </Card>
                     <Card>
                       <CardContent>
-                        <p className="text-xs font-black uppercase text-slate-500">Completion</p>
+                        <p className="text-xs font-black uppercase text-muted">Completion</p>
                         <p className="mt-3 text-2xl font-black text-ink">
                           {formatPercent(quizSummary.completion_rate_percent)}
                         </p>
@@ -230,7 +230,7 @@ export function ProgressStudentDetail({ studentId }: { studentId: string }) {
                     </Card>
                     <Card>
                       <CardContent>
-                        <p className="text-xs font-black uppercase text-slate-500">Best Average</p>
+                        <p className="text-xs font-black uppercase text-muted">Best Average</p>
                         <p className="mt-3 text-2xl font-black text-ink">
                           {formatPercent(quizSummary.average_best_score_percent)}
                         </p>
@@ -253,7 +253,7 @@ export function ProgressStudentDetail({ studentId }: { studentId: string }) {
                       <tr key={row.quiz.id}>
                         <TableCell>
                           <p className="font-black text-ink">{row.quiz.title}</p>
-                          <p className="text-xs text-slate-600">{row.class.name}</p>
+                          <p className="text-xs font-semibold text-muted">{row.class.name}</p>
                         </TableCell>
                         <TableCell>
                           {row.attempt_count} attempt

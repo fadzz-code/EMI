@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { ArrowLeft, ClipboardList } from "lucide-react";
 
 import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -38,8 +39,9 @@ export function StudentQuizDetail({ quizId }: { quizId: string }) {
   const hasSubmittedScore = typeof quiz?.latest_score_normalized === "number";
 
   return (
-    <div className="grid gap-6">
-      <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href="/student/quizzes">
+    <div className="grid gap-8">
+      <Link className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-ink shadow-emi hover:bg-surface-muted sm:w-fit" href="/student/quizzes">
+        <ArrowLeft className="size-4" strokeWidth={2.5} />
         Kembali ke Daftar Kuis
       </Link>
 
@@ -57,16 +59,19 @@ export function StudentQuizDetail({ quizId }: { quizId: string }) {
           {startMutation.error ? <Alert tone="error">{getFirstApiError(startMutation.error)}</Alert> : null}
           {quiz.attempt_limit_reached ? <Alert tone="warning">Batas percobaan tercapai.</Alert> : null}
 
-          <header className="grid gap-5 rounded-3xl border-2 border-ink bg-[var(--color-primary-muted)] p-5 shadow-brutal lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
+          <header className="grid gap-6 rounded-3xl border-2 border-border bg-[var(--color-primary-muted)] p-5 shadow-emi sm:p-8 lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
             <div className="grid gap-4">
-              <div className="flex flex-wrap gap-2 text-sm font-bold text-slate-500">
+              <div className="inline-flex size-12 items-center justify-center rounded-xl border-2 border-border bg-surface text-primary">
+                <ClipboardList className="size-6" strokeWidth={2.5} />
+              </div>
+              <div className="flex flex-wrap gap-2 text-sm font-bold text-muted">
                 {quiz.open_at ? <Badge tone="neutral">Buka: {formatDate(quiz.open_at)}</Badge> : null}
                 {quiz.close_at ? <Badge tone="neutral">Tutup: {formatDate(quiz.close_at)}</Badge> : null}
                 <Badge tone={quiz.attempt_limit_reached ? "orange" : "blue"}>{quiz.attempt_limit_reached ? "Percobaan habis" : "Siap dikerjakan"}</Badge>
               </div>
               <div>
                 <h1 className="text-3xl font-black text-ink">{quiz.title}</h1>
-                <p className="mt-2 text-sm leading-6 text-slate-700 whitespace-pre-wrap">{formatOptional(quiz.description)}</p>
+                <p className="mt-2 text-sm leading-6 text-muted whitespace-pre-wrap">{formatOptional(quiz.description)}</p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <Button disabled={startMutation.isPending || quiz.attempt_limit_reached} onClick={() => startMutation.mutate()}>
@@ -74,11 +79,11 @@ export function StudentQuizDetail({ quizId }: { quizId: string }) {
                 </Button>
               </div>
             </div>
-            <div className="rounded-2xl border-2 border-ink bg-white p-4 shadow-brutal">
-              <p className="text-xs font-black uppercase text-slate-500">Ringkasan kuis</p>
+            <div className="rounded-2xl border-2 border-border bg-surface p-4 shadow-emi">
+              <p className="text-xs font-black uppercase text-muted">Ringkasan kuis</p>
               <p className="mt-2 text-4xl font-black text-ink">{formatCount(quiz.questions_count)}</p>
-              <p className="text-sm font-bold text-slate-600">soal tersedia</p>
-              <div className="mt-4 grid gap-2 text-sm font-bold text-slate-700">
+              <p className="text-sm font-bold text-muted">soal tersedia</p>
+              <div className="mt-4 grid gap-2 text-sm font-bold text-muted">
                 <span>Durasi: {quiz.duration_minutes ? `${quiz.duration_minutes} menit` : "Tidak dibatasi"}</span>
                 <span>Percobaan: {quiz.max_attempts ? `${usedAttempts} / ${quiz.max_attempts}` : formatCount(usedAttempts)}</span>
               </div>
@@ -97,7 +102,7 @@ export function StudentQuizDetail({ quizId }: { quizId: string }) {
               <h2 className="text-xl font-black text-ink">Instruksi Pengerjaan</h2>
             </CardHeader>
             <CardContent>
-              <div className="prose prose-slate max-w-none text-sm leading-6 text-slate-700 whitespace-pre-wrap">
+              <div className="prose prose-slate max-w-none text-sm leading-6 text-muted whitespace-pre-wrap">
                 {quiz.instructions || "Tidak ada instruksi khusus."}
               </div>
             </CardContent>

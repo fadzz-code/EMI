@@ -22,7 +22,7 @@ export function TeacherClassList() {
   const classes = classesQuery.data?.items ?? [];
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       <PageHeader
         badge="Guru"
         description="Daftar kelas yang dapat Anda akses. Untuk EMI saat ini, guru mengajar dari satu kelas aktif."
@@ -49,40 +49,40 @@ export function TeacherClassList() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid gap-6">
             <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <StatsCard helper="Kelas yang ditetapkan Admin" label="Kelas aktif" value={formatCount(classesQuery.data?.meta?.total ?? classes.length)} />
               <StatsCard helper="Jumlah dari active_students_count jika tersedia" label="Total siswa" value={formatCount(classes.reduce((sum, item) => sum + (item.active_students_count ?? 0), 0))} />
               <StatsCard helper="Mengikuti assignment aktif" label="Akses" value="Aman" />
             </section>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid items-stretch gap-6 md:grid-cols-2">
               {classes.map((teacherClass) => (
-                <Card key={teacherClass.id}>
+                <Card className="flex h-full flex-col" key={teacherClass.id}>
                   <CardHeader>
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <Badge tone={teacherClass.status === "active" ? "blue" : "neutral"}>{statusLabel(teacherClass.status)}</Badge>
                         <h2 className="mt-2 text-xl font-black text-ink">{teacherClass.name}</h2>
-                        <p className="mt-1 text-sm text-slate-600">{formatOptional(teacherClass.school?.name)}</p>
+                        <p className="mt-1 text-sm font-semibold text-muted">{formatOptional(teacherClass.school?.name)}</p>
                       </div>
-                      <Link className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-brutal hover:bg-blue-700" href={teacherRoutes.classDetail(teacherClass.id)}>
+                      <Link className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-control)] border-2 border-border bg-primary px-4 py-2 text-sm font-black text-primary-foreground shadow-emi transition-transform hover:-translate-y-0.5" href={teacherRoutes.classDetail(teacherClass.id)}>
                         Detail
                       </Link>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <dl className="grid gap-3 text-sm sm:grid-cols-2">
-                      <div className="rounded-xl bg-slate-50 p-3">
-                        <dt className="font-black uppercase text-slate-500">Tahun ajaran</dt>
+                  <CardContent className="flex flex-1 flex-col">
+                    <dl className="grid flex-1 gap-3 text-sm sm:grid-cols-2">
+                      <div className="rounded-xl border-2 border-border bg-surface-muted p-3">
+                        <dt className="font-black uppercase text-muted">Tahun ajaran</dt>
                         <dd className="mt-1 font-bold text-ink">{formatOptional(teacherClass.academic_year)}</dd>
                       </div>
-                      <div className="rounded-xl bg-slate-50 p-3">
-                        <dt className="font-black uppercase text-slate-500">Siswa</dt>
+                      <div className="rounded-xl border-2 border-border bg-surface-muted p-3">
+                        <dt className="font-black uppercase text-muted">Siswa</dt>
                         <dd className="mt-1 font-bold text-ink">{formatCount(teacherClass.active_students_count)}</dd>
                       </div>
-                      <div className="rounded-xl bg-slate-50 p-3 sm:col-span-2">
-                        <dt className="font-black uppercase text-slate-500">Guru aktif</dt>
+                      <div className="rounded-xl border-2 border-border bg-surface-muted p-3 sm:col-span-2">
+                        <dt className="font-black uppercase text-muted">Guru aktif</dt>
                         <dd className="mt-1 font-bold text-ink">{formatOptional(teacherClass.active_teacher_assignment?.teacher?.full_name)}</dd>
                       </div>
                     </dl>

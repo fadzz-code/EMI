@@ -4,6 +4,7 @@ import { type ReactNode, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 
 import {
   Alert,
@@ -28,8 +29,8 @@ import type { DictionaryEntryPayload } from "./types";
 
 function DetailItem({ label, value }: { label: string; value?: ReactNode }) {
   return (
-    <div className="rounded-lg border-2 border-ink bg-white p-4">
-      <p className="text-xs font-black uppercase text-slate-500">{label}</p>
+    <div className="flex h-full min-h-24 flex-col rounded-[var(--radius-card)] border-2 border-border bg-surface p-4 shadow-[2px_2px_0_var(--border)]">
+      <p className="text-xs font-black uppercase tracking-wide text-muted">{label}</p>
       <div className="mt-2 text-sm font-bold text-ink">{value ?? "-"}</div>
     </div>
   );
@@ -80,9 +81,10 @@ export function DictionaryDetail({ entryId }: { entryId: string }) {
   return (
     <div className="grid gap-6">
       <Link
-        className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100"
+        className="w-fit rounded-lg border-2 border-border bg-surface px-3 py-2 text-sm font-black text-ink hover:bg-surface-muted"
         href="/admin/dictionary"
       >
+        <ArrowLeft aria-hidden="true" className="mr-2 inline size-4" />
         Kembali ke Kamus
       </Link>
 
@@ -103,20 +105,22 @@ export function DictionaryDetail({ entryId }: { entryId: string }) {
           <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <div className="flex flex-wrap gap-2">
-                <Badge tone="yellow">{entry.category?.name ?? "Tanpa kategori"}</Badge>
+                <Badge tone="neutral">{entry.category?.name ?? "Tanpa kategori"}</Badge>
                 <Badge tone={statusTone(entry.status)}>{statusLabel(entry.status)}</Badge>
               </div>
               <h1 className="mt-2 text-3xl font-black text-ink">{entry.mekongga}</h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
                 Tinjau terjemahan, contoh kalimat, status, kategori, dan audio yang
                 terhubung dengan kata ini.
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button onClick={() => setEditOpen(true)} variant="secondary">
+                <Pencil aria-hidden="true" className="mr-2 size-4" />
                 Edit Entri
               </Button>
               <Button onClick={() => setDeleteOpen(true)} variant="danger">
+                <Trash2 aria-hidden="true" className="mr-2 size-4" />
                 Hapus
               </Button>
             </div>
@@ -141,14 +145,14 @@ export function DictionaryDetail({ entryId }: { entryId: string }) {
               <CardContent className="grid gap-3">
                 {(entry.sentence_examples ?? []).length > 0 ? (
                   entry.sentence_examples?.map((example, index) => (
-                    <div key={example.id} className="rounded-lg border-2 border-ink bg-white p-4">
-                      <p className="text-xs font-black uppercase text-slate-500">Contoh {index + 1}</p>
+                    <div key={example.id} className="rounded-lg border-2 border-border bg-surface p-4">
+                      <p className="text-xs font-black uppercase text-muted">Contoh {index + 1}</p>
                       <p className="mt-2 text-sm font-bold text-ink">Mekongga: {example.contoh_mekongga}</p>
-                      <p className="mt-1 text-sm font-bold text-slate-600">Indonesia: {example.contoh_indonesia}</p>
+                      <p className="mt-1 text-sm font-bold text-muted">Indonesia: {example.contoh_indonesia}</p>
                     </div>
                   ))
                 ) : (
-                  <p className="rounded-lg border-2 border-dashed border-ink bg-white p-4 text-sm font-bold text-slate-600">Belum ada contoh kalimat.</p>
+                  <p className="rounded-lg border-2 border-dashed border-border bg-surface p-4 text-sm font-bold text-muted">Belum ada contoh kalimat.</p>
                 )}
               </CardContent>
             </Card>
@@ -159,7 +163,7 @@ export function DictionaryDetail({ entryId }: { entryId: string }) {
               </CardHeader>
               <CardContent>
                 <AudioPlayer src={entry.audio?.url} title={`Audio ${entry.mekongga}`} />
-                <p className="mt-3 text-sm text-slate-600">
+                <p className="mt-3 text-sm text-muted">
                   Audio muncul jika entri sudah memiliki file media publik yang valid.
                 </p>
               </CardContent>

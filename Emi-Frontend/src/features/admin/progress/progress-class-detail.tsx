@@ -99,7 +99,7 @@ export function ProgressClassDetail({ classId }: { classId: string }) {
   return (
     <div className="grid gap-6">
       <Link
-        className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100"
+        className="w-fit rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 py-2 text-sm font-black text-ink transition-colors hover:bg-primary hover:text-primary-foreground"
         href="/admin/progress"
       >
         Kembali ke Progress
@@ -117,9 +117,9 @@ export function ProgressClassDetail({ classId }: { classId: string }) {
       {schoolClass ? (
         <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <Badge tone="yellow">ADMIN-18</Badge>
+            <Badge tone="blue">ADMIN-18</Badge>
             <h1 className="mt-2 text-3xl font-black text-ink">{schoolClass.name}</h1>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
+            <p className="mt-2 text-sm leading-6 font-semibold text-muted">
               {schoolClass.school?.name ?? "-"} | {schoolClass.academic_year} | Guru:{" "}
               {schoolClass.active_teacher_assignment?.teacher?.full_name ?? "Belum tersedia"}
             </p>
@@ -155,33 +155,33 @@ export function ProgressClassDetail({ classId }: { classId: string }) {
           <section className="grid gap-4 md:grid-cols-3">
             <Card>
               <CardContent>
-                <p className="text-xs font-black uppercase text-slate-500">Siswa selesai modul</p>
+                <p className="text-xs font-black uppercase text-muted">Siswa selesai modul</p>
                 <p className="mt-3 text-3xl font-black text-ink">
                   {formatNumber(completedStudents)}
                 </p>
-                <p className="mt-2 text-sm text-slate-600">
+                <p className="mt-2 text-sm font-semibold text-muted">
                   Dari filter `learning_status=completed`.
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent>
-                <p className="text-xs font-black uppercase text-slate-500">Siswa belum mulai</p>
+                <p className="text-xs font-black uppercase text-muted">Siswa belum mulai</p>
                 <p className="mt-3 text-3xl font-black text-ink">
                   {formatNumber(notStartedStudents)}
                 </p>
-                <p className="mt-2 text-sm text-slate-600">
+                <p className="mt-2 text-sm font-semibold text-muted">
                   Dari filter `learning_status=not_started`.
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent>
-                <p className="text-xs font-black uppercase text-slate-500">Aktivitas terakhir</p>
+                <p className="text-xs font-black uppercase text-muted">Aktivitas terakhir</p>
                 <p className="mt-3 text-xl font-black text-ink">
                   {formatDateTime(students.map(latestActivity).filter(Boolean).sort().pop())}
                 </p>
-                <p className="mt-2 text-sm text-slate-600">
+                <p className="mt-2 text-sm font-semibold text-muted">
                   Diambil dari halaman siswa saat ini.
                 </p>
               </CardContent>
@@ -229,7 +229,7 @@ export function ProgressClassDetail({ classId }: { classId: string }) {
                         <tr key={student.student_id}>
                           <TableCell>
                             <p className="font-black text-ink">{student.full_name}</p>
-                            <p className="text-xs text-slate-600">{student.school.name}</p>
+                            <p className="text-xs font-semibold text-muted">{student.school.name}</p>
                           </TableCell>
                           <TableCell>
                             <ProgressBar value={student.overall_learning_progress_percent} />
@@ -238,7 +238,7 @@ export function ProgressClassDetail({ classId }: { classId: string }) {
                             <p className="font-black text-ink">
                               {formatPercent(student.average_best_quiz_score_percent)}
                             </p>
-                            <p className="text-xs text-slate-600">
+                            <p className="text-xs font-semibold text-muted">
                               {student.quizzes_completed}/{student.published_quizzes} selesai
                             </p>
                           </TableCell>
@@ -247,7 +247,7 @@ export function ProgressClassDetail({ classId }: { classId: string }) {
                           </TableCell>
                           <TableCell>
                             <Link
-                              className="inline-flex min-h-9 items-center rounded-lg border-2 border-ink bg-white px-3 py-1 text-xs font-black text-ink hover:bg-yellow-100"
+                              className="inline-flex min-h-9 items-center rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 py-1 text-xs font-black text-ink transition-colors hover:bg-primary hover:text-primary-foreground"
                               href={`/admin/progress/students/${student.student_id}`}
                             >
                               Detail Siswa

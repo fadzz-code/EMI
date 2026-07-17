@@ -3,6 +3,7 @@
 import { type FormEvent, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft } from "lucide-react";
 
 import {
   Alert,
@@ -58,8 +59,8 @@ function userPayload(form: UserFormState): UserPayload {
 
 function DetailItem({ label, value }: { label: string; value?: React.ReactNode }) {
   return (
-    <div className="rounded-lg border-2 border-ink bg-white p-4">
-      <p className="text-xs font-black uppercase text-slate-500">{label}</p>
+    <div className="h-full rounded-xl border-2 border-border bg-surface-muted p-4">
+      <p className="text-xs font-black uppercase text-muted">{label}</p>
       <div className="mt-2 text-sm font-bold text-ink">{value ?? "-"}</div>
     </div>
   );
@@ -168,11 +169,12 @@ export function UserDetailScreen({ userId }: { userId: string }) {
   }
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       <Link
-        className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100"
+        className="w-fit rounded-lg border-2 border-border bg-surface px-3 py-2 text-sm font-black text-ink transition-colors hover:bg-primary hover:text-primary-foreground"
         href="/admin/users"
       >
+        <ArrowLeft className="mr-2 inline size-4" strokeWidth={2.5} />
         Kembali ke Data Guru & Siswa
       </Link>
 
@@ -193,11 +195,11 @@ export function UserDetailScreen({ userId }: { userId: string }) {
           <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <div className="flex flex-wrap gap-2">
-                <Badge tone="yellow">{roleLabel(user.role)}</Badge>
+                <Badge tone="neutral">{roleLabel(user.role)}</Badge>
                 <Badge tone={statusTone(user.status)}>{userStatusLabel(user.status)}</Badge>
               </div>
               <h1 className="mt-2 text-3xl font-black text-ink">{user.full_name}</h1>
-              <p className="mt-2 text-sm text-slate-600">{user.email}</p>
+              <p className="mt-2 text-sm text-muted">{user.email}</p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button onClick={openEdit} variant="secondary">
@@ -234,7 +236,7 @@ export function UserDetailScreen({ userId }: { userId: string }) {
             <CardContent>
               {user.role === "teacher" ? (
                 <div className="grid gap-3">
-                  <p className="text-sm text-slate-600">
+                  <p className="text-sm text-muted">
                     Guru memakai assignment aktif. Gunakan aksi tetapkan guru untuk memindahkan
                     assignment ke kelas lain.
                   </p>
@@ -245,7 +247,7 @@ export function UserDetailScreen({ userId }: { userId: string }) {
                 </div>
               ) : user.role === "student" ? (
                 <div className="grid gap-3">
-                  <p className="text-sm text-slate-600">
+                  <p className="text-sm text-muted">
                     Siswa memakai membership aktif. Gunakan aksi tempatkan siswa untuk memindahkan
                     membership ke kelas lain.
                   </p>

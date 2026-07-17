@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, ChartNoAxesColumnIncreasing } from "lucide-react";
 
 import { Card, CardContent, CardHeader, ErrorState, LoadingState, PageHeader, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -23,11 +24,12 @@ export function TeacherStudentDetail({ studentId }: { studentId: string }) {
   const student = studentQuery.data;
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       <Link
-        className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100"
+        className="inline-flex min-h-11 w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-foreground transition hover:-translate-y-0.5 hover:bg-surface-muted hover:shadow-emi"
         href={teacherRoutes.students}
       >
+        <ArrowLeft className="size-4" strokeWidth={2.5} />
         Kembali ke Daftar Siswa
       </Link>
       
@@ -55,54 +57,55 @@ export function TeacherStudentDetail({ studentId }: { studentId: string }) {
             <StatsCard helper="Kuis yang dikerjakan" label="Kuis Selesai" value={`${formatCount(student.quizzes_completed)} dari ${formatCount(student.published_quizzes)}`} />
           </section>
 
-          <section className="grid gap-6 xl:grid-cols-2">
-            <Card>
+          <section className="grid items-stretch gap-6 xl:grid-cols-2">
+            <Card className="flex h-full flex-col">
               <CardHeader>
-                <h2 className="text-xl font-black text-ink">Ringkasan Modul</h2>
+                <h2 className="text-xl font-black text-foreground">Ringkasan Modul</h2>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex flex-1 flex-col">
                 <dl className="grid gap-3 text-sm">
-                  <div className="flex items-center justify-between rounded-xl bg-slate-50 p-3">
-                    <dt className="font-black uppercase text-slate-500">Tersedia di Kelas</dt>
-                    <dd className="font-bold text-ink">{formatCount(student.published_modules)} modul</dd>
+                  <div className="flex items-center justify-between rounded-xl border-2 border-border bg-surface-muted p-3">
+                    <dt className="font-black uppercase text-muted">Tersedia di Kelas</dt>
+                    <dd className="font-bold text-foreground">{formatCount(student.published_modules)} modul</dd>
                   </div>
-                  <div className="flex items-center justify-between rounded-xl bg-slate-50 p-3">
-                    <dt className="font-black uppercase text-slate-500">Mulai Dikerjakan</dt>
-                    <dd className="font-bold text-ink">{formatCount(student.started_modules)} modul</dd>
+                  <div className="flex items-center justify-between rounded-xl border-2 border-border bg-surface-muted p-3">
+                    <dt className="font-black uppercase text-muted">Mulai Dikerjakan</dt>
+                    <dd className="font-bold text-foreground">{formatCount(student.started_modules)} modul</dd>
                   </div>
-                  <div className="flex items-center justify-between rounded-xl bg-slate-50 p-3">
-                    <dt className="font-black uppercase text-slate-500">Selesai</dt>
-                    <dd className="font-bold text-ink text-green-700">{formatCount(student.completed_modules)} modul</dd>
+                  <div className="flex items-center justify-between rounded-xl border-2 border-border bg-surface-muted p-3">
+                    <dt className="font-black uppercase text-muted">Selesai</dt>
+                    <dd className="font-bold text-success-foreground">{formatCount(student.completed_modules)} modul</dd>
                   </div>
                 </dl>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="flex h-full flex-col">
               <CardHeader>
-                <h2 className="text-xl font-black text-ink">Ringkasan Kuis</h2>
+                <h2 className="text-xl font-black text-foreground">Ringkasan Kuis</h2>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex flex-1 flex-col">
                 <dl className="grid gap-3 text-sm">
-                  <div className="flex items-center justify-between rounded-xl bg-slate-50 p-3">
-                    <dt className="font-black uppercase text-slate-500">Kuis Tersedia</dt>
-                    <dd className="font-bold text-ink">{formatCount(student.published_quizzes)} kuis</dd>
+                  <div className="flex items-center justify-between rounded-xl border-2 border-border bg-surface-muted p-3">
+                    <dt className="font-black uppercase text-muted">Kuis Tersedia</dt>
+                    <dd className="font-bold text-foreground">{formatCount(student.published_quizzes)} kuis</dd>
                   </div>
-                  <div className="flex items-center justify-between rounded-xl bg-slate-50 p-3">
-                    <dt className="font-black uppercase text-slate-500">Telah Dicoba</dt>
-                    <dd className="font-bold text-ink">{formatCount(student.quizzes_attempted)} kuis</dd>
+                  <div className="flex items-center justify-between rounded-xl border-2 border-border bg-surface-muted p-3">
+                    <dt className="font-black uppercase text-muted">Telah Dicoba</dt>
+                    <dd className="font-bold text-foreground">{formatCount(student.quizzes_attempted)} kuis</dd>
                   </div>
-                  <div className="flex items-center justify-between rounded-xl bg-slate-50 p-3">
-                    <dt className="font-black uppercase text-slate-500">Selesai/Nilai Final</dt>
-                    <dd className="font-bold text-ink text-blue-700">{formatCount(student.quizzes_completed)} kuis</dd>
+                  <div className="flex items-center justify-between rounded-xl border-2 border-border bg-surface-muted p-3">
+                    <dt className="font-black uppercase text-muted">Selesai/Nilai Final</dt>
+                    <dd className="font-bold text-info-foreground">{formatCount(student.quizzes_completed)} kuis</dd>
                   </div>
                 </dl>
                 <div className="mt-4">
                   <Link
-                    className="inline-flex w-full min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-white px-4 py-2 text-sm font-bold text-ink shadow-brutal hover:bg-slate-100"
+                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-foreground shadow-emi transition hover:-translate-y-0.5 hover:bg-surface-muted"
                     href={teacherRoutes.progressReport}
                   >
                     Lihat di Laporan Keseluruhan
+                    <ChartNoAxesColumnIncreasing className="size-4" strokeWidth={2.5} />
                   </Link>
                 </div>
               </CardContent>

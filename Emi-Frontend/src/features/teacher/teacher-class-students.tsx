@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, UserRound } from "lucide-react";
 
 import { Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, PageHeader, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -29,8 +30,9 @@ export function TeacherClassStudents({ classId }: { classId: string }) {
   const progressRows = progressQuery.data?.items ?? [];
 
   return (
-    <div className="grid gap-6">
-      <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href={teacherRoutes.classes}>
+    <div className="grid gap-8">
+      <Link className="inline-flex min-h-11 w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-foreground transition hover:-translate-y-0.5 hover:bg-surface-muted hover:shadow-emi" href={teacherRoutes.classes}>
+        <ArrowLeft className="size-4" strokeWidth={2.5} />
         Kembali ke Daftar Kelas
       </Link>
       <PageHeader badge="Guru" description="Daftar siswa aktif di kelas yang ditetapkan untuk Anda." title="Siswa Kelas" />
@@ -44,7 +46,7 @@ export function TeacherClassStudents({ classId }: { classId: string }) {
         students.length === 0 ? (
           <Card><CardContent><EmptyState description="Belum ada siswa aktif pada kelas ini." title="Siswa kosong" /></CardContent></Card>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid gap-6">
             <section className="grid gap-4 sm:grid-cols-3">
               <StatsCard helper="Siswa aktif di kelas" label="Total siswa" value={formatCount(students.length)} />
               <StatsCard helper="Jika laporan progress tersedia" label="Progress tersedia" value={formatCount(progressRows.length)} />
@@ -55,34 +57,35 @@ export function TeacherClassStudents({ classId }: { classId: string }) {
                 const progress = progressRows.find((row) => row.student_id === membership.student.id || row.full_name === membership.student.full_name);
 
                 return (
-                  <Card key={membership.membership_id}>
-                    <CardHeader>
+                  <Card className="group flex h-full flex-col transition hover:-translate-y-1 hover:shadow-emi" key={membership.membership_id}>
+                    <CardHeader className="flex-1">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                          <h2 className="text-xl font-black text-ink">{membership.student.full_name}</h2>
-                          <p className="mt-1 text-sm text-slate-600">{membership.student.email}</p>
+                          <h2 className="text-xl font-black text-foreground">{membership.student.full_name}</h2>
+                           <p className="mt-1 text-sm font-semibold text-muted">{membership.student.email}</p>
                           <div className="mt-2"><Badge tone={membership.student.status === "approved" ? "blue" : "neutral"}>{statusLabel(membership.student.status)}</Badge></div>
                         </div>
                         <Link
-                          className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-brutal hover:bg-blue-700"
+                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-primary px-4 py-2 text-sm font-black text-primary-foreground shadow-emi transition hover:-translate-y-0.5"
                           href={teacherRoutes.studentDetail(membership.student.id)}
                         >
                           Lihat Detail
+                          <UserRound className="size-4" strokeWidth={2.5} />
                         </Link>
                       </div>
                     </CardHeader>
                     <CardContent>
                       <dl className="grid gap-3 text-sm sm:grid-cols-2">
-                        <div className="rounded-xl bg-slate-50 p-3">
-                          <dt className="font-black uppercase text-slate-500">Bergabung</dt>
-                          <dd className="mt-1 font-bold text-ink">{formatDate(membership.joined_at)}</dd>
+                        <div className="rounded-xl border-2 border-border bg-surface-muted p-3">
+                          <dt className="font-black uppercase text-muted">Bergabung</dt>
+                          <dd className="mt-1 font-bold text-foreground">{formatDate(membership.joined_at)}</dd>
                         </div>
-                        <div className="rounded-xl bg-slate-50 p-3">
-                          <dt className="font-black uppercase text-slate-500">Progress</dt>
-                          <dd className="mt-1 font-bold text-ink">{progress ? formatPercent(progress.overall_learning_progress_percent) : "Belum tersedia"}</dd>
+                        <div className="rounded-xl border-2 border-border bg-surface-muted p-3">
+                          <dt className="font-black uppercase text-muted">Progress</dt>
+                          <dd className="mt-1 font-bold text-foreground">{progress ? formatPercent(progress.overall_learning_progress_percent) : "Belum tersedia"}</dd>
                         </div>
                       </dl>
-                      {!progress ? <p className="mt-3 text-sm font-bold text-slate-500">Progress belum tersedia untuk siswa ini.</p> : null}
+                      {!progress ? <p className="mt-3 text-sm font-bold text-muted">Progress belum tersedia untuk siswa ini.</p> : null}
                     </CardContent>
                   </Card>
                 );

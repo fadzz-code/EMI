@@ -46,19 +46,39 @@ export type TeacherRecentActivity = {
 export type TeacherClass = SchoolClass;
 export type TeacherClassStudent = ClassStudent;
 
+export type TeacherLessonContentType = "text" | "image" | "audio" | "pdf" | "video" | "link";
+export type TeacherMediaPurpose = "lesson_image" | "audio" | "document" | "culture_media" | "question_image";
+export type TeacherMediaVisibility = "public" | "private";
+
+export type TeacherLessonPayload = {
+  title: string;
+  description: string | null;
+  content_type: TeacherLessonContentType;
+  content_body: string | null;
+  media_id: string | null;
+  external_url: string | null;
+  sort_order: number;
+};
+
+export type TeacherLessonForm = {
+  title: string;
+  description: string;
+  content_type: TeacherLessonContentType;
+  content_body: string;
+  media_id: string;
+  external_url: string;
+  sort_order: string;
+};
+
 export type TeacherClassLesson = {
   id: string;
   class_module_id: string;
   title: string;
   description?: string | null;
-  content_type?: string | null;
+  content_type: TeacherLessonContentType;
   content_body?: string | null;
   external_url?: string | null;
-  media?: {
-    id: string;
-    mime_type: string;
-    visibility: string;
-  } | null;
+  media?: TeacherMediaFile | null;
   sort_order?: number | null;
   status: EntityStatus | "draft" | "published" | "archived" | string;
   published_at?: string | null;

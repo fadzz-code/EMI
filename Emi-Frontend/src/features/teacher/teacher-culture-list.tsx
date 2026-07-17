@@ -3,8 +3,9 @@
 import { type FormEvent, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { LibraryBig } from "lucide-react";
 
-import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, FormField, Input, LoadingState, PageHeader, Select, Textarea, UploadComponent } from "@/components/ui";
+import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, FormField, Input, LoadingState, Select, Textarea, UploadComponent } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { CultureMediaPreview } from "@/features/culture/culture-media-preview";
 import { getFirstApiError } from "@/lib/api-client";
@@ -46,8 +47,12 @@ export function TeacherCultureList() {
   }
 
   return (
-    <div className="grid gap-6">
-      <PageHeader badge="Guru" description="Kelola konten budaya untuk kelas, termasuk media, artikel, tautan, dan status terbit." title="Budaya Mekongga" />
+    <div className="grid gap-8">
+      <section className="flex flex-col gap-2">
+        <p className="text-sm font-black uppercase tracking-[0.08em] text-muted">Guru</p>
+        <h1 className="text-3xl font-black leading-tight text-ink md:text-4xl">Budaya Mekongga</h1>
+        <p className="max-w-3xl text-base font-semibold leading-6 text-muted">Kelola konten budaya untuk kelas, termasuk media, artikel, tautan, dan status terbit.</p>
+      </section>
 
       {isLoading ? <LoadingState title="Memuat Budaya Mekongga" /> : null}
       {error ? <ErrorState description={getFirstApiError(error)} onRetry={() => { void classesQuery.refetch(); void cultureQuery.refetch(); }} title="Gagal memuat Budaya Mekongga" /> : null}
@@ -67,7 +72,7 @@ export function TeacherCultureList() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-2xl font-black text-ink">{selectedClass?.name ?? "Kelas"}</h2>
-                  <p className="mt-2 text-sm font-bold text-slate-500">{items.length} konten · {publishedCount} konten terbit</p>
+                  <p className="mt-2 text-sm font-bold text-muted">{items.length} konten · {publishedCount} konten terbit</p>
                 </div>
                 <Button onClick={() => openBuilder()} type="button" variant="secondary">Kelola Media</Button>
               </div>
@@ -79,13 +84,13 @@ export function TeacherCultureList() {
           {items.length === 0 ? <Card><CardContent><EmptyState description="Belum ada konten budaya untuk kelas ini. Klik Kelola Media untuk menambah konten." title="Budaya Mekongga kosong" /></CardContent></Card> : (
             <div className="grid gap-4 md:grid-cols-2">
               {items.map((item) => (
-                <Card key={item.id}>
-                  <CardHeader><div className="flex flex-wrap gap-2"><Badge tone={item.status === "published" ? "blue" : item.status === "archived" ? "neutral" : "yellow"}>{statusLabel(item.status)}</Badge><Badge tone="neutral">{item.content_type}</Badge></div><h2 className="mt-2 text-xl font-black text-ink">{item.title}</h2></CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-slate-600">{item.description ?? "Tanpa deskripsi"}</p>
-                    {item.created_scope === "admin" || item.admin_group_id ? <p className="mt-2 text-xs font-black uppercase text-slate-500">Salinan konten admin untuk kelas ini</p> : item.source_template_item_id ? <p className="mt-2 text-xs font-black uppercase text-slate-500">Salinan dari template admin</p> : <p className="mt-2 text-xs font-black uppercase text-slate-500">Dibuat guru untuk kelas ini</p>}
+                <Card className="group flex h-full flex-col transition hover:-translate-y-1 hover:shadow-emi" key={item.id}>
+                  <CardHeader><div className="flex items-start justify-between gap-3"><span className="flex size-12 shrink-0 items-center justify-center rounded-xl border-2 border-border bg-surface-muted text-ink transition-colors group-hover:bg-primary group-hover:text-primary-foreground"><LibraryBig className="size-6" strokeWidth={2.5} /></span><div className="flex flex-wrap justify-end gap-2"><Badge tone={item.status === "published" ? "blue" : item.status === "archived" ? "neutral" : "yellow"}>{statusLabel(item.status)}</Badge><Badge tone="neutral">{item.content_type}</Badge></div></div><h2 className="mt-2 text-xl font-black text-ink">{item.title}</h2></CardHeader>
+                  <CardContent className="flex flex-1 flex-col">
+                    <p className="text-sm font-semibold text-muted">{item.description ?? "Tanpa deskripsi"}</p>
+                    {item.created_scope === "admin" || item.admin_group_id ? <p className="mt-2 text-xs font-black uppercase text-muted">Salinan konten admin untuk kelas ini</p> : item.source_template_item_id ? <p className="mt-2 text-xs font-black uppercase text-muted">Salinan dari template admin</p> : <p className="mt-2 text-xs font-black uppercase text-muted">Dibuat guru untuk kelas ini</p>}
                     <CultureMediaPreview item={item} />
-                    <div className="mt-4 flex flex-wrap gap-2">
+                    <div className="mt-auto flex flex-wrap gap-2 pt-4">
                       <Button type="button" variant="secondary" onClick={() => openBuilder(item)}>Edit</Button>
                       {item.status !== "published" ? <Button type="button" onClick={() => publishMutation.mutate(item.id)}>Publish</Button> : null}
                       {item.status !== "archived" ? <Button type="button" variant="secondary" onClick={() => archiveMutation.mutate(item.id)}>Arsipkan</Button> : null}

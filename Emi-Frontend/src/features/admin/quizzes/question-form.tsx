@@ -264,7 +264,7 @@ export function QuestionForm({
       ) : null}
 
       {isMultipleChoice ? (
-        <div className="grid gap-3 rounded-lg border-2 border-ink bg-yellow-50 p-4">
+        <div className="grid gap-3 rounded-lg border-2 border-border bg-[var(--color-primary-muted)] p-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="font-black text-ink">Pilihan Jawaban</h3>
             <Button
@@ -313,7 +313,7 @@ export function QuestionForm({
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 rounded-lg border-2 border-ink bg-blue-50 p-4 md:grid-cols-3">
+        <div className="grid gap-4 rounded-lg border-2 border-border bg-surface-muted p-4 md:grid-cols-3">
           <FormField label="Jawaban benar">
             <Input
               onChange={(event) =>

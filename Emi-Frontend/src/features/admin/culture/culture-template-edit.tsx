@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft } from "lucide-react";
 
 import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState, PageHeader } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -74,7 +75,7 @@ export function AdminCultureTemplateEdit({ templateId }: { templateId: string })
 
   return (
     <div className="grid gap-6">
-      <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href="/admin/culture/templates">Kembali ke Daftar Template</Link>
+      <Link className="inline-flex min-h-11 w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-ink transition hover:-translate-y-0.5 hover:bg-surface-muted hover:shadow-emi" href="/admin/culture/templates"><ArrowLeft className="size-4" strokeWidth={2.5} />Kembali ke Daftar Template</Link>
       <PageHeader badge="Admin" description="Simpan perubahan template, terbitkan saat siap, lalu terapkan ke kelas agar tampil untuk guru dan siswa." title="Edit Template Budaya" />
 
       {query.isLoading ? <LoadingState title="Memuat template" /> : null}
@@ -108,7 +109,7 @@ export function AdminCultureTemplateEdit({ templateId }: { templateId: string })
             <Card>
               <CardHeader><h2 className="text-xl font-black text-ink">Terapkan ke Kelas</h2></CardHeader>
               <CardContent>
-                <p className="mb-4 text-sm text-slate-600">Template yang diterbitkan belum tampil untuk guru/siswa sampai diterapkan ke kelas. Saat diterapkan, sistem membuat konten budaya kelas yang bisa dikelola guru.</p>
+                <p className="mb-4 text-sm font-semibold text-muted">Template yang diterbitkan belum tampil untuk guru/siswa sampai diterapkan ke kelas. Saat diterapkan, sistem membuat konten budaya kelas yang bisa dikelola guru.</p>
                 {template.status !== "published" ? <Alert className="mb-4" tone="warning">Terbitkan template terlebih dahulu untuk membuka aksi Terapkan ke Kelas.</Alert> : <Alert className="mb-4" tone="info">Template siap diterapkan ke kelas.</Alert>}
                 {applyMutation.error ? <Alert className="mb-4" tone="error">{getFirstApiError(applyMutation.error)}</Alert> : null}
                 <form onSubmit={(e) => {
@@ -119,10 +120,10 @@ export function AdminCultureTemplateEdit({ templateId }: { templateId: string })
                   if (classIds.length === 0) return alert("Pilih minimal satu kelas.");
                   applyMutation.mutate(classIds);
                 }}>
-                  <div className="mb-4 max-h-48 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2">
-                    {classesQuery.isLoading ? <p className="text-sm p-2 text-slate-500">Memuat kelas...</p> : null}
+                  <div className="mb-4 max-h-48 overflow-y-auto rounded-lg border border-border bg-surface-muted p-2">
+                    {classesQuery.isLoading ? <p className="text-sm p-2 text-muted">Memuat kelas...</p> : null}
                     {classesQuery.data?.items.map((c) => (
-                      <label className="flex items-center gap-2 p-2 text-sm font-bold text-ink hover:bg-white" key={c.id}><input name="class_ids" type="checkbox" value={c.id} /> {c.name} {c.school ? `(${c.school.name})` : ""}</label>
+                      <label className="flex items-center gap-2 p-2 text-sm font-bold text-ink hover:bg-surface" key={c.id}><input name="class_ids" type="checkbox" value={c.id} /> {c.name} {c.school ? `(${c.school.name})` : ""}</label>
                     ))}
                   </div>
                   <Button disabled={applyMutation.isPending || template.status !== "published" || classesQuery.isLoading} type="submit" variant="secondary">{applyMutation.isPending ? "Menerapkan..." : "Terapkan ke Kelas"}</Button>
@@ -139,11 +140,11 @@ export function AdminCultureTemplateEdit({ templateId }: { templateId: string })
                 {!template.items?.length ? <EmptyState description="Belum ada item." title="Item kosong" /> : (
                   <div className="grid gap-3">
                     {template.items.map((item) => (
-                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3" key={item.id}>
-                        <div className="flex items-start justify-between gap-3"><div><p className="font-black text-ink">{item.display_order}. {item.title}</p><p className="text-xs font-bold text-slate-500">{item.content_type} | {statusLabel(item.status)}</p></div></div>
-                        <p className="mt-2 text-sm text-slate-600 line-clamp-2">{item.description}</p>
-                        {item.media_id ? <p className="mt-1 text-xs text-slate-500">Media: {item.media?.original_name ?? item.media_id}</p> : null}
-                        {item.external_url ? <p className="mt-1 text-xs text-slate-500 truncate">URL: <a className="text-blue-600 underline" href={item.external_url} rel="noreferrer" target="_blank">{item.external_url}</a></p> : null}
+                      <div className="rounded-2xl border-2 border-border bg-surface-muted p-3" key={item.id}>
+                        <div className="flex items-start justify-between gap-3"><div><p className="font-black text-ink">{item.display_order}. {item.title}</p><p className="text-xs font-bold text-muted">{item.content_type} | {statusLabel(item.status)}</p></div></div>
+                        <p className="mt-2 text-sm font-semibold text-muted line-clamp-2">{item.description}</p>
+                        {item.media_id ? <p className="mt-1 text-xs text-muted">Media: {item.media?.original_name ?? item.media_id}</p> : null}
+                        {item.external_url ? <p className="mt-1 text-xs text-muted truncate">URL: <a className="text-info-foreground underline" href={item.external_url} rel="noreferrer" target="_blank">{item.external_url}</a></p> : null}
                         <div className="mt-3 flex gap-2"><Button onClick={() => { setEditingItem(item); setIsAdding(false); }} type="button" variant="secondary">Edit</Button><Button disabled={deleteItemMutation.isPending} onClick={() => { if (confirm("Hapus item ini?")) deleteItemMutation.mutate(item.id); }} type="button" variant="danger">Hapus</Button></div>
                       </div>
                     ))}

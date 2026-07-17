@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ClipboardCheck } from "lucide-react";
 
 import { Alert, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -93,7 +94,7 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
   }
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       {isLoading ? <LoadingState title="Memuat soal kuis" /> : null}
       {isError ? <ErrorState description={getFirstApiError(error)} onRetry={() => { quizQuery.refetch(); attemptQuery.refetch(); }} title="Gagal memuat soal" /> : null}
 
@@ -107,14 +108,19 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
 
       {!isLoading && !isError && quiz && attempt?.status === "in_progress" && currentQuestion ? (
         <>
-          <header className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border-2 border-ink bg-white p-5 shadow-brutal">
-            <div>
-              <h1 className="text-xl font-black text-ink">{quiz.title}</h1>
-              <p className="text-sm text-slate-600">Soal {currentQuestionIndex + 1} dari {questions.length}</p>
+          <header className="flex flex-col gap-4 rounded-3xl border-2 border-border bg-surface p-5 shadow-emi sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div className="flex items-center gap-4">
+              <div className="inline-flex size-12 shrink-0 items-center justify-center rounded-xl border-2 border-border bg-surface-muted text-primary">
+                <ClipboardCheck className="size-6" strokeWidth={2.5} />
+              </div>
+              <div>
+                <h1 className="text-xl font-black text-ink">{quiz.title}</h1>
+                <p className="text-sm font-semibold text-muted">Soal {currentQuestionIndex + 1} dari {questions.length}</p>
+              </div>
             </div>
             {submitMutation.error ? <Alert tone="error">{getFirstApiError(submitMutation.error)}</Alert> : null}
             <Button
-              className="bg-green-600 hover:bg-green-700"
+              className="w-full sm:w-auto"
               disabled={submitMutation.isPending}
               onClick={() => {
                 if (window.confirm("Apakah Anda yakin ingin mengumpulkan kuis ini sekarang?")) {
@@ -126,16 +132,16 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
             </Button>
           </header>
 
-          <Card>
+          <Card className="border-2 border-border bg-surface shadow-emi">
             <CardHeader>
               <h2 className="text-lg font-black text-ink">{currentQuestion.question_text}</h2>
               {currentQuestion.image_media?.url ? (
-                <img alt="Soal" className="mt-4 max-h-64 rounded-xl border-2 border-ink object-cover" src={currentQuestion.image_media.url} />
+                <img alt="Soal" className="mt-4 max-h-64 rounded-xl border-2 border-border object-cover" src={currentQuestion.image_media.url} />
               ) : null}
             </CardHeader>
             <CardContent>
               {saveAnswerMutation.isError ? <Alert className="mb-4" tone="error">{getFirstApiError(saveAnswerMutation.error)}</Alert> : null}
-              {saveAnswerMutation.isPending ? <p className="mb-4 text-sm font-bold text-yellow-600">Menyimpan jawaban...</p> : null}
+              {saveAnswerMutation.isPending ? <p className="mb-4 text-sm font-bold text-muted">Menyimpan jawaban...</p> : null}
               
               {currentQuestion.question_type === "multiple_choice" ? (
                 <div className="grid gap-3">
@@ -144,7 +150,7 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
                     return (
                       <button
                         className={`flex min-h-12 w-full items-center rounded-xl border-2 px-4 py-2 text-left font-bold transition-colors ${
-                          isSelected ? "border-blue-600 bg-blue-50 text-blue-900 shadow-[4px_4px_0_#2563eb]" : "border-ink bg-white text-ink hover:bg-slate-50"
+                          isSelected ? "border-primary bg-[var(--color-primary-muted)] text-ink shadow-emi" : "border-border bg-surface text-ink hover:bg-surface-muted"
                         }`}
                         key={option.id}
                         onClick={() => handleOptionSelect(option.id)}
@@ -168,7 +174,7 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
             </CardContent>
           </Card>
 
-          <div className="flex justify-between">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Button disabled={currentQuestionIndex === 0} onClick={handlePrev} variant="secondary">
               Soal Sebelumnya
             </Button>
