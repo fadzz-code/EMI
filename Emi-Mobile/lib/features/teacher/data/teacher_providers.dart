@@ -16,6 +16,21 @@ final teacherClassesProvider = FutureProvider<TeacherClassPage>(
   (ref) => ref.watch(teacherRepositoryProvider).classes(),
 );
 
+final teacherModulesProvider =
+    FutureProvider.family<List<TeacherModule>, String>(
+      (ref, classId) => ref.watch(teacherRepositoryProvider).modules(classId),
+    );
+
+final teacherModuleDetailProvider =
+    FutureProvider.family<TeacherModule, String>(
+      (ref, id) => ref.watch(teacherRepositoryProvider).moduleDetail(id),
+    );
+
+final teacherLessonDetailProvider =
+    FutureProvider.family<TeacherLesson, String>(
+      (ref, id) => ref.watch(teacherRepositoryProvider).lessonDetail(id),
+    );
+
 final teacherClassDetailProvider = FutureProvider.family<TeacherClass, String>(
   (ref, id) => ref.watch(teacherRepositoryProvider).classDetail(id),
 );

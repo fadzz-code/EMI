@@ -108,18 +108,18 @@ Auth notation:
 | GET | `/student/modules/{id}` | `StudentModuleController@show` | Student | Student module detail | High |  |
 | POST | `/student/modules/{id}/start` | `StudentModuleController@start` | Student | Start module | High |  |
 | PATCH | `/student/lessons/{id}/progress` | `StudentProgressController@updateLesson` | Student | Lesson progress | High |  |
-| GET | `/classes/{class_id}/modules` | `ClassModuleController@index` | Auth + scoped | Class modules | Later | Teacher/admin management. |
-| POST | `/classes/{class_id}/modules` | `ClassModuleController@store` | Auth + scoped | Create class module | Low | Teacher/admin. |
-| PATCH | `/classes/{class_id}/modules/reorder` | `ClassModuleController@reorder` | Auth + scoped | Reorder modules | Low |  |
-| GET/PUT/DELETE | `/class-modules/{id}` | `ClassModuleController` | Auth + scoped | Module detail/update/delete | Later |  |
-| POST | `/class-modules/{id}/publish` | `ClassModuleController@publish` | Auth + scoped | Publish module | Low |  |
-| POST | `/class-modules/{id}/archive` | `ClassModuleController@archive` | Auth + scoped | Archive module | Low |  |
-| GET/POST | `/class-modules/{class_module_id}/lessons` | `ClassLessonController@index/store` | Auth + scoped | Lesson list/create | Later |  |
-| GET/PUT/DELETE | `/class-lessons/{id}` | `ClassLessonController` | Auth + scoped | Lesson detail/update/delete | Later |  |
-| GET | `/class-lessons/{id}/content-url` | `ClassLessonController@contentUrl` | Auth + scoped | Lesson media/content URL | High | Mobile should use for protected content. |
-| POST | `/class-lessons/{id}/publish` | `ClassLessonController@publish` | Auth + scoped | Publish lesson | Low |  |
-| POST | `/class-lessons/{id}/archive` | `ClassLessonController@archive` | Auth + scoped | Archive lesson | Low |  |
-| PATCH | `/class-modules/{id}/lessons/reorder` | `ClassLessonController@reorder` | Auth + scoped | Reorder lessons | Low | Class Module, not Admin Module Template. |
+| GET | `/classes/{class_id}/modules` | `ClassModuleController@index` | Auth + scoped | Class modules | High | Guru memakai kelas assignment aktif; Web meminta `per_page=100`, `sort_by=sort_order`, `sort_direction=asc`. Kelas Guru, bukan Admin Template. |
+| POST | `/classes/{class_id}/modules` | `ClassModuleController@store` | Auth + scoped | Create class module | Low | Tersedia API, tetapi Web Guru tidak menyediakan create/template apply. Tidak ditampilkan mobile. |
+| PATCH | `/classes/{class_id}/modules/reorder` | `ClassModuleController@reorder` | Auth + scoped | Reorder modules | Low | Tersedia API, tetapi Web Guru tidak menyediakan reorder. Tidak ditampilkan mobile. |
+| GET/PUT/DELETE | `/class-modules/{id}` | `ClassModuleController` | Auth + scoped | Module detail/update/delete | High | Mobile Web parity memakai GET/PUT; delete tersedia API tetapi tidak tersedia Web Guru. |
+| POST | `/class-modules/{id}/publish` | `ClassModuleController@publish` | Auth + scoped | Publish module | High | Dipakai Web Guru dan mobile; status `published` menjadi Terbit. |
+| POST | `/class-modules/{id}/archive` | `ClassModuleController@archive` | Auth + scoped | Archive module | Low | API tersedia, tidak ada aksi Web Guru; tidak ditampilkan mobile. |
+| GET/POST | `/class-modules/{class_module_id}/lessons` | `ClassLessonController@index/store` | Auth + scoped | Lesson list/create | High | Mobile membaca lesson dari detail modul; create lesson tersedia API, tetapi Web Guru tidak menyediakan. |
+| GET/PUT/DELETE | `/class-lessons/{id}` | `ClassLessonController` | Auth + scoped | Lesson detail/update/delete | High | Mobile memakai GET/PUT; delete tersedia API tetapi tidak tersedia Web Guru. |
+| GET | `/class-lessons/{id}/content-url` | `ClassLessonController@contentUrl` | Auth + scoped | Lesson media/content URL | High | Protected media/content endpoint; path storage tidak ditampilkan. |
+| POST | `/class-lessons/{id}/publish` | `ClassLessonController@publish` | Auth + scoped | Publish lesson | High | Dipakai Web Guru dan mobile; status `published` menjadi Terbit. |
+| POST | `/class-lessons/{id}/archive` | `ClassLessonController@archive` | Auth + scoped | Archive lesson | Low | API tersedia, tidak ada aksi Web Guru; tidak ditampilkan mobile. |
+| PATCH | `/class-modules/{id}/lessons/reorder` | `ClassLessonController@reorder` | Auth + scoped | Reorder lessons | Low | API tersedia, tetapi Web Guru tidak menyediakan reorder. Tidak ditampilkan mobile. |
 | GET | `/admin/module-templates` | `AdminModuleTemplateController@index` | Admin | Admin module template list | Medium | Query: `search`, `status`, `created_by`, `page`, `per_page`, `sort_by`, `sort_direction`. |
 | POST | `/admin/module-templates` | `AdminModuleTemplateController@store` | Admin | Create admin module template | Medium | Body: `title`, `description`, `status` draft/published. |
 | GET | `/admin/module-templates/{id}` | `AdminModuleTemplateController@show` | Admin | Admin module template detail | Medium | Includes lessons when loaded. |

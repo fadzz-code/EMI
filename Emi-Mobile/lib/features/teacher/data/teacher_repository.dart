@@ -203,6 +203,94 @@ class TeacherClassStudentPage {
   }
 }
 
+class TeacherModule {
+  const TeacherModule({
+    required this.id,
+    this.classId,
+    required this.title,
+    required this.description,
+    required this.status,
+    required this.sortOrder,
+    required this.lessons,
+  });
+
+  final String id;
+  final String title;
+  final String description;
+  final String status;
+  final int sortOrder;
+  final List<TeacherLesson> lessons;
+
+  final String? classId;
+
+  factory TeacherModule.fromJson(Map<String, dynamic> json) => TeacherModule(
+    id: _string(json['id']),
+    classId: _nullableString(json['class_id']),
+    title: _string(json['title'], fallback: 'Modul tanpa judul'),
+    description: _string(json['description']),
+    status: _string(json['status'], fallback: 'draft'),
+    sortOrder: _int(json['sort_order'], fallback: 1),
+    lessons: json['lessons'] is List
+        ? (json['lessons'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map(TeacherLesson.fromJson)
+              .toList()
+        : const [],
+  );
+}
+
+class TeacherLesson {
+  const TeacherLesson({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.contentType,
+    required this.contentBody,
+    required this.externalUrl,
+    required this.mediaId,
+    required this.mediaName,
+    required this.mediaType,
+    required this.sortOrder,
+    required this.status,
+  });
+
+  final String id;
+  final String title;
+  final String description;
+  final String contentType;
+  final String contentBody;
+  final String? externalUrl;
+  final String? mediaId;
+  final String? mediaName;
+  final String? mediaType;
+  final int sortOrder;
+  final String status;
+
+  factory TeacherLesson.fromJson(Map<String, dynamic> json) {
+    final media = _map(json['media']);
+    return TeacherLesson(
+      id: _string(json['id']),
+      title: _string(json['title'], fallback: 'Materi tanpa judul'),
+      description: _string(json['description']),
+      contentType: _string(json['content_type'], fallback: 'text'),
+      contentBody: _string(json['content_body']),
+      externalUrl: _nullableString(json['external_url']),
+      mediaId: _nullableString(media['id'] ?? json['media_id']),
+      mediaName: _nullableString(media['original_name']),
+      mediaType: _nullableString(media['mime_type']),
+      sortOrder: _int(json['sort_order'], fallback: 1),
+      status: _string(json['status'], fallback: 'draft'),
+    );
+  }
+}
+
+class TeacherMediaUpload {
+  const TeacherMediaUpload({required this.id, required this.name});
+
+  final String id;
+  final String name;
+}
+
 class TeacherRepository {
   const TeacherRepository(this._dio, this._mapper);
 
@@ -213,6 +301,73 @@ class TeacherRepository {
     () => _dio.get<Map<String, dynamic>>('/teacher/dashboard/summary'),
     (json) => TeacherDashboardSummary.fromJson(_data(json, 'Dashboard guru')),
   );
+
+  Future<List<TeacherModule>> modules(String classId) => _request(
+    () => _dio.get<Map<String, dynamic>>(
+      '/classes/$classId/modules',
+      queryParameters: const {
+        'per_page': 100,
+        'sort_by': 'sort_order',
+        'sort_direction': 'asc',
+      },
+    ),
+    (json) => (json?['data'] is List ? json!['data'] as List : const [])
+        .whereType<Map<String, dynamic>>()
+        .map(TeacherModule.fromJson)
+        .toList(),
+  );
+
+  Future<TeacherModule> moduleDetail(String id) => _request(
+    () => _dio.get<Map<String, dynamic>>('/class-modules/$id'),
+    (json) => TeacherModule.fromJson(_data(json, 'Detail modul')),
+  );
+
+  Future<TeacherModule> updateModule(String id, Map<String, dynamic> data) =>
+      _request(
+        () => _dio.put<Map<String, dynamic>>('/class-modules/$id', data: data),
+        (json) => TeacherModule.fromJson(_data(json, 'Modul')),
+      );
+
+  Future<TeacherModule> publishModule(String id) =>
+      _action('/class-modules/$id/publish', 'Modul');
+
+  Future<TeacherLesson> lessonDetail(String id) => _request(
+    () => _dio.get<Map<String, dynamic>>('/class-lessons/$id'),
+    (json) => TeacherLesson.fromJson(_data(json, 'Detail materi')),
+  );
+
+  Future<TeacherLesson> updateLesson(String id, Map<String, dynamic> data) =>
+      _request(
+        () => _dio.put<Map<String, dynamic>>('/class-lessons/$id', data: data),
+        (json) => TeacherLesson.fromJson(_data(json, 'Materi')),
+      );
+
+  Future<TeacherLesson> publishLesson(String id) =>
+      _actionLesson('/class-lessons/$id/publish');
+
+  Future<TeacherMediaUpload> uploadMedia(
+    String path,
+    String name, {
+    required String purpose,
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/media',
+        data: FormData.fromMap({
+          'file': await MultipartFile.fromFile(path, filename: name),
+          'purpose': purpose,
+          'visibility': 'private',
+        }),
+      );
+      final data = _data(response.data, 'Media');
+      return TeacherMediaUpload(
+        id: _string(data['id']),
+        name: _string(data['original_name'], fallback: name),
+      );
+    } catch (error) {
+      throw error is AppError ? error : _mapper.map(error);
+    }
+  }
 
   Future<TeacherClassPage> classes({int page = 1, String? search}) => _request(
     () => _dio.get<Map<String, dynamic>>(
@@ -243,6 +398,16 @@ class TeacherRepository {
       },
     ),
     TeacherClassStudentPage.fromJson,
+  );
+
+  Future<TeacherModule> _action(String path, String label) => _request(
+    () => _dio.post<Map<String, dynamic>>(path),
+    (json) => TeacherModule.fromJson(_data(json, label)),
+  );
+
+  Future<TeacherLesson> _actionLesson(String path) => _request(
+    () => _dio.post<Map<String, dynamic>>(path),
+    (json) => TeacherLesson.fromJson(_data(json, 'Materi')),
   );
 
   Future<T> _request<T>(

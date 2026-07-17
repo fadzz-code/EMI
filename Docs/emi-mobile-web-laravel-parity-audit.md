@@ -425,11 +425,11 @@ Mobile settings status: `PARTIAL`; implementasi typed mencakup application, prof
 | Detail kelas | detail | `/teacher/classes/{id}` | `/classes/{id}` | GET | own active assignment; foreign 403 | PARTIAL | backend + Flutter targeted | Mobile detail sendiri tersedia; resource boleh memuat email, tetapi phone/password/sensitive omitted. |
 | Daftar siswa | active membership list/search | `/teacher/classes/{id}/students`, `/teacher/students` | `/classes/{id}/students` | GET | own active assignment; active memberships only; foreign 403 | PARTIAL | backend + Flutter targeted | Mobile list/search membership aktif tersedia; email boleh tampil, phone/password/sensitive omitted. |
 | Progress siswa | detail/progress | `/teacher/students/{id}`, reports | `/teacher/reports/progress/students` | GET | assigned class/student | MISSING | none | No mobile progress. |
-| Modul kelas | list | `/teacher/modules`, `/teacher/classes/{id}/modules` | `/classes/{id}/modules`, `/class-modules/{id}` | GET | assigned class | MISSING | none | No mobile teacher modules. |
-| Lesson | edit/publish | lesson edit route | `/class-lessons*` | GET/PUT/POST | assigned class | MISSING | none | No mobile lesson edit. |
-| Media | upload/temp URL | `/teacher/media` | `/media*` | mixed | MediaPolicy | MISSING | none | No mobile teacher media. |
-| Create/update module | update class module | module edit | `/class-modules/{id}` | PUT | assigned class | MISSING | none | No mobile update. |
-| Publish module | publish/archive | module edit | `/class-modules/{id}/publish|archive` | POST | assigned class | MISSING | none | No mobile status. |
+| Modul kelas | list/edit | `/teacher/modules`, `/teacher/classes/{id}/modules` | `/classes/{id}/modules`, `/class-modules/{id}` | GET/PUT | active assignment | PARTIAL | `teacher_modules_test.dart`; backend TeacherModulesTest | Mobile list memakai active class, detail/edit memakai title/description/sort_order. Create/template apply/delete/archive/reorder tidak ditampilkan karena tidak tersedia Web Guru. Smoke HP belum dijalankan. |
+| Lesson | edit/publish | `/teacher/modules/{id}/lessons/{lessonId}/edit` | `/class-lessons/{id}` | GET/PUT/POST | active assignment | PARTIAL | `teacher_modules_test.dart`; backend TeacherModulesTest | Mobile edit materi existing, publish, dan content type fields sesuai Web. Create/delete/archive/reorder tidak ditampilkan karena tidak tersedia Web Guru. Smoke HP belum dijalankan. |
+| Media | upload/replace/remove | lesson edit | `/media`, `/class-lessons/{id}` | POST/PUT | MediaPolicy + assigned class | PARTIAL | `teacher_modules_test.dart`; backend module tests | Mobile upload media lesson, replace/remove via `media_id`; tidak menampilkan path internal. Preview/content URL smoke belum dijalankan. |
+| Create/update module | update class module | module edit | `/class-modules/{id}` | PUT | active assignment | PARTIAL | `teacher_modules_test.dart`; backend TeacherModulesTest | Update mobile selesai; create manual/template apply tidak tersedia Web Guru dan tidak dibuat. |
+| Publish module | publish | module edit | `/class-modules/{id}/publish` | POST | active assignment | PARTIAL | `teacher_modules_test.dart`; backend TeacherModulesTest | Publish mobile selesai; archive/unpublish tidak tersedia Web Guru sehingga tidak dibuat. |
 | Kuis kelas | list/create | `/teacher/quizzes`, class quizzes | `/class-quizzes*` | GET/POST | assigned class | MISSING | none | No mobile teacher quizzes. |
 | Quiz builder | create/edit questions | `/teacher/quizzes/{id}/builder` | `/class-quizzes/{id}/questions*`, `/quiz-questions*` | mixed | assigned class | MISSING | none | No mobile builder. |
 | Pertanyaan | CRUD | builder | same | mixed | assigned class | MISSING | none | No mobile. |
@@ -474,6 +474,21 @@ Status: `PARTIAL`; belum `PARITY_COMPLETE` sebelum smoke HP.
 - Verifikasi backend: 4 tests / 33 assertions. Flutter targeted: 18 tests saat ini. Analyzer: pass.
 - Smoke test HP: `SIAP UNTUK SMOKE TEST HP` / `NOT_TESTED`. Belum commit.
 - Scope FASE C ini tidak mengubah Modul, Kuis, Budaya, Speaking, atau Laporan Guru.
+
+## FASE B Guru Modul Kelas update 2026-07-17
+
+Status: `PARTIAL`; siap untuk smoke test Guru Modul Kelas, belum `PARITY_COMPLETE` sebelum smoke HP.
+
+- Kontrak Web Guru aktual: list `/teacher/modules`; edit `/teacher/modules/{classModuleId}/edit`; edit materi `/teacher/modules/{classModuleId}/lessons/{classLessonId}/edit`. Guru hanya mengedit class module yang sudah ada, menerbitkan modul, mengedit materi existing, menerbitkan materi, dan mengelola lampiran media.
+- Kontrak API Class Module berbeda dari Admin Module Template. Guru memakai `/classes/{class_id}/modules` dan `/class-modules/{id}*`; Admin memakai `/admin/module-templates*`. Guru tidak memakai endpoint Admin dan tidak dapat mengubah template global.
+- Mobile route: `/teacher/modules`, `/teacher/modules/:id/edit`, `/teacher/modules/:moduleId/lessons/:id/edit`. Quick action dan menu `Modul Kelas` membuka root melalui `context.go()`; child memakai `context.push()`; direct-link child memiliki fallback parent.
+- Authorization: backend memakai active teacher assignment melalui policy/access service. Guru lain ditolak; Admin/Siswa/guest mengikuti policy dan middleware aktual. Mobile tidak menerima class ID dari input pengguna, tetapi mengambil active class dari dashboard.
+- UI sengaja tidak menambah create manual, template picker/apply, create lesson, delete, archive, unpublish, reorder, search, filter, atau pagination karena Web Guru aktual tidak menyediakan fungsi tersebut. API endpoint yang ada tetap dicatat, tetapi tidak dianggap parity Web.
+- Status: `draft` dipetakan ke `Draft`, `published` ke `Terbit`, `archived` ke `Arsip`. Error network/validation dipetakan ke Bahasa Indonesia; raw ID, enum mentah, storage path, dan stack trace tidak ditampilkan.
+- Media: upload melalui `/media` dengan purpose `lesson_media`; penggantian/penghapusan dikirim sebagai `media_id`; response UI hanya memakai nama/jenis media, bukan path internal. Protected content URL tersedia di API, tetapi preview device belum dismoke.
+- Back: TeacherShell memakai fallback `/teacher/modules`; AppBar Back dan Back HP memakai guard dirty form yang sama. Form mencegah submit ganda dan mempertahankan input saat simpan gagal.
+- Test: backend `TeacherModulesTest` 2 pass / 41 assertions; Flutter targeted Guru Modul 23 pass; analyzer pass dengan info lint saja. Full Flutter suite dan device smoke masih perlu dijalankan.
+- Keputusan: `SIAP UNTUK SMOKE TEST GURU MODUL KELAS`, dengan blocker nyata hanya full verification/device smoke yang belum dijalankan.
 
 ---
 

@@ -95,11 +95,7 @@ class TeacherDashboardScreen extends ConsumerWidget {
                   TeacherQuickAction(
                     label: 'Modul Kelas',
                     icon: Icons.menu_book_outlined,
-                    onTap: () => _showComingSoon(
-                      context,
-                      'Modul Kelas',
-                      Icons.menu_book_outlined,
-                    ),
+                    onTap: () => context.go('/teacher/modules'),
                   ),
                   TeacherQuickAction(
                     label: 'Kuis Kelas',

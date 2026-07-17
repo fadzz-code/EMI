@@ -40,6 +40,7 @@ import '../../features/speaking/presentation/student_speaking_list_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/teacher/presentation/teacher_classes_screens.dart';
 import '../../features/teacher/presentation/teacher_dashboard_screen.dart';
+import '../../features/teacher/presentation/teacher_modules_screens.dart';
 import 'router_refresh_stream.dart';
 import 'unsupported_role_screen.dart';
 
@@ -129,6 +130,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/teacher/classes/:id',
         builder: (_, state) =>
             TeacherClassDetailScreen(id: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
+        path: '/teacher/modules',
+        builder: (_, _) => const TeacherModulesScreen(),
+      ),
+      GoRoute(
+        path: '/teacher/modules/:id/edit',
+        builder: (_, state) =>
+            TeacherModuleEditScreen(id: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
+        path: '/teacher/modules/:moduleId/lessons/:id/edit',
+        builder: (_, state) => TeacherLessonEditScreen(
+          moduleId: state.pathParameters['moduleId'] ?? '',
+          id: state.pathParameters['id'] ?? '',
+        ),
       ),
       GoRoute(
         path: '/teacher/profile',
