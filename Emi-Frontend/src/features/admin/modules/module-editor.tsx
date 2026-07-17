@@ -343,104 +343,111 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
                   />
                 ) : (
                   <div className="grid gap-4">
-                    <Table>
-                      <TableHeader>
+                    <Table className="min-w-0 md:min-w-[980px]">
+                      <TableHeader className="hidden md:table-header-group">
                         <tr>
                           <th className="px-4 py-3">Materi</th>
                           <th className="px-4 py-3">Jenis</th>
                           <th className="px-4 py-3">Status</th>
                           <th className="px-4 py-3">Urutan</th>
-                          <th className="px-4 py-3">Aksi</th>
+                          <th className="min-w-[356px] px-4 py-3">Aksi</th>
                         </tr>
                       </TableHeader>
                       <tbody>
                         {lessons.map((lesson, index) => (
-                          <tr key={lesson.id}>
-                            <TableCell>
+                          <tr className="grid gap-3 p-4 md:table-row md:p-0" key={lesson.id}>
+                            <TableCell className="border-0 p-0 md:border-t md:px-4 md:py-3">
                               <p className="font-black text-ink">{lesson.title}</p>
                               <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">
                                 {lesson.description ?? "Tanpa deskripsi."}
                               </p>
                             </TableCell>
-                            <TableCell>{contentTypeLabel(lesson.content_type)}</TableCell>
-                            <TableCell>
+                            <TableCell className="border-0 p-0 md:border-t md:px-4 md:py-3">
+                              <span className="font-bold md:hidden">Jenis: </span>
+                              {contentTypeLabel(lesson.content_type)}
+                            </TableCell>
+                            <TableCell className="border-0 p-0 md:border-t md:px-4 md:py-3">
+                              <span className="mr-2 font-bold md:hidden">Status:</span>
                               <Badge tone={statusTone(lesson.status)}>
                                 {statusLabel(lesson.status)}
                               </Badge>
                             </TableCell>
-                            <TableCell>{lesson.sort_order}</TableCell>
-                            <TableCell>
+                            <TableCell className="border-0 p-0 md:border-t md:px-4 md:py-3">
+                              <span className="font-bold md:hidden">Urutan: </span>
+                              {lesson.sort_order}
+                            </TableCell>
+                            <TableCell className="border-0 p-0 md:min-w-[356px] md:border-t md:px-4 md:py-3">
                               <div className="flex flex-wrap gap-2">
                                 <a
                                   aria-label={`Preview ${lesson.title}`}
-                                  className="inline-flex size-10 items-center justify-center rounded-lg border-2 border-ink bg-white text-ink transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                                  className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg border-2 border-ink bg-white text-ink transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
                                   href={`#preview-${lesson.id}`}
                                   title="Preview materi"
                                 >
-                                  <Eye aria-hidden="true" size={18} />
+                                  <Eye aria-hidden="true" size={21} />
                                 </a>
                                 <Button
                                   aria-label={`Naikkan urutan ${lesson.title}`}
-                                  className="size-10 min-h-10 p-0"
+                                  className="size-11 min-h-11 shrink-0 p-0"
                                   disabled={index === 0 || reorderLessonMutation.isPending}
                                   onClick={() => moveLesson(index, -1)}
                                   title="Naikkan urutan"
                                   variant="ghost"
                                 >
-                                  <ArrowUp aria-hidden="true" size={18} />
+                                  <ArrowUp aria-hidden="true" size={21} />
                                 </Button>
                                 <Button
                                   aria-label={`Turunkan urutan ${lesson.title}`}
-                                  className="size-10 min-h-10 p-0"
+                                  className="size-11 min-h-11 shrink-0 p-0"
                                   disabled={index === lessons.length - 1 || reorderLessonMutation.isPending}
                                   onClick={() => moveLesson(index, 1)}
                                   title="Turunkan urutan"
                                   variant="ghost"
                                 >
-                                  <ArrowDown aria-hidden="true" size={18} />
+                                  <ArrowDown aria-hidden="true" size={21} />
                                 </Button>
                                 <Button
                                   aria-label={`Edit ${lesson.title}`}
-                                  className="size-10 min-h-10 p-0"
+                                  className="size-11 min-h-11 shrink-0 p-0"
                                   onClick={() => setEditingLesson(lesson)}
                                   title="Edit materi"
                                   variant="secondary"
                                 >
-                                  <Pencil aria-hidden="true" size={18} />
+                                  <Pencil aria-hidden="true" size={21} />
                                 </Button>
                                 {lesson.status !== "published" ? (
                                   <Button
                                     aria-label={`Terbitkan ${lesson.title}`}
-                                    className="size-10 min-h-10 p-0"
+                                    className="size-11 min-h-11 shrink-0 p-0"
                                     disabled={publishLessonMutation.isPending}
                                     onClick={() => publishLessonMutation.mutate(lesson.id)}
                                     title="Terbitkan materi"
                                     variant="secondary"
                                   >
-                                    <Upload aria-hidden="true" size={18} />
+                                    <Upload aria-hidden="true" size={21} />
                                   </Button>
                                 ) : null}
                                 {lesson.status !== "archived" ? (
                                   <Button
                                     aria-label={`Arsipkan ${lesson.title}`}
-                                    className="size-10 min-h-10 p-0"
+                                    className="size-11 min-h-11 shrink-0 p-0"
                                     disabled={archiveLessonMutation.isPending}
                                     onClick={() => archiveLessonMutation.mutate(lesson.id)}
                                     title="Arsipkan materi"
                                     variant="ghost"
                                   >
-                                    <Archive aria-hidden="true" size={18} />
+                                    <Archive aria-hidden="true" size={21} />
                                   </Button>
                                 ) : null}
                                 <Button
                                   aria-label={`Hapus ${lesson.title}`}
-                                  className="size-10 min-h-10 p-0"
+                                  className="size-11 min-h-11 shrink-0 p-0"
                                   disabled={deleteLessonMutation.isPending}
                                   onClick={() => setDeleteLessonTarget(lesson)}
                                   title="Hapus materi"
                                   variant="danger"
                                 >
-                                  <Trash2 aria-hidden="true" size={18} />
+                                  <Trash2 aria-hidden="true" size={21} />
                                 </Button>
                               </div>
                             </TableCell>
