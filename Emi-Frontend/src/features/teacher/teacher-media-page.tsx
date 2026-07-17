@@ -10,7 +10,7 @@ import { getFirstApiError } from "@/lib/api-client";
 import { teacherRoutes } from "@/lib/routes";
 
 import { teacherService } from "./teacher-service";
-import type { TeacherLessonMediaPurpose, TeacherMediaFile } from "./types";
+import type { TeacherMediaFile } from "./types";
 
 function formatBytes(value: number | null | undefined) {
   if (typeof value !== "number") {
@@ -28,7 +28,7 @@ export function TeacherMediaPage() {
   const [uploaded, setUploaded] = useState<TeacherMediaFile | null>(null);
 
   const uploadMutation = useMutation({
-    mutationFn: ({ selectedFile, purpose, visibility }: { selectedFile: File; purpose: TeacherLessonMediaPurpose | "question_image"; visibility: "public" | "private" }) => teacherService.uploadMedia(token ?? "", selectedFile, purpose, visibility),
+    mutationFn: ({ selectedFile, purpose, visibility }: { selectedFile: File; purpose: string; visibility: "public" | "private" }) => teacherService.uploadMedia(token ?? "", selectedFile, purpose, visibility),
     onSuccess: (media) => setUploaded(media),
   });
 
@@ -40,7 +40,7 @@ export function TeacherMediaPage() {
     const formData = new FormData(event.currentTarget);
     uploadMutation.mutate({
       selectedFile: file,
-      purpose: String(formData.get("purpose") ?? "lesson_image") as TeacherLessonMediaPurpose | "question_image",
+      purpose: String(formData.get("purpose") ?? "lesson_image"),
       visibility: String(formData.get("visibility") ?? "public") as "public" | "private",
     });
   }

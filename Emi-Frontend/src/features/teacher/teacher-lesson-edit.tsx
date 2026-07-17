@@ -9,7 +9,6 @@ import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 import { teacherRoutes } from "@/lib/routes";
 
-import { friendlyLessonMediaError, lessonMediaConfig, validateLessonMedia } from "./teacher-lesson-workflow";
 import { teacherService } from "./teacher-service";
 import { statusLabel } from "./teacher-utils";
 
@@ -17,7 +16,6 @@ export function TeacherLessonEdit({ moduleId, lessonId }: { moduleId: string; le
   const { token } = useAuth();
   const queryClient = useQueryClient();
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [mediaError, setMediaError] = useState<string | null>(null);
 
   const lessonQuery = useQuery({
     queryKey: ["teacher", "class-lessons", lessonId],
@@ -44,33 +42,22 @@ export function TeacherLessonEdit({ moduleId, lessonId }: { moduleId: string; le
   });
 
   const uploadMediaMutation = useMutation({
-    mutationFn: ({ file, purpose }: { file: File; purpose: "document" | "lesson_image" | "audio" }) => teacherService.uploadMedia(token ?? "", file, purpose),
+    mutationFn: (file: File) => teacherService.uploadMedia(token ?? "", file, "lesson_media"),
   });
 
   const lessonData = lessonQuery.data;
-  const mediaConfig = lessonData?.content_type ? lessonMediaConfig(lessonData.content_type) : null;
-  const isMediaOperationPending = uploadMediaMutation.isPending || updateMutation.isPending;
 
   const handleUploadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !lessonData?.content_type || !mediaConfig) return;
-    const validationError = validateLessonMedia(file, lessonData.content_type);
-    setSuccessMsg(null);
-    setMediaError(validationError);
-    if (validationError) {
-      e.target.value = "";
-      return;
-    }
+    if (!file) return;
 
     try {
-      const media = await uploadMediaMutation.mutateAsync({ file, purpose: mediaConfig.purpose });
-      await updateMutation.mutateAsync({ media_id: media.id });
-      setSuccessMsg("Media berhasil diunggah dan disimpan ke materi.");
-    } catch (error) {
       setSuccessMsg(null);
-      setMediaError(friendlyLessonMediaError(error));
-    } finally {
-      e.target.value = "";
+      const media = await uploadMediaMutation.mutateAsync(file);
+      updateMutation.mutate({ media_id: media.id });
+      setSuccessMsg("Media berhasil diunggah dan disimpan ke materi.");
+    } catch {
+      // Error is caught by mutation
     }
   };
 
@@ -101,13 +88,13 @@ export function TeacherLessonEdit({ moduleId, lessonId }: { moduleId: string; le
                   e.preventDefault();
                   setSuccessMsg(null);
                   const formData = new FormData(e.currentTarget);
-                   updateMutation.mutate({
-                     title: String(formData.get("title") ?? ""),
-                     description: String(formData.get("description") ?? "") || null,
-                     content_body: lessonData.content_type === "text" ? String(formData.get("content_body") ?? "") || null : null,
-                     external_url: lessonData.content_type === "video" || lessonData.content_type === "link" ? String(formData.get("external_url") ?? "") || null : null,
-                     sort_order: Number(formData.get("sort_order") ?? 1),
-                   });
+                  updateMutation.mutate({
+                    title: String(formData.get("title") ?? ""),
+                    description: String(formData.get("description") ?? ""),
+                    content_body: String(formData.get("content_body") ?? ""),
+                    external_url: String(formData.get("external_url") ?? ""),
+                    sort_order: Number(formData.get("sort_order") ?? 1),
+                  });
                 }}
               >
                 {successMsg ? <Alert tone="success">{successMsg}</Alert> : null}
@@ -139,7 +126,7 @@ export function TeacherLessonEdit({ moduleId, lessonId }: { moduleId: string; le
                 </label>
 
                 <div className="mt-2 flex flex-col gap-3 sm:flex-row">
-                  <Button disabled={isMediaOperationPending || publishMutation.isPending} type="submit">
+                  <Button disabled={updateMutation.isPending || publishMutation.isPending} type="submit">
                     {updateMutation.isPending ? "Menyimpan..." : "Simpan Perubahan"}
                   </Button>
                   {lessonData.status !== "published" ? (
@@ -170,10 +157,11 @@ export function TeacherLessonEdit({ moduleId, lessonId }: { moduleId: string; le
                 {lessonData.media ? (
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                     <p className="font-bold text-ink">Media Terlampir</p>
-                     <p className="text-sm text-slate-600">Tipe: {lessonData.media.mime_type}</p>
+                    <p className="text-sm text-slate-600">ID: {lessonData.media.id}</p>
+                    <p className="text-sm text-slate-600">Tipe: {lessonData.media.mime_type}</p>
                     <div className="mt-2">
                       <Button
-                        disabled={isMediaOperationPending || publishMutation.isPending}
+                        disabled={updateMutation.isPending}
                         onClick={() => {
                           if (confirm("Hapus lampiran media?")) updateMutation.mutate({ media_id: null });
                         }}
@@ -190,17 +178,17 @@ export function TeacherLessonEdit({ moduleId, lessonId }: { moduleId: string; le
 
                 <div className="rounded-xl border-2 border-dashed border-slate-300 p-4 text-center">
                   <p className="mb-2 text-sm font-bold text-slate-600">Unggah Media Baru</p>
-                   {mediaError ? <Alert className="mb-2" tone="error">{mediaError}</Alert> : null}
-                   {isMediaOperationPending ? <p className="text-sm text-slate-500">Mengunggah dan menyimpan...</p> : null}
-                   {mediaConfig ? (
-                     <input
-                       accept={mediaConfig.accept}
-                       className="block w-full text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-2 file:border-ink file:bg-yellow-300 file:px-4 file:py-2 file:text-sm file:font-bold file:text-ink hover:file:bg-yellow-200"
-                       disabled={isMediaOperationPending || publishMutation.isPending}
-                       onChange={handleUploadFile}
-                       type="file"
-                     />
-                   ) : <p className="text-sm text-slate-500">Tipe materi ini tidak menggunakan lampiran file.</p>}
+                  {uploadMediaMutation.error ? <Alert className="mb-2" tone="error">{getFirstApiError(uploadMediaMutation.error)}</Alert> : null}
+                  {uploadMediaMutation.isPending ? (
+                    <p className="text-sm text-slate-500">Mengunggah...</p>
+                  ) : (
+                    <input
+                      accept="image/*,audio/*,application/pdf"
+                      className="block w-full text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-2 file:border-ink file:bg-yellow-300 file:px-4 file:py-2 file:text-sm file:font-bold file:text-ink hover:file:bg-yellow-200"
+                      onChange={handleUploadFile}
+                      type="file"
+                    />
+                  )}
                 </div>
                 <Alert tone="warning">Mengunggah file baru akan langsung mengganti lampiran lama pada materi ini.</Alert>
               </div>
