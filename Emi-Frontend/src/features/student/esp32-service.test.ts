@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { CONTROL_PACKET_TYPE, Esp32SerialService, ESP32_BAUD_RATE, getSerialSupport, PCM_PACKET_TYPE, PLAYBACK_CHUNK_BYTES, PLAYBACK_PACING_MS, SERIAL_CHOOSER_CANCELLED_MESSAGE, SERIAL_UNSUPPORTED_MESSAGE, STOP_PLAYBACK, type SerialNavigator, type SerialPortLike } from "./esp32-serial-service";
+import { CONTROL_PACKET_TYPE, Esp32SerialService, ESP32_BAUD_RATE, getSerialSupport, HARDWARE_PLAYBACK_CHUNK_BYTES, HARDWARE_PLAYBACK_FLUSH_DELAY_MS, HARDWARE_PLAYBACK_INTERVAL_MS, PCM_PACKET_TYPE, SERIAL_CHOOSER_CANCELLED_MESSAGE, SERIAL_UNSUPPORTED_MESSAGE, STOP_PLAYBACK, type SerialNavigator, type SerialPortLike } from "./esp32-serial-service";
 import { encodeSerialPacket } from "./esp32-serial-parser";
 import { pcmS16leToWav } from "./pcm-wav";
 import { speakingAttemptForm } from "./student-service";
@@ -135,11 +135,11 @@ describe("Esp32SerialService", () => {
     const service = new Esp32SerialService(() => ({ requestPort: vi.fn(async () => port), getPorts: vi.fn(async () => []) }));
     await service.connect(true, () => undefined);
     const waits: number[] = [];
-    await service.playPcm(new Uint8Array(PLAYBACK_CHUNK_BYTES * 2 + 4), { wait: async (milliseconds) => { waits.push(milliseconds); } });
+    await service.playPcm(new Uint8Array(HARDWARE_PLAYBACK_CHUNK_BYTES * 2 + 4), { wait: async (milliseconds) => { waits.push(milliseconds); } });
     expect(written).toHaveLength(4);
     expect(written.slice(0, 3).map((packet) => packet.length)).toEqual([518, 518, 10]);
     expect(written.slice(0, 3).every((packet) => packet[2] === PCM_PACKET_TYPE)).toBe(true);
-    expect(waits).toEqual([PLAYBACK_PACING_MS, PLAYBACK_PACING_MS, PLAYBACK_PACING_MS]);
+    expect(waits).toEqual([HARDWARE_PLAYBACK_INTERVAL_MS, HARDWARE_PLAYBACK_INTERVAL_MS, HARDWARE_PLAYBACK_FLUSH_DELAY_MS]);
     expect(written[3]).toEqual(encodeSerialPacket(CONTROL_PACKET_TYPE, new Uint8Array([STOP_PLAYBACK])));
     await service.disconnect();
   });
@@ -152,6 +152,23 @@ describe("Esp32SerialService", () => {
     await expect(promise).rejects.toThrow();
     expect(written.at(-1)).toEqual(encodeSerialPacket(CONTROL_PACKET_TYPE, new Uint8Array([STOP_PLAYBACK])));
     await service.disconnect();
+  });
+  it("disconnect cancels playback before closing the port", async () => {
+    const { port, written } = fakePort();
+    const service = new Esp32SerialService(() => ({ requestPort: vi.fn(async () => port), getPorts: vi.fn(async () => []) }));
+    await service.connect(true, () => undefined);
+    let release!: () => void;
+    let waits = 0;
+    let started!: () => void;
+    const waiting = new Promise<void>((resolve) => { started = resolve; });
+    const playback = service.playPcm(new Uint8Array(1024), { wait: () => ++waits === 1 ? new Promise<void>((resolve) => { release = resolve; started(); }) : Promise.resolve() });
+    await waiting;
+    const disconnect = service.disconnect();
+    release();
+    await expect(playback).rejects.toThrow();
+    await disconnect;
+    expect(written.at(-1)).toEqual(encodeSerialPacket(CONTROL_PACKET_TYPE, new Uint8Array([STOP_PLAYBACK])));
+    expect(port.close).toHaveBeenCalledOnce();
   });
   it("rejects concurrent playback", async () => {
     const { port } = fakePort();
