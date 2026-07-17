@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useMemo, useState } from "react";
+import { type ChangeEvent, type FormEvent, useMemo, useRef, useState } from "react";
 
 import {
   Alert,
@@ -21,11 +21,16 @@ import {
   mediaPurposeForContentType,
   normalizeNullable,
 } from "./module-utils";
+import {
+  INVALID_MEDIA_TYPE_MESSAGE,
+  isValidMediaFile,
+  mediaUploadSuccessMessage,
+  PUBLIC_MEDIA_VISIBILITY,
+} from "./module-workflow";
 import type {
   LessonContentType,
   LessonTemplate,
   LessonTemplatePayload,
-  MediaVisibility,
   ModuleTemplateStatus,
 } from "./types";
 
@@ -104,44 +109,76 @@ export function ModuleContentForm({
 }) {
   const [form, setForm] = useState<LessonFormState>(() => toForm(lesson));
   const [mediaFile, setMediaFile] = useState<File | null>(null);
-  const [visibility, setVisibility] = useState<MediaVisibility>("public");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  const uploadSequence = useRef(0);
 
   const mediaPurpose = useMemo(
     () => mediaPurposeForContentType(form.content_type),
     [form.content_type],
   );
 
-  async function uploadMedia() {
-    if (!mediaFile || !mediaPurpose) {
+  async function handleMediaChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    const contentType = form.content_type;
+    const sequence = uploadSequence.current + 1;
+    uploadSequence.current = sequence;
+    setMediaFile(file);
+    setForm((current) => ({ ...current, media_id: "" }));
+    setUploadError(null);
+    setUploadSuccess(null);
+
+    if (!file) {
+      setIsUploading(false);
       return;
     }
 
-    setUploadError(null);
-    setUploadSuccess(null);
+    if (!isValidMediaFile(contentType, file)) {
+      setMediaFile(null);
+      setUploadError(INVALID_MEDIA_TYPE_MESSAGE);
+      setIsUploading(false);
+      event.target.value = "";
+      return;
+    }
+
     setIsUploading(true);
 
     try {
       const media = await lessonTemplateService.uploadMedia(
         token,
-        form.content_type,
-        mediaFile,
-        visibility,
+        contentType,
+        file,
+        PUBLIC_MEDIA_VISIBILITY,
       );
+
+      if (sequence !== uploadSequence.current) {
+        return;
+      }
+
+      if (!media.id) {
+        throw new Error("Response upload media tidak valid.");
+      }
+
       setForm((current) => ({ ...current, media_id: media.id }));
-      setUploadSuccess(`Media ${media.original_name} berhasil diunggah.`);
+      setUploadSuccess(mediaUploadSuccessMessage(contentType));
     } catch (error) {
-      setUploadError(getFirstApiError(error));
+      if (sequence === uploadSequence.current) {
+        setUploadError(getFirstApiError(error));
+      }
     } finally {
-      setIsUploading(false);
+      if (sequence === uploadSequence.current) {
+        setIsUploading(false);
+      }
     }
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onSubmit(toPayload(form));
+
+    if (!isUploading) {
+      onSubmit(toPayload(form));
+    }
   }
 
   const isExternal = form.content_type === "video" || form.content_type === "link";
@@ -152,26 +189,32 @@ export function ModuleContentForm({
       {uploadError ? <Alert tone="error">{uploadError}</Alert> : null}
       {uploadSuccess ? <Alert tone="success">{uploadSuccess}</Alert> : null}
 
-      <div className="grid gap-4 md:grid-cols-[1fr_180px_150px]">
-        <FormField label="Judul materi">
-          <Input
-            maxLength={255}
-            onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
-            required
-            value={form.title}
-          />
-        </FormField>
+      <FormField label="Judul materi">
+        <Input
+          maxLength={255}
+          onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+          required
+          value={form.title}
+        />
+      </FormField>
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_150px]">
         <FormField label="Jenis materi">
           <Select
-            onChange={(event) =>
+            disabled={isUploading}
+            onChange={(event) => {
+              uploadSequence.current += 1;
+              setMediaFile(null);
+              setUploadError(null);
+              setUploadSuccess(null);
+              setIsUploading(false);
               setForm((current) => ({
                 ...current,
                 content_type: event.target.value as LessonContentType,
                 content_body: "",
                 external_url: "",
                 media_id: "",
-              }))
-            }
+              }));
+            }}
             value={form.content_type}
           >
             <option value="text">Teks</option>
@@ -233,39 +276,14 @@ export function ModuleContentForm({
 
       {mediaPurpose ? (
         <div className="grid gap-4">
-          <div className="grid gap-4 md:grid-cols-[1fr_160px_auto] md:items-end">
-            <FormField label={`${contentTypeLabel(form.content_type)} media ID`}>
-              <Input
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, media_id: event.target.value }))
-                }
-                placeholder="Terisi otomatis setelah upload"
-                required
-                value={form.media_id}
-              />
-            </FormField>
-            <FormField label="Visibilitas">
-              <Select
-                onChange={(event) => setVisibility(event.target.value as MediaVisibility)}
-                value={visibility}
-              >
-                <option value="public">Publik</option>
-                <option value="private">Private</option>
-              </Select>
-            </FormField>
-            <Button
-              disabled={!mediaFile || isUploading}
-              onClick={uploadMedia}
-              type="button"
-              variant="secondary"
-            >
-              {isUploading ? "Upload..." : "Upload Media"}
-            </Button>
-          </div>
-          <UploadComponent
-            accept={acceptForContentType(form.content_type)}
-            onChange={(event) => setMediaFile(event.target.files?.[0] ?? null)}
-          />
+          <FormField label={`Unggah ${contentTypeLabel(form.content_type)}`}>
+            <UploadComponent
+              accept={acceptForContentType(form.content_type)}
+              disabled={isUploading}
+              onChange={(event) => void handleMediaChange(event)}
+            />
+          </FormField>
+          {isUploading ? <Alert tone="info">Mengunggah media...</Alert> : null}
           {mediaFile ? (
             <FilePreview
               name={mediaFile.name}
@@ -296,8 +314,8 @@ export function ModuleContentForm({
         <Button onClick={onCancel} type="button" variant="ghost">
           Batal
         </Button>
-        <Button disabled={isSubmitting} type="submit">
-          Simpan Materi
+        <Button disabled={isSubmitting || isUploading} type="submit">
+          {isUploading ? "Mengunggah..." : "Simpan Materi"}
         </Button>
       </div>
     </form>

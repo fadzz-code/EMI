@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Archive, ArrowDown, ArrowUp, Eye, Pencil, Trash2, Upload } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -27,6 +28,7 @@ import { env } from "@/lib/env";
 import { ModuleContentForm } from "./module-content-form";
 import { ModuleTemplateForm } from "./module-form";
 import { lessonTemplateService, moduleTemplateService } from "./module-service";
+import { canPublishModule } from "./module-workflow";
 import {
   contentTypeLabel,
   formatDate,
@@ -198,6 +200,7 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
 
   const moduleTemplate = moduleQuery.data;
   const lessons = lessonsQuery.data?.items ?? [];
+  const hasPublishedLesson = canPublishModule(lessons);
   const actionError =
     updateModuleMutation.error ??
     publishModuleMutation.error ??
@@ -229,7 +232,7 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
         <div>
           <Badge tone="yellow">ADMIN-14</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">
-            {moduleTemplate?.title ?? "Editor Modul Default"}
+            {moduleTemplate?.title ?? "Editor Modul"}
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
             Edit metadata dan materi template modul. Modul siap dibagikan setelah minimal
@@ -281,10 +284,17 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
                 onCancel={() => void moduleQuery.refetch()}
                 onSubmit={(payload) => updateModuleMutation.mutate(payload)}
               />
+              {!hasPublishedLesson ? (
+                <p className="mt-4 text-sm text-slate-600">
+                  Tambahkan minimal satu materi sebelum menerbitkan modul.
+                </p>
+              ) : null}
               <div className="mt-5 flex flex-col gap-2 border-t-2 border-ink pt-4 sm:flex-row">
                 <Button
                   disabled={
-                    publishModuleMutation.isPending || moduleTemplate.status === "published"
+                    publishModuleMutation.isPending ||
+                    moduleTemplate.status === "published" ||
+                    !hasPublishedLesson
                   }
                   onClick={() => publishModuleMutation.mutate()}
                   variant="secondary"
@@ -361,58 +371,76 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
                             <TableCell>{lesson.sort_order}</TableCell>
                             <TableCell>
                               <div className="flex flex-wrap gap-2">
+                                <a
+                                  aria-label={`Preview ${lesson.title}`}
+                                  className="inline-flex size-10 items-center justify-center rounded-lg border-2 border-ink bg-white text-ink transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                                  href={`#preview-${lesson.id}`}
+                                  title="Preview materi"
+                                >
+                                  <Eye aria-hidden="true" size={18} />
+                                </a>
                                 <Button
-                                  className="min-h-9 px-3 py-1 text-xs"
+                                  aria-label={`Naikkan urutan ${lesson.title}`}
+                                  className="size-10 min-h-10 p-0"
                                   disabled={index === 0 || reorderLessonMutation.isPending}
                                   onClick={() => moveLesson(index, -1)}
+                                  title="Naikkan urutan"
                                   variant="ghost"
                                 >
-                                  Naik
+                                  <ArrowUp aria-hidden="true" size={18} />
                                 </Button>
                                 <Button
-                                  className="min-h-9 px-3 py-1 text-xs"
-                                  disabled={
-                                    index === lessons.length - 1 || reorderLessonMutation.isPending
-                                  }
+                                  aria-label={`Turunkan urutan ${lesson.title}`}
+                                  className="size-10 min-h-10 p-0"
+                                  disabled={index === lessons.length - 1 || reorderLessonMutation.isPending}
                                   onClick={() => moveLesson(index, 1)}
+                                  title="Turunkan urutan"
                                   variant="ghost"
                                 >
-                                  Turun
+                                  <ArrowDown aria-hidden="true" size={18} />
                                 </Button>
                                 <Button
-                                  className="min-h-9 px-3 py-1 text-xs"
+                                  aria-label={`Edit ${lesson.title}`}
+                                  className="size-10 min-h-10 p-0"
                                   onClick={() => setEditingLesson(lesson)}
+                                  title="Edit materi"
                                   variant="secondary"
                                 >
-                                  Edit
+                                  <Pencil aria-hidden="true" size={18} />
                                 </Button>
                                 {lesson.status !== "published" ? (
                                   <Button
-                                    className="min-h-9 px-3 py-1 text-xs"
+                                    aria-label={`Terbitkan ${lesson.title}`}
+                                    className="size-10 min-h-10 p-0"
                                     disabled={publishLessonMutation.isPending}
                                     onClick={() => publishLessonMutation.mutate(lesson.id)}
+                                    title="Terbitkan materi"
                                     variant="secondary"
                                   >
-                                    Terbitkan
+                                    <Upload aria-hidden="true" size={18} />
                                   </Button>
                                 ) : null}
                                 {lesson.status !== "archived" ? (
                                   <Button
-                                    className="min-h-9 px-3 py-1 text-xs"
+                                    aria-label={`Arsipkan ${lesson.title}`}
+                                    className="size-10 min-h-10 p-0"
                                     disabled={archiveLessonMutation.isPending}
                                     onClick={() => archiveLessonMutation.mutate(lesson.id)}
+                                    title="Arsipkan materi"
                                     variant="ghost"
                                   >
-                                    Arsipkan
+                                    <Archive aria-hidden="true" size={18} />
                                   </Button>
                                 ) : null}
                                 <Button
-                                  className="min-h-9 px-3 py-1 text-xs"
+                                  aria-label={`Hapus ${lesson.title}`}
+                                  className="size-10 min-h-10 p-0"
                                   disabled={deleteLessonMutation.isPending}
                                   onClick={() => setDeleteLessonTarget(lesson)}
+                                  title="Hapus materi"
                                   variant="danger"
                                 >
-                                  Hapus
+                                  <Trash2 aria-hidden="true" size={18} />
                                 </Button>
                               </div>
                             </TableCell>
@@ -423,10 +451,11 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
 
                     <div className="grid gap-4">
                       {lessons.map((lesson) => (
-                        <div
-                          className="rounded-lg border-2 border-ink bg-yellow-50 p-4"
-                          key={`preview-${lesson.id}`}
-                        >
+                          <div
+                            className="scroll-mt-4 rounded-lg border-2 border-ink bg-yellow-50 p-4"
+                            id={`preview-${lesson.id}`}
+                            key={`preview-${lesson.id}`}
+                          >
                           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                             <h3 className="text-base font-black text-ink">
                               Preview: {lesson.title}

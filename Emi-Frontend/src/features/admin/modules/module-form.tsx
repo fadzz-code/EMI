@@ -51,6 +51,7 @@ export function ModuleTemplateForm({
     <form className="grid gap-4" onSubmit={handleSubmit}>
       <FormField label="Judul modul">
         <Input
+          autoFocus
           maxLength={255}
           onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
           required

@@ -64,7 +64,7 @@ export function acceptForContentType(type: LessonContentType) {
   }
 
   if (type === "audio") {
-    return ".mp3,.wav,.m4a,.ogg,.webm,audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/ogg,audio/webm,application/octet-stream";
+    return ".mp3,.wav,.m4a,.ogg,.webm,audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/ogg,audio/webm";
   }
 
   if (type === "pdf") {

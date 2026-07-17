@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Archive, BookOpen, Send, Trash2, Upload } from "lucide-react";
 
 import {
   Alert,
@@ -27,19 +29,19 @@ import { useAuth } from "@/features/auth/auth-provider";
 import { classService } from "@/features/admin/management/management-service";
 import { getFirstApiError } from "@/lib/api-client";
 
-import { ModuleTemplateForm } from "./module-form";
 import { moduleTemplateService } from "./module-service";
+import { newModuleDraft } from "./module-workflow";
 import { formatDate, statusLabel, statusTone } from "./module-utils";
-import type { ModuleTemplate, ModuleTemplatePayload, ModuleTemplateStatus } from "./types";
+import type { ModuleTemplate, ModuleTemplateStatus } from "./types";
 
 export function ModuleList() {
   const { token } = useAuth();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ModuleTemplateStatus | "">("");
-  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [applyTarget, setApplyTarget] = useState<ModuleTemplate | null>(null);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   const [publishAfterApply, setPublishAfterApply] = useState(true);
@@ -69,13 +71,8 @@ export function ModuleList() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (payload: ModuleTemplatePayload) =>
-      moduleTemplateService.create(token ?? "", payload),
-    onSuccess: async (module) => {
-      setSuccessMessage(`Modul ${module.title} berhasil dibuat.`);
-      setCreateModalOpen(false);
-      await queryClient.invalidateQueries({ queryKey: ["admin", "module-templates"] });
-    },
+    mutationFn: () => moduleTemplateService.create(token ?? "", newModuleDraft()),
+    onSuccess: (module) => router.push(`/admin/modules/${module.id}/edit`),
   });
 
   const publishMutation = useMutation({
@@ -151,7 +148,6 @@ export function ModuleList() {
   });
 
   const actionError =
-    createMutation.error ??
     publishMutation.error ??
     archiveMutation.error ??
     applyMutation.error ??
@@ -184,13 +180,21 @@ export function ModuleList() {
             Kelola template modul, materi awal, status terbit, dan distribusi modul ke kelas aktif.
           </p>
         </div>
-        <Button onClick={() => setCreateModalOpen(true)}>Tambah Modul</Button>
+        <Button
+          disabled={createMutation.isPending}
+          onClick={() => createMutation.mutate()}
+        >
+          {createMutation.isPending ? "Membuat Modul..." : "Tambah Modul"}
+        </Button>
       </header>
 
       <Alert tone="info">
         Alur tampil ke siswa: terbitkan template, terapkan ke kelas, lalu pastikan modul kelas ikut diterbitkan.
       </Alert>
       {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
+      {createMutation.isError ? (
+        <Alert tone="error">Modul belum berhasil dibuat. Silakan coba lagi.</Alert>
+      ) : null}
       {actionError ? <Alert tone="error">{getFirstApiError(actionError)}</Alert> : null}
 
       <FilterPanel className="md:grid-cols-[2fr_1fr_auto]">
@@ -276,51 +280,62 @@ export function ModuleList() {
                         <TableCell>
                           <div className="flex flex-wrap gap-2">
                             <Link
-                              className="inline-flex min-h-9 items-center rounded-lg border-2 border-ink bg-white px-3 py-1 text-xs font-black text-ink hover:bg-yellow-100"
+                              aria-label={`Buka builder ${module.title}`}
+                              className="inline-flex size-10 items-center justify-center rounded-lg border-2 border-ink bg-yellow-100 text-ink transition hover:bg-yellow-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
                               href={`/admin/modules/${module.id}/edit`}
+                              title="Buka builder"
                             >
-                              Editor
+                              <BookOpen aria-hidden="true" size={18} />
                             </Link>
                             {module.status !== "published" ? (
                               <Button
-                                className="min-h-9 px-3 py-1 text-xs"
+                                aria-label={`Terbitkan ${module.title}`}
+                                className="size-10 min-h-10 p-0"
                                 disabled={publishMutation.isPending}
                                 onClick={() => publishMutation.mutate(module.id)}
+                                title="Terbitkan modul"
                                 variant="secondary"
                               >
-                                Terbitkan
+                                <Upload aria-hidden="true" size={18} />
                               </Button>
                             ) : null}
                             {module.status === "published" ? (
                               <Button
-                                className="min-h-9 px-3 py-1 text-xs"
+                                aria-label={`Terapkan ${module.title} ke kelas`}
+                                className="size-10 min-h-10 p-0"
+                                disabled={applyMutation.isPending}
                                 onClick={() => {
                                   setApplyTarget(module);
                                   setSelectedClassIds([]);
                                   setPublishAfterApply(true);
                                 }}
+                                title="Terapkan ke kelas"
                                 variant="secondary"
                               >
-                                Terapkan ke Kelas
+                                <Send aria-hidden="true" size={18} />
                               </Button>
                             ) : null}
                             {module.status !== "archived" ? (
                               <Button
-                                className="min-h-9 px-3 py-1 text-xs"
+                                aria-label={`Arsipkan ${module.title}`}
+                                className="size-10 min-h-10 p-0"
                                 disabled={archiveMutation.isPending}
                                 onClick={() => archiveMutation.mutate(module.id)}
+                                title="Arsipkan modul"
                                 variant="ghost"
                               >
-                                Arsipkan
+                                <Archive aria-hidden="true" size={18} />
                               </Button>
                             ) : null}
                             <Button
-                              className="min-h-9 px-3 py-1 text-xs"
+                              aria-label={`Hapus ${module.title}`}
+                              className="size-10 min-h-10 p-0"
                               disabled={deleteMutation.isPending}
                               onClick={() => setDeleteTarget(module)}
+                              title="Hapus modul"
                               variant="danger"
                             >
-                              Hapus
+                              <Trash2 aria-hidden="true" size={18} />
                             </Button>
                           </div>
                         </TableCell>
@@ -338,18 +353,6 @@ export function ModuleList() {
           ) : null}
         </CardContent>
       </Card>
-
-      <Modal
-        onClose={() => setCreateModalOpen(false)}
-        open={createModalOpen}
-        title="Tambah Modul Default"
-      >
-        <ModuleTemplateForm
-          isSubmitting={createMutation.isPending}
-          onCancel={() => setCreateModalOpen(false)}
-          onSubmit={(payload) => createMutation.mutate(payload)}
-        />
-      </Modal>
 
       <Modal
         onClose={() => setApplyTarget(null)}
