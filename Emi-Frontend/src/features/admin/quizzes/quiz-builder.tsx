@@ -186,7 +186,7 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
       ) : null}
 
       {quiz ? (
-        <div className="grid gap-6">
+        <div className="grid gap-6 xl:grid-cols-[minmax(320px,380px)_1fr]">
           <Card>
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-3">

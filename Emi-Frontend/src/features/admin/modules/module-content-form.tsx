@@ -185,7 +185,7 @@ export function ModuleContentForm({
   const isText = form.content_type === "text";
 
   return (
-    <form className="grid min-w-0 gap-3" onSubmit={handleSubmit}>
+    <form className="grid gap-4" onSubmit={handleSubmit}>
       {uploadError ? <Alert tone="error">{uploadError}</Alert> : null}
       {uploadSuccess ? <Alert tone="success">{uploadSuccess}</Alert> : null}
 
@@ -197,7 +197,7 @@ export function ModuleContentForm({
           value={form.title}
         />
       </FormField>
-      <div className="grid gap-3">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_150px]">
         <FormField label="Jenis materi">
           <Select
             disabled={isUploading}
@@ -310,7 +310,7 @@ export function ModuleContentForm({
         </Select>
       </FormField>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
         <Button onClick={onCancel} type="button" variant="ghost">
           Batal
         </Button>

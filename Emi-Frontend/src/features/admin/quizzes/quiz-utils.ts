@@ -1,28 +1,4 @@
-import type { QuestionType, QuizTemplatePayload, QuizTemplateStatus } from "./types";
-
-const QUESTION_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-const QUESTION_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
-
-export function newQuizDraft(): QuizTemplatePayload {
-  return {
-    title: "Kuis Baru",
-    duration_minutes: 30,
-    max_attempts: 1,
-    status: "draft",
-  };
-}
-
-export function validateQuestionImage(file: Pick<File, "size" | "type">) {
-  if (!QUESTION_IMAGE_TYPES.has(file.type)) {
-    return "Format gambar harus JPEG, PNG, atau WebP.";
-  }
-
-  if (file.size > QUESTION_IMAGE_MAX_BYTES) {
-    return "Ukuran gambar maksimal 5 MB.";
-  }
-
-  return null;
-}
+import type { QuestionType, QuizTemplateStatus } from "./types";
 
 export function normalizeNullable(value: string) {
   const trimmed = value.trim();

@@ -4,7 +4,6 @@ import { type FormEvent, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
-  ActionGroup,
   Alert,
   Badge,
   Button,
@@ -19,7 +18,6 @@ import {
   LoadingState,
   Modal,
   Pagination,
-  ResponsiveList,
   Select,
   Table,
   TableCell,
@@ -324,31 +322,7 @@ export function KnowledgeBaseList() {
               />
             ) : (
               <div className="grid gap-4">
-                <ResponsiveList
-                  cards={items.map((item) => (
-                    <article className="grid gap-3 rounded-[var(--radius-card)] border-2 border-border bg-surface p-4" key={item.id}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-black text-ink">{item.title}</p>
-                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">{item.content}</p>
-                        </div>
-                        <Badge tone={statusTone(item.status)}>{statusLabel(item.status)}</Badge>
-                      </div>
-                      <dl className="grid grid-cols-2 gap-2 text-sm">
-                        <div><dt className="font-bold text-ink">Kategori</dt><dd className="text-slate-600">{item.category ?? "-"}</dd></div>
-                        <div><dt className="font-bold text-ink">Jenis Sumber</dt><dd className="text-slate-600">{sourceTypeLabel[item.source_type]}</dd></div>
-                        <div className="col-span-2"><dt className="font-bold text-ink">Diubah</dt><dd className="text-slate-600">{formatDate(item.updated_at)}</dd></div>
-                      </dl>
-                      <ActionGroup>
-                        <Button className="min-h-9 px-3 py-1 text-xs" onClick={() => setPreviewItem(item)} variant="ghost">Lihat</Button>
-                        <Button className="min-h-9 px-3 py-1 text-xs" onClick={() => openEditForm(item)} variant="secondary">Edit</Button>
-                        {item.status !== "published" ? <Button className="min-h-9 px-3 py-1 text-xs" disabled={publishMutation.isPending} onClick={() => publishMutation.mutate(item.id)}>Terbitkan</Button> : null}
-                        {item.status === "published" ? <Button className="min-h-9 px-3 py-1 text-xs" disabled={archiveMutation.isPending} onClick={() => archiveMutation.mutate(item.id)} variant="ghost">Arsipkan</Button> : null}
-                        <Button className="min-h-9 px-3 py-1 text-xs" disabled={deleteMutation.isPending} onClick={() => setItemToDelete(item)} variant="danger">Hapus</Button>
-                      </ActionGroup>
-                    </article>
-                  ))}
-                  table={<Table>
+                <Table>
                   <TableHeader>
                     <tr>
                       <th className="px-4 py-3">Judul</th>
@@ -412,8 +386,7 @@ export function KnowledgeBaseList() {
                       </tr>
                     ))}
                   </tbody>
-                </Table>}
-                />
+                </Table>
                 <Pagination
                   onPageChange={setPage}
                   page={meta?.current_page ?? page}

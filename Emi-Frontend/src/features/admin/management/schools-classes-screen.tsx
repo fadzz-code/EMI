@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
-  ActionGroup,
   Alert,
   Badge,
   Button,
@@ -20,7 +19,6 @@ import {
   LoadingState,
   Modal,
   Pagination,
-  ResponsiveList,
   Select,
   Table,
   TableCell,
@@ -374,7 +372,7 @@ export function SchoolsClassesScreen() {
         </div>
       </FilterPanel>
 
-      <div className="grid gap-6">
+      <div className="grid gap-6 xl:grid-cols-2">
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between gap-3">
@@ -404,25 +402,7 @@ export function SchoolsClassesScreen() {
                 />
               ) : (
                 <div className="grid gap-4">
-                  <ResponsiveList
-                    cards={schools.map((school) => (
-                      <article className="grid gap-3 rounded-[var(--radius-card)] border-2 border-border bg-surface p-4" key={school.id}>
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-black text-ink">{school.name}</p>
-                            <p className="mt-1 text-xs text-slate-600">{school.address ?? "-"}</p>
-                          </div>
-                          <Badge tone={statusTone(school.status)}>{entityStatusLabel(school.status)}</Badge>
-                        </div>
-                        <p className="text-sm text-slate-600">{school.phone ?? "-"}</p>
-                        <ActionGroup>
-                          <Button className="min-h-9 px-3 py-1 text-xs" onClick={() => { setClassSchoolFilter(school.id); setClassPage(1); }} variant="ghost">Lihat Kelas</Button>
-                          <Button className="min-h-9 px-3 py-1 text-xs" onClick={() => openEditSchool(school)} variant="secondary">Edit</Button>
-                          {school.status === "active" ? <Button className="min-h-9 px-3 py-1 text-xs" disabled={deactivateSchoolMutation.isPending} onClick={() => deactivateSchoolMutation.mutate(school.id)} variant="danger">Nonaktifkan</Button> : null}
-                        </ActionGroup>
-                      </article>
-                    ))}
-                    table={<Table>
+                  <Table>
                     <TableHeader>
                       <tr>
                         <th className="px-4 py-3">Nama</th>
@@ -478,8 +458,7 @@ export function SchoolsClassesScreen() {
                         </tr>
                       ))}
                     </tbody>
-                  </Table>}
-                  />
+                  </Table>
                   <Pagination
                     onPageChange={setSchoolPage}
                     page={schoolMeta?.current_page ?? schoolPage}
@@ -538,28 +517,7 @@ export function SchoolsClassesScreen() {
                 />
               ) : (
                 <div className="grid gap-4">
-                  <ResponsiveList
-                    cards={classes.map((schoolClass) => (
-                      <article className="grid gap-3 rounded-[var(--radius-card)] border-2 border-border bg-surface p-4" key={schoolClass.id}>
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-black text-ink">{schoolClass.name}</p>
-                            <p className="mt-1 text-xs text-slate-600">{schoolClass.grade_level ?? "-"} | {schoolClass.academic_year}</p>
-                          </div>
-                          <Badge tone={statusTone(schoolClass.status)}>{entityStatusLabel(schoolClass.status)}</Badge>
-                        </div>
-                        <dl className="grid gap-2 text-sm">
-                          <div><dt className="font-bold text-ink">Sekolah</dt><dd className="text-slate-600">{schoolClass.school?.name ?? "-"}</dd></div>
-                          <div><dt className="font-bold text-ink">Guru</dt><dd className="text-slate-600">{schoolClass.active_teacher_assignment?.teacher?.full_name ?? "-"}</dd></div>
-                        </dl>
-                        <ActionGroup>
-                          <Link className="inline-flex min-h-9 items-center rounded-lg border-2 border-ink bg-white px-3 py-1 text-xs font-black text-ink hover:bg-yellow-100" href={`/admin/classes/${schoolClass.id}`}>Detail</Link>
-                          <Button className="min-h-9 px-3 py-1 text-xs" onClick={() => openEditClass(schoolClass)} variant="secondary">Edit</Button>
-                          {schoolClass.status === "active" ? <Button className="min-h-9 px-3 py-1 text-xs" disabled={deactivateClassMutation.isPending} onClick={() => deactivateClassMutation.mutate(schoolClass.id)} variant="danger">Nonaktifkan</Button> : null}
-                        </ActionGroup>
-                      </article>
-                    ))}
-                    table={<Table>
+                  <Table>
                     <TableHeader>
                       <tr>
                         <th className="px-4 py-3">Kelas</th>
@@ -617,8 +575,7 @@ export function SchoolsClassesScreen() {
                         </tr>
                       ))}
                     </tbody>
-                  </Table>}
-                  />
+                  </Table>
                   <Pagination
                     onPageChange={setClassPage}
                     page={classMeta?.current_page ?? classPage}

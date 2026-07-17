@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Archive, BookOpen, Send, Trash2, Upload } from "lucide-react";
 
 import {
   Alert,
@@ -250,42 +251,14 @@ export function ModuleList() {
               />
             ) : (
               <div className="grid gap-4">
-                <div className="grid gap-3 md:hidden">
-                  {modules.map((module) => (
-                    <article className="grid min-w-0 gap-3 rounded-xl border-2 border-ink bg-white p-4" key={module.id}>
-                      <div className="flex min-w-0 items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="break-words font-black text-ink">{module.title}</p>
-                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">
-                            {module.description ?? "Tanpa deskripsi."}
-                          </p>
-                        </div>
-                        <Badge tone={statusTone(module.status)}>{statusLabel(module.status)}</Badge>
-                      </div>
-                      <dl className="grid grid-cols-2 gap-2 text-xs text-slate-600">
-                        <div><dt className="font-bold text-ink">Dibuat</dt><dd>{formatDate(module.created_at)}</dd></div>
-                        <div><dt className="font-bold text-ink">Diubah</dt><dd>{formatDate(module.updated_at)}</dd></div>
-                      </dl>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Link className="inline-flex min-h-9 items-center justify-center rounded-lg border-2 border-ink bg-yellow-100 px-2 py-1 text-center text-xs font-bold text-ink transition hover:bg-yellow-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink" href={`/admin/modules/${module.id}/edit`}>
-                          Buka Builder
-                        </Link>
-                        {module.status !== "published" ? <Button className="min-h-9 px-2 py-1 text-xs" disabled={publishMutation.isPending} onClick={() => publishMutation.mutate(module.id)} variant="secondary">Terbitkan</Button> : null}
-                        {module.status === "published" ? <Button className="min-h-9 px-2 py-1 text-xs" disabled={applyMutation.isPending} onClick={() => { setApplyTarget(module); setSelectedClassIds([]); setPublishAfterApply(true); }} variant="secondary">Terapkan ke Kelas</Button> : null}
-                        {module.status !== "archived" ? <Button className="min-h-9 px-2 py-1 text-xs" disabled={archiveMutation.isPending} onClick={() => archiveMutation.mutate(module.id)} variant="ghost">Arsipkan</Button> : null}
-                        <Button className="min-h-9 px-2 py-1 text-xs" disabled={deleteMutation.isPending} onClick={() => setDeleteTarget(module)} variant="danger">Hapus</Button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-                <Table className="hidden table-fixed md:table">
+                <Table>
                   <TableHeader>
                     <tr>
-                      <th className="w-[28%] px-4 py-3">Modul</th>
-                      <th className="w-[12%] px-4 py-3">Status</th>
-                      <th className="w-[13%] px-4 py-3">Dibuat</th>
-                      <th className="w-[13%] px-4 py-3">Diubah</th>
-                      <th className="w-[34%] px-4 py-3">Aksi</th>
+                      <th className="px-4 py-3">Modul</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3">Dibuat</th>
+                      <th className="px-4 py-3">Diubah</th>
+                      <th className="px-4 py-3">Aksi</th>
                     </tr>
                   </TableHeader>
                   <tbody>
@@ -305,54 +278,64 @@ export function ModuleList() {
                         <TableCell>{formatDate(module.created_at)}</TableCell>
                         <TableCell>{formatDate(module.updated_at)}</TableCell>
                         <TableCell>
-                          <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
+                          <div className="flex flex-wrap gap-2">
                             <Link
-                              className="inline-flex min-h-9 items-center justify-center rounded-lg border-2 border-ink bg-yellow-100 px-3 py-1 text-xs font-bold text-ink transition hover:bg-yellow-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                              aria-label={`Buka builder ${module.title}`}
+                              className="inline-flex size-10 items-center justify-center rounded-lg border-2 border-ink bg-yellow-100 text-ink transition hover:bg-yellow-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
                               href={`/admin/modules/${module.id}/edit`}
+                              title="Buka builder"
                             >
-                              Buka Builder
+                              <BookOpen aria-hidden="true" size={18} />
                             </Link>
                             {module.status !== "published" ? (
                               <Button
-                                className="min-h-9 px-3 py-1 text-xs"
+                                aria-label={`Terbitkan ${module.title}`}
+                                className="size-10 min-h-10 p-0"
                                 disabled={publishMutation.isPending}
                                 onClick={() => publishMutation.mutate(module.id)}
+                                title="Terbitkan modul"
                                 variant="secondary"
                               >
-                                Terbitkan
+                                <Upload aria-hidden="true" size={18} />
                               </Button>
                             ) : null}
                             {module.status === "published" ? (
                               <Button
-                                className="min-h-9 px-3 py-1 text-xs"
+                                aria-label={`Terapkan ${module.title} ke kelas`}
+                                className="size-10 min-h-10 p-0"
                                 disabled={applyMutation.isPending}
                                 onClick={() => {
                                   setApplyTarget(module);
                                   setSelectedClassIds([]);
                                   setPublishAfterApply(true);
                                 }}
+                                title="Terapkan ke kelas"
                                 variant="secondary"
                               >
-                                Terapkan ke Kelas
+                                <Send aria-hidden="true" size={18} />
                               </Button>
                             ) : null}
                             {module.status !== "archived" ? (
                               <Button
-                                className="min-h-9 px-3 py-1 text-xs"
+                                aria-label={`Arsipkan ${module.title}`}
+                                className="size-10 min-h-10 p-0"
                                 disabled={archiveMutation.isPending}
                                 onClick={() => archiveMutation.mutate(module.id)}
+                                title="Arsipkan modul"
                                 variant="ghost"
                               >
-                                Arsipkan
+                                <Archive aria-hidden="true" size={18} />
                               </Button>
                             ) : null}
                             <Button
-                              className="min-h-9 px-3 py-1 text-xs"
+                              aria-label={`Hapus ${module.title}`}
+                              className="size-10 min-h-10 p-0"
                               disabled={deleteMutation.isPending}
                               onClick={() => setDeleteTarget(module)}
+                              title="Hapus modul"
                               variant="danger"
                             >
-                              Hapus
+                              <Trash2 aria-hidden="true" size={18} />
                             </Button>
                           </div>
                         </TableCell>
