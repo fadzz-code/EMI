@@ -12,6 +12,12 @@ class DemoAccountSeeder extends Seeder
 
     public function run(): void
     {
+        if (app()->environment('local', 'testing', 'development')) {
+            $admin = $this->user('Admin Demo EMI', 'admin@emi.test', 'admin', 'approved', '12345678', null);
+            $this->user('Guru Demo EMI', 'teacher@emi.test', 'teacher', 'approved', '12345678', $admin->id);
+            $this->user('Siswa Demo EMI', 'student@emi.test', 'student', 'approved', '12345678', $admin->id);
+        }
+
         $password = env('EMI_DEMO_PASSWORD');
 
         if (! $password && app()->environment('local', 'testing', 'development')) {

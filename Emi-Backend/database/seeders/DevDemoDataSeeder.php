@@ -23,7 +23,6 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
@@ -35,11 +34,13 @@ class DevDemoDataSeeder extends Seeder
             throw new InvalidArgumentException('Seeder demo development hanya boleh dijalankan di environment local, testing, atau development.');
         }
 
+        $this->call(DemoAccountSeeder::class);
+
         DB::transaction(function (): void {
             $now = now();
-            $admin = $this->upsertAccount('admin@emi.test', 'Administrator EMI', 'admin', null);
-            $teacher = $this->upsertAccount('teacher@emi.test', 'Guru Demo EMI', 'teacher', $admin->id);
-            $student = $this->upsertAccount('student@emi.test', 'Siswa Demo EMI', 'student', $admin->id);
+            $admin = User::query()->where('email', 'admin@emi.test')->firstOrFail();
+            $teacher = User::query()->where('email', 'teacher@emi.test')->firstOrFail();
+            $student = User::query()->where('email', 'student@emi.test')->firstOrFail();
 
             $school = $this->updateOrCreateWithUuid(School::class, ['name' => 'SDN Kolaka'], [
                 'address' => 'Kolaka',
@@ -58,15 +59,38 @@ class DevDemoDataSeeder extends Seeder
                 'created_by' => $admin->id,
             ]);
 
-            $this->updateOrCreateWithUuid(TeacherClassAssignment::class, [
-                'teacher_id' => $teacher->id,
-                'class_id' => $class->id,
-            ], [
-                'assigned_by' => $admin->id,
-                'is_active' => true,
-                'assigned_at' => $now,
-                'ended_at' => null,
-            ]);
+            $activeTeacherAssignment = TeacherClassAssignment::query()
+                ->where('class_id', $class->id)
+                ->where('is_active', true)
+                ->first();
+
+            TeacherClassAssignment::query()
+                ->where('teacher_id', $teacher->id)
+                ->where('class_id', '!=', $class->id)
+                ->where('is_active', true)
+                ->update([
+                    'is_active' => false,
+                    'ended_at' => $now,
+                ]);
+
+            if ($activeTeacherAssignment) {
+                $activeTeacherAssignment->update([
+                    'teacher_id' => $teacher->id,
+                    'assigned_by' => $admin->id,
+                    'assigned_at' => $now,
+                    'ended_at' => null,
+                ]);
+            } else {
+                $this->updateOrCreateWithUuid(TeacherClassAssignment::class, [
+                    'teacher_id' => $teacher->id,
+                    'class_id' => $class->id,
+                ], [
+                    'assigned_by' => $admin->id,
+                    'is_active' => true,
+                    'assigned_at' => $now,
+                    'ended_at' => null,
+                ]);
+            }
 
             $this->updateOrCreateWithUuid(StudentClassMembership::class, [
                 'student_id' => $student->id,
@@ -88,7 +112,6 @@ class DevDemoDataSeeder extends Seeder
         });
 
         $this->call([
-            DemoAccountSeeder::class,
             DemoSchoolClassSeeder::class,
             DemoDictionarySeeder::class,
             DemoKnowledgeSeeder::class,
@@ -375,24 +398,6 @@ class DevDemoDataSeeder extends Seeder
                 'metadata' => ['source' => 'demo'],
             ]);
         }
-    }
-
-    private function upsertAccount(string $email, string $name, string $role, ?string $adminId): User
-    {
-        return User::query()->updateOrCreate(
-            ['email' => $email],
-            [
-                'full_name' => $name,
-                'password' => Hash::make('12345678'),
-                'role' => $role,
-                'status' => 'approved',
-                'phone' => null,
-                'email_verified_at' => now(),
-                'approved_by' => $adminId,
-                'approved_at' => now(),
-                'rejected_reason' => null,
-            ]
-        );
     }
 
     private function updateOrCreateWithUuid(string $modelClass, array $attributes, array $values)

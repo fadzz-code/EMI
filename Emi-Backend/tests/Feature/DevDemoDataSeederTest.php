@@ -26,6 +26,7 @@ class DevDemoDataSeederTest extends TestCase
         $this->assertGreaterThanOrEqual(3, User::count());
 
         $admin = User::where('email', 'admin@emi.test')->firstOrFail();
+        $this->assertSame('Admin Demo EMI', $admin->full_name);
         $this->assertSame('admin', $admin->role);
         $this->assertSame('approved', $admin->status);
         $this->assertTrue(Hash::check('12345678', $admin->password));
@@ -37,24 +38,30 @@ class DevDemoDataSeederTest extends TestCase
         $this->assertSame(1, User::where('email', 'student@emi.test')->count());
 
         $teacher = User::where('email', 'teacher@emi.test')->firstOrFail();
+        $this->assertSame('Guru Demo EMI', $teacher->full_name);
         $this->assertSame('teacher', $teacher->role);
         $this->assertSame('approved', $teacher->status);
         $this->assertTrue(Hash::check('12345678', $teacher->password));
+        $this->assertNotNull($teacher->email_verified_at);
         $this->assertNotNull($teacher->activeTeacherClassAssignment);
         $this->assertContains($teacher->activeTeacherClassAssignment->schoolClass->name, ['Kelas VII A', 'Kelas 1 A']);
         $this->assertDatabaseMissing('classes', ['name' => 'Kelas Demo Tiga Role']);
 
         $student = User::where('email', 'student@emi.test')->firstOrFail();
+        $this->assertSame('Siswa Demo EMI', $student->full_name);
         $this->assertSame('student', $student->role);
         $this->assertSame('approved', $student->status);
         $this->assertTrue(Hash::check('12345678', $student->password));
+        $this->assertNotNull($student->email_verified_at);
         $this->assertNotNull($student->activeStudentClassMembership);
     }
 
     public function test_seeder_is_idempotent_and_does_not_create_duplicates_or_remove_other_data(): void
     {
-        // Setup existing unrelated data
-        User::factory()->create(['email' => 'other@example.com']);
+        $otherUser = User::factory()->create([
+            'email' => 'other@example.com',
+            'full_name' => 'Pengguna Lain',
+        ]);
         $school = School::factory()->create();
         SchoolClass::factory()->create(['school_id' => $school->id]);
 
@@ -64,25 +71,71 @@ class DevDemoDataSeederTest extends TestCase
 
         $this->assertGreaterThanOrEqual($initialCount + 3, User::count());
 
-        // Mess up the target accounts
-        User::where('email', 'admin@emi.test')->update(['role' => 'student', 'status' => 'inactive', 'password' => Hash::make('wrong')]);
+        User::whereIn('email', [
+            'admin@emi.test',
+            'teacher@emi.test',
+            'student@emi.test',
+        ])->update([
+            'status' => 'inactive',
+            'password' => Hash::make('wrong'),
+            'email_verified_at' => null,
+        ]);
 
-        // Re-run seeder
         $this->seed(DevDemoDataSeeder::class);
 
         $this->assertSame(1, User::where('email', 'admin@emi.test')->count());
         $this->assertSame(1, User::where('email', 'teacher@emi.test')->count());
         $this->assertSame(1, User::where('email', 'student@emi.test')->count());
 
-        // Check if admin is restored
-        $admin = User::where('email', 'admin@emi.test')->firstOrFail();
-        $this->assertSame('admin', $admin->role);
-        $this->assertSame('approved', $admin->status);
-        $this->assertTrue(Hash::check('12345678', $admin->password));
+        foreach ([
+            'admin@emi.test' => ['Admin Demo EMI', 'admin'],
+            'teacher@emi.test' => ['Guru Demo EMI', 'teacher'],
+            'student@emi.test' => ['Siswa Demo EMI', 'student'],
+        ] as $email => [$name, $role]) {
+            $account = User::where('email', $email)->firstOrFail();
+            $this->assertSame($name, $account->full_name);
+            $this->assertSame($role, $account->role);
+            $this->assertSame('approved', $account->status);
+            $this->assertTrue(Hash::check('12345678', $account->password));
+            $this->assertNotNull($account->email_verified_at);
+        }
+
+        $this->assertSame('Pengguna Lain', $otherUser->refresh()->full_name);
         $this->assertSame(1, TeacherClassAssignment::where('teacher_id', User::where('email', 'teacher@emi.test')->value('id'))->where('is_active', true)->count());
         $this->assertSame(1, StudentClassMembership::where('student_id', User::where('email', 'student@emi.test')->value('id'))->where('is_active', true)->count());
         $this->assertGreaterThan(0, DictionaryCategory::count());
         $this->assertGreaterThan(0, DictionaryEntry::count());
+    }
+
+    public function test_seeder_updates_existing_active_assignment_without_removing_non_demo_data(): void
+    {
+        $this->seed(DevDemoDataSeeder::class);
+
+        $class = SchoolClass::where('name', 'Kelas 1 A')->firstOrFail();
+        $demoTeacher = User::where('email', 'teacher@emi.test')->firstOrFail();
+        $admin = User::where('email', 'admin@emi.test')->firstOrFail();
+        $existingAssignment = TeacherClassAssignment::where('class_id', $class->id)->where('is_active', true)->firstOrFail();
+        $otherTeacher = User::factory()->teacher()->approved()->create();
+        $unrelatedAssignment = TeacherClassAssignment::factory()->create();
+
+        $existingAssignment->update(['teacher_id' => $otherTeacher->id]);
+        $previousDemoAssignment = TeacherClassAssignment::factory()->create([
+            'teacher_id' => $demoTeacher->id,
+        ]);
+
+        $this->seed(DevDemoDataSeeder::class);
+
+        $existingAssignment->refresh();
+        $previousDemoAssignment->refresh();
+        $this->assertSame($demoTeacher->id, $existingAssignment->teacher_id);
+        $this->assertSame($admin->id, $existingAssignment->assigned_by);
+        $this->assertTrue($existingAssignment->is_active);
+        $this->assertNull($existingAssignment->ended_at);
+        $this->assertFalse($previousDemoAssignment->is_active);
+        $this->assertNotNull($previousDemoAssignment->ended_at);
+        $this->assertSame(1, TeacherClassAssignment::where('class_id', $class->id)->where('is_active', true)->count());
+        $this->assertSame(1, TeacherClassAssignment::where('teacher_id', $demoTeacher->id)->where('is_active', true)->count());
+        $this->assertDatabaseHas('teacher_class_assignments', ['id' => $unrelatedAssignment->id]);
     }
 
     public function test_seeder_throws_exception_in_production(): void
