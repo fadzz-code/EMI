@@ -8,11 +8,12 @@ FastAPI speech analysis engine for EMI speaking practice. Laravel is the main ba
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 ## FFmpeg for browser audio
 
-Browser WebM/Opus recordings require FFmpeg for conversion to temporary mono 16 kHz WAV before analysis.
+Every upload, including WAV, is normalized by FFmpeg to temporary mono 16 kHz PCM WAV before analysis.
 
 Install on Windows:
 
@@ -40,7 +41,10 @@ set SPEAKING_AI_FFMPEG_PATH=C:\Users\Tulo\AppData\Local\Microsoft\WinGet\Links\f
 
 ## Run locally
 
+Copy `.env.example`, set a long random `SPEAKING_AI_SERVICE_TOKEN`, then export its values before startup.
+
 ```cmd
+set SPEAKING_AI_SERVICE_TOKEN=replace-with-a-long-random-token
 python -m uvicorn main:app --host 127.0.0.1 --port 8001
 ```
 
@@ -49,27 +53,29 @@ The Wav2Vec2 model may download on first run.
 ## Endpoints
 
 ```text
+GET /health/live
 GET /health
-POST /predict
+POST /predict (Bearer token required)
 ```
 
 Sample request:
 
 ```bash
 curl -X POST http://127.0.0.1:8001/predict \
+  -H "Authorization: Bearer $SPEAKING_AI_SERVICE_TOKEN" \
   -F "target_text=Ari nggiro" \
   -F "file=@sample.wav;type=audio/wav"
 ```
 
 ## Limits
 
-`SPEAKING_AI_MAX_FILE_SIZE_MB` defaults to `5`.
+`SPEAKING_AI_MAX_FILE_SIZE_MB` defaults to `5`. Duration defaults to `0.1`–`60` seconds through `SPEAKING_AI_MIN_DURATION_SECONDS` and `SPEAKING_AI_MAX_DURATION_SECONDS`. `SPEAKING_AI_FFMPEG_TIMEOUT_SECONDS` defaults to `30`.
 
 Supported uploads include WAV, WebM/Opus (`audio/webm` or `video/webm`), MP3, MP4, M4A, and OGG. `application/octet-stream` is accepted only with a safe audio extension.
 
 ## Contract
 
-Success returns `engine`, `model`, `target`, `transcription`, `score`, `alignment`, and `warnings`.
+Success returns `engine`, `model`, `target`, `transcription`, `score`, backward-compatible per-target word scores plus edit `operations` in `alignment`, `warnings`, and `scoring_version`. Score uses normalized word-level Levenshtein distance.
 
 Errors return:
 
@@ -78,6 +84,12 @@ Errors return:
   "error": "message",
   "code": "SPEAKING_AI_ERROR"
 }
+```
+
+## Tests
+
+```cmd
+python -m unittest -v test_main.py
 ```
 
 ## Troubleshooting

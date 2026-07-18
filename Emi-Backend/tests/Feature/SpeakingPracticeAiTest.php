@@ -11,7 +11,9 @@ use App\Models\TeacherClassAssignment;
 use App\Models\User;
 use App\Services\SpeakingAiClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use RuntimeException;
@@ -110,7 +112,7 @@ class SpeakingPracticeAiTest extends TestCase
             'file' => UploadedFile::fake()->create('recording.mp3', 128, 'audio/mpeg'),
         ])->assertCreated()
             ->assertJsonPath('data.status', 'failed')
-            ->assertJsonPath('data.ai_error', 'AI unavailable');
+            ->assertJsonPath('data.ai_error', 'Analisis speaking AI gagal.');
     }
 
     public function test_student_cannot_view_another_students_attempt(): void
@@ -548,6 +550,104 @@ class SpeakingPracticeAiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.0.id', $published->id)
             ->assertJsonPath('data.0.reference_audio.id', $media->id);
+    }
+
+    public function test_capture_source_defaults_and_accepts_every_supported_value(): void
+    {
+        Storage::fake('local');
+        config(['speaking.ai.enabled' => false]);
+        [$student, , $class] = $this->classroomUsers();
+        $exercise = $this->exercise($class);
+        $url = '/api/v1/student/speaking/exercises/'.$exercise->id.'/attempts';
+
+        $this->withToken($this->tokenFor($student))->post($url, [
+            'file' => UploadedFile::fake()->create('default.webm', 10, 'audio/webm'),
+        ])->assertCreated()->assertJsonPath('data.capture_source', 'web_microphone');
+
+        foreach (['web_microphone', 'web_esp32_serial', 'mobile_microphone', 'mobile_esp32_bluetooth'] as $source) {
+            $this->withToken($this->tokenFor($student))->post($url, [
+                'file' => UploadedFile::fake()->create($source.'.webm', 10, 'audio/webm'),
+                'capture_source' => $source,
+            ])->assertCreated()->assertJsonPath('data.capture_source', $source);
+            $this->assertDatabaseHas('speaking_attempts', ['capture_source' => $source]);
+        }
+    }
+
+    public function test_attempt_submission_rejects_invalid_source_guest_nonstudent_and_out_of_class_student(): void
+    {
+        Storage::fake('local');
+        [$student, $teacher, $class] = $this->classroomUsers();
+        $exercise = $this->exercise($class);
+        $url = '/api/v1/student/speaking/exercises/'.$exercise->id.'/attempts';
+        $payload = ['file' => UploadedFile::fake()->create('recording.webm', 10, 'audio/webm')];
+
+        $this->postJson($url, $payload)->assertUnauthorized();
+        $this->withToken($this->tokenFor($teacher))->post($url, $payload)->assertForbidden();
+        $outsider = User::factory()->student()->approved()->create();
+        $this->withToken($this->tokenFor($outsider))->post($url, $payload)->assertForbidden();
+        Sanctum::actingAs($student);
+        $this->post($url, $payload + ['capture_source' => 'unknown'])->assertUnprocessable()->assertJsonValidationErrors('capture_source');
+    }
+
+    public function test_ai_client_sends_bearer_token_and_accepts_valid_response(): void
+    {
+        Storage::fake('local');
+        config([
+            'speaking.ai.enabled' => true,
+            'speaking.ai.base_url' => 'https://speaking-ai.test',
+            'speaking.ai.token' => 'service-secret',
+            'speaking.ai.connect_timeout_seconds' => 2,
+            'speaking.ai.timeout_seconds' => 9,
+        ]);
+        [$student, , $class] = $this->classroomUsers();
+        $attempt = $this->attemptFor($student, $this->exercise($class));
+        Storage::disk('local')->put($attempt->audioMedia->path, 'webm');
+        Http::fake(['speaking-ai.test/*' => Http::response(['transcription' => 'ari', 'score' => 90, 'alignment' => []])]);
+
+        app(SpeakingAiClient::class)->analyze($attempt->load('audioMedia'));
+
+        Http::assertSent(fn (Request $request): bool => $request->hasHeader('Authorization', 'Bearer service-secret'));
+    }
+
+    public function test_ai_client_retries_server_errors_and_returns_stable_error(): void
+    {
+        Storage::fake('local');
+        config(['speaking.ai.enabled' => true, 'speaking.ai.base_url' => 'https://speaking-ai.test']);
+        [$student, , $class] = $this->classroomUsers();
+        $attempt = $this->attemptFor($student, $this->exercise($class));
+        Storage::disk('local')->put($attempt->audioMedia->path, 'webm');
+        Http::fake(['speaking-ai.test/*' => Http::response(['secret' => 'upstream leak'], 500)]);
+
+        try {
+            app(SpeakingAiClient::class)->analyze($attempt->load('audioMedia'));
+            $this->fail('Expected AI failure.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Analisis speaking AI gagal.', $exception->getMessage());
+        }
+
+        Http::assertSentCount(2);
+    }
+
+    public function test_speaking_contract_keeps_recording_private_without_public_routes_or_global_converter(): void
+    {
+        Storage::fake('local');
+        config(['speaking.ai.enabled' => false]);
+        [$student, , $class] = $this->classroomUsers();
+        $exercise = $this->exercise($class);
+
+        $response = $this->withToken($this->tokenFor($student))->post('/api/v1/student/speaking/exercises/'.$exercise->id.'/attempts', [
+            'file' => UploadedFile::fake()->create('recording.webm', 10, 'audio/webm'),
+        ])->assertCreated()->assertJsonPath('data.audio_url', fn (string $url): bool => str_starts_with($url, '/api/v1/media/'));
+
+        $attempt = SpeakingAttempt::query()->findOrFail($response->json('data.id'));
+        $this->assertSame('private', $attempt->audioMedia->visibility);
+        $this->assertSame('webm', $attempt->audioMedia->extension);
+        $modelSource = file_get_contents(app_path('Models/MediaFile.php'));
+        $this->assertStringNotContainsString('convert', strtolower($modelSource));
+        $this->assertStringNotContainsString('ffmpeg', strtolower($modelSource));
+        $routes = collect(app('router')->getRoutes())->map(fn ($route) => $route->uri());
+        $this->assertFalse($routes->contains(fn (string $uri): bool => str_contains($uri, 'audio-list')));
+        $this->assertFalse($routes->contains(fn (string $uri): bool => str_contains($uri, 'public/speaking')));
     }
 
     public function test_validation_rejects_oversized_or_invalid_audio(): void

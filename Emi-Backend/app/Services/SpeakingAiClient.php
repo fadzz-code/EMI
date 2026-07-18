@@ -3,9 +3,12 @@
 namespace App\Services;
 
 use App\Models\SpeakingAttempt;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
+use Throwable;
 
 class SpeakingAiClient
 {
@@ -31,11 +34,17 @@ class SpeakingAiClient
         }
 
         try {
-            $response = Http::timeout((int) config('speaking.ai.timeout_seconds', 60))
+            $response = Http::withToken((string) config('speaking.ai.token'))
+                ->connectTimeout((int) config('speaking.ai.connect_timeout_seconds', 5))
+                ->timeout((int) config('speaking.ai.timeout_seconds', 60))
+                ->retry(2, 100, fn (Throwable $exception): bool => $exception instanceof ConnectionException
+                    || ($exception instanceof RequestException && $exception->response->serverError()), false)
                 ->attach('file', $stream, $media->original_name, ['Content-Type' => $media->mime_type])
                 ->post(rtrim((string) config('speaking.ai.base_url'), '/').'/predict', [
                     'target_text' => $attempt->target_text_snapshot,
                 ]);
+        } catch (Throwable) {
+            throw new RuntimeException('Analisis speaking AI gagal.');
         } finally {
             if (is_resource($stream)) {
                 fclose($stream);
@@ -43,10 +52,20 @@ class SpeakingAiClient
         }
 
         if (! $response->successful()) {
-            $message = $response->json('error') ?: 'Analisis speaking AI gagal.';
-            throw new RuntimeException($message);
+            throw new RuntimeException('Analisis speaking AI gagal.');
         }
 
-        return $response->json();
+        $result = $response->json();
+        if (! is_array($result)
+            || ! isset($result['transcription'], $result['score'], $result['alignment'])
+            || ! is_string($result['transcription'])
+            || ! is_numeric($result['score'])
+            || ! is_array($result['alignment'])
+            || (float) $result['score'] < 0
+            || (float) $result['score'] > 100) {
+            throw new RuntimeException('Analisis speaking AI gagal.');
+        }
+
+        return $result;
     }
 }

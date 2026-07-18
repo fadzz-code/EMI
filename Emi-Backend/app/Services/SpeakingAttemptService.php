@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Jobs\AnalyzeSpeakingAttemptJob;
-use App\Models\MediaFile;
 use App\Models\SpeakingAttempt;
 use App\Models\SpeakingExercise;
 use App\Models\User;
@@ -15,9 +14,9 @@ class SpeakingAttemptService
 {
     public function __construct(private readonly MediaUploadService $mediaUploadService) {}
 
-    public function create(User $student, SpeakingExercise $exercise, UploadedFile $file, Request $request, ?int $durationSeconds = null): SpeakingAttempt
+    public function create(User $student, SpeakingExercise $exercise, UploadedFile $file, Request $request, ?int $durationSeconds = null, string $captureSource = 'web_microphone'): SpeakingAttempt
     {
-        return DB::transaction(function () use ($student, $exercise, $file, $request, $durationSeconds): SpeakingAttempt {
+        return DB::transaction(function () use ($student, $exercise, $file, $request, $durationSeconds, $captureSource): SpeakingAttempt {
             $media = $this->mediaUploadService->upload($student, $file, 'speaking_recording', 'private', [
                 'speaking_exercise_id' => $exercise->id,
                 'audio_duration_seconds' => $durationSeconds,
@@ -32,11 +31,16 @@ class SpeakingAttemptService
                 'audio_mime_type' => $media->mime_type,
                 'audio_size_bytes' => $media->size_bytes,
                 'audio_duration_seconds' => $durationSeconds,
+                'capture_source' => $captureSource,
                 'target_text_snapshot' => $exercise->target_text,
                 'status' => 'pending',
             ]);
 
-            AnalyzeSpeakingAttemptJob::dispatch($attempt->id);
+            if (config('queue.default') === 'sync') {
+                AnalyzeSpeakingAttemptJob::dispatchSync($attempt->id);
+            } else {
+                AnalyzeSpeakingAttemptJob::dispatch($attempt->id)->afterCommit();
+            }
 
             return $attempt->refresh()->load(['exercise', 'audioMedia']);
         });
