@@ -31,7 +31,7 @@ class QuizAttemptController extends Controller
 
     public function show(Request $request, string $id): JsonResponse
     {
-        $attempt = QuizAttempt::query()->with('classQuiz', 'answers.question', 'answers.selectedOption')->findOrFail($id);
+        $attempt = QuizAttempt::query()->with('classQuiz', 'student', 'answers.question', 'answers.selectedOption')->findOrFail($id);
         Gate::authorize('view', $attempt);
 
         return ApiResponse::success('Detail attempt kuis berhasil diambil.', new QuizAttemptResource($attempt));
@@ -65,7 +65,7 @@ class QuizAttemptController extends Controller
 
         $attempts = QuizAttempt::query()
             ->where('class_quiz_id', $quiz->id)
-            ->with('student', 'answers')
+            ->with('student', 'answers.selectedOption')
             ->when($validated['student_id'] ?? null, fn ($query, $studentId) => $query->where('student_id', $studentId))
             ->when($validated['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->orderBy($sortBy, $sortDirection)

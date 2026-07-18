@@ -12,6 +12,12 @@ class ClassQuizResource extends JsonResource
         return [
             'id' => $this->id,
             'class_id' => $this->class_id,
+            'class' => $this->whenLoaded('schoolClass', fn () => [
+                'id' => $this->schoolClass->id,
+                'name' => $this->schoolClass->name,
+                'grade_level' => $this->schoolClass->grade_level,
+                'academic_year' => $this->schoolClass->academic_year,
+            ]),
             'source_quiz_template_id' => $this->source_quiz_template_id,
             'title' => $this->title,
             'description' => $this->description,

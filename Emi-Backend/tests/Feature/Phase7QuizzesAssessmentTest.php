@@ -156,9 +156,32 @@ class Phase7QuizzesAssessmentTest extends TestCase
             'open_at' => '2020-01-01 00:00:00',
             'close_at' => '2099-01-01 00:00:00',
         ]))->assertCreated()->json('data.id');
+        $foreignQuiz = ClassQuiz::factory()->create(['class_id' => $classB->id, 'created_by' => $admin->id]);
 
+        $this->withToken($this->tokenFor($teacherA))->getJson('/api/v1/class-quizzes')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $quizId)
+            ->assertJsonPath('data.0.class.id', $classA->id)
+            ->assertJsonPath('data.0.class.name', $classA->name)
+            ->assertJsonMissing(['id' => $foreignQuiz->id]);
+        $this->withToken($this->tokenFor($teacherA))->getJson("/api/v1/class-quizzes/{$quizId}")
+            ->assertOk()
+            ->assertJsonPath('data.class.id', $classA->id)
+            ->assertJsonMissingPath('data.class.created_by');
+        $this->withToken($this->tokenFor($teacherA))->getJson("/api/v1/class-quizzes/{$foreignQuiz->id}")->assertForbidden();
+        $this->app['auth']->forgetGuards();
+        $this->flushHeaders()->getJson('/api/v1/class-quizzes')->assertUnauthorized();
+
+        $this->withToken($this->tokenFor($studentA))->getJson('/api/v1/class-quizzes')->assertForbidden();
         $this->withToken($this->tokenFor($teacherB))->putJson("/api/v1/class-quizzes/{$quizId}", ['title' => 'Ambil'])
             ->assertForbidden();
+        $inactiveTeacher = User::factory()->teacher()->approved()->create();
+        TeacherClassAssignment::factory()->inactive()->create(['teacher_id' => $inactiveTeacher->id, 'class_id' => $classA->id, 'assigned_by' => $admin->id]);
+        $this->withToken($this->tokenFor($inactiveTeacher))->getJson("/api/v1/class-quizzes/{$quizId}")->assertForbidden();
+        $this->withToken($this->tokenFor($studentA))->postJson("/api/v1/class-quizzes/{$quizId}/publish")->assertForbidden();
+        $this->app['auth']->forgetGuards();
+        $this->flushHeaders()->postJson("/api/v1/class-quizzes/{$quizId}/publish")->assertUnauthorized();
 
         $mcId = $this->withToken($this->tokenFor($teacherA))->postJson("/api/v1/class-quizzes/{$quizId}/questions", $this->multipleChoicePayload(['order_number' => 1]))
             ->assertCreated()
@@ -172,7 +195,13 @@ class Phase7QuizzesAssessmentTest extends TestCase
         $mcQuestion = QuizQuestion::query()->with('options')->findOrFail($mcId);
         $correctOption = $mcQuestion->options->firstWhere('is_correct', true);
 
-        $this->withToken($this->tokenFor($teacherA))->postJson("/api/v1/class-quizzes/{$quizId}/publish")->assertOk();
+        $this->withToken($this->tokenFor($teacherA))->getJson("/api/v1/class-quizzes/{$quizId}")
+            ->assertOk()
+            ->assertJsonPath('data.questions_count', 2)
+            ->assertJsonPath('data.questions.0.options.0.is_correct', true);
+        $this->withToken($this->tokenFor($teacherA))->postJson("/api/v1/class-quizzes/{$quizId}/publish")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published');
 
         $this->withToken($this->tokenFor($studentB))->getJson("/api/v1/student/quizzes/{$quizId}")->assertNotFound();
         $studentView = $this->withToken($this->tokenFor($studentA))->getJson("/api/v1/student/quizzes/{$quizId}")->assertOk();
@@ -223,6 +252,20 @@ class Phase7QuizzesAssessmentTest extends TestCase
         $report = $this->withToken($this->tokenFor($teacherA))->getJson("/api/v1/class-quizzes/{$quizId}/report")->assertOk();
         $report->assertJsonPath('data.submitted_count', 1)
             ->assertJsonPath('data.average_score_percent', 100);
+        $this->withToken($this->tokenFor($teacherA))->getJson("/api/v1/class-quizzes/{$quizId}/attempts")
+            ->assertOk()
+            ->assertJsonPath('data.0.student.id', $studentA->id)
+            ->assertJsonPath('data.0.student.full_name', $studentA->full_name)
+            ->assertJsonMissingPath('data.0.student.email')
+            ->assertJsonMissingPath('data.0.student.password');
+        $this->withToken($this->tokenFor($teacherA))->getJson("/api/v1/quiz-attempts/{$attemptId}")
+            ->assertOk()
+            ->assertJsonPath('data.student.id', $studentA->id)
+            ->assertJsonPath('data.answers.0.selected_option.option_text', $correctOption->option_text)
+            ->assertJsonMissingPath('data.student.email');
+        $this->withToken($this->tokenFor($studentA))->getJson("/api/v1/class-quizzes/{$quizId}/attempts")->assertForbidden();
+        $this->app['auth']->forgetGuards();
+        $this->flushHeaders()->getJson("/api/v1/class-quizzes/{$quizId}/attempts")->assertUnauthorized();
 
         $this->withToken($this->tokenFor($studentA))->putJson("/api/v1/quiz-attempts/{$attemptId}/answers/{$mcId}", [
             'selected_option_id' => $correctOption->id,
