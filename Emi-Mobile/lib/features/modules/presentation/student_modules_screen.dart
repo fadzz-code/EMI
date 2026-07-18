@@ -200,7 +200,7 @@ class _ModuleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () => context.go('/student/modules/${module.id}'),
+      onTap: () => context.push('/student/modules/${module.id}'),
       child: EmiCard(
         padding: EdgeInsets.zero,
         child: Column(

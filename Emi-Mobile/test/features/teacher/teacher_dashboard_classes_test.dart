@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:emi_mobile/core/errors/dio_error_mapper.dart';
 import 'package:emi_mobile/features/teacher/data/teacher_repository.dart';
@@ -72,6 +74,23 @@ void main() {
                 },
               ],
             },
+            '/teacher/reports/progress/students' => {
+              'data': [
+                {
+                  'student_id': 'student-1',
+                  'full_name': 'Ayu',
+                  'class': {'name': 'Kelas 7A'},
+                  'published_modules': 4,
+                  'started_modules': 3,
+                  'completed_modules': 2,
+                  'overall_learning_progress_percent': 50,
+                  'published_quizzes': 3,
+                  'quizzes_attempted': 2,
+                  'quizzes_completed': 1,
+                },
+              ],
+              'meta': {'current_page': 2, 'last_page': 3, 'total': 21},
+            },
             _ => <String, dynamic>{},
           };
           handler.resolve(Response(requestOptions: options, data: data));
@@ -111,7 +130,8 @@ void main() {
 
   test('dashboard parses average progress and recent activity', () async {
     final result = await repository.dashboard();
-    expect(result.metrics[3].value, '22%');
+    expect(result.metrics[3].value, '2');
+    expect(result.metrics[4].value, '22%');
     expect(
       (result.activities.single.studentName, result.activities.single.type),
       ('Dian Lestari', 'quiz_submitted'),
@@ -128,7 +148,13 @@ void main() {
 
   test('dashboard safely defaults missing metrics to zero', () {
     final result = TeacherDashboardSummary.fromJson(const {});
-    expect(result.metrics.map((item) => item.value), ['0', '0', '0', '0%']);
+    expect(result.metrics.map((item) => item.value), [
+      '0',
+      '0',
+      '0',
+      '0',
+      '0%',
+    ]);
   });
 
   test('classes uses classes endpoint', () async {
@@ -138,7 +164,13 @@ void main() {
 
   test('classes sends supported page and search', () async {
     await repository.classes(page: 2, search: ' 7A ');
-    expect(requests.single.queryParameters, {'page': 2, 'search': '7A'});
+    expect(requests.single.queryParameters, {
+      'page': 2,
+      'per_page': 10,
+      'sort_by': 'name',
+      'sort_direction': 'asc',
+      'search': '7A',
+    });
   });
 
   test('classes parses pagination', () async {
@@ -169,12 +201,84 @@ void main() {
     expect(requests.single.path, '/classes/class-1/students');
   });
 
+  test('class students sends audited fixed query', () async {
+    await repository.classStudents('class-1');
+    expect(requests.single.queryParameters, {
+      'page': 1,
+      'per_page': 100,
+      'sort_by': 'full_name',
+      'sort_direction': 'asc',
+    });
+  });
+
   test('class students parses name email and status', () async {
     final result = await repository.classStudents('class-1');
     final student = result.items.single;
     expect(
       (student.name, student.email, student.status),
       ('Ayu', 'ayu@example.test', 'approved'),
+    );
+  });
+
+  test('student progress sends backend-supported query', () async {
+    await repository.studentProgress(page: 2, search: ' Ayu ');
+    expect(requests.single.queryParameters, {
+      'page': 2,
+      'per_page': 20,
+      'sort_by': 'full_name',
+      'sort_direction': 'asc',
+      'search': 'Ayu',
+    });
+  });
+
+  test('student progress sends verified class scope', () async {
+    await repository.studentProgress(classId: 'class-1');
+    expect(requests.single.queryParameters['class_id'], 'class-1');
+    expect(requests.single.queryParameters['per_page'], 20);
+  });
+
+  test('student progress parses typed row and pagination meta', () async {
+    final result = await repository.studentProgress(page: 2);
+    final student = result.items.single;
+    expect((result.currentPage, result.lastPage, result.total), (2, 3, 21));
+    expect(
+      (
+        student.name,
+        student.startedModules,
+        student.publishedQuizzes,
+        student.percent,
+      ),
+      ('Ayu', 3, 3, 50),
+    );
+  });
+
+  test('student detail sends scoped student id and parses first row', () async {
+    final result = await repository.studentDetail('student-1');
+    expect(requests.single.queryParameters['student_id'], 'student-1');
+    expect(requests.single.queryParameters['per_page'], 1);
+    expect(result.studentId, 'student-1');
+  });
+
+  test('stage one routes and navigation wiring exist', () {
+    final router = File('lib/app/router/app_router.dart').readAsStringSync();
+    final shell = File(
+      'lib/features/teacher/presentation/teacher_shell.dart',
+    ).readAsStringSync();
+    final dashboard = File(
+      'lib/features/teacher/presentation/teacher_dashboard_screen.dart',
+    ).readAsStringSync();
+    final classes = File(
+      'lib/features/teacher/presentation/teacher_classes_screens.dart',
+    ).readAsStringSync();
+    expect(router, contains("path: '/teacher/students'"));
+    expect(router, contains("path: '/teacher/students/:id'"));
+    expect(router, contains("path: '/teacher/reports/progress'"));
+    expect(shell, contains("route: '/teacher/students'"));
+    expect(shell, contains("route: '/teacher/reports/progress'"));
+    expect(dashboard, contains("context.go('/teacher/reports/progress')"));
+    expect(
+      classes,
+      contains("context.push('/teacher/students/\${student.id}')"),
     );
   });
 }

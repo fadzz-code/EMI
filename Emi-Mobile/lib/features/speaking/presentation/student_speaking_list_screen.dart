@@ -71,7 +71,7 @@ class _ExerciseList extends StatelessWidget {
             (item) => Padding(
               padding: const EdgeInsets.only(bottom: EmiSpacing.md),
               child: InkWell(
-                onTap: () => context.go('/student/speaking/${item.id}'),
+                onTap: () => context.push('/student/speaking/${item.id}'),
                 child: EmiCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

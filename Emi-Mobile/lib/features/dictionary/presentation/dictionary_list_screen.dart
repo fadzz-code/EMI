@@ -192,7 +192,7 @@ class _DictionaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () => context.go('/student/dictionary/${entry.id}'),
+      onTap: () => context.push('/student/dictionary/${entry.id}'),
       child: EmiCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

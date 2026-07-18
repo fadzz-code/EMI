@@ -198,7 +198,7 @@ class _QuizCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () => context.go('/student/quizzes/${quiz.id}'),
+      onTap: () => context.push('/student/quizzes/${quiz.id}'),
       child: EmiCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

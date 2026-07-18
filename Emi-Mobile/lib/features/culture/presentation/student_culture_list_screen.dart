@@ -153,7 +153,7 @@ class _CultureList extends StatelessWidget {
         final item = items[index];
         return _CultureCard(
           item: item,
-          onTap: () => context.go('/student/culture/${item.id}', extra: item),
+          onTap: () => context.push('/student/culture/${item.id}', extra: item),
         );
       },
     );

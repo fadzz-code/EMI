@@ -42,10 +42,18 @@ class TeacherDashboardScreen extends ConsumerWidget {
                     'Pantau kelas, materi, kuis, dan latihan speaking siswa dari satu tempat.',
                 icon: Icons.school_outlined,
                 action: IconButton(
-                  tooltip: 'Profil',
-                  onPressed: () => context.go('/teacher/profile'),
-                  icon: const Icon(Icons.account_circle_outlined),
+                  tooltip: 'Kelas Saya',
+                  onPressed: () => context.go('/teacher/classes'),
+                  icon: const Icon(Icons.groups_outlined),
                 ),
+              ),
+              const SizedBox(height: EmiSpacing.lg),
+              _TeacherNoticeCard(
+                icon: Icons.tips_and_updates_outlined,
+                title: 'Siap mendampingi kelas hari ini?',
+                message:
+                    'Periksa materi dan kuis terbaru sebelum memulai pembelajaran.',
+                color: EmiColors.surfaceSoft,
               ),
               const SizedBox(height: EmiSpacing.lg),
               Text('Ringkasan', style: Theme.of(context).textTheme.titleMedium),
@@ -100,29 +108,17 @@ class TeacherDashboardScreen extends ConsumerWidget {
                   TeacherQuickAction(
                     label: 'Kuis Kelas',
                     icon: Icons.quiz_outlined,
-                    onTap: () => _showComingSoon(
-                      context,
-                      'Kuis Kelas',
-                      Icons.quiz_outlined,
-                    ),
+                    onTap: () => context.go('/teacher/quizzes'),
                   ),
                   TeacherQuickAction(
-                    label: 'Hasil Speaking',
-                    icon: Icons.mic_none_outlined,
-                    onTap: () => _showComingSoon(
-                      context,
-                      'Hasil Speaking',
-                      Icons.mic_none_outlined,
-                    ),
+                    label: 'Siswa',
+                    icon: Icons.people_outline,
+                    onTap: () => context.go('/teacher/students'),
                   ),
                   TeacherQuickAction(
                     label: 'Aktivitas & Progress Siswa',
                     icon: Icons.insights_outlined,
-                    onTap: () => _showComingSoon(
-                      context,
-                      'Aktivitas & Progress Siswa',
-                      Icons.insights_outlined,
-                    ),
+                    onTap: () => context.go('/teacher/reports/progress'),
                   ),
                 ],
               ),
@@ -176,35 +172,10 @@ class TeacherDashboardScreen extends ConsumerWidget {
     );
   }
 
-  void _showComingSoon(BuildContext context, String label, IconData icon) {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(EmiSpacing.lg),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 28),
-              const SizedBox(height: EmiSpacing.sm),
-              Text(label, style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: EmiSpacing.xs),
-              const Text('Fitur ini sedang disiapkan.'),
-              const SizedBox(height: EmiSpacing.md),
-              FilledButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Tutup'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   String _metricCaption(TeacherMetric metric) => switch (metric.iconName) {
     'students' => 'Siswa aktif di kelas',
     'learning' => 'materi terbit',
+    'quiz' => 'kuis terbit',
     'progress' => 'Rata-rata progress kelas',
     _ => '',
   };
@@ -216,6 +187,58 @@ class TeacherDashboardScreen extends ConsumerWidget {
     'quiz' => Icons.quiz_outlined,
     _ => Icons.insights_outlined,
   };
+}
+
+class _TeacherNoticeCard extends StatelessWidget {
+  const _TeacherNoticeCard({
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => EmiCard(
+    child: Container(
+      padding: const EdgeInsets.all(EmiSpacing.sm),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(EmiRadii.card),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.auto_awesome_outlined, size: 28),
+          const SizedBox(width: EmiSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(icon, size: 18),
+                    const SizedBox(width: EmiSpacing.xs),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(message),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _ScrollableLoading extends StatelessWidget {

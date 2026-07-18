@@ -51,6 +51,7 @@ class TeacherDashboardSummary {
     final school = _map(klass['school']);
     final students = _map(json['students']);
     final learning = _map(json['learning']);
+    final quizzes = _map(json['quizzes']);
     final activities = json['recent_activity'] is List
         ? (json['recent_activity'] as List)
               .whereType<Map<String, dynamic>>()
@@ -87,6 +88,11 @@ class TeacherDashboardSummary {
           iconName: 'learning',
         ),
         TeacherMetric(
+          label: 'Kuis Terbit',
+          value: '${_int(quizzes['published_quizzes'])}',
+          iconName: 'quiz',
+        ),
+        TeacherMetric(
           label: 'Progress',
           value: '${progress.toStringAsFixed(0)}%',
           iconName: 'progress',
@@ -106,6 +112,7 @@ class TeacherClass {
     this.schoolName,
     this.gradeLevel,
     this.academicYear,
+    this.teacherName,
   });
 
   final String id;
@@ -115,9 +122,12 @@ class TeacherClass {
   final String? schoolName;
   final String? gradeLevel;
   final String? academicYear;
+  final String? teacherName;
 
   factory TeacherClass.fromJson(Map<String, dynamic> json) {
     final school = _map(json['school']);
+    final assignment = _map(json['active_teacher_assignment']);
+    final teacher = _map(assignment['teacher']);
     return TeacherClass(
       id: _string(json['id']),
       name: _string(json['name'], fallback: 'Kelas tanpa nama'),
@@ -126,6 +136,7 @@ class TeacherClass {
       schoolName: _nullableString(school['name'] ?? json['school_name']),
       gradeLevel: _nullableString(json['grade_level']),
       academicYear: _nullableString(json['academic_year']),
+      teacherName: _nullableString(teacher['full_name']),
     );
   }
 }
@@ -167,12 +178,14 @@ class TeacherClassStudent {
     required this.name,
     required this.email,
     required this.status,
+    this.joinedAt,
   });
 
   final String id;
   final String name;
   final String email;
   final String status;
+  final DateTime? joinedAt;
 
   factory TeacherClassStudent.fromJson(Map<String, dynamic> json) {
     final student = _map(json['student']);
@@ -181,6 +194,7 @@ class TeacherClassStudent {
       name: _string(student['full_name'], fallback: 'Nama belum tersedia'),
       email: _string(student['email'], fallback: 'Email belum tersedia'),
       status: _string(student['status']),
+      joinedAt: DateTime.tryParse(_string(json['joined_at'])),
     );
   }
 }
@@ -284,6 +298,80 @@ class TeacherLesson {
   }
 }
 
+class TeacherStudentProgress {
+  const TeacherStudentProgress({
+    required this.studentId,
+    required this.name,
+    required this.className,
+    required this.percent,
+    required this.completedModules,
+    required this.startedModules,
+    required this.publishedModules,
+    required this.completedQuizzes,
+    required this.attemptedQuizzes,
+    required this.publishedQuizzes,
+  });
+
+  final String studentId;
+  final String name;
+  final String className;
+  final double percent;
+  final int completedModules;
+  final int startedModules;
+  final int publishedModules;
+  final int completedQuizzes;
+  final int attemptedQuizzes;
+  final int publishedQuizzes;
+
+  factory TeacherStudentProgress.fromJson(Map<String, dynamic> json) =>
+      TeacherStudentProgress(
+        studentId: _string(json['student_id']),
+        name: _string(json['full_name'], fallback: 'Nama belum tersedia'),
+        className: _string(
+          _map(json['class'])['name'],
+          fallback: 'Kelas belum tersedia',
+        ),
+        percent: _number(json['overall_learning_progress_percent']),
+        completedModules: _int(json['completed_modules']),
+        startedModules: _int(json['started_modules']),
+        publishedModules: _int(json['published_modules']),
+        completedQuizzes: _int(json['quizzes_completed']),
+        attemptedQuizzes: _int(json['quizzes_attempted']),
+        publishedQuizzes: _int(json['published_quizzes']),
+      );
+}
+
+class TeacherStudentProgressPage {
+  const TeacherStudentProgressPage({
+    required this.items,
+    required this.currentPage,
+    required this.lastPage,
+    required this.total,
+  });
+
+  final List<TeacherStudentProgress> items;
+  final int currentPage;
+  final int lastPage;
+  final int total;
+
+  factory TeacherStudentProgressPage.fromJson(Map<String, dynamic>? json) {
+    final rows = json?['data'];
+    final meta = _map(json?['meta']);
+    final items = rows is List
+        ? rows
+              .whereType<Map<String, dynamic>>()
+              .map(TeacherStudentProgress.fromJson)
+              .toList()
+        : <TeacherStudentProgress>[];
+    return TeacherStudentProgressPage(
+      items: items,
+      currentPage: _int(meta['current_page'], fallback: 1),
+      lastPage: _int(meta['last_page'], fallback: 1),
+      total: _int(meta['total'], fallback: items.length),
+    );
+  }
+}
+
 class TeacherMediaUpload {
   const TeacherMediaUpload({required this.id, required this.name});
 
@@ -374,6 +462,9 @@ class TeacherRepository {
       '/classes',
       queryParameters: {
         'page': page,
+        'per_page': 10,
+        'sort_by': 'name',
+        'sort_direction': 'asc',
         if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
       },
     ),
@@ -394,11 +485,46 @@ class TeacherRepository {
       '/classes/$id/students',
       queryParameters: {
         'page': page,
+        'per_page': 100,
+        'sort_by': 'full_name',
+        'sort_direction': 'asc',
         if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
       },
     ),
     TeacherClassStudentPage.fromJson,
   );
+
+  Future<TeacherStudentProgressPage> studentProgress({
+    int page = 1,
+    String? search,
+    String? studentId,
+    String? classId,
+  }) => _request(
+    () => _dio.get<Map<String, dynamic>>(
+      '/teacher/reports/progress/students',
+      queryParameters: {
+        'page': page,
+        'per_page': studentId == null ? 20 : 1,
+        'sort_by': 'full_name',
+        'sort_direction': 'asc',
+        if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+        'student_id': ?studentId,
+        'class_id': ?classId,
+      },
+    ),
+    TeacherStudentProgressPage.fromJson,
+  );
+
+  Future<TeacherStudentProgress> studentDetail(String id) async {
+    final page = await studentProgress(studentId: id);
+    if (page.items.isEmpty) {
+      throw const AppError(
+        type: AppErrorType.unknown,
+        message: 'Detail siswa tidak tersedia atau bukan berada di kelas Anda.',
+      );
+    }
+    return page.items.first;
+  }
 
   Future<TeacherModule> _action(String path, String label) => _request(
     () => _dio.post<Map<String, dynamic>>(path),

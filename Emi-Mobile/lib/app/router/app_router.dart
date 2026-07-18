@@ -41,6 +41,8 @@ import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/teacher/presentation/teacher_classes_screens.dart';
 import '../../features/teacher/presentation/teacher_dashboard_screen.dart';
 import '../../features/teacher/presentation/teacher_modules_screens.dart';
+import '../../features/teacher/presentation/teacher_quizzes_screens.dart';
+import '../../features/teacher/presentation/teacher_students_screens.dart';
 import 'router_refresh_stream.dart';
 import 'unsupported_role_screen.dart';
 
@@ -132,6 +134,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             TeacherClassDetailScreen(id: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
+        path: '/teacher/students',
+        builder: (_, _) => const TeacherStudentsScreen(),
+      ),
+      GoRoute(
+        path: '/teacher/students/:id',
+        builder: (_, state) =>
+            TeacherStudentDetailScreen(id: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
+        path: '/teacher/reports/progress',
+        builder: (_, _) => const TeacherProgressScreen(),
+      ),
+      GoRoute(
         path: '/teacher/modules',
         builder: (_, _) => const TeacherModulesScreen(),
       ),
@@ -146,6 +161,49 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           moduleId: state.pathParameters['moduleId'] ?? '',
           id: state.pathParameters['id'] ?? '',
         ),
+      ),
+      GoRoute(
+        path: '/teacher/quizzes',
+        builder: (_, _) => const TeacherQuizzesScreen(),
+      ),
+      GoRoute(
+        path: '/teacher/quizzes/create',
+        builder: (_, _) => const TeacherQuizFormScreen(),
+      ),
+      GoRoute(
+        path: '/teacher/quizzes/:id/edit',
+        builder: (_, state) =>
+            TeacherQuizFormScreen(id: state.pathParameters['id']),
+      ),
+      GoRoute(
+        path: '/teacher/quizzes/:quizId/questions/create',
+        builder: (_, state) => TeacherQuestionFormScreen(
+          quizId: state.pathParameters['quizId'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/teacher/quizzes/:quizId/questions/:id/edit',
+        builder: (_, state) => TeacherQuestionFormScreen(
+          quizId: state.pathParameters['quizId'] ?? '',
+          id: state.pathParameters['id'],
+        ),
+      ),
+      GoRoute(
+        path: '/teacher/quizzes/:quizId/results/:attemptId',
+        builder: (_, state) => TeacherQuizAttemptScreen(
+          quizId: state.pathParameters['quizId'] ?? '',
+          attemptId: state.pathParameters['attemptId'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/teacher/quizzes/:id/results',
+        builder: (_, state) =>
+            TeacherQuizResultsScreen(quizId: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
+        path: '/teacher/quizzes/:id',
+        builder: (_, state) =>
+            TeacherQuizDetailScreen(id: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
         path: '/teacher/profile',
