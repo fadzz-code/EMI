@@ -62,6 +62,51 @@ class SpeakingPracticeAiTest extends TestCase
         $this->assertSame(['0_ari' => 100], $attempt->ai_alignment);
     }
 
+    public function test_hardware_wav_persists_and_reaches_ai_before_polling_completed_result(): void
+    {
+        Storage::fake('local');
+        config([
+            'queue.default' => 'sync',
+            'speaking.ai.enabled' => true,
+            'speaking.ai.base_url' => 'https://speaking-ai.test',
+            'speaking.ai.token' => 'service-secret',
+        ]);
+        $aiReceivedWav = false;
+        Http::fake(function (Request $request) use (&$aiReceivedWav) {
+            $aiReceivedWav = str_contains($request->body(), 'RIFF') && str_contains($request->body(), 'WAVE');
+
+            return Http::response([
+                'transcription' => 'ari nggiro',
+                'score' => 91,
+                'alignment' => [],
+                'warnings' => ['Perkiraan model'],
+            ]);
+        });
+        [$student, , $class] = $this->classroomUsers();
+        $exercise = $this->exercise($class);
+        $wav = $this->hardwareWav();
+
+        $response = $this->withToken($this->tokenFor($student))->post('/api/v1/student/speaking/exercises/'.$exercise->id.'/attempts', [
+            'file' => UploadedFile::fake()->createWithContent('speaking-emi.wav', $wav),
+            'capture_source' => 'web_esp32_serial',
+            'audio_duration_seconds' => 1,
+        ])->assertCreated()->assertJsonPath('data.status', 'completed');
+
+        $attempt = SpeakingAttempt::query()->with('audioMedia')->findOrFail($response->json('data.id'));
+        $this->assertSame($attempt->audio_media_id, $attempt->audioMedia->id);
+        $this->assertSame('local', $attempt->audioMedia->disk);
+        $this->assertSame('audio/wav', $attempt->audioMedia->mime_type);
+        $this->assertSame(strlen($wav), $attempt->audioMedia->size_bytes);
+        Storage::disk('local')->assertExists($attempt->audioMedia->path);
+        $this->assertSame($wav, Storage::disk('local')->get($attempt->audioMedia->path));
+        $this->assertTrue($aiReceivedWav);
+        $this->withToken($this->tokenFor($student))->getJson('/api/v1/student/speaking/attempts/'.$attempt->id)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'completed')
+            ->assertJsonPath('data.ai_score', 91)
+            ->assertJsonPath('data.ai_transcription', 'ari nggiro');
+    }
+
     public function test_student_can_upload_audio_webm_speaking_attempt(): void
     {
         Storage::fake('local');
@@ -770,6 +815,13 @@ class SpeakingPracticeAiTest extends TestCase
                 throw new RuntimeException('AI unavailable');
             }
         });
+    }
+
+    private function hardwareWav(): string
+    {
+        $pcm = str_repeat("\0", 32_000);
+
+        return 'RIFF'.pack('V', 36 + strlen($pcm)).'WAVEfmt '.pack('VvvVVvv', 16, 1, 1, 16_000, 32_000, 2, 16).'data'.pack('V', strlen($pcm)).$pcm;
     }
 
     private function tokenFor(User $user): string

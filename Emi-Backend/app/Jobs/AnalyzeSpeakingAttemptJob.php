@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class AnalyzeSpeakingAttemptJob implements ShouldQueue
@@ -45,10 +46,28 @@ class AnalyzeSpeakingAttemptJob implements ShouldQueue
                 'ai_raw_response' => $result,
                 'ai_error' => null,
             ])->save();
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            Log::warning('Analisis speaking gagal.', [
+                'attempt_id' => $attempt->id,
+                'media_id' => $attempt->audio_media_id,
+                'media_disk' => $attempt->audioMedia?->disk,
+                'media_path_hash' => $attempt->audioMedia ? hash('sha256', $attempt->audioMedia->path) : null,
+                'exception' => $exception::class,
+                'reason' => $exception->getMessage(),
+            ]);
+            $publicErrors = [
+                'Media audio speaking tidak ditemukan.',
+                'Audio speaking tidak ditemukan pada penyimpanan.',
+                'Audio speaking tidak dapat dibaca.',
+                'Layanan analisis speaking tidak dapat dihubungi.',
+                'Autentikasi layanan analisis speaking gagal.',
+                'Layanan analisis speaking melewati batas waktu.',
+                'Audio speaking tidak dapat dianalisis.',
+                'Layanan analisis speaking sedang tidak tersedia.',
+            ];
             $attempt->forceFill([
                 'status' => 'failed',
-                'ai_error' => 'Analisis speaking AI gagal.',
+                'ai_error' => in_array($exception->getMessage(), $publicErrors, true) ? $exception->getMessage() : 'Analisis speaking AI gagal.',
             ])->save();
         }
     }
