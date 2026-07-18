@@ -11,7 +11,7 @@ class ClassQuizPolicy
 {
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['admin', 'teacher', 'student'], true);
+        return in_array($user->role, ['admin', 'teacher'], true);
     }
 
     public function createForClass(User $user, SchoolClass $class): bool

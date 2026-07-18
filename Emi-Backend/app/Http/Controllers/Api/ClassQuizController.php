@@ -28,6 +28,7 @@ class ClassQuizController extends Controller
         $sortDirection = $validated['sort_direction'] ?? 'desc';
 
         $quizzes = ClassQuiz::query()
+            ->with('schoolClass')
             ->withCount(['questions', 'attempts'])
             ->when($request->user()->role === 'teacher', fn ($query) => $query->where('class_id', $request->user()->activeClassId()))
             ->when($validated['class_id'] ?? null, fn ($query, $classId) => $query->where('class_id', $classId))
@@ -49,7 +50,7 @@ class ClassQuizController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $quiz = ClassQuiz::query()->with('questions.options', 'questions.imageMedia')->withCount(['questions', 'attempts'])->findOrFail($id);
+        $quiz = ClassQuiz::query()->with('schoolClass', 'questions.options', 'questions.imageMedia')->withCount(['questions', 'attempts'])->findOrFail($id);
         Gate::authorize('view', $quiz);
         $quiz->questions->each->setAttribute('show_sensitive_answers', request()->user()?->role !== 'student');
 

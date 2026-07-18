@@ -19,6 +19,10 @@ class QuizAttemptResource extends JsonResource
             'id' => $this->id,
             'class_quiz_id' => $this->class_quiz_id,
             'student_id' => $this->student_id,
+            'student' => $this->whenLoaded('student', fn () => [
+                'id' => $this->student->id,
+                'full_name' => $this->student->full_name,
+            ]),
             'attempt_number' => $this->attempt_number,
             'status' => $this->status,
             'started_at' => $this->started_at?->toISOString(),

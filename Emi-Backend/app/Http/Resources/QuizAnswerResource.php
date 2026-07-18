@@ -16,6 +16,7 @@ class QuizAnswerResource extends JsonResource
             'quiz_attempt_id' => $this->quiz_attempt_id,
             'quiz_question_id' => $this->quiz_question_id,
             'selected_option_id' => $this->selected_option_id,
+            'selected_option' => new QuizOptionResource($this->whenLoaded('selectedOption')),
             'answer_text' => $this->answer_text,
             'is_correct' => $this->when($showResult, $this->is_correct),
             'similarity_score' => $this->when($showResult, $this->similarity_score),
