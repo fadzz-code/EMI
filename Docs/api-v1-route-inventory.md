@@ -141,22 +141,22 @@ Auth notation:
 
 | Method | Path | Controller/action | Auth/role | Purpose | Mobile relevance | Notes |
 |---|---|---|---|---|---|---|
-| GET | `/student/quizzes` | `StudentQuizController@index` | Student | Quiz list | High |  |
-| GET | `/student/quizzes/{id}` | `StudentQuizController@show` | Student | Quiz detail | High |  |
-| POST | `/class-quizzes/{id}/attempts` | `QuizAttemptController@start` | Student | Start attempt | High | Shared path with student role middleware. |
-| GET | `/quiz-attempts/{id}` | `QuizAttemptController@show` | Auth + scoped | Attempt detail/result | High | Student result after submit. |
-| PUT | `/quiz-attempts/{id}/answers/{question_id}` | `QuizAttemptController@saveAnswer` | Student | Save answer | High |  |
-| POST | `/quiz-attempts/{id}/submit` | `QuizAttemptController@submit` | Student | Submit quiz | High |  |
-| GET | `/class-quizzes` | `ClassQuizController@index` | Auth + scoped | Class quiz list | Later | Teacher/admin management. |
-| POST | `/class-quizzes` | `ClassQuizController@store` | Auth + scoped | Create class quiz | Low |  |
-| GET/PUT/DELETE | `/class-quizzes/{id}` | `ClassQuizController` | Auth + scoped | Class quiz detail/update/delete | Later |  |
-| POST | `/class-quizzes/{id}/publish` | `ClassQuizController@publish` | Auth + scoped | Publish quiz | Low |  |
-| POST | `/class-quizzes/{id}/archive` | `ClassQuizController@archive` | Auth + scoped | Archive quiz | Low |  |
-| GET/POST | `/class-quizzes/{class_quiz_id}/questions` | `QuizQuestionController@index/store` | Auth + scoped | Question list/create | Later |  |
-| GET/PUT/DELETE | `/quiz-questions/{id}` | `QuizQuestionController` | Auth + scoped | Question detail/update/delete | Later |  |
-| PATCH | `/class-quizzes/{id}/questions/reorder` | `QuizQuestionController@reorder` | Auth + scoped | Reorder questions | Low |  |
-| GET | `/class-quizzes/{id}/attempts` | `QuizAttemptController@indexForQuiz` | Auth + scoped | Attempts for quiz | Later | Teacher/admin reporting. |
-| GET | `/class-quizzes/{id}/report` | `QuizReportController@show` | Auth + scoped | Quiz report | Later |  |
+| GET | `/student/quizzes` | `StudentQuizController@index` | Student | Student quiz list | High | Hanya Class Quiz published pada kelas aktif Siswa; bukan Admin Quiz Template. |
+| GET | `/student/quizzes/{id}` | `StudentQuizController@show` | Student | Student quiz detail | High | Response Siswa tidak memuat `correct_answer_text` atau `is_correct`. |
+| POST | `/class-quizzes/{id}/attempts` | `QuizAttemptController@start` | Student | Start/resume Student Attempt | High | Kuis harus published, dalam jadwal, dan milik kelas aktif; attempt `in_progress` yang valid dipakai kembali. |
+| GET | `/quiz-attempts/{id}` | `QuizAttemptController@show` | Auth + scoped | Attempt detail/result | High | Siswa hanya attempt sendiri; Guru hanya attempt kuis kelas assignment aktif. Hasil mengikuti `show_result`. |
+| PUT | `/quiz-attempts/{id}/answers/{question_id}` | `QuizAttemptController@saveAnswer` | Student | Save answer | High | Body `selected_option_id` untuk pilihan ganda atau `answer_text` untuk jawaban singkat; hanya attempt sendiri yang `in_progress`. |
+| POST | `/quiz-attempts/{id}/submit` | `QuizAttemptController@submit` | Student | Submit attempt | High | Header `Idempotency-Key` wajib; response dapat menyembunyikan skor saat `show_result=false`. |
+| GET | `/class-quizzes` | `ClassQuizController@index` | Auth + scoped | Teacher Class Quiz list | High | Query Web/mobile Guru: `search`, `status`, `page`; policy membatasi assignment kelas aktif. Bukan Admin Quiz Template. |
+| POST | `/class-quizzes` | `ClassQuizController@store` | Auth + scoped | Create Teacher Class Quiz | High | Body: `class_id`, `title`, `description`, `instructions`, `duration_minutes`, `max_attempts`, `show_result`, `open_at`, `close_at`; Guru hanya kelas assignment aktif. |
+| GET/PUT/DELETE | `/class-quizzes/{id}` | `ClassQuizController` | Auth + scoped | Class quiz detail/update/delete | High | Response Guru memuat class, counts, questions/options dan kunci jawaban; foreign class 403. Konten terkunci setelah publish/attempt. |
+| POST | `/class-quizzes/{id}/publish` | `ClassQuizController@publish` | Auth + scoped | Publish class quiz | High | Memerlukan soal valid; Guru kelas assignment aktif. |
+| POST | `/class-quizzes/{id}/archive` | `ClassQuizController@archive` | Auth + scoped | Archive class quiz | High | Guru kelas assignment aktif. |
+| GET/POST | `/class-quizzes/{class_quiz_id}/questions` | `QuizQuestionController@index/store` | Auth + scoped | Class quiz question list/create | High | `multiple_choice` atau `short_answer`; request mencakup text, points, order, explanation, jawaban/options. |
+| GET/PUT/DELETE | `/quiz-questions/{id}` | `QuizQuestionController` | Auth + scoped | Question detail/update/delete | High | Policy mengikuti Class Quiz dan assignment aktif; mutation ditolak saat konten terkunci. |
+| PATCH | `/class-quizzes/{id}/questions/reorder` | `QuizQuestionController@reorder` | Auth + scoped | Reorder questions | Later | Body `question_ids`; tersedia Web, belum dipakai mobile Guru. |
+| GET | `/class-quizzes/{id}/attempts` | `QuizAttemptController@indexForQuiz` | Auth + scoped | Student Attempt list for teacher | Later | Web hasil Guru; response student hanya ID/nama, tanpa email/password. Belum dipakai mobile Guru. |
+| GET | `/class-quizzes/{id}/report` | `QuizReportController@show` | Auth + scoped | Teacher Class Quiz report | Later | Aggregate submitted/score untuk kelas assignment aktif; belum dipakai mobile Guru. |
 | GET | `/admin/quiz-templates` | `AdminQuizTemplateController@index` | Admin | Admin quiz template list | Medium | Query: `search`, `status`, `created_by`, `page`, `per_page`, `sort_by`, `sort_direction`. |
 | POST | `/admin/quiz-templates` | `AdminQuizTemplateController@store` | Admin | Create admin quiz template | Medium | Body: `title`, `description`, `instructions`, `duration_minutes`, `max_attempts`, `show_result`, `status=draft`. |
 | GET | `/admin/quiz-templates/{id}` | `AdminQuizTemplateController@show` | Admin | Admin quiz template detail | Medium | Includes questions/options when loaded. |
