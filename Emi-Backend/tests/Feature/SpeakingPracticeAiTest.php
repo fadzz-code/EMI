@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Exceptions\SpeakingAiException;
 use App\Models\MediaFile;
 use App\Models\SchoolClass;
 use App\Models\SpeakingAttempt;
@@ -653,6 +654,61 @@ class SpeakingPracticeAiTest extends TestCase
         app(SpeakingAiClient::class)->analyze($attempt->load('audioMedia'));
 
         Http::assertSent(fn (Request $request): bool => $request->hasHeader('Authorization', 'Bearer service-secret'));
+    }
+
+    public function test_ai_client_maps_upstream_error_codes(): void
+    {
+        Storage::fake('local');
+        config(['speaking.ai.enabled' => true, 'speaking.ai.base_url' => 'https://speaking-ai.test']);
+        [$student, , $class] = $this->classroomUsers();
+        $attempt = $this->attemptFor($student, $this->exercise($class));
+        Storage::disk('local')->put($attempt->audioMedia->path, 'wav');
+
+        Http::fake(['speaking-ai.test/*' => Http::sequence()
+            ->push(['code' => 'SPEAKING_AI_UNAUTHORIZED', 'error' => 'private'], 401)
+            ->push(['code' => 'SPEAKING_AI_VALIDATION_ERROR', 'error' => 'private'], 422)
+            ->push(['code' => 'SPEAKING_AI_TIMEOUT', 'error' => 'private'], 503)
+            ->push(['code' => 'SPEAKING_AI_TIMEOUT', 'error' => 'private'], 503)
+            ->push(['code' => 'SPEAKING_AI_UNAVAILABLE', 'error' => 'private'], 503)
+            ->push(['code' => 'SPEAKING_AI_UNAVAILABLE', 'error' => 'private'], 503)]);
+
+        foreach ([
+            'SPEAKING_AI_UNAUTHORIZED',
+            'SPEAKING_AI_INVALID_AUDIO',
+            'SPEAKING_AI_TIMEOUT',
+            'SPEAKING_AI_UNAVAILABLE',
+        ] as $expectedCode) {
+            try {
+                app(SpeakingAiClient::class)->analyze($attempt->load('audioMedia'));
+                $this->fail('Expected AI failure.');
+            } catch (SpeakingAiException $exception) {
+                $this->assertSame($expectedCode, $exception->errorCode);
+            }
+        }
+    }
+
+    public function test_ai_client_rejects_missing_file_and_invalid_response_with_specific_codes(): void
+    {
+        Storage::fake('local');
+        config(['speaking.ai.enabled' => true, 'speaking.ai.base_url' => 'https://speaking-ai.test']);
+        [$student, , $class] = $this->classroomUsers();
+        $attempt = $this->attemptFor($student, $this->exercise($class));
+
+        try {
+            app(SpeakingAiClient::class)->analyze($attempt->load('audioMedia'));
+            $this->fail('Expected missing file failure.');
+        } catch (SpeakingAiException $exception) {
+            $this->assertSame('SPEAKING_AUDIO_FILE_MISSING', $exception->errorCode);
+        }
+
+        Storage::disk('local')->put($attempt->audioMedia->path, 'wav');
+        Http::fake(['speaking-ai.test/*' => Http::response(['score' => 90], 200)]);
+        try {
+            app(SpeakingAiClient::class)->analyze($attempt->load('audioMedia'));
+            $this->fail('Expected invalid response failure.');
+        } catch (SpeakingAiException $exception) {
+            $this->assertSame('SPEAKING_AI_RESPONSE_INVALID', $exception->errorCode);
+        }
     }
 
     public function test_ai_client_retries_server_errors_and_returns_stable_error(): void

@@ -22,6 +22,7 @@ class SpeakingAttemptResource extends JsonResource
                 fn ($warning) => is_string($warning)
             )),
             'ai_error' => $this->ai_error,
+            'ai_error_code' => $this->ai_raw_response['error_code'] ?? null,
             'teacher_score' => $this->teacher_score !== null ? (float) $this->teacher_score : null,
             'teacher_feedback' => $this->teacher_feedback,
             'reviewed_at' => $this->reviewed_at?->toISOString(),
