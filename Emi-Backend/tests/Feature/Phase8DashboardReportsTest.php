@@ -134,6 +134,79 @@ class Phase8DashboardReportsTest extends TestCase
         $this->assertNull($studentQuiz->json('data.rows.0.best_score_percent'));
     }
 
+    public function test_teacher_progress_reports_own_active_assignment_rows_and_computed_values(): void
+    {
+        [, $teacher, $student, , $class] = $this->seedLearningAndQuizDataset();
+
+        $response = $this->withToken($this->tokenFor($teacher))->getJson('/api/v1/teacher/reports/progress/students')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.class.id', $class->id);
+
+        $row = collect($response->json('data'))->firstWhere('student_id', $student->id);
+        $this->assertSame(100.0, (float) $row['overall_learning_progress_percent']);
+        $this->assertSame(2, $row['completed_modules']);
+        $this->assertSame(1, $row['quizzes_completed']);
+        $this->assertSame(90.0, (float) $row['average_best_quiz_score_percent']);
+        foreach (['password', 'phone', 'storage', 'correct_answer', 'answer_text'] as $sensitiveField) {
+            $this->assertStringNotContainsString($sensitiveField, strtolower($response->getContent()));
+        }
+    }
+
+    public function test_teacher_progress_reports_scope_status_and_role_denials(): void
+    {
+        [$admin, $teacher, $student, , $class] = $this->seedLearningAndQuizDataset();
+        [$foreignClass] = $this->classes($admin, 1, 'Kelas Asing');
+        $foreignStudent = $this->studentFor($foreignClass, $admin);
+
+        $token = $this->tokenFor($teacher);
+        $this->withToken($token)->getJson("/api/v1/teacher/reports/progress/students?class_id={$foreignClass->id}")
+            ->assertForbidden()
+            ->assertJsonPath('code', 'REPORT_SCOPE_FORBIDDEN');
+        $this->withToken($token)->getJson("/api/v1/teacher/reports/progress/students?student_id={$foreignStudent->id}")
+            ->assertForbidden()
+            ->assertJsonPath('code', 'REPORT_SCOPE_FORBIDDEN');
+
+        TeacherClassAssignment::query()->where('teacher_id', $teacher->id)->where('class_id', $class->id)->update(['is_active' => false]);
+        $this->app['auth']->forgetGuards();
+        $this->withToken($token)->getJson('/api/v1/teacher/reports/progress/students')
+            ->assertUnprocessable()
+            ->assertJsonPath('code', 'TEACHER_HAS_NO_ACTIVE_CLASS');
+
+        $this->withToken($this->tokenFor($student))->getJson('/api/v1/teacher/reports/progress/students')->assertForbidden();
+        $this->app['auth']->forgetGuards();
+        $this->withHeader('Authorization', '')->getJson('/api/v1/teacher/reports/progress/students')->assertUnauthorized();
+    }
+
+    public function test_teacher_progress_reports_require_active_scope_and_support_search_pagination(): void
+    {
+        [$admin, $teacher, $student, $school, $class] = $this->seedLearningAndQuizDataset(studentName: 'Cari Siswa');
+        $token = $this->tokenFor($teacher);
+
+        $this->withToken($token)->getJson('/api/v1/teacher/reports/progress/students?search=Cari&per_page=1')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.student_id', $student->id)
+            ->assertJsonPath('meta.per_page', 1)
+            ->assertJsonPath('meta.total', 1);
+        $this->withToken($token)->getJson('/api/v1/teacher/reports/progress/students?search=TidakAda')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+
+        StudentClassMembership::query()->where('student_id', $student->id)->where('class_id', $class->id)->update(['is_active' => false]);
+        $this->withToken($token)->getJson('/api/v1/teacher/reports/progress/students?search=Cari')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+
+        StudentClassMembership::query()->where('student_id', $student->id)->where('class_id', $class->id)->update(['is_active' => true]);
+        $class->update(['status' => 'inactive']);
+        $this->withToken($token)->getJson('/api/v1/teacher/reports/progress/students')->assertOk()->assertJsonCount(0, 'data');
+
+        $class->update(['status' => 'active']);
+        $school->update(['status' => 'inactive']);
+        $this->withToken($token)->getJson('/api/v1/teacher/reports/progress/students')->assertOk()->assertJsonCount(0, 'data');
+    }
+
     public function test_admin_report_filters_aggregates_attempt_semantics_and_four_export_parity(): void
     {
         [$admin, , $student, $school, $class, $quiz] = $this->seedLearningAndQuizDataset();
