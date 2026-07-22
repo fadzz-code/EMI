@@ -44,6 +44,7 @@ import '../../features/teacher/presentation/teacher_dashboard_screen.dart';
 import '../../features/teacher/presentation/teacher_modules_screens.dart';
 import '../../features/teacher/presentation/teacher_quizzes_screens.dart';
 import '../../features/teacher/presentation/teacher_students_screens.dart';
+import '../../features/teacher/presentation/teacher_speaking_screens.dart';
 import 'router_refresh_stream.dart';
 import 'unsupported_role_screen.dart';
 
@@ -225,6 +226,39 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/teacher/culture/:id',
         builder: (_, state) =>
             TeacherCultureDetailScreen(id: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
+        path: '/teacher/speaking',
+        builder: (_, _) => const TeacherSpeakingScreen(),
+      ),
+      GoRoute(
+        path: '/teacher/speaking/exercises',
+        builder: (_, _) => const TeacherSpeakingScreen(),
+      ),
+      GoRoute(
+        path: '/teacher/speaking/create',
+        builder: (_, _) => const TeacherSpeakingExerciseFormScreen(),
+      ),
+      GoRoute(
+        path: '/teacher/speaking/exercises/:id/edit',
+        builder: (_, state) =>
+            TeacherSpeakingExerciseFormScreen(id: state.pathParameters['id']),
+      ),
+      GoRoute(
+        path: '/teacher/speaking/exercises/:id',
+        builder: (_, state) => TeacherSpeakingExerciseDetailScreen(
+          id: state.pathParameters['id'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/teacher/speaking/attempts',
+        builder: (_, _) => const TeacherSpeakingScreen(attempts: true),
+      ),
+      GoRoute(
+        path: '/teacher/speaking/attempts/:id',
+        builder: (_, state) => TeacherSpeakingAttemptDetailScreen(
+          id: state.pathParameters['id'] ?? '',
+        ),
       ),
       GoRoute(
         path: '/teacher/profile',

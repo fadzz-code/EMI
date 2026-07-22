@@ -380,11 +380,235 @@ class TeacherMediaUpload {
   final String name;
 }
 
+class TeacherSpeakingTemplate {
+  const TeacherSpeakingTemplate({
+    required this.id,
+    required this.title,
+    required this.targetText,
+    this.targetTranslation,
+    this.promptText,
+    this.difficulty,
+  });
+  final String id, title, targetText;
+  final String? targetTranslation, promptText, difficulty;
+  factory TeacherSpeakingTemplate.fromJson(Map<String, dynamic> json) =>
+      TeacherSpeakingTemplate(
+        id: _string(json['id']),
+        title: _string(json['title'], fallback: 'Latihan tanpa judul'),
+        targetText: _string(json['target_text']),
+        targetTranslation: _nullableString(json['target_translation']),
+        promptText: _nullableString(json['prompt_text']),
+        difficulty: _nullableString(json['difficulty']),
+      );
+}
+
+class TeacherSpeakingExercise {
+  const TeacherSpeakingExercise({
+    required this.id,
+    required this.classroomId,
+    required this.title,
+    required this.targetText,
+    required this.status,
+    this.classroomName,
+    this.targetTranslation,
+    this.promptText,
+    this.difficulty,
+    this.updatedAt,
+    this.attemptsCount,
+  });
+  final String id, classroomId, title, targetText, status;
+  final String? classroomName, targetTranslation, promptText, difficulty;
+  final DateTime? updatedAt;
+  final int? attemptsCount;
+  factory TeacherSpeakingExercise.fromJson(Map<String, dynamic> json) {
+    final classroom = _map(json['classroom'] ?? json['class']);
+    return TeacherSpeakingExercise(
+      id: _string(json['id']),
+      classroomId: _string(json['classroom_id'] ?? classroom['id']),
+      title: _string(json['title'], fallback: 'Latihan tanpa judul'),
+      targetText: _string(json['target_text']),
+      status: _string(json['status'], fallback: 'draft'),
+      classroomName: _nullableString(
+        classroom['name'] ?? json['classroom_name'],
+      ),
+      targetTranslation: _nullableString(json['target_translation']),
+      promptText: _nullableString(json['prompt_text']),
+      difficulty: _nullableString(json['difficulty']),
+      updatedAt: DateTime.tryParse(_string(json['updated_at'])),
+      attemptsCount: json['attempts_count'] is num
+          ? (json['attempts_count'] as num).toInt()
+          : null,
+    );
+  }
+}
+
+class TeacherSpeakingAttempt {
+  const TeacherSpeakingAttempt({
+    required this.id,
+    required this.studentName,
+    required this.exerciseTitle,
+    this.classroomName,
+    this.audioMediaId,
+    this.transcription,
+    this.aiScore,
+    this.teacherScore,
+    this.teacherFeedback,
+    this.status,
+    this.captureSource,
+    this.createdAt,
+  });
+  final String id, studentName, exerciseTitle;
+  final String? classroomName,
+      audioMediaId,
+      transcription,
+      teacherFeedback,
+      status,
+      captureSource;
+  final double? aiScore, teacherScore;
+  final DateTime? createdAt;
+  factory TeacherSpeakingAttempt.fromJson(Map<String, dynamic> json) {
+    final student = _map(json['student']);
+    final exercise = _map(json['exercise']);
+    final classroom = _map(json['classroom'] ?? exercise['classroom']);
+    double? number(Object? value) => value is num
+        ? value.toDouble()
+        : value is String
+        ? double.tryParse(value)
+        : null;
+    return TeacherSpeakingAttempt(
+      id: _string(json['id']),
+      studentName: _string(
+        student['full_name'] ?? json['student_name'],
+        fallback: 'Siswa',
+      ),
+      exerciseTitle: _string(
+        exercise['title'] ?? json['exercise_title'],
+        fallback: 'Latihan speaking',
+      ),
+      classroomName: _nullableString(
+        classroom['name'] ?? json['classroom_name'],
+      ),
+      audioMediaId: _nullableString(
+        json['audio_media_id'] ??
+            _map(json['audio_media'])['id'] ??
+            _map(json['media'])['id'],
+      ),
+      transcription: _nullableString(
+        json['ai_transcription'] ?? json['transcription'],
+      ),
+      aiScore: number(json['ai_score']),
+      teacherScore: number(json['teacher_score']),
+      teacherFeedback: _nullableString(json['teacher_feedback']),
+      status: _nullableString(json['status']),
+      captureSource: _nullableString(json['capture_source']),
+      createdAt: DateTime.tryParse(
+        _string(json['created_at'] ?? json['submitted_at']),
+      ),
+    );
+  }
+}
+
 class TeacherRepository {
   const TeacherRepository(this._dio, this._mapper);
 
   final Dio _dio;
   final DioErrorMapper _mapper;
+
+  Future<List<TeacherSpeakingTemplate>> speakingTemplates() => _request(
+    () => _dio.get<Map<String, dynamic>>(
+      '/teacher/speaking/templates',
+      queryParameters: const {'per_page': 100},
+    ),
+    (json) => (json?['data'] is List ? json!['data'] as List : const [])
+        .whereType<Map<String, dynamic>>()
+        .map(TeacherSpeakingTemplate.fromJson)
+        .toList(),
+  );
+
+  Future<List<TeacherSpeakingExercise>> speakingExercises({
+    String? classroomId,
+    String? status,
+  }) => _request(
+    () => _dio.get<Map<String, dynamic>>(
+      '/teacher/speaking/exercises',
+      queryParameters: {
+        'per_page': 100,
+        if (classroomId != null && classroomId.isNotEmpty)
+          'classroom_id': classroomId,
+        if (status != null && status.isNotEmpty) 'status': status,
+      },
+    ),
+    (json) => (json?['data'] is List ? json!['data'] as List : const [])
+        .whereType<Map<String, dynamic>>()
+        .map(TeacherSpeakingExercise.fromJson)
+        .toList(),
+  );
+
+  Future<TeacherSpeakingExercise> speakingExercise(String id) => _request(
+    () => _dio.get<Map<String, dynamic>>('/teacher/speaking/exercises/$id'),
+    (json) => TeacherSpeakingExercise.fromJson(_data(json, 'Detail latihan')),
+  );
+
+  Future<TeacherSpeakingExercise> saveSpeakingExercise({
+    String? id,
+    required Map<String, dynamic> data,
+  }) => _request(
+    () => id == null
+        ? _dio.post<Map<String, dynamic>>(
+            '/teacher/speaking/exercises',
+            data: data,
+          )
+        : _dio.patch<Map<String, dynamic>>(
+            '/teacher/speaking/exercises/$id',
+            data: data,
+          ),
+    (json) => TeacherSpeakingExercise.fromJson(_data(json, 'Latihan')),
+  );
+
+  Future<void> archiveSpeakingExercise(String id) async {
+    try {
+      await _dio.patch<void>('/teacher/speaking/exercises/$id/archive');
+    } catch (error) {
+      throw error is AppError ? error : _mapper.map(error);
+    }
+  }
+
+  Future<List<TeacherSpeakingAttempt>> speakingAttempts() => _request(
+    () => _dio.get<Map<String, dynamic>>('/teacher/speaking/attempts'),
+    (json) => (json?['data'] is List ? json!['data'] as List : const [])
+        .whereType<Map<String, dynamic>>()
+        .map(TeacherSpeakingAttempt.fromJson)
+        .toList(),
+  );
+
+  Future<TeacherSpeakingAttempt> speakingAttempt(String id) => _request(
+    () => _dio.get<Map<String, dynamic>>('/teacher/speaking/attempts/$id'),
+    (json) =>
+        TeacherSpeakingAttempt.fromJson(_data(json, 'Detail hasil speaking')),
+  );
+
+  Future<TeacherSpeakingAttempt> saveSpeakingFeedback(
+    String id, {
+    required num teacherScore,
+    String? teacherFeedback,
+  }) => _request(
+    () => _dio.patch<Map<String, dynamic>>(
+      '/teacher/speaking/attempts/$id/feedback',
+      data: {
+        'teacher_score': teacherScore,
+        'teacher_feedback': teacherFeedback,
+      },
+    ),
+    (json) => TeacherSpeakingAttempt.fromJson(_data(json, 'Penilaian')),
+  );
+
+  Future<String> speakingTemporaryUrl(String mediaId) => _request(
+    () => _dio.post<Map<String, dynamic>>(
+      '/media/$mediaId/temporary-url',
+      data: const {'expires_in_minutes': 15, 'disposition': 'inline'},
+    ),
+    (json) => _string(_data(json, 'Audio')['url']),
+  );
 
   Future<TeacherDashboardSummary> dashboard() => _request(
     () => _dio.get<Map<String, dynamic>>('/teacher/dashboard/summary'),

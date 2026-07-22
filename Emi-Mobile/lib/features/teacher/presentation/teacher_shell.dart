@@ -246,6 +246,12 @@ class _TeacherDrawer extends ConsumerWidget {
             selected: location.startsWith('/teacher/culture'),
           ),
           _Item(
+            label: 'Speaking',
+            icon: Icons.mic_none_outlined,
+            route: '/teacher/speaking',
+            selected: location.startsWith('/teacher/speaking'),
+          ),
+          _Item(
             label: 'Siswa',
             icon: Icons.people_outline,
             route: '/teacher/students',
@@ -257,8 +263,6 @@ class _TeacherDrawer extends ConsumerWidget {
             route: '/teacher/reports/progress',
             selected: location.startsWith('/teacher/reports/progress'),
           ),
-          const _Item(label: 'Target Speaking', icon: Icons.checklist_outlined),
-          const _Item(label: 'Hasil Speaking', icon: Icons.mic_none_outlined),
           _Item(
             label: 'Profil',
             icon: Icons.person_outline,

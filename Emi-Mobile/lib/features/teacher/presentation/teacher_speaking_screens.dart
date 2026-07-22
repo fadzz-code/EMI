@@ -1,0 +1,918 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:just_audio/just_audio.dart';
+
+import '../../../app/theme/emi_theme.dart';
+import '../../../core/errors/app_error.dart';
+import '../../../shared/widgets/emi_card.dart';
+import '../../../shared/widgets/role_dashboard_widgets.dart';
+import '../data/teacher_providers.dart';
+import '../data/teacher_repository.dart';
+import 'teacher_shell.dart';
+
+class TeacherSpeakingScreen extends StatefulWidget {
+  const TeacherSpeakingScreen({super.key, this.attempts = false});
+  final bool attempts;
+  @override
+  State<TeacherSpeakingScreen> createState() => _TeacherSpeakingScreenState();
+}
+
+class _TeacherSpeakingScreenState extends State<TeacherSpeakingScreen> {
+  @override
+  Widget build(BuildContext context) => TeacherShell(
+    title: 'Speaking',
+    child: Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(EmiSpacing.md),
+          child: SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(value: false, label: Text('Latihan')),
+              ButtonSegment(value: true, label: Text('Hasil Siswa')),
+            ],
+            selected: {widget.attempts},
+            onSelectionChanged: (v) => context.go(
+              v.first
+                  ? '/teacher/speaking/attempts'
+                  : '/teacher/speaking/exercises',
+            ),
+          ),
+        ),
+        Expanded(
+          child: widget.attempts ? const _Attempts() : const _Exercises(),
+        ),
+      ],
+    ),
+  );
+}
+
+class _Exercises extends ConsumerStatefulWidget {
+  const _Exercises();
+  @override
+  ConsumerState<_Exercises> createState() => _ExercisesState();
+}
+
+class _ExercisesState extends ConsumerState<_Exercises> {
+  String classroom = '', status = '';
+  @override
+  Widget build(BuildContext context) {
+    final classes = ref.watch(teacherClassesProvider((page: 1, search: '')));
+    final data = ref.watch(
+      teacherSpeakingExercisesProvider((
+        classroomId: classroom,
+        status: status,
+      )),
+    );
+    return ListView(
+      padding: const EdgeInsets.all(EmiSpacing.md),
+      children: [
+        Text(
+          'Latihan Speaking',
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const Text('Kelola latihan pengucapan untuk kelas Anda.'),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            SizedBox(
+              width: 180,
+              child: classes.maybeWhen(
+                data: (p) => DropdownButtonFormField(
+                  isExpanded: true,
+                  initialValue: classroom,
+                  decoration: const InputDecoration(labelText: 'Kelas'),
+                  items: [
+                    const DropdownMenuItem(
+                      value: '',
+                      child: Text('Semua kelas'),
+                    ),
+                    ...p.items.map(
+                      (e) => DropdownMenuItem(value: e.id, child: Text(e.name)),
+                    ),
+                  ],
+                  onChanged: (v) => setState(() => classroom = v ?? ''),
+                ),
+                orElse: () => const SizedBox.shrink(),
+              ),
+            ),
+            SizedBox(
+              width: 160,
+              child: DropdownButtonFormField(
+                isExpanded: true,
+                initialValue: status,
+                decoration: const InputDecoration(labelText: 'Status'),
+                items: const [
+                  DropdownMenuItem(value: '', child: Text('Semua status')),
+                  DropdownMenuItem(value: 'draft', child: Text('Draft')),
+                  DropdownMenuItem(value: 'published', child: Text('Terbit')),
+                ],
+                onChanged: (v) => setState(() => status = v ?? ''),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: () => context.push('/teacher/speaking/create'),
+          icon: const Icon(Icons.add),
+          label: const Text('Tambah Latihan'),
+        ),
+        const SizedBox(height: 12),
+        data.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, _) => SizedBox(
+            height: 260,
+            child: _error(
+              'Speaking Belum Bisa Dimuat',
+              'Periksa koneksi internet Anda, lalu coba lagi.',
+              () => ref.invalidate(
+                teacherSpeakingExercisesProvider((
+                  classroomId: classroom,
+                  status: status,
+                )),
+              ),
+            ),
+          ),
+          data: (items) => items.isEmpty
+              ? const SizedBox(
+                  height: 260,
+                  child: FriendlyState(
+                    icon: Icons.mic_none,
+                    title: 'Belum Ada Latihan Speaking',
+                    message:
+                        'Tambahkan latihan untuk membantu siswa berlatih pengucapan.',
+                  ),
+                )
+              : Column(
+                  children: items
+                      .map(
+                        (e) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: EmiCard(
+                            padding: EdgeInsets.zero,
+                            child: Material(
+                              type: MaterialType.transparency,
+                              child: ListTile(
+                                leading: const Icon(
+                                  Icons.record_voice_over_outlined,
+                                ),
+                                title: Text(e.title),
+                                subtitle: Text(
+                                  [
+                                    if (e.classroomName != null)
+                                      e.classroomName!,
+                                    if (e.attemptsCount != null)
+                                      '${e.attemptsCount} hasil',
+                                  ].join(' · '),
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Chip(label: Text(_status(e.status))),
+                                    PopupMenuButton<String>(
+                                      onSelected: (value) {
+                                        if (value == 'edit') {
+                                          context.push(
+                                            '/teacher/speaking/exercises/${e.id}/edit',
+                                          );
+                                        }
+                                      },
+                                      itemBuilder: (_) => const [
+                                        PopupMenuItem(
+                                          value: 'edit',
+                                          child: Text('Edit'),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                onTap: () => context.push(
+                                  '/teacher/speaking/exercises/${e.id}',
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class TeacherSpeakingExerciseDetailScreen extends ConsumerWidget {
+  const TeacherSpeakingExerciseDetailScreen({super.key, required this.id});
+  final String id;
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => TeacherShell(
+    title: 'Detail Latihan Speaking',
+    fallbackRoute: '/teacher/speaking',
+    child: ref
+        .watch(teacherSpeakingExerciseProvider(id))
+        .when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, _) => _error(
+            'Latihan Belum Bisa Dimuat',
+            'Detail latihan belum bisa dimuat. Silakan coba lagi.',
+            () => ref.invalidate(teacherSpeakingExerciseProvider(id)),
+          ),
+          data: (e) => ListView(
+            padding: const EdgeInsets.all(EmiSpacing.md),
+            children: [
+              Text(e.title, style: Theme.of(context).textTheme.headlineSmall),
+              _field('Kelas', e.classroomName ?? 'Kelas Anda'),
+              _field('Teks target', e.targetText),
+              if (e.targetTranslation != null)
+                _field('Terjemahan', e.targetTranslation!),
+              if (e.promptText != null) _field('Petunjuk', e.promptText!),
+              if (e.difficulty != null)
+                _field('Kesulitan', _difficulty(e.difficulty!)),
+              _field('Status', _status(e.status)),
+              if (e.updatedAt != null) _field('Diperbarui', _date(e.updatedAt)),
+              if (e.attemptsCount != null)
+                _field('Jumlah hasil', '${e.attemptsCount}'),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () =>
+                    context.push('/teacher/speaking/exercises/$id/edit'),
+                child: const Text('Edit Latihan'),
+              ),
+              OutlinedButton(
+                onPressed: () => _archive(context, ref, e),
+                child: const Text('Arsipkan'),
+              ),
+            ],
+          ),
+        ),
+  );
+  Future<void> _archive(
+    BuildContext context,
+    WidgetRef ref,
+    TeacherSpeakingExercise e,
+  ) async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Arsipkan Latihan?'),
+        content: const Text('Latihan akan disembunyikan dari siswa.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Arsipkan'),
+          ),
+        ],
+      ),
+    );
+    if (yes != true) return;
+    try {
+      await ref.read(teacherRepositoryProvider).archiveSpeakingExercise(e.id);
+      ref.invalidate(teacherSpeakingExercisesProvider);
+      if (context.mounted) context.go('/teacher/speaking');
+    } catch (_) {
+      if (context.mounted) {
+        _snack(context, 'Latihan belum bisa diarsipkan. Silakan coba lagi.');
+      }
+    }
+  }
+}
+
+class TeacherSpeakingExerciseFormScreen extends ConsumerStatefulWidget {
+  const TeacherSpeakingExerciseFormScreen({super.key, this.id});
+  final String? id;
+  @override
+  ConsumerState<TeacherSpeakingExerciseFormScreen> createState() =>
+      _ExerciseFormState();
+}
+
+class _ExerciseFormState
+    extends ConsumerState<TeacherSpeakingExerciseFormScreen> {
+  final key = GlobalKey<FormState>();
+  final title = TextEditingController(),
+      target = TextEditingController(),
+      translation = TextEditingController(),
+      prompt = TextEditingController();
+  String? classroom, template;
+  String difficulty = '', status = 'draft';
+  bool loaded = false, dirty = false, saving = false;
+  @override
+  void dispose() {
+    for (final c in [title, target, translation, prompt]) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final detail = widget.id == null
+        ? null
+        : ref.watch(teacherSpeakingExerciseProvider(widget.id!));
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) unawaited(_back());
+      },
+      child: TeacherShell(
+        title: widget.id == null
+            ? 'Tambah Latihan Speaking'
+            : 'Edit Latihan Speaking',
+        fallbackRoute: '/teacher/speaking',
+        onBack: _back,
+        child: detail == null
+            ? _body(null)
+            : detail.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (_, _) => _error(
+                  'Speaking Belum Bisa Dimuat',
+                  'Periksa koneksi internet Anda, lalu coba lagi.',
+                  () => ref.invalidate(
+                    teacherSpeakingExerciseProvider(widget.id!),
+                  ),
+                ),
+                data: _body,
+              ),
+      ),
+    );
+  }
+
+  Widget _body(TeacherSpeakingExercise? e) {
+    if (e != null && !loaded) {
+      title.text = e.title;
+      target.text = e.targetText;
+      translation.text = e.targetTranslation ?? '';
+      prompt.text = e.promptText ?? '';
+      classroom = e.classroomId;
+      difficulty = e.difficulty ?? '';
+      status = e.status;
+      loaded = true;
+    }
+    final classes = ref.watch(teacherClassesProvider((page: 1, search: '')));
+    final templates = ref.watch(teacherSpeakingTemplatesProvider);
+    return Form(
+      key: key,
+      onChanged: () => dirty = true,
+      child: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(EmiSpacing.md),
+              children: [
+                if (widget.id == null)
+                  templates.maybeWhen(
+                    data: (v) => DropdownButtonFormField<String>(
+                      initialValue: template,
+                      decoration: const InputDecoration(
+                        labelText: 'Template (opsional)',
+                      ),
+                      items: v
+                          .map(
+                            (t) => DropdownMenuItem(
+                              value: t.id,
+                              child: Text(t.title),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (id) {
+                        final t = v.firstWhere((x) => x.id == id);
+                        setState(() {
+                          template = id;
+                          title.text = t.title;
+                          target.text = t.targetText;
+                          translation.text = t.targetTranslation ?? '';
+                          prompt.text = t.promptText ?? '';
+                          difficulty = t.difficulty ?? '';
+                          dirty = true;
+                        });
+                      },
+                    ),
+                    orElse: () => const SizedBox.shrink(),
+                  ),
+                const SizedBox(height: 12),
+                classes.maybeWhen(
+                  data: (v) => DropdownButtonFormField<String>(
+                    initialValue: classroom,
+                    decoration: const InputDecoration(labelText: 'Kelas'),
+                    items: v.items
+                        .map(
+                          (c) => DropdownMenuItem(
+                            value: c.id,
+                            child: Text(c.name),
+                          ),
+                        )
+                        .toList(),
+                    validator: (v) => v == null ? 'Pilih kelas.' : null,
+                    onChanged: (v) => setState(() => classroom = v),
+                  ),
+                  orElse: () => const SizedBox.shrink(),
+                ),
+                ...[
+                  _input(title, 'Judul', required: true),
+                  _input(target, 'Teks target', required: true),
+                  _input(translation, 'Terjemahan target'),
+                  _input(prompt, 'Petunjuk', lines: 3),
+                ],
+                DropdownButtonFormField(
+                  initialValue: difficulty,
+                  decoration: const InputDecoration(labelText: 'Kesulitan'),
+                  items: const [
+                    DropdownMenuItem(
+                      value: '',
+                      child: Text('Tidak ditentukan'),
+                    ),
+                    DropdownMenuItem(value: 'beginner', child: Text('Pemula')),
+                    DropdownMenuItem(
+                      value: 'intermediate',
+                      child: Text('Menengah'),
+                    ),
+                    DropdownMenuItem(value: 'advanced', child: Text('Mahir')),
+                  ],
+                  onChanged: (v) => difficulty = v ?? '',
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField(
+                  initialValue: status,
+                  decoration: const InputDecoration(labelText: 'Status'),
+                  items: const [
+                    DropdownMenuItem(value: 'draft', child: Text('Draft')),
+                    DropdownMenuItem(value: 'published', child: Text('Terbit')),
+                  ],
+                  onChanged: (v) => status = v ?? 'draft',
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(EmiSpacing.md),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: saving ? null : _save,
+                child: Text(saving ? 'Menyimpan...' : 'Simpan'),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _input(
+    TextEditingController c,
+    String label, {
+    bool required = false,
+    int lines = 1,
+  }) => Padding(
+    padding: const EdgeInsets.only(top: 12),
+    child: TextFormField(
+      controller: c,
+      minLines: lines,
+      maxLines: lines,
+      decoration: InputDecoration(labelText: label),
+      validator: (v) => required && v!.trim().isEmpty ? 'Wajib diisi.' : null,
+    ),
+  );
+  Future<void> _save() async {
+    if (saving || !key.currentState!.validate()) return;
+    setState(() => saving = true);
+    try {
+      final saved = await ref
+          .read(teacherRepositoryProvider)
+          .saveSpeakingExercise(
+            id: widget.id,
+            data: {
+              'classroom_id': classroom,
+              'template_exercise_id': widget.id == null ? template : null,
+              'title': title.text.trim(),
+              'target_text': target.text.trim(),
+              'target_translation': translation.text.trim().isEmpty
+                  ? null
+                  : translation.text.trim(),
+              'prompt_text': prompt.text.trim().isEmpty
+                  ? null
+                  : prompt.text.trim(),
+              'difficulty': difficulty.isEmpty ? null : difficulty,
+              'language_code': 'mekongga',
+              'status': status,
+            },
+          );
+      dirty = false;
+      final refreshedDetail = await ref.refresh(
+        teacherSpeakingExerciseProvider(saved.id).future,
+      );
+      final refreshedList = await ref.refresh(
+        teacherSpeakingExercisesProvider((classroomId: '', status: '')).future,
+      );
+      if (refreshedDetail.id.isEmpty && refreshedList.isEmpty) return;
+      if (mounted) context.go('/teacher/speaking/exercises/${saved.id}');
+    } catch (e) {
+      if (mounted) {
+        _snack(
+          context,
+          e is AppError
+              ? e.message
+              : 'Latihan belum bisa disimpan. Silakan coba lagi.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  Future<void> _back() async {
+    if (dirty) {
+      final leave =
+          await showDialog<bool>(
+            context: context,
+            builder: (c) => AlertDialog(
+              title: const Text('Buang perubahan?'),
+              content: const Text('Perubahan yang belum disimpan akan hilang.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(c, false),
+                  child: const Text('Tetap di sini'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(c, true),
+                  child: const Text('Buang'),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+      if (!leave) return;
+    }
+    dirty = false;
+    if (mounted) {
+      context.canPop() ? context.pop() : context.go('/teacher/speaking');
+    }
+  }
+}
+
+class _Attempts extends ConsumerStatefulWidget {
+  const _Attempts();
+  @override
+  ConsumerState<_Attempts> createState() => _AttemptsState();
+}
+
+class _AttemptsState extends ConsumerState<_Attempts> {
+  String search = '', review = '';
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(EmiSpacing.md),
+    children: [
+      Text(
+        'Hasil Speaking Siswa',
+        style: Theme.of(context).textTheme.headlineSmall,
+      ),
+      const Text('Dengarkan hasil dan berikan penilaian.'),
+      const SizedBox(height: 12),
+      TextField(
+        decoration: const InputDecoration(
+          labelText: 'Cari siswa atau latihan',
+          prefixIcon: Icon(Icons.search),
+        ),
+        onChanged: (v) => setState(() => search = v.toLowerCase()),
+      ),
+      const SizedBox(height: 8),
+      DropdownButtonFormField(
+        initialValue: review,
+        decoration: const InputDecoration(labelText: 'Status penilaian'),
+        items: const [
+          DropdownMenuItem(value: '', child: Text('Semua')),
+          DropdownMenuItem(value: 'pending', child: Text('Belum dinilai')),
+          DropdownMenuItem(value: 'done', child: Text('Sudah dinilai')),
+        ],
+        onChanged: (v) => setState(() => review = v ?? ''),
+      ),
+      const SizedBox(height: 12),
+      ref
+          .watch(teacherSpeakingAttemptsProvider)
+          .when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (_, _) => SizedBox(
+              height: 240,
+              child: _error(
+                'Hasil Speaking Belum Bisa Dimuat',
+                'Hasil speaking siswa belum bisa dimuat. Silakan coba lagi.',
+                () => ref.invalidate(teacherSpeakingAttemptsProvider),
+              ),
+            ),
+            data: (all) {
+              final items = all
+                  .where(
+                    (a) =>
+                        (search.isEmpty ||
+                            '${a.studentName} ${a.exerciseTitle}'
+                                .toLowerCase()
+                                .contains(search)) &&
+                        (review.isEmpty ||
+                            (review == 'done') == (a.teacherScore != null)),
+                  )
+                  .toList();
+              if (items.isEmpty) {
+                return const SizedBox(
+                  height: 240,
+                  child: FriendlyState(
+                    icon: Icons.record_voice_over_outlined,
+                    title: 'Belum Ada Hasil Speaking',
+                    message:
+                        'Hasil speaking siswa akan muncul setelah mereka mengirim rekaman.',
+                  ),
+                );
+              }
+              return Column(
+                children: items
+                    .map(
+                      (a) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: EmiCard(
+                          padding: EdgeInsets.zero,
+                          child: Material(
+                            type: MaterialType.transparency,
+                            child: ListTile(
+                              title: Text(a.studentName),
+                              subtitle: Text(
+                                [
+                                  a.exerciseTitle,
+                                  if (a.classroomName != null) a.classroomName!,
+                                  if (a.aiScore != null)
+                                    'Skor AI ${a.aiScore!.toStringAsFixed(0)}',
+                                  a.teacherScore == null
+                                      ? 'Belum dinilai'
+                                      : 'Sudah dinilai',
+                                  _date(a.createdAt),
+                                ].join(' · '),
+                              ),
+                              isThreeLine: true,
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => context.push(
+                                '/teacher/speaking/attempts/${a.id}',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              );
+            },
+          ),
+    ],
+  );
+}
+
+class TeacherSpeakingAttemptDetailScreen extends ConsumerStatefulWidget {
+  const TeacherSpeakingAttemptDetailScreen({super.key, required this.id});
+  final String id;
+  @override
+  ConsumerState<TeacherSpeakingAttemptDetailScreen> createState() =>
+      _AttemptDetailState();
+}
+
+class _AttemptDetailState
+    extends ConsumerState<TeacherSpeakingAttemptDetailScreen> {
+  final score = TextEditingController(), feedback = TextEditingController();
+  final player = AudioPlayer();
+  bool loaded = false, saving = false, audioLoading = false;
+  String? audioError;
+  TeacherSpeakingAttempt? savedAttempt;
+  @override
+  void dispose() {
+    score.dispose();
+    feedback.dispose();
+    player.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => TeacherShell(
+    title: 'Detail Hasil Speaking',
+    fallbackRoute: '/teacher/speaking/attempts',
+    child: ref
+        .watch(teacherSpeakingAttemptProvider(widget.id))
+        .when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, _) => _error(
+            'Hasil Speaking Belum Bisa Dimuat',
+            'Detail hasil speaking belum bisa dimuat. Silakan coba lagi.',
+            () => ref.invalidate(teacherSpeakingAttemptProvider(widget.id)),
+          ),
+          data: (serverAttempt) {
+            final a = savedAttempt ?? serverAttempt;
+            if (!loaded) {
+              score.text = a.teacherScore?.toStringAsFixed(0) ?? '';
+              feedback.text = a.teacherFeedback ?? '';
+              loaded = true;
+            }
+            return Column(
+              children: [
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.all(EmiSpacing.md),
+                    children: [
+                      Text(
+                        a.studentName,
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      _field('Latihan', a.exerciseTitle),
+                      if (a.classroomName != null)
+                        _field('Kelas', a.classroomName!),
+                      _field('Tanggal', _date(a.createdAt)),
+                      _field(
+                        'Status',
+                        a.teacherScore == null
+                            ? 'Belum dinilai'
+                            : 'Sudah dinilai',
+                      ),
+                      if (a.transcription != null)
+                        _field('Transkripsi AI', a.transcription!),
+                      if (a.aiScore != null)
+                        _field('Skor AI', a.aiScore!.toStringAsFixed(0)),
+                      if (a.status != null)
+                        _field('Status analisis', _analysis(a.status!)),
+                      if (a.captureSource != null)
+                        _field('Sumber rekaman', _source(a.captureSource!)),
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        onPressed: audioLoading || a.audioMediaId == null
+                            ? null
+                            : () => _audio(a.audioMediaId!),
+                        icon: Icon(
+                          player.playing ? Icons.pause : Icons.play_arrow,
+                        ),
+                        label: Text(
+                          audioLoading
+                              ? 'Memuat audio...'
+                              : player.playing
+                              ? 'Jeda Audio'
+                              : 'Putar Audio',
+                        ),
+                      ),
+                      if (audioError != null)
+                        Text(
+                          audioError!,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Penilaian Guru',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      TextFormField(
+                        controller: score,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Nilai (0–100)',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: feedback,
+                        maxLength: 5000,
+                        minLines: 3,
+                        maxLines: 6,
+                        decoration: const InputDecoration(
+                          labelText: 'Feedback (opsional)',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(EmiSpacing.md),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: saving ? null : _save,
+                      child: Text(saving ? 'Menyimpan...' : 'Simpan Penilaian'),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+  );
+  Future<void> _audio(String id) async {
+    if (player.playing) {
+      await player.pause();
+      if (mounted) setState(() {});
+      return;
+    }
+    setState(() {
+      audioLoading = true;
+      audioError = null;
+    });
+    try {
+      final url = await ref
+          .read(teacherRepositoryProvider)
+          .speakingTemporaryUrl(id);
+      await player.setUrl(url);
+      await player.play();
+    } catch (_) {
+      audioError = 'Audio belum bisa diputar. Silakan coba lagi.';
+    } finally {
+      if (mounted) setState(() => audioLoading = false);
+    }
+  }
+
+  Future<void> _save() async {
+    final value = num.tryParse(score.text);
+    if (value == null || value < 0 || value > 100) {
+      _snack(context, 'Masukkan nilai antara 0 dan 100.');
+      return;
+    }
+    if (feedback.text.length > 5000) return;
+    if (saving) return;
+    setState(() => saving = true);
+    try {
+      final saved = await ref
+          .read(teacherRepositoryProvider)
+          .saveSpeakingFeedback(
+            widget.id,
+            teacherScore: value,
+            teacherFeedback: feedback.text.trim().isEmpty
+                ? null
+                : feedback.text.trim(),
+          );
+      savedAttempt = saved;
+      loaded = true;
+      final refreshed = await ref.refresh(
+        teacherSpeakingAttemptsProvider.future,
+      );
+      if (refreshed.isEmpty && saved.id.isEmpty) return;
+      if (mounted) _snack(context, 'Penilaian berhasil disimpan.');
+    } catch (e) {
+      if (mounted) {
+        _snack(
+          context,
+          e is AppError
+              ? e.message
+              : 'Penilaian belum bisa disimpan. Silakan coba lagi.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+}
+
+Widget _field(String label, String value) => Padding(
+  padding: const EdgeInsets.only(top: 10),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+      Text(value),
+    ],
+  ),
+);
+Widget _error(String title, String message, VoidCallback retry) =>
+    FriendlyState(
+      icon: Icons.error_outline,
+      title: title,
+      message: message,
+      onRetry: retry,
+    );
+void _snack(BuildContext c, String text) =>
+    ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text(text)));
+String _status(String v) => v == 'published'
+    ? 'Terbit'
+    : v == 'archived'
+    ? 'Arsip'
+    : 'Draft';
+String _difficulty(String v) => v == 'beginner'
+    ? 'Pemula'
+    : v == 'advanced'
+    ? 'Mahir'
+    : 'Menengah';
+String _analysis(String v) => v == 'completed'
+    ? 'Analisis selesai'
+    : v == 'failed'
+    ? 'Analisis gagal'
+    : v == 'processing'
+    ? 'Sedang dianalisis'
+    : v == 'reviewed'
+    ? 'Sudah dinilai'
+    : 'Menunggu analisis';
+String _source(String v) => switch (v) {
+  'web_microphone' => 'Mikrofon web',
+  'web_esp32_serial' => 'ESP32 web',
+  'mobile_microphone' => 'Mikrofon ponsel',
+  'mobile_esp32_bluetooth' => 'ESP32 Bluetooth',
+  _ => 'Tidak diketahui',
+};
+String _date(DateTime? d) => d == null
+    ? 'Tanggal belum tersedia'
+    : '${d.toLocal().day.toString().padLeft(2, '0')}/${d.toLocal().month.toString().padLeft(2, '0')}/${d.toLocal().year}';

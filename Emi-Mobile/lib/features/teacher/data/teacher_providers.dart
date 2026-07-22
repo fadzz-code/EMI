@@ -11,6 +11,35 @@ final teacherRepositoryProvider = Provider<TeacherRepository>(
   (ref) => TeacherRepository(ref.watch(dioProvider), const DioErrorMapper()),
 );
 
+final teacherSpeakingTemplatesProvider =
+    FutureProvider<List<TeacherSpeakingTemplate>>(
+      (ref) => ref.watch(teacherRepositoryProvider).speakingTemplates(),
+    );
+final teacherSpeakingExercisesProvider =
+    FutureProvider.family<
+      List<TeacherSpeakingExercise>,
+      ({String classroomId, String status})
+    >(
+      (ref, value) => ref
+          .watch(teacherRepositoryProvider)
+          .speakingExercises(
+            classroomId: value.classroomId,
+            status: value.status,
+          ),
+    );
+final teacherSpeakingExerciseProvider =
+    FutureProvider.family<TeacherSpeakingExercise, String>(
+      (ref, id) => ref.watch(teacherRepositoryProvider).speakingExercise(id),
+    );
+final teacherSpeakingAttemptsProvider =
+    FutureProvider<List<TeacherSpeakingAttempt>>(
+      (ref) => ref.watch(teacherRepositoryProvider).speakingAttempts(),
+    );
+final teacherSpeakingAttemptProvider =
+    FutureProvider.family<TeacherSpeakingAttempt, String>(
+      (ref, id) => ref.watch(teacherRepositoryProvider).speakingAttempt(id),
+    );
+
 final teacherDashboardProvider = FutureProvider<TeacherDashboardSummary>(
   (ref) => ref.watch(teacherRepositoryProvider).dashboard(),
 );
