@@ -31,13 +31,13 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
     {
-      name: "chromium",
+      name: "public",
       testMatch: /.*public.*\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
       dependencies: ["setup"],
     },
     {
-      name: "admin",
+      name: "chromium",
       testMatch: /.*admin.*\.spec\.ts/,
       use: {
         ...devices["Desktop Chrome"],

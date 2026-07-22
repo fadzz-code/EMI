@@ -9,12 +9,12 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "node --env-file=.env.e2e node_modules/@playwright/test/cli.js test --project=chromium --project=admin --project=teacher --project=student --project=cross-role --workers=1",
-    "test:e2e:admin": "node --env-file=.env.e2e node_modules/@playwright/test/cli.js test --project=admin --workers=1",
+    "test:e2e": "node --env-file=.env.e2e node_modules/@playwright/test/cli.js test --project=public --project=chromium --project=teacher --project=student --project=cross-role --workers=1",
+    "test:e2e:admin": "node --env-file=.env.e2e node_modules/@playwright/test/cli.js test --project=chromium --workers=1",
     "test:e2e:teacher": "node --env-file=.env.e2e node_modules/@playwright/test/cli.js test --project=teacher --workers=1",
     "test:e2e:student": "node --env-file=.env.e2e node_modules/@playwright/test/cli.js test --project=student --workers=1",
     "test:e2e:cross-role": "node --env-file=.env.e2e node_modules/@playwright/test/cli.js test --project=cross-role --workers=1",
-    "test:e2e:headed": "node --env-file=.env.e2e node_modules/@playwright/test/cli.js test --project=chromium --project=admin --project=teacher --project=student --project=cross-role --workers=1 --headed",
+    "test:e2e:headed": "node --env-file=.env.e2e node_modules/@playwright/test/cli.js test --project=public --project=chromium --project=teacher --project=student --project=cross-role --workers=1 --headed",
     "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
