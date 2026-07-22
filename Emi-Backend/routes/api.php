@@ -290,6 +290,7 @@ Route::prefix('v1')->group(function () {
         Route::post('speaking/exercises', [TeacherSpeakingExerciseController::class, 'store']);
         Route::get('speaking/exercises/{exercise}', [TeacherSpeakingExerciseController::class, 'show']);
         Route::match(['put', 'patch'], 'speaking/exercises/{exercise}', [TeacherSpeakingExerciseController::class, 'update']);
+        Route::delete('speaking/exercises/{exercise}', [TeacherSpeakingExerciseController::class, 'destroy']);
         Route::patch('speaking/exercises/{exercise}/archive', [TeacherSpeakingExerciseController::class, 'archive']);
         Route::get('speaking/attempts', [TeacherSpeakingController::class, 'attempts']);
         Route::get('speaking/attempts/{attempt}', [TeacherSpeakingController::class, 'showAttempt']);

@@ -327,6 +327,96 @@ class SpeakingPracticeAiTest extends TestCase
             ->assertJsonPath('data.status', 'archived');
     }
 
+    public function test_teacher_can_delete_own_speaking_exercise(): void
+    {
+        [$student, $teacher, $class] = $this->classroomUsers();
+        $exercise = $this->exercise($class);
+        $exercise->forceFill(['created_by_id' => $teacher->id])->save();
+
+        $this->withToken($this->tokenFor($teacher))->deleteJson('/api/v1/teacher/speaking/exercises/'.$exercise->id)
+            ->assertOk()
+            ->assertJsonPath('message', 'Latihan speaking berhasil dihapus.');
+
+        $this->assertSoftDeleted($exercise);
+        $this->withToken($this->tokenFor($teacher))->getJson('/api/v1/teacher/speaking/exercises')->assertJsonMissing(['id' => $exercise->id]);
+        $this->withToken($this->tokenFor($student))->getJson('/api/v1/student/speaking/exercises')->assertJsonMissing(['id' => $exercise->id]);
+    }
+
+    public function test_teacher_cannot_delete_other_teacher_unassigned_or_global_exercise(): void
+    {
+        [, $teacher, $class] = $this->classroomUsers();
+        $otherTeacher = User::factory()->teacher()->approved()->create();
+        $other = $this->exercise($class);
+        $other->forceFill(['created_by_id' => $otherTeacher->id])->save();
+        $unassigned = $this->exercise(SchoolClass::factory()->create());
+
+        foreach ([$other, $unassigned, $this->globalExercise()] as $exercise) {
+            $this->withToken($this->tokenFor($teacher))->deleteJson('/api/v1/teacher/speaking/exercises/'.$exercise->id)->assertForbidden();
+            $this->assertDatabaseHas('speaking_exercises', ['id' => $exercise->id, 'deleted_at' => null]);
+        }
+    }
+
+    public function test_inactive_assignment_class_or_school_denies_teacher_exercise_deletion(): void
+    {
+        foreach (['assignment', 'class', 'school'] as $inactive) {
+            [, $teacher, $class] = $this->classroomUsers();
+            $exercise = $this->exercise($class);
+            $exercise->forceFill(['created_by_id' => $teacher->id])->save();
+
+            match ($inactive) {
+                'assignment' => $teacher->teacherClassAssignments()->update(['is_active' => false]),
+                'class' => $class->update(['status' => 'inactive']),
+                'school' => $class->school()->update(['status' => 'inactive']),
+            };
+
+            $this->withToken($this->tokenFor($teacher))->deleteJson('/api/v1/teacher/speaking/exercises/'.$exercise->id)->assertForbidden();
+            $this->assertDatabaseHas('speaking_exercises', ['id' => $exercise->id, 'deleted_at' => null]);
+        }
+    }
+
+    public function test_student_and_guest_cannot_delete_teacher_speaking_exercise(): void
+    {
+        [$student, $teacher, $class] = $this->classroomUsers();
+        $exercise = $this->exercise($class);
+        $exercise->forceFill(['created_by_id' => $teacher->id])->save();
+        $url = '/api/v1/teacher/speaking/exercises/'.$exercise->id;
+
+        $this->deleteJson($url)->assertUnauthorized();
+        $this->withToken($this->tokenFor($student))->deleteJson($url)->assertForbidden();
+        $this->assertDatabaseHas('speaking_exercises', ['id' => $exercise->id, 'deleted_at' => null]);
+    }
+
+    public function test_deleting_exercise_preserves_shared_reference_media(): void
+    {
+        [, $teacher, $class] = $this->classroomUsers();
+        $media = MediaFile::factory()->audio()->create(['purpose' => 'speaking_reference_audio']);
+        $exercise = $this->exercise($class);
+        $exercise->forceFill(['created_by_id' => $teacher->id, 'reference_audio_media_id' => $media->id])->save();
+        $this->globalExercise(['reference_audio_media_id' => $media->id]);
+
+        $this->withToken($this->tokenFor($teacher))->deleteJson('/api/v1/teacher/speaking/exercises/'.$exercise->id)->assertOk();
+
+        $this->assertDatabaseHas('media_files', ['id' => $media->id, 'deleted_at' => null]);
+    }
+
+    public function test_exercise_with_attempt_cannot_be_deleted_and_all_results_are_preserved(): void
+    {
+        [$student, $teacher, $class] = $this->classroomUsers();
+        $exercise = $this->exercise($class);
+        $exercise->forceFill(['created_by_id' => $teacher->id])->save();
+        $attempt = $this->attemptFor($student, $exercise);
+        $attempt->forceFill(['ai_score' => 91, 'teacher_score' => 88, 'teacher_feedback' => 'Pertahankan tempo.'])->save();
+        $media = $attempt->audioMedia;
+
+        $this->withToken($this->tokenFor($teacher))->deleteJson('/api/v1/teacher/speaking/exercises/'.$exercise->id)
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Latihan yang sudah memiliki hasil siswa tidak dapat dihapus. Arsipkan latihan ini agar tidak lagi tampil kepada siswa.');
+
+        $this->assertDatabaseHas('speaking_exercises', ['id' => $exercise->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('speaking_attempts', ['id' => $attempt->id, 'audio_media_id' => $media->id, 'ai_score' => 91, 'teacher_score' => 88, 'teacher_feedback' => 'Pertahankan tempo.', 'deleted_at' => null]);
+        $this->assertDatabaseHas('media_files', ['id' => $media->id, 'deleted_at' => null]);
+    }
+
     public function test_teacher_cannot_manage_speaking_exercises_for_unassigned_class(): void
     {
         [, $teacher] = $this->classroomUsers();
@@ -857,13 +947,15 @@ class SpeakingPracticeAiTest extends TestCase
 
     public function test_route_list_includes_student_and_teacher_speaking_endpoints(): void
     {
-        $routes = collect(app('router')->getRoutes())->map(fn ($route) => $route->uri())->all();
+        $routes = collect(app('router')->getRoutes());
+        $uris = $routes->map(fn ($route) => $route->uri())->all();
 
-        $this->assertContains('api/v1/student/speaking/exercises', $routes);
-        $this->assertContains('api/v1/teacher/speaking/templates', $routes);
-        $this->assertContains('api/v1/teacher/speaking/exercises', $routes);
-        $this->assertContains('api/v1/teacher/speaking/exercises/{exercise}/archive', $routes);
-        $this->assertContains('api/v1/teacher/speaking/attempts', $routes);
+        $this->assertContains('api/v1/student/speaking/exercises', $uris);
+        $this->assertContains('api/v1/teacher/speaking/templates', $uris);
+        $this->assertContains('api/v1/teacher/speaking/exercises', $uris);
+        $this->assertContains('api/v1/teacher/speaking/exercises/{exercise}/archive', $uris);
+        $this->assertContains('api/v1/teacher/speaking/attempts', $uris);
+        $this->assertTrue($routes->contains(fn ($route): bool => $route->uri() === 'api/v1/teacher/speaking/exercises/{exercise}' && in_array('DELETE', $route->methods(), true)));
     }
 
     private function classroomUsers(): array

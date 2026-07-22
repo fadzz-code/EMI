@@ -8,8 +8,10 @@ use App\Http\Requests\Speaking\StoreTeacherSpeakingExerciseRequest;
 use App\Http\Requests\Speaking\UpdateTeacherSpeakingExerciseRequest;
 use App\Http\Resources\SpeakingExerciseResource;
 use App\Models\SpeakingExercise;
+use App\Services\SpeakingExerciseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class TeacherSpeakingExerciseController extends Controller
 {
@@ -104,6 +106,14 @@ class TeacherSpeakingExerciseController extends Controller
         $exercise->update($data);
 
         return ApiResponse::success('Target speaking berhasil diperbarui.', new SpeakingExerciseResource($exercise->refresh()->load(['classroom.school', 'creator'])));
+    }
+
+    public function destroy(Request $request, SpeakingExercise $exercise, SpeakingExerciseService $service): JsonResponse
+    {
+        Gate::authorize('delete', $exercise);
+        $service->delete($exercise, $request->user(), $request);
+
+        return ApiResponse::success('Latihan speaking berhasil dihapus.');
     }
 
     public function archive(Request $request, SpeakingExercise $exercise): JsonResponse
