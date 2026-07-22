@@ -33,176 +33,252 @@ class _TeacherQuizzesScreenState extends ConsumerState<TeacherQuizzesScreen> {
     return TeacherShell(
       title: 'Kuis Kelas',
       fallbackRoute: null,
-      child: Column(
+      child: value.when(
+        loading: () => const _QuizSkeleton(),
+        error: (_, _) => _State(
+          title: 'Kuis Belum Bisa Dimuat',
+          message: 'Periksa koneksi internet, lalu coba lagi.',
+          retry: () => ref.invalidate(teacherQuizzesProvider(filter)),
+        ),
+        data: (data) => ListView(
+          padding: const EdgeInsets.all(EmiSpacing.md),
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.quiz_outlined, size: 28),
+                const SizedBox(width: EmiSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Kuis Kelas',
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
+                      const Text('Kelola kuis dan pantau pemahaman siswa.'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: EmiSpacing.lg),
+            FilledButton.icon(
+              onPressed: () => context.push('/teacher/quizzes/create'),
+              icon: const Icon(Icons.add, size: 24),
+              label: const Text('Tambah Kuis'),
+            ),
+            const SizedBox(height: EmiSpacing.lg),
+            _QuizMetrics(items: data.items, paginated: data.lastPage > 1),
+            const SizedBox(height: EmiSpacing.lg),
+            TextField(
+              controller: _search,
+              decoration: const InputDecoration(
+                labelText: 'Cari kuis',
+                prefixIcon: Icon(Icons.search),
+              ),
+              onSubmitted: (_) => setState(() => page = 1),
+            ),
+            const SizedBox(height: EmiSpacing.sm),
+            DropdownButtonFormField<String>(
+              initialValue: status,
+              decoration: const InputDecoration(labelText: 'Status'),
+              items: const [
+                DropdownMenuItem(value: '', child: Text('Semua')),
+                DropdownMenuItem(value: 'draft', child: Text('Draf')),
+                DropdownMenuItem(value: 'published', child: Text('Terbit')),
+                DropdownMenuItem(value: 'archived', child: Text('Diarsipkan')),
+              ],
+              onChanged: (v) => setState(() {
+                status = v ?? '';
+                page = 1;
+              }),
+            ),
+            const SizedBox(height: EmiSpacing.lg),
+            if (data.items.isEmpty)
+              const _State(
+                title: 'Belum Ada Kuis',
+                message:
+                    'Buat kuis pertama untuk mulai menilai pemahaman siswa.',
+              )
+            else
+              for (final quiz in data.items) ...[
+                _QuizItem(quiz: quiz),
+                const SizedBox(height: EmiSpacing.sm),
+              ],
+            if (data.items.isNotEmpty)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    onPressed: page > 1 ? () => setState(() => page--) : null,
+                    icon: const Icon(Icons.chevron_left),
+                  ),
+                  Flexible(
+                    child: Text('Halaman ${data.page} dari ${data.lastPage}'),
+                  ),
+                  IconButton(
+                    onPressed: page < data.lastPage
+                        ? () => setState(() => page++)
+                        : null,
+                    icon: const Icon(Icons.chevron_right),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuizMetrics extends StatelessWidget {
+  const _QuizMetrics({required this.items, required this.paginated});
+  final List<TeacherQuiz> items;
+  final bool paginated;
+  @override
+  Widget build(BuildContext context) {
+    final metrics = [
+      (
+        Icons.quiz_outlined,
+        '${items.length}',
+        paginated ? 'Kuis di halaman ini' : 'Total kuis',
+      ),
+      (
+        Icons.public,
+        '${items.where((q) => q.status == 'published').length}',
+        paginated ? 'Terbit di halaman ini' : 'Terbit',
+      ),
+      (
+        Icons.edit_note,
+        '${items.where((q) => q.status == 'draft').length}',
+        paginated ? 'Draf di halaman ini' : 'Draf',
+      ),
+      (
+        Icons.groups_outlined,
+        '${items.fold<int>(0, (sum, q) => sum + q.attemptsCount)}',
+        paginated ? 'Pengerjaan di halaman ini' : 'Siswa mengerjakan',
+      ),
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 688 ? 4 : 2;
+        final width =
+            (constraints.maxWidth - EmiSpacing.sm * (columns - 1)) / columns;
+        return Wrap(
+          spacing: EmiSpacing.sm,
+          runSpacing: EmiSpacing.sm,
+          children: [
+            for (final metric in metrics)
+              SizedBox(
+                width: width,
+                child: EmiCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(metric.$1, size: 24),
+                      const SizedBox(height: EmiSpacing.sm),
+                      Text(
+                        metric.$2,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      Text(
+                        metric.$3,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _QuizItem extends StatelessWidget {
+  const _QuizItem({required this.quiz});
+  final TeacherQuiz quiz;
+  @override
+  Widget build(BuildContext context) => InkWell(
+    borderRadius: BorderRadius.circular(EmiRadii.card),
+    onTap: () => context.push('/teacher/quizzes/${quiz.id}'),
+    child: EmiCard(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(EmiSpacing.md),
+          const Icon(Icons.quiz_outlined, size: 28),
+          const SizedBox(width: EmiSpacing.sm),
+          Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Kelola kuis untuk kelas Anda.',
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  quiz.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                Text(
+                  '${quiz.className ?? 'Kelas aktif'} • ${quiz.questionsCount} pertanyaan • ${quiz.attemptsCount} mengerjakan',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: EmiSpacing.sm),
-                TextField(
-                  controller: _search,
-                  decoration: const InputDecoration(
-                    labelText: 'Cari kuis',
-                    prefixIcon: Icon(Icons.search),
-                  ),
-                  onSubmitted: (_) => setState(() => page = 1),
-                ),
-                const SizedBox(height: EmiSpacing.sm),
-                Wrap(
-                  spacing: EmiSpacing.sm,
-                  runSpacing: EmiSpacing.sm,
-                  alignment: WrapAlignment.spaceBetween,
+                Row(
                   children: [
-                    FilledButton.icon(
-                      onPressed: () => context.push('/teacher/quizzes/create'),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Tambah Kuis'),
-                    ),
-                    DropdownButton<String>(
-                      value: status,
-                      items: const [
-                        DropdownMenuItem(value: '', child: Text('Semua')),
-                        DropdownMenuItem(value: 'draft', child: Text('Draf')),
-                        DropdownMenuItem(
-                          value: 'published',
-                          child: Text('Terbit'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'archived',
-                          child: Text('Diarsipkan'),
-                        ),
-                      ],
-                      onChanged: (v) => setState(() {
-                        status = v ?? '';
-                        page = 1;
-                      }),
+                    Flexible(child: _StatusBadge(status: quiz.status)),
+                    const Spacer(),
+                    Flexible(
+                      child: Text(
+                        'Diperbarui ${_date(quiz.updatedAt)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
           ),
-          Expanded(
-            child: value.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (_, _) => _State(
-                title: 'Gagal memuat kuis',
-                message:
-                    'Kuis kelas belum bisa dimuat. Periksa koneksi internet, lalu coba lagi.',
-                retry: () => ref.invalidate(teacherQuizzesProvider(filter)),
-              ),
-              data: (data) => data.items.isEmpty
-                  ? const _State(
-                      title: 'Kuis belum tersedia',
-                      message: 'Belum ada kuis kelas yang bisa dikelola.',
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: EmiSpacing.md,
-                      ),
-                      itemCount: data.items.length + 1,
-                      itemBuilder: (context, index) {
-                        if (index == data.items.length) {
-                          return Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              IconButton(
-                                onPressed: page > 1
-                                    ? () => setState(() => page--)
-                                    : null,
-                                icon: const Icon(Icons.chevron_left),
-                              ),
-                              Text(
-                                'Halaman ${data.page} dari ${data.lastPage}',
-                              ),
-                              IconButton(
-                                onPressed: page < data.lastPage
-                                    ? () => setState(() => page++)
-                                    : null,
-                                icon: const Icon(Icons.chevron_right),
-                              ),
-                            ],
-                          );
-                        }
-                        final quiz = data.items[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: EmiSpacing.sm),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(EmiRadii.card),
-                            onTap: () =>
-                                context.push('/teacher/quizzes/${quiz.id}'),
-                            child: EmiCard(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Icon(Icons.quiz_outlined, size: 28),
-                                  const SizedBox(width: EmiSpacing.sm),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          quiz.title,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.titleLarge,
-                                        ),
-                                        Text(
-                                          quiz.className ?? 'Kelas aktif',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        Text(
-                                          '${quiz.questionsCount} pertanyaan • ${quiz.attemptsCount} siswa mengerjakan',
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: EmiSpacing.xs),
-                                        _StatusBadge(status: quiz.status),
-                                      ],
-                                    ),
-                                  ),
-                                  PopupMenuButton<String>(
-                                    onSelected: (value) => value == 'result'
-                                        ? context.push(
-                                            '/teacher/quizzes/${quiz.id}/results',
-                                          )
-                                        : context.push(
-                                            '/teacher/quizzes/${quiz.id}/edit',
-                                          ),
-                                    itemBuilder: (_) => const [
-                                      PopupMenuItem(
-                                        value: 'edit',
-                                        child: Text('Edit Kuis'),
-                                      ),
-                                      PopupMenuItem(
-                                        value: 'result',
-                                        child: Text('Lihat Hasil'),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+          PopupMenuButton<String>(
+            onSelected: (value) => context.push(
+              value == 'result'
+                  ? '/teacher/quizzes/${quiz.id}/results'
+                  : '/teacher/quizzes/${quiz.id}/edit',
             ),
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'edit', child: Text('Edit Kuis')),
+              PopupMenuItem(value: 'result', child: Text('Lihat Hasil')),
+            ],
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
+
+class _QuizSkeleton extends StatelessWidget {
+  const _QuizSkeleton();
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(EmiSpacing.md),
+    children: [
+      for (var i = 0; i < 4; i++)
+        Padding(
+          padding: const EdgeInsets.only(bottom: EmiSpacing.sm),
+          child: Container(
+            height: 88,
+            decoration: BoxDecoration(
+              color: EmiColors.surfaceSoft,
+              borderRadius: BorderRadius.circular(EmiRadii.card),
+            ),
+          ),
+        ),
+    ],
+  );
 }
 
 class TeacherQuizDetailScreen extends ConsumerWidget {
@@ -224,81 +300,136 @@ class TeacherQuizDetailScreen extends ConsumerWidget {
           data: (quiz) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
-              Text(
-                quiz.title,
-                style: Theme.of(context).textTheme.headlineSmall,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.quiz_outlined, size: 28),
+                  const SizedBox(width: EmiSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          quiz.title,
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        ),
+                        Text(quiz.className ?? 'Kelas aktif'),
+                        const SizedBox(height: EmiSpacing.sm),
+                        _StatusBadge(status: quiz.status),
+                      ],
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    onSelected: (value) => value == 'result'
+                        ? context.push('/teacher/quizzes/$id/results')
+                        : _action(context, ref, quiz, value == 'publish'),
+                    itemBuilder: (_) => [
+                      const PopupMenuItem(
+                        value: 'result',
+                        child: Text('Lihat Hasil'),
+                      ),
+                      if (quiz.status == 'draft')
+                        const PopupMenuItem(
+                          value: 'publish',
+                          child: Text('Terbitkan Kuis'),
+                        ),
+                      if (quiz.status == 'published')
+                        const PopupMenuItem(
+                          value: 'archive',
+                          child: Text('Arsipkan Kuis'),
+                        ),
+                    ],
+                  ),
+                ],
               ),
-              Text(
-                '${quiz.className ?? 'Kelas aktif'} • ${_status(quiz.status)}',
-              ),
-              const SizedBox(height: EmiSpacing.md),
-              Text(
-                quiz.description.isEmpty
-                    ? 'Tanpa deskripsi.'
-                    : quiz.description,
-              ),
-              Text('Durasi: ${quiz.durationMinutes} menit'),
-              Text('Maksimal percobaan: ${quiz.maxAttempts}'),
-              Text('Jumlah soal: ${quiz.questionsCount}'),
-              Text('Jumlah attempt: ${quiz.attemptsCount}'),
-              Text('Terakhir diperbarui: ${_date(quiz.updatedAt)}'),
-              if (quiz.openAt != null)
-                Text('Dibuka: ${quiz.openAt!.toLocal()}'),
-              if (quiz.closeAt != null)
-                Text('Ditutup: ${quiz.closeAt!.toLocal()}'),
-              const SizedBox(height: EmiSpacing.md),
-              FilledButton(
+              const SizedBox(height: EmiSpacing.lg),
+              FilledButton.icon(
                 onPressed: () => context.push('/teacher/quizzes/$id/edit'),
-                child: const Text('Edit Kuis'),
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('Edit Kuis'),
               ),
-              OutlinedButton(
-                onPressed: () => context.push('/teacher/quizzes/$id/results'),
-                child: const Text('Lihat Hasil'),
-              ),
-              if (quiz.status == 'draft')
-                OutlinedButton(
-                  onPressed: () => _action(context, ref, quiz, true),
-                  child: const Text('Terbitkan Kuis'),
+              const SizedBox(height: EmiSpacing.lg),
+              _DetailMetrics(quiz: quiz),
+              if (quiz.description.isNotEmpty) ...[
+                const SizedBox(height: EmiSpacing.lg),
+                Text(
+                  'Deskripsi',
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
-              if (quiz.status == 'published')
-                OutlinedButton(
-                  onPressed: () => _action(context, ref, quiz, false),
-                  child: const Text('Arsipkan Kuis'),
-                ),
-              const Divider(),
+                const SizedBox(height: EmiSpacing.sm),
+                Text(quiz.description),
+              ],
+              const SizedBox(height: EmiSpacing.lg),
               Row(
                 children: [
                   Expanded(
                     child: Text(
-                      'Daftar Soal',
-                      style: Theme.of(context).textTheme.titleMedium,
+                      'Pertanyaan',
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
                   ),
-                  IconButton(
+                  FilledButton.icon(
                     onPressed: quiz.status == 'draft'
                         ? () => context.push(
                             '/teacher/quizzes/$id/questions/create',
                           )
                         : null,
                     icon: const Icon(Icons.add),
+                    label: const Text('Tambah Pertanyaan'),
                   ),
                 ],
               ),
+              const SizedBox(height: EmiSpacing.sm),
               if (quiz.questions.isEmpty)
-                const Text('Belum ada soal.')
+                const _State(
+                  title: 'Belum Ada Pertanyaan',
+                  message:
+                      'Tambahkan pertanyaan pertama untuk melengkapi kuis ini.',
+                )
               else
-                for (final question in quiz.questions)
-                  ListTile(
-                    title: Text(question.text),
-                    subtitle: Text(
-                      '${question.points} poin • ${question.type == 'multiple_choice' ? 'Pilihan ganda' : 'Jawaban singkat'}',
+                for (var index = 0; index < quiz.questions.length; index++) ...[
+                  EmiCard(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${index + 1}'.padLeft(2, '0'),
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(width: EmiSpacing.sm),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                quiz.questions[index].text,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: EmiSpacing.xs),
+                              Text(
+                                '${quiz.questions[index].type == 'multiple_choice' ? 'Pilihan ganda' : 'Jawaban singkat'} • ${quiz.questions[index].points} poin',
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (quiz.status == 'draft')
+                          PopupMenuButton<String>(
+                            onSelected: (_) => context.push(
+                              '/teacher/quizzes/$id/questions/${quiz.questions[index].id}/edit',
+                            ),
+                            itemBuilder: (_) => const [
+                              PopupMenuItem(
+                                value: 'edit',
+                                child: Text('Edit Pertanyaan'),
+                              ),
+                            ],
+                          ),
+                      ],
                     ),
-                    onTap: quiz.status == 'draft'
-                        ? () => context.push(
-                            '/teacher/quizzes/$id/questions/${question.id}/edit',
-                          )
-                        : null,
                   ),
+                  const SizedBox(height: EmiSpacing.sm),
+                ],
             ],
           ),
         ),
@@ -330,6 +461,57 @@ class TeacherQuizDetailScreen extends ConsumerWidget {
     } catch (error) {
       if (context.mounted) _notice(context, _error(error));
     }
+  }
+}
+
+class _DetailMetrics extends StatelessWidget {
+  const _DetailMetrics({required this.quiz});
+  final TeacherQuiz quiz;
+  @override
+  Widget build(BuildContext context) {
+    final metrics = [
+      (Icons.help_outline, '${quiz.questionsCount}', 'Pertanyaan'),
+      (Icons.replay, '${quiz.maxAttempts}', 'Batas Percobaan'),
+      (Icons.timer_outlined, '${quiz.durationMinutes} menit', 'Durasi'),
+      (Icons.groups_outlined, '${quiz.attemptsCount}', 'Pengerjaan'),
+      if (quiz.openAt != null || quiz.closeAt != null)
+        (
+          Icons.calendar_today_outlined,
+          '${_date(quiz.openAt)} – ${_date(quiz.closeAt)}',
+          'Jadwal',
+        ),
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = (constraints.maxWidth - EmiSpacing.sm) / 2;
+        return Wrap(
+          spacing: EmiSpacing.sm,
+          runSpacing: EmiSpacing.sm,
+          children: [
+            for (final metric in metrics)
+              SizedBox(
+                width: width,
+                child: EmiCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(metric.$1, size: 24),
+                      const SizedBox(height: EmiSpacing.sm),
+                      Text(
+                        metric.$2,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      Text(metric.$3),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -413,30 +595,109 @@ class _TeacherQuizFormScreenState extends ConsumerState<TeacherQuizFormScreen> {
     onBack: () => _leave(quiz),
     child: Form(
       key: form,
-      child: ListView(
-        padding: const EdgeInsets.all(EmiSpacing.md),
+      child: Column(
         children: [
-          _field(title, 'Judul Kuis', required: true),
-          _field(description, 'Deskripsi', lines: 3),
-          _field(instructions, 'Petunjuk', lines: 3),
-          _field(duration, 'Durasi (menit)', number: true, positive: true),
-          _field(attempts, 'Maksimal Percobaan', number: true, positive: true),
-          _field(open, 'Buka pada (ISO 8601, opsional)', date: true),
-          _field(close, 'Tutup pada (ISO 8601, opsional)', date: true),
-          SwitchListTile(
-            value: showResult,
-            title: const Text('Tampilkan hasil ke siswa'),
-            onChanged: (v) => setState(() {
-              showResult = v;
-              dirty = true;
-            }),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(EmiSpacing.md),
+              children: [
+                _section(context, 'Informasi Kuis', Icons.info_outline),
+                _field(title, 'Judul Kuis', required: true),
+                _field(description, 'Deskripsi', lines: 3),
+                _field(instructions, 'Petunjuk', lines: 3),
+                const SizedBox(height: EmiSpacing.sm),
+                _section(context, 'Aturan Pengerjaan', Icons.rule_outlined),
+                LayoutBuilder(
+                  builder: (context, constraints) => constraints.maxWidth >= 688
+                      ? Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: _field(
+                                duration,
+                                'Durasi (menit)',
+                                number: true,
+                                positive: true,
+                              ),
+                            ),
+                            const SizedBox(width: EmiSpacing.md),
+                            Expanded(
+                              child: _field(
+                                attempts,
+                                'Maksimal Percobaan',
+                                number: true,
+                                positive: true,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          children: [
+                            _field(
+                              duration,
+                              'Durasi (menit)',
+                              number: true,
+                              positive: true,
+                            ),
+                            _field(
+                              attempts,
+                              'Maksimal Percobaan',
+                              number: true,
+                              positive: true,
+                            ),
+                          ],
+                        ),
+                ),
+                const SizedBox(height: EmiSpacing.sm),
+                _section(context, 'Jadwal', Icons.calendar_today_outlined),
+                _field(open, 'Buka pada (ISO 8601, opsional)', date: true),
+                _field(close, 'Tutup pada (ISO 8601, opsional)', date: true),
+                const SizedBox(height: EmiSpacing.sm),
+                _section(context, 'Status', Icons.visibility_outlined),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: showResult,
+                  title: const Text('Tampilkan hasil ke siswa'),
+                  onChanged: (v) => setState(() {
+                    showResult = v;
+                    dirty = true;
+                  }),
+                ),
+                const SizedBox(height: 32),
+              ],
+            ),
           ),
-          FilledButton(
-            onPressed: saving ? null : () => _save(quiz),
-            child: Text(saving ? 'Menyimpan...' : 'Simpan'),
+          SafeArea(
+            top: false,
+            minimum: const EdgeInsets.fromLTRB(
+              EmiSpacing.md,
+              EmiSpacing.sm,
+              EmiSpacing.md,
+              EmiSpacing.md,
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: saving ? null : () => _save(quiz),
+                child: Text(saving ? 'Menyimpan...' : 'Simpan'),
+              ),
+            ),
           ),
         ],
       ),
+    ),
+  );
+
+  Widget _section(BuildContext context, String title, IconData icon) => Padding(
+    padding: const EdgeInsets.only(bottom: EmiSpacing.md),
+    child: Row(
+      children: [
+        Icon(icon, size: 24),
+        const SizedBox(width: EmiSpacing.sm),
+        Expanded(
+          child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+        ),
+      ],
     ),
   );
 
@@ -599,79 +860,136 @@ class _TeacherQuestionFormScreenState
     onBack: _leave,
     child: Form(
       key: form,
-      child: ListView(
-        padding: const EdgeInsets.all(EmiSpacing.md),
+      child: Column(
         children: [
-          DropdownButtonFormField(
-            initialValue: type,
-            decoration: const InputDecoration(labelText: 'Jenis Soal'),
-            items: const [
-              DropdownMenuItem(
-                value: 'multiple_choice',
-                child: Text('Pilihan ganda'),
-              ),
-              DropdownMenuItem(
-                value: 'short_answer',
-                child: Text('Jawaban singkat'),
-              ),
-            ],
-            onChanged: (v) => setState(() {
-              type = v!;
-              dirty = true;
-            }),
-          ),
-          _input(text, 'Pertanyaan', true),
-          _input(points, 'Poin', true, number: true),
-          if (type == 'short_answer') _input(answer, 'Jawaban Benar', true),
-          if (type == 'multiple_choice')
-            for (var i = 0; i < options.length; i++)
-              Row(
-                children: [
-                  IconButton(
-                    tooltip: 'Jadikan pilihan ${i + 1} jawaban benar',
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(EmiSpacing.md),
+              children: [
+                Text(
+                  'Pertanyaan',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: EmiSpacing.md),
+                _input(text, 'Pertanyaan', true),
+                const SizedBox(height: EmiSpacing.lg),
+                Text(
+                  'Tipe Soal',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: EmiSpacing.md),
+                DropdownButtonFormField(
+                  initialValue: type,
+                  decoration: const InputDecoration(labelText: 'Tipe Soal'),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'multiple_choice',
+                      child: Text('Pilihan ganda'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'short_answer',
+                      child: Text('Jawaban singkat'),
+                    ),
+                  ],
+                  onChanged: (v) => setState(() {
+                    type = v!;
+                    dirty = true;
+                  }),
+                ),
+                const SizedBox(height: EmiSpacing.lg),
+                Text('Poin', style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: EmiSpacing.md),
+                _input(points, 'Poin', true, number: true),
+                if (type == 'short_answer') ...[
+                  const SizedBox(height: EmiSpacing.lg),
+                  Text(
+                    'Jawaban Benar',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: EmiSpacing.md),
+                  _input(answer, 'Jawaban Benar', true),
+                ],
+                if (type == 'multiple_choice') ...[
+                  const SizedBox(height: EmiSpacing.lg),
+                  Text(
+                    'Pilihan Jawaban',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: EmiSpacing.md),
+                  for (var i = 0; i < options.length; i++)
+                    Row(
+                      children: [
+                        IconButton(
+                          tooltip: 'Jadikan pilihan ${i + 1} jawaban benar',
+                          onPressed: () => setState(() {
+                            correct = i;
+                            dirty = true;
+                          }),
+                          icon: Icon(
+                            correct == i
+                                ? Icons.radio_button_checked
+                                : Icons.radio_button_off,
+                          ),
+                        ),
+                        Expanded(
+                          child: _input(options[i], 'Pilihan ${i + 1}', true),
+                        ),
+                        if (options.length > 2)
+                          IconButton(
+                            tooltip: 'Hapus pilihan ${i + 1}',
+                            onPressed: () => setState(() {
+                              options.removeAt(i).dispose();
+                              if (correct == i) correct = 0;
+                              if (correct > i) correct--;
+                              dirty = true;
+                            }),
+                            icon: const Icon(Icons.remove_circle_outline),
+                          ),
+                      ],
+                    ),
+                  TextButton.icon(
                     onPressed: () => setState(() {
-                      correct = i;
+                      options.add(TextEditingController());
                       dirty = true;
                     }),
-                    icon: Icon(
-                      correct == i
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_off,
-                    ),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Tambah Pilihan'),
                   ),
-                  Expanded(child: _input(options[i], 'Pilihan ${i + 1}', true)),
-                  if (options.length > 2)
-                    IconButton(
-                      tooltip: 'Hapus pilihan ${i + 1}',
-                      onPressed: () => setState(() {
-                        options.removeAt(i).dispose();
-                        if (correct == i) correct = 0;
-                        if (correct > i) correct--;
-                        dirty = true;
-                      }),
-                      icon: const Icon(Icons.remove_circle_outline),
-                    ),
+                  const SizedBox(height: EmiSpacing.lg),
+                  Text(
+                    'Jawaban Benar',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: EmiSpacing.sm),
+                  Text('Pilih tombol radio pada jawaban yang benar.'),
                 ],
-              ),
-          if (type == 'multiple_choice')
-            TextButton.icon(
-              onPressed: () => setState(() {
-                options.add(TextEditingController());
-                dirty = true;
-              }),
-              icon: const Icon(Icons.add),
-              label: const Text('Tambah Pilihan'),
+                const SizedBox(height: EmiSpacing.lg),
+                _input(explanation, 'Penjelasan', false),
+                if (q != null)
+                  TextButton(
+                    onPressed: saving ? null : _delete,
+                    child: const Text('Hapus Soal'),
+                  ),
+                const SizedBox(height: 32),
+              ],
             ),
-          _input(explanation, 'Penjelasan', false),
-          FilledButton(
-            onPressed: saving ? null : _save,
-            child: Text(saving ? 'Menyimpan...' : 'Simpan Soal'),
           ),
-          if (q != null)
-            TextButton(
-              onPressed: saving ? null : _delete,
-              child: const Text('Hapus Soal'),
+          SafeArea(
+            top: false,
+            minimum: const EdgeInsets.fromLTRB(
+              EmiSpacing.md,
+              EmiSpacing.sm,
+              EmiSpacing.md,
+              EmiSpacing.md,
             ),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: saving ? null : _save,
+                child: Text(saving ? 'Menyimpan...' : 'Simpan Soal'),
+              ),
+            ),
+          ),
         ],
       ),
     ),

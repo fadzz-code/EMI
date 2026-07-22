@@ -10,6 +10,7 @@ import 'package:emi_mobile/features/teacher/data/teacher_providers.dart';
 import 'package:emi_mobile/features/teacher/data/teacher_quiz_repository.dart';
 import 'package:emi_mobile/features/teacher/presentation/teacher_dashboard_screen.dart';
 import 'package:emi_mobile/features/teacher/presentation/teacher_quizzes_screens.dart';
+import 'package:emi_mobile/shared/widgets/emi_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -380,7 +381,8 @@ void main() {
           teacherQuizzesProvider.overrideWith((_, _) => pending.future),
         ],
       );
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.byType(Container), findsWidgets);
       await tester.pumpWidget(const SizedBox());
 
       await _pump(
@@ -394,9 +396,11 @@ void main() {
         ],
       );
       await tester.pumpAndSettle();
-      expect(find.text('Kuis belum tersedia'), findsOneWidget);
+      await tester.drag(find.byType(ListView).last, const Offset(0, -600));
+      await tester.pumpAndSettle();
+      expect(find.text('Belum Ada Kuis'), findsOneWidget);
       expect(
-        find.text('Belum ada kuis kelas yang bisa dikelola.'),
+        find.text('Buat kuis pertama untuk mulai menilai pemahaman siswa.'),
         findsOneWidget,
       );
 
@@ -412,7 +416,7 @@ void main() {
         ],
       );
       await tester.pumpAndSettle();
-      expect(find.text('Gagal memuat kuis'), findsOneWidget);
+      expect(find.text('Kuis Belum Bisa Dimuat'), findsOneWidget);
       await tester.tap(find.text('Coba Lagi'));
       await tester.pump();
       expect(calls, greaterThan(1));
@@ -432,9 +436,11 @@ void main() {
         ],
       );
       await tester.pumpAndSettle();
+      await tester.drag(find.byType(ListView).last, const Offset(0, -700));
+      await tester.pumpAndSettle();
       expect(find.text('Sapaan'), findsOneWidget);
       expect(find.textContaining('Kelas 7A'), findsOneWidget);
-      expect(find.textContaining('Terbit'), findsOneWidget);
+      expect(find.textContaining('Terbit'), findsWidgets);
       expect(find.textContaining('quiz-1'), findsNothing);
       expect(find.textContaining('published'), findsNothing);
       expect(find.textContaining('null'), findsNothing);
@@ -445,6 +451,10 @@ void main() {
   testWidgets(
     'detail and question list render friendly metrics without raw values',
     (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       await _pump(
         tester,
         location: '/teacher/quizzes/quiz-1',
@@ -455,14 +465,39 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Sapaan'), findsOneWidget);
-      expect(find.textContaining('Durasi: 30 menit'), findsOneWidget);
-      expect(find.textContaining('Jumlah attempt: 3'), findsOneWidget);
-      expect(find.text('Daftar Soal'), findsOneWidget);
-      expect(find.text('Arti halo?'), findsOneWidget);
+      expect(find.text('30 menit'), findsOneWidget);
+      expect(find.text('3'), findsOneWidget);
+      final metricCards =
+          [
+                find.text('Pertanyaan'),
+                find.text('Batas Percobaan'),
+                find.text('Durasi'),
+                find.text('Pengerjaan'),
+              ]
+              .map(
+                (label) => find.ancestor(
+                  of: label.first,
+                  matching: find.byType(EmiCard),
+                ),
+              )
+              .toList();
+      final mobileTops = metricCards
+          .map((finder) => tester.getTopLeft(finder.first).dy)
+          .toList();
+      expect(mobileTops[0], mobileTops[1]);
+      expect(mobileTops[2], mobileTops[3]);
+      expect(mobileTops[2], greaterThan(mobileTops[0]));
+      expect(find.text('Pertanyaan'), findsWidgets);
+      expect(find.text('Nilai Lulus'), findsNothing);
+      expect(find.text('Pilih jawaban'), findsNothing);
       expect(find.textContaining('Draf'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Arti halo?'), 200);
+      expect(find.text('Arti halo?'), findsOneWidget);
       expect(find.textContaining('quiz-1'), findsNothing);
       expect(find.textContaining('multiple_choice'), findsNothing);
       expect(find.textContaining('null'), findsNothing);
+      expect(tester.takeException(), isNull);
+
       expect(tester.takeException(), isNull);
     },
   );
@@ -470,6 +505,11 @@ void main() {
   testWidgets(
     'quiz create edit and question create edit show friendly validation',
     (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetViewInsets);
       final source = File(
         'lib/features/teacher/presentation/teacher_quizzes_screens.dart',
       ).readAsStringSync();
@@ -490,6 +530,27 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Edit Kuis'), findsWidgets);
       expect(find.widgetWithText(TextFormField, 'Sapaan'), findsOneWidget);
+      final duration = find.text('Durasi (menit)');
+      final attempts = find.text('Maksimal Percobaan');
+      expect(duration, findsOneWidget);
+      expect(attempts, findsOneWidget);
+      expect(
+        tester.getTopLeft(attempts).dy,
+        greaterThan(tester.getTopLeft(duration).dy),
+      );
+      tester.view.physicalSize = const Size(390, 560);
+      tester.view.viewInsets = const FakeViewPadding(bottom: 240);
+      await tester.pumpAndSettle();
+      expect(find.text('Simpan'), findsOneWidget);
+      expect(
+        tester.getBottomLeft(find.text('Simpan')).dy,
+        lessThanOrEqualTo(320),
+      );
+      expect(tester.takeException(), isNull);
+      tester.view.viewInsets = FakeViewPadding.zero;
+      tester.view.physicalSize = const Size(390, 480);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
 
       expect(source, contains("_input(text, 'Pertanyaan', true)"));
       expect(source, contains("q == null ? 'Buat Soal' : 'Edit Soal'"));
@@ -522,6 +583,8 @@ void main() {
           ),
         ],
       );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.more_vert).first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Terbitkan Kuis'));
       await tester.pump();
