@@ -146,7 +146,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/teacher/reports/progress',
+        redirect: (_, _) => '/teacher/progress',
+      ),
+      GoRoute(
+        path: '/teacher/progress',
         builder: (_, _) => const TeacherProgressScreen(),
+      ),
+      GoRoute(
+        path: '/teacher/progress/classes/:classId',
+        builder: (_, state) => TeacherClassProgressScreen(
+          classId: state.pathParameters['classId'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/teacher/progress/students/:studentId',
+        builder: (_, state) => TeacherStudentDetailScreen(
+          id: state.pathParameters['studentId'] ?? '',
+        ),
       ),
       GoRoute(
         path: '/teacher/modules',

@@ -111,9 +111,9 @@ class TeacherDashboardScreen extends ConsumerWidget {
                     onTap: () => context.go('/teacher/quizzes'),
                   ),
                   TeacherQuickAction(
-                    label: 'Siswa',
-                    icon: Icons.people_outline,
-                    onTap: () => context.go('/teacher/students'),
+                    label: 'Progress',
+                    icon: Icons.trending_up_outlined,
+                    onTap: () => context.go('/teacher/progress'),
                   ),
                   TeacherQuickAction(
                     label: 'Hasil Speaking',

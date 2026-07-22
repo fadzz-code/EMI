@@ -94,10 +94,17 @@ final teacherStudentProgressProvider =
     );
 
 final teacherClassProgressProvider =
-    FutureProvider.family<TeacherStudentProgressPage, String>(
-      (ref, id) => ref
+    FutureProvider.family<
+      TeacherStudentProgressPage,
+      ({String classId, int page, String search})
+    >(
+      (ref, query) => ref
           .watch(teacherRepositoryProvider)
-          .studentProgress(page: 1, classId: id),
+          .studentProgress(
+            page: query.page,
+            classId: query.classId,
+            search: query.search,
+          ),
     );
 
 final teacherStudentDetailProvider =

@@ -303,43 +303,73 @@ class TeacherStudentProgress {
   const TeacherStudentProgress({
     required this.studentId,
     required this.name,
+    required this.classId,
     required this.className,
+    required this.schoolName,
+    required this.learningStatus,
     required this.percent,
     required this.completedModules,
     required this.startedModules,
     required this.publishedModules,
+    required this.completedLessons,
+    required this.publishedLessons,
     required this.completedQuizzes,
     required this.attemptedQuizzes,
     required this.publishedQuizzes,
+    required this.averageQuizScore,
+    required this.lastLearningActivityAt,
+    required this.lastQuizActivityAt,
   });
 
   final String studentId;
   final String name;
+  final String classId;
   final String className;
+  final String schoolName;
+  final String learningStatus;
   final double percent;
   final int completedModules;
   final int startedModules;
   final int publishedModules;
+  final int completedLessons;
+  final int publishedLessons;
   final int completedQuizzes;
   final int attemptedQuizzes;
   final int publishedQuizzes;
+  final double? averageQuizScore;
+  final DateTime? lastLearningActivityAt;
+  final DateTime? lastQuizActivityAt;
 
-  factory TeacherStudentProgress.fromJson(Map<String, dynamic> json) =>
-      TeacherStudentProgress(
-        studentId: _string(json['student_id']),
-        name: _string(json['full_name'], fallback: 'Nama belum tersedia'),
-        className: _string(
-          _map(json['class'])['name'],
-          fallback: 'Kelas belum tersedia',
-        ),
-        percent: _number(json['overall_learning_progress_percent']),
-        completedModules: _int(json['completed_modules']),
-        startedModules: _int(json['started_modules']),
-        publishedModules: _int(json['published_modules']),
-        completedQuizzes: _int(json['quizzes_completed']),
-        attemptedQuizzes: _int(json['quizzes_attempted']),
-        publishedQuizzes: _int(json['published_quizzes']),
-      );
+  factory TeacherStudentProgress.fromJson(Map<String, dynamic> json) {
+    final klass = _map(json['class']);
+    final school = _map(json['school']);
+    return TeacherStudentProgress(
+      studentId: _string(json['student_id']),
+      name: _string(json['full_name'], fallback: 'Nama belum tersedia'),
+      classId: _string(klass['id']),
+      className: _string(klass['name'], fallback: 'Kelas belum tersedia'),
+      schoolName: _string(school['name'], fallback: 'Sekolah belum tersedia'),
+      learningStatus: _string(json['learning_status']),
+      percent: _number(json['overall_learning_progress_percent']),
+      completedModules: _int(json['completed_modules']),
+      startedModules: _int(json['started_modules']),
+      publishedModules: _int(json['published_modules']),
+      completedLessons: _int(json['completed_lessons']),
+      publishedLessons: _int(json['total_published_lessons']),
+      completedQuizzes: _int(json['quizzes_completed']),
+      attemptedQuizzes: _int(json['quizzes_attempted']),
+      publishedQuizzes: _int(json['published_quizzes']),
+      averageQuizScore: _nullableNumber(
+        json['average_best_quiz_score_percent'],
+      ),
+      lastLearningActivityAt: DateTime.tryParse(
+        _string(json['last_learning_activity_at']),
+      ),
+      lastQuizActivityAt: DateTime.tryParse(
+        _string(json['last_quiz_activity_at']),
+      ),
+    );
+  }
 }
 
 class TeacherStudentProgressPage {
@@ -872,6 +902,12 @@ double _number(Object? value) => value is num
     : value is String
     ? double.tryParse(value) ?? 0
     : 0;
+
+double? _nullableNumber(Object? value) => value == null
+    ? null
+    : value is num
+    ? value.toDouble()
+    : double.tryParse('$value');
 
 int _int(Object? value, {int fallback = 0}) => value is int
     ? value

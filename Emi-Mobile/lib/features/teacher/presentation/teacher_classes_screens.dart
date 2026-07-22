@@ -149,7 +149,9 @@ class _TeacherClassDetailScreenState
           ref.invalidate(teacherClassStudentsProvider(id));
           ref.invalidate(teacherModulesProvider(id));
           ref.invalidate(teacherClassQuizzesProvider(id));
-          ref.invalidate(teacherClassProgressProvider(id));
+          ref.invalidate(
+            teacherClassProgressProvider((classId: id, page: 1, search: '')),
+          );
           await ref.read(teacherClassDetailProvider(id).future);
         },
         child: detail.when(
@@ -339,7 +341,12 @@ class _Students extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final students = ref.watch(teacherClassStudentsProvider(id));
     final progress =
-        ref.watch(teacherClassProgressProvider(id)).valueOrNull?.items ??
+        ref
+            .watch(
+              teacherClassProgressProvider((classId: id, page: 1, search: '')),
+            )
+            .valueOrNull
+            ?.items ??
         const [];
     return students.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -454,7 +461,7 @@ class _ProgressList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => ref
-      .watch(teacherClassProgressProvider(id))
+      .watch(teacherClassProgressProvider((classId: id, page: 1, search: '')))
       .when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => const Text('Progress belum bisa dimuat.'),

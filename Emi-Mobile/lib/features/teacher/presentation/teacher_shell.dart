@@ -252,22 +252,10 @@ class _TeacherDrawer extends ConsumerWidget {
             selected: location.startsWith('/teacher/speaking'),
           ),
           _Item(
-            label: 'Siswa',
-            icon: Icons.people_outline,
-            route: '/teacher/students',
-            selected: location.startsWith('/teacher/students'),
-          ),
-          _Item(
             label: 'Progress',
             icon: Icons.trending_up_outlined,
-            route: '/teacher/reports/progress',
-            selected: location.startsWith('/teacher/reports/progress'),
-          ),
-          _Item(
-            label: 'Profil',
-            icon: Icons.person_outline,
-            route: '/teacher/profile',
-            selected: location.startsWith('/teacher/profile'),
+            route: '/teacher/progress',
+            selected: location.startsWith('/teacher/progress'),
           ),
           const Divider(height: 1),
           ListTile(
