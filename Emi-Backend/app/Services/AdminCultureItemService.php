@@ -11,6 +11,7 @@ use App\Models\SchoolClass;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 class AdminCultureItemService
@@ -40,9 +41,9 @@ class AdminCultureItemService
 
     public function create(array $data, User $actor, Request $request): array
     {
-        $this->validateContent($data);
+        $this->validateContent($data, $actor);
         if (($data['status'] ?? 'draft') === 'published') {
-            $this->validatePublishReadiness($data);
+            $this->validatePublishReadiness($data, $actor);
         }
         $classes = $this->activeClasses();
 
@@ -71,9 +72,9 @@ class AdminCultureItemService
     {
         $master = $this->masterItem($groupId);
         $merged = array_merge($master->toArray(), $data);
-        $this->validateContent($merged);
+        $this->validateContent($merged, $actor);
         if (($merged['status'] ?? 'draft') === 'published') {
-            $this->validatePublishReadiness($merged);
+            $this->validatePublishReadiness($merged, $actor);
         }
 
         DB::transaction(function () use ($master, $data, $actor, $request, $groupId) {
@@ -94,7 +95,7 @@ class AdminCultureItemService
     public function publish(string $groupId, User $actor, Request $request): array
     {
         $item = $this->masterItem($groupId);
-        $this->validatePublishReadiness($item->toArray());
+        $this->validatePublishReadiness($item->toArray(), $actor);
 
         return $this->setStatus($groupId, 'published', $actor, $request, 'admin_culture_item.published');
     }
@@ -233,7 +234,7 @@ class AdminCultureItemService
             ->get();
     }
 
-    private function validateContent(array $data): void
+    private function validateContent(array $data, User $actor): void
     {
         $type = $data['content_type'] ?? null;
         if (in_array($type, ['image', 'audio', 'pdf', 'video'], true) && empty($data['media_id'])) {
@@ -243,6 +244,9 @@ class AdminCultureItemService
             $media = MediaFile::query()->active()->find($data['media_id']);
             if (! $media || $media->purpose !== 'culture_media') {
                 throw new ApiException('Media budaya harus menggunakan media culture_media yang aktif.', 'VALIDATION_ERROR', 422);
+            }
+            if (! Gate::forUser($actor)->allows('delete', $media)) {
+                throw new ApiException('Media budaya tidak dapat digunakan.', 'MEDIA_FORBIDDEN', 403);
             }
 
             $mimeMatches = match ($type) {
@@ -261,13 +265,13 @@ class AdminCultureItemService
         }
     }
 
-    private function validatePublishReadiness(array $data): void
+    private function validatePublishReadiness(array $data, User $actor): void
     {
         if (trim((string) ($data['title'] ?? '')) === '') {
             throw new ApiException('Judul wajib diisi sebelum publikasi.', 'VALIDATION_ERROR', 422);
         }
 
-        $this->validateContent($data);
+        $this->validateContent($data, $actor);
     }
 
     private function applyStatusTimestamps(AdminCultureItem|ClassCultureItem $item): void

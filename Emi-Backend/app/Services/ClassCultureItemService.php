@@ -9,6 +9,7 @@ use App\Models\SchoolClass;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class ClassCultureItemService
 {
@@ -17,7 +18,7 @@ class ClassCultureItemService
     public function create(SchoolClass $class, array $data, User $actor, Request $request): ClassCultureItem
     {
         $this->assertActiveClass($class);
-        $this->validateContent($data);
+        $this->validateContent($data, $actor);
 
         return DB::transaction(function () use ($class, $data, $actor, $request) {
             $item = ClassCultureItem::query()->create([
@@ -42,7 +43,7 @@ class ClassCultureItemService
     public function update(ClassCultureItem $item, array $data, User $actor, Request $request): ClassCultureItem
     {
         $merged = array_merge($item->toArray(), $data);
-        $this->validateContent($merged);
+        $this->validateContent($merged, $actor);
 
         return DB::transaction(function () use ($item, $data, $actor, $request) {
             $old = $item->only(['title', 'content_type', 'status']);
@@ -112,7 +113,7 @@ class ClassCultureItemService
         }
     }
 
-    private function validateContent(array $data): void
+    private function validateContent(array $data, User $actor): void
     {
         $type = $data['content_type'] ?? null;
         if (in_array($type, ['image', 'audio', 'pdf', 'video'], true) && empty($data['media_id'])) {
@@ -122,6 +123,9 @@ class ClassCultureItemService
             $media = MediaFile::query()->find($data['media_id']);
             if (! $media || $media->purpose !== 'culture_media') {
                 throw new ApiException('Media budaya harus menggunakan purpose culture_media.', 'VALIDATION_ERROR', 422);
+            }
+            if (! Gate::forUser($actor)->allows('delete', $media)) {
+                throw new ApiException('Media budaya tidak dapat digunakan.', 'MEDIA_FORBIDDEN', 403);
             }
         }
         if (in_array($type, ['youtube', 'article', 'link'], true) && empty($data['external_url'])) {

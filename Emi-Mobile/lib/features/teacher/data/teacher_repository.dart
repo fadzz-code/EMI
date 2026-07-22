@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../../core/errors/app_error.dart';
 import '../../../core/errors/dio_error_mapper.dart';
+import '../../culture/data/culture_models.dart';
 
 class TeacherMetric {
   const TeacherMetric({
@@ -432,6 +433,75 @@ class TeacherRepository {
 
   Future<TeacherLesson> publishLesson(String id) =>
       _actionLesson('/class-lessons/$id/publish');
+
+  Future<CulturePage> culture(String classId) => _request(
+    () => _dio.get<Map<String, dynamic>>(
+      '/classes/$classId/culture',
+      queryParameters: const {
+        'per_page': 100,
+        'sort_by': 'display_order',
+        'sort_direction': 'asc',
+      },
+    ),
+    (json) => CulturePage.fromJson(json ?? const {}),
+  );
+
+  Future<CultureItem> cultureDetail(String id) => _request(
+    () => _dio.get<Map<String, dynamic>>('/class-culture-items/$id'),
+    (json) => CultureItem.fromJson(_data(json, 'Konten budaya')),
+  );
+
+  Future<CultureItem> saveCulture({
+    required String classId,
+    String? id,
+    required Map<String, dynamic> data,
+  }) => _request(
+    () => id == null
+        ? _dio.post<Map<String, dynamic>>(
+            '/classes/$classId/culture',
+            data: data,
+          )
+        : _dio.put<Map<String, dynamic>>(
+            '/class-culture-items/$id',
+            data: data,
+          ),
+    (json) => CultureItem.fromJson(_data(json, 'Konten budaya')),
+  );
+
+  Future<void> publishCulture(String id) =>
+      _cultureAction('/class-culture-items/$id/publish');
+  Future<void> archiveCulture(String id) =>
+      _cultureAction('/class-culture-items/$id/archive');
+  Future<void> deleteCulture(String id) =>
+      _cultureAction('/class-culture-items/$id', delete: true);
+
+  Future<String> uploadCulture(String path, String name) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/media',
+        data: FormData.fromMap({
+          'file': await MultipartFile.fromFile(path, filename: name),
+          'purpose': 'culture_media',
+          'visibility': 'public',
+        }),
+      );
+      return _string(_data(response.data, 'Media')['id']);
+    } catch (error) {
+      throw error is AppError ? error : _mapper.map(error);
+    }
+  }
+
+  Future<void> _cultureAction(String path, {bool delete = false}) async {
+    try {
+      if (delete) {
+        await _dio.delete<void>(path);
+      } else {
+        await _dio.post<void>(path);
+      }
+    } catch (error) {
+      throw error is AppError ? error : _mapper.map(error);
+    }
+  }
 
   Future<TeacherMediaUpload> uploadMedia(
     String path,

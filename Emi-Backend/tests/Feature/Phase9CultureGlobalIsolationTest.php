@@ -226,6 +226,113 @@ class Phase9CultureGlobalIsolationTest extends TestCase
         $this->admin($student)->getJson('/api/v1/admin/culture/items')->assertForbidden();
     }
 
+    public function test_teacher_direct_class_culture_crud_and_media_transitions(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->admin()->create();
+        [$class] = $this->classes($admin, 1);
+        $teacher = $this->teacherFor($class, $admin);
+        $firstMedia = $this->uploadCultureMedia($teacher, $this->pngFile())->assertCreated()->json('data.id');
+        $secondMedia = $this->uploadCultureMedia($teacher, $this->pngFile())->assertCreated()->json('data.id');
+
+        $id = $this->admin($teacher)->postJson("/api/v1/classes/{$class->id}/culture", $this->payload([
+            'title' => 'Budaya Kelas',
+            'content_type' => 'image',
+            'external_url' => null,
+            'media_id' => $firstMedia,
+        ]))->assertCreated()->assertJsonPath('data.media.id', $firstMedia)->json('data.id');
+
+        $this->admin($teacher)->getJson("/api/v1/classes/{$class->id}/culture")
+            ->assertOk()->assertJsonPath('data.0.id', $id);
+        $this->admin($teacher)->getJson("/api/v1/class-culture-items/{$id}")
+            ->assertOk()->assertJsonPath('data.title', 'Budaya Kelas');
+        $this->admin($teacher)->putJson("/api/v1/class-culture-items/{$id}", $this->payload([
+            'title' => 'Media Tetap',
+            'content_type' => 'image',
+            'external_url' => null,
+            'media_id' => $firstMedia,
+        ]))->assertOk()->assertJsonPath('data.media.id', $firstMedia);
+        $this->admin($teacher)->putJson("/api/v1/class-culture-items/{$id}", $this->payload([
+            'title' => 'Media Ganti',
+            'content_type' => 'image',
+            'external_url' => null,
+            'media_id' => $secondMedia,
+        ]))->assertOk()->assertJsonPath('data.media.id', $secondMedia);
+        $this->admin($teacher)->putJson("/api/v1/class-culture-items/{$id}", $this->payload([
+            'title' => 'Media Hapus',
+            'media_id' => null,
+        ]))->assertOk()->assertJsonPath('data.media_id', null);
+        $this->admin($teacher)->postJson("/api/v1/class-culture-items/{$id}/publish")
+            ->assertOk()->assertJsonPath('data.status', 'published');
+        $this->admin($teacher)->postJson("/api/v1/class-culture-items/{$id}/archive")
+            ->assertOk()->assertJsonPath('data.status', 'archived');
+        $this->admin($teacher)->deleteJson("/api/v1/class-culture-items/{$id}")->assertOk();
+        $this->assertSoftDeleted('class_culture_items', ['id' => $id]);
+    }
+
+    public function test_class_culture_management_requires_own_active_assignment_and_management_role(): void
+    {
+        $admin = User::factory()->admin()->create();
+        [$ownClass, $foreignClass] = $this->classes($admin, 2);
+        $teacher = $this->teacherFor($ownClass, $admin);
+        $foreignItem = ClassCultureItem::query()->create(array_merge($this->payload(), ['class_id' => $foreignClass->id, 'created_by' => $admin->id]));
+        $student = $this->studentFor($ownClass, $admin);
+
+        $this->admin($teacher)->getJson("/api/v1/classes/{$foreignClass->id}/culture")->assertForbidden();
+        $this->admin($teacher)->putJson("/api/v1/class-culture-items/{$foreignItem->id}", $this->payload())->assertForbidden();
+        $this->admin($student)->getJson("/api/v1/classes/{$ownClass->id}/culture")->assertForbidden();
+        $this->flushHeaders();
+        $this->app['auth']->forgetGuards();
+        $this->getJson("/api/v1/classes/{$ownClass->id}/culture")->assertUnauthorized();
+
+        TeacherClassAssignment::query()->where('teacher_id', $teacher->id)->update(['is_active' => false]);
+        $this->admin($teacher)->getJson("/api/v1/classes/{$ownClass->id}/culture")->assertForbidden();
+        $this->admin($teacher)->postJson("/api/v1/classes/{$ownClass->id}/culture", $this->payload())->assertForbidden();
+    }
+
+    public function test_teacher_cannot_manage_item_when_class_or_school_is_inactive_but_admin_can(): void
+    {
+        $admin = User::factory()->admin()->create();
+        [$class] = $this->classes($admin, 1);
+        $teacher = $this->teacherFor($class, $admin);
+        $item = ClassCultureItem::query()->create(array_merge($this->payload(), ['class_id' => $class->id, 'created_by' => $teacher->id]));
+
+        foreach ([['class', $class], ['school', $class->school]] as [$inactiveType, $model]) {
+            $model->update(['status' => 'inactive']);
+            foreach (['PUT' => '', 'POST' => '/publish', 'POST ' => '/archive', 'DELETE' => ''] as $method => $suffix) {
+                $this->admin($teacher)->json(trim($method), "/api/v1/class-culture-items/{$item->id}{$suffix}", $method === 'PUT' ? $this->payload() : [])
+                    ->assertForbidden("{$inactiveType} {$suffix}");
+            }
+            $model->update(['status' => 'active']);
+        }
+
+        $class->update(['status' => 'inactive']);
+        $this->admin($admin)->putJson("/api/v1/class-culture-items/{$item->id}", $this->payload(['title' => 'Admin Tetap Bisa']))
+            ->assertOk()->assertJsonPath('data.title', 'Admin Tetap Bisa');
+    }
+
+    public function test_teacher_cannot_associate_another_users_public_culture_media(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->admin()->create();
+        [$class] = $this->classes($admin, 1);
+        $teacher = $this->teacherFor($class, $admin);
+        $otherTeacher = User::factory()->teacher()->approved()->create();
+        $media = $this->uploadCultureMedia($otherTeacher, $this->pngFile())->assertCreated()->json('data.id');
+
+        $this->admin($teacher)->postJson("/api/v1/classes/{$class->id}/culture", $this->payload([
+            'content_type' => 'image',
+            'external_url' => null,
+            'media_id' => $media,
+        ]))->assertForbidden()->assertJsonPath('code', 'MEDIA_FORBIDDEN');
+
+        $this->admin($admin)->postJson('/api/v1/admin/culture/items', $this->payload([
+            'content_type' => 'image',
+            'external_url' => null,
+            'media_id' => $media,
+        ]))->assertCreated();
+    }
+
     private function createItem(User $admin, array $overrides = []): string
     {
         return $this->admin($admin)->postJson('/api/v1/admin/culture/items', $this->payload($overrides))->assertCreated()->json('data.id');

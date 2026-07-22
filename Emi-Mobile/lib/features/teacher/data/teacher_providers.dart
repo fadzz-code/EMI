@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/dio_error_mapper.dart';
 import '../../../core/network/dio_provider.dart';
+import '../../culture/data/culture_models.dart';
 import 'teacher_quiz_models.dart';
 import 'teacher_quiz_repository.dart';
 import 'teacher_repository.dart';
@@ -20,6 +21,14 @@ final teacherClassesProvider =
           .watch(teacherRepositoryProvider)
           .classes(page: query.page, search: query.search),
     );
+
+final teacherCultureProvider = FutureProvider.family<CulturePage, String>(
+  (ref, classId) => ref.watch(teacherRepositoryProvider).culture(classId),
+);
+
+final teacherCultureDetailProvider = FutureProvider.family<CultureItem, String>(
+  (ref, id) => ref.watch(teacherRepositoryProvider).cultureDetail(id),
+);
 
 final teacherModulesProvider =
     FutureProvider.family<List<TeacherModule>, String>(

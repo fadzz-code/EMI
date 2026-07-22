@@ -39,6 +39,7 @@ import '../../features/speaking/presentation/student_speaking_detail_screen.dart
 import '../../features/speaking/presentation/student_speaking_list_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/teacher/presentation/teacher_classes_screens.dart';
+import '../../features/teacher/presentation/teacher_culture_screens.dart';
 import '../../features/teacher/presentation/teacher_dashboard_screen.dart';
 import '../../features/teacher/presentation/teacher_modules_screens.dart';
 import '../../features/teacher/presentation/teacher_quizzes_screens.dart';
@@ -204,6 +205,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/teacher/quizzes/:id',
         builder: (_, state) =>
             TeacherQuizDetailScreen(id: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
+        path: '/teacher/culture',
+        builder: (_, _) => const TeacherCultureScreen(),
+      ),
+      GoRoute(
+        path: '/teacher/culture/create',
+        builder: (_, state) => TeacherCultureFormScreen(
+          classId: state.uri.queryParameters['classId'],
+        ),
+      ),
+      GoRoute(
+        path: '/teacher/culture/:id/edit',
+        builder: (_, state) =>
+            TeacherCultureFormScreen(id: state.pathParameters['id']),
+      ),
+      GoRoute(
+        path: '/teacher/culture/:id',
+        builder: (_, state) =>
+            TeacherCultureDetailScreen(id: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
         path: '/teacher/profile',

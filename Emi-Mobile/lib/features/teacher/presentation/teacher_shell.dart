@@ -228,6 +228,24 @@ class _TeacherDrawer extends ConsumerWidget {
             selected: location.startsWith('/teacher/classes'),
           ),
           _Item(
+            label: 'Modul Kelas',
+            icon: Icons.menu_book_outlined,
+            route: '/teacher/modules',
+            selected: location.startsWith('/teacher/modules'),
+          ),
+          _Item(
+            label: 'Kuis Kelas',
+            icon: Icons.description_outlined,
+            route: '/teacher/quizzes',
+            selected: location.startsWith('/teacher/quizzes'),
+          ),
+          _Item(
+            label: 'Budaya Mekongga',
+            icon: Icons.public_outlined,
+            route: '/teacher/culture',
+            selected: location.startsWith('/teacher/culture'),
+          ),
+          _Item(
             label: 'Siswa',
             icon: Icons.people_outline,
             route: '/teacher/students',
@@ -239,19 +257,6 @@ class _TeacherDrawer extends ConsumerWidget {
             route: '/teacher/reports/progress',
             selected: location.startsWith('/teacher/reports/progress'),
           ),
-          _Item(
-            label: 'Modul',
-            icon: Icons.menu_book_outlined,
-            route: '/teacher/modules',
-            selected: location.startsWith('/teacher/modules'),
-          ),
-          _Item(
-            label: 'Kuis',
-            icon: Icons.description_outlined,
-            route: '/teacher/quizzes',
-            selected: location.startsWith('/teacher/quizzes'),
-          ),
-          const _Item(label: 'Budaya Mekongga', icon: Icons.public_outlined),
           const _Item(label: 'Target Speaking', icon: Icons.checklist_outlined),
           const _Item(label: 'Hasil Speaking', icon: Icons.mic_none_outlined),
           _Item(

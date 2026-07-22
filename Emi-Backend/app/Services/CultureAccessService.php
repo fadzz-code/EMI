@@ -14,7 +14,11 @@ class CultureAccessService
             return true;
         }
 
+        $class->loadMissing('school');
+
         return $user->role === 'teacher'
+            && $class->status === 'active'
+            && $class->school?->status === 'active'
             && $user->teacherClassAssignments()->where('class_id', $class->id)->where('is_active', true)->exists();
     }
 
