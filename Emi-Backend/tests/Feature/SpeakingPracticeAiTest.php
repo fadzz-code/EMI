@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Exceptions\SpeakingAiException;
+use App\Jobs\AnalyzeSpeakingAttemptJob;
 use App\Models\MediaFile;
 use App\Models\SchoolClass;
 use App\Models\SpeakingAttempt;
@@ -204,6 +205,92 @@ class SpeakingPracticeAiTest extends TestCase
 
         $this->withToken($this->tokenFor($teacher))->getJson('/api/v1/teacher/speaking/attempts/'.$attempt->id)
             ->assertForbidden();
+        $this->withToken($this->tokenFor($teacher))->patchJson('/api/v1/teacher/speaking/attempts/'.$attempt->id.'/feedback', [
+            'teacher_score' => 80,
+        ])->assertForbidden();
+    }
+
+    public function test_teacher_review_validates_score_range_and_allows_omitted_feedback(): void
+    {
+        [$student, $teacher, $class] = $this->classroomUsers();
+        $attempt = $this->attemptFor($student, $this->exercise($class));
+        $url = '/api/v1/teacher/speaking/attempts/'.$attempt->id.'/feedback';
+        $token = $this->tokenFor($teacher);
+
+        foreach ([-0.01, 100.01] as $score) {
+            $this->withToken($token)->patchJson($url, ['teacher_score' => $score])
+                ->assertUnprocessable()->assertJsonValidationErrors('teacher_score');
+        }
+
+        $this->withToken($token)->patchJson($url, ['teacher_score' => 100])
+            ->assertOk()->assertJsonPath('data.status', 'reviewed')->assertJsonPath('data.teacher_feedback', null);
+    }
+
+    public function test_revoked_teacher_assignment_denies_exercise_attempt_review_and_recording_url(): void
+    {
+        [$student, $teacher, $class] = $this->classroomUsers();
+        $exercise = $this->exercise($class);
+        $attempt = $this->attemptFor($student, $exercise);
+        $teacher->teacherClassAssignments()->update(['is_active' => false]);
+        $token = $this->tokenFor($teacher);
+
+        $this->withToken($token)->getJson('/api/v1/teacher/speaking/exercises/'.$exercise->id)->assertForbidden();
+        $this->withToken($token)->getJson('/api/v1/teacher/speaking/attempts/'.$attempt->id)->assertForbidden();
+        $this->withToken($token)->patchJson('/api/v1/teacher/speaking/attempts/'.$attempt->id.'/feedback', ['teacher_score' => 80])->assertForbidden();
+        $this->withToken($token)->postJson('/api/v1/media/'.$attempt->audio_media_id.'/temporary-url')->assertForbidden();
+    }
+
+    public function test_assigned_teacher_can_request_private_recording_temporary_url(): void
+    {
+        Storage::fake('local');
+        [$student, $teacher, $class] = $this->classroomUsers();
+        $attempt = $this->attemptFor($student, $this->exercise($class));
+        Storage::disk('local')->put($attempt->audioMedia->path, 'audio');
+
+        $this->withToken($this->tokenFor($teacher))->postJson('/api/v1/media/'.$attempt->audio_media_id.'/temporary-url')
+            ->assertOk()->assertJsonStructure(['data' => ['url', 'expires_at']]);
+    }
+
+    public function test_delayed_ai_job_does_not_overwrite_teacher_review(): void
+    {
+        config(['speaking.ai.enabled' => true]);
+        [$student, $teacher, $class] = $this->classroomUsers();
+        $attempt = $this->attemptFor($student, $this->exercise($class));
+        $reviewedAt = now();
+        $attempt->forceFill([
+            'status' => 'reviewed',
+            'teacher_score' => 88,
+            'teacher_feedback' => 'Pertahankan tempo.',
+            'reviewed_by_id' => $teacher->id,
+            'reviewed_at' => $reviewedAt,
+        ])->save();
+        $reviewedAt = $attempt->refresh()->reviewed_at;
+        $client = new class extends SpeakingAiClient
+        {
+            public bool $called = false;
+
+            public function enabled(): bool
+            {
+                return true;
+            }
+
+            public function analyze(SpeakingAttempt $attempt): array
+            {
+                $this->called = true;
+
+                return ['transcription' => 'terlambat', 'score' => 1, 'alignment' => []];
+            }
+        };
+
+        (new AnalyzeSpeakingAttemptJob($attempt->id))->handle($client);
+
+        $attempt->refresh();
+        $this->assertFalse($client->called);
+        $this->assertSame('reviewed', $attempt->status);
+        $this->assertSame(88.0, (float) $attempt->teacher_score);
+        $this->assertSame('Pertahankan tempo.', $attempt->teacher_feedback);
+        $this->assertSame($teacher->id, $attempt->reviewed_by_id);
+        $this->assertTrue($reviewedAt->equalTo($attempt->reviewed_at));
     }
 
     public function test_teacher_can_manage_speaking_exercises_for_assigned_class(): void
