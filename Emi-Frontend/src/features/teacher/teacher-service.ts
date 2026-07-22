@@ -432,6 +432,10 @@ export const teacherService = {
     return response.data;
   },
 
+  async deleteSpeakingExercise(token: string, exerciseId: string) {
+    await apiClient.delete(`/teacher/speaking/exercises/${exerciseId}`, { token });
+  },
+
   async archiveSpeakingExercise(token: string, exerciseId: string) {
     const response = await apiClient.patch<TeacherSpeakingExercise>(`/teacher/speaking/exercises/${exerciseId}/archive`, {}, { token });
     if (!response.data) throw new Error("Target speaking tidak tersedia.");

@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { ListChecks, Pencil, Plus, Archive } from "lucide-react";
+import { ListChecks, Pencil, Plus, Archive, Trash2 } from "lucide-react";
 
 import { Alert, AudioPlayer, Badge, Button, Card, CardContent, EmptyState, ErrorState, FormField, Input, LoadingState, Modal, Select, Textarea } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -85,7 +85,9 @@ export function TeacherSpeakingExercises() {
   const [isLoading, setIsLoading] = useState(true);
   const [isTemplateLoading, setIsTemplateLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingExerciseId, setDeletingExerciseId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [templateError, setTemplateError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -223,6 +225,24 @@ export function TeacherSpeakingExercises() {
     }
   }
 
+  async function deleteExercise(exercise: TeacherSpeakingExercise) {
+    if (!token || deletingExerciseId) return;
+    if (!window.confirm(`Hapus latihan speaking "${exercise.title}"? Latihan akan dihapus dari kelas dan tindakan ini tidak dapat dibatalkan.`)) return;
+    setDeletingExerciseId(exercise.id);
+    setDeleteError(null);
+    setMessage(null);
+    try {
+      await teacherService.deleteSpeakingExercise(token, exercise.id);
+      setExercises((current) => current.filter((item) => item.id !== exercise.id));
+      setMessage("Latihan speaking berhasil dihapus.");
+      await reloadExercises({ classroom_id: selectedClassId || undefined, status: statusFilter || undefined });
+    } catch (err) {
+      setDeleteError(getFirstApiError(err));
+    } finally {
+      setDeletingExerciseId(null);
+    }
+  }
+
   async function archiveExercise(exercise: TeacherSpeakingExercise) {
     if (!token) return;
     if (!window.confirm(`Arsipkan target speaking "${exercise.title}"?`)) return;
@@ -252,6 +272,7 @@ export function TeacherSpeakingExercises() {
       </section>
 
       {error ? <ErrorState description={error} onRetry={loadInitial} title="Gagal memuat target speaking" /> : null}
+      {deleteError ? <Alert tone="error">{deleteError}</Alert> : null}
       {message ? <Alert tone="success">{message}</Alert> : null}
 
       <Card>
@@ -323,6 +344,9 @@ export function TeacherSpeakingExercises() {
                     <Archive className="mr-2 size-4" /> Arsipkan
                   </Button>
                 ) : null}
+                <Button disabled={deletingExerciseId !== null} onClick={() => void deleteExercise(exercise)} type="button" variant="danger">
+                  <Trash2 className="mr-2 size-4" /> {deletingExerciseId === exercise.id ? "Menghapus..." : "Hapus"}
+                </Button>
               </div>
             </CardContent>
           </Card>
