@@ -573,6 +573,14 @@ class TeacherRepository {
     }
   }
 
+  Future<void> deleteSpeakingExercise(String id) async {
+    try {
+      await _dio.delete<void>('/teacher/speaking/exercises/$id');
+    } catch (error) {
+      throw error is AppError ? error : _mapper.map(error);
+    }
+  }
+
   Future<List<TeacherSpeakingAttempt>> speakingAttempts() => _request(
     () => _dio.get<Map<String, dynamic>>('/teacher/speaking/attempts'),
     (json) => (json?['data'] is List ? json!['data'] as List : const [])

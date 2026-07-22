@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:emi_mobile/core/errors/app_error.dart';
 import 'package:emi_mobile/core/errors/dio_error_mapper.dart';
 import 'package:emi_mobile/features/auth/domain/auth_repository.dart';
 import 'package:emi_mobile/features/auth/presentation/auth_controller.dart';
@@ -32,20 +33,42 @@ class _AudioErrorRepository extends TeacherRepository {
       throw Exception('audio');
 }
 
-TeacherSpeakingExercise _exercise({String status = 'published'}) =>
-    TeacherSpeakingExercise.fromJson({
-      'id': 'exercise-1',
-      'classroom_id': 'class-1',
-      'classroom': {'id': 'class-1', 'name': 'Kelas 7A'},
-      'title': 'Salam Tolaki',
-      'target_text': 'Tabe',
-      'target_translation': 'Permisi',
-      'prompt_text': 'Ucapkan dengan jelas',
-      'difficulty': 'beginner',
-      'status': status,
-      'attempts_count': 4,
-      'updated_at': '2026-07-18T09:00:00Z',
-    });
+class _DeleteRepository extends TeacherRepository {
+  _DeleteRepository({this.error, this.pending = false})
+    : super(
+        Dio(BaseOptions(baseUrl: 'https://example.test')),
+        const DioErrorMapper(),
+      );
+
+  final Object? error;
+  final bool pending;
+  final completer = Completer<void>();
+  int calls = 0;
+
+  @override
+  Future<void> deleteSpeakingExercise(String id) async {
+    calls++;
+    if (error != null) throw error!;
+    if (pending) await completer.future;
+  }
+}
+
+TeacherSpeakingExercise _exercise({
+  String status = 'published',
+  String difficulty = 'beginner',
+}) => TeacherSpeakingExercise.fromJson({
+  'id': 'exercise-1',
+  'classroom_id': 'class-1',
+  'classroom': {'id': 'class-1', 'name': 'Kelas 7A'},
+  'title': 'Salam Tolaki',
+  'target_text': 'Tabe',
+  'target_translation': 'Permisi',
+  'prompt_text': 'Ucapkan dengan jelas',
+  'difficulty': difficulty,
+  'status': status,
+  'attempts_count': 4,
+  'updated_at': '2026-07-18T09:00:00Z',
+});
 
 TeacherSpeakingAttempt _attempt({double? teacherScore}) =>
     TeacherSpeakingAttempt.fromJson({
@@ -475,6 +498,54 @@ void main() {
     expect(find.text('Draft'), findsOneWidget);
   });
 
+  testWidgets('legacy template difficulties normalize to Pemula', (
+    tester,
+  ) async {
+    for (final difficulty in ['demo', 'easy']) {
+      final template = TeacherSpeakingTemplate.fromJson({
+        'id': 'template-$difficulty',
+        'title': 'Template $difficulty',
+        'target_text': 'Tabe',
+        'difficulty': difficulty,
+      });
+      await _pump(
+        tester,
+        location: '/teacher/speaking/create',
+        overrides: [
+          teacherSpeakingTemplatesProvider.overrideWith(
+            (_) async => [template],
+          ),
+        ],
+      );
+      await _bounded(tester);
+      await tester.tap(find.text('Template (opsional)'));
+      await _bounded(tester);
+      await tester.tap(find.text('Template $difficulty').last);
+      await _bounded(tester);
+      await tester.drag(find.byType(ListView).last, const Offset(0, -500));
+      await tester.pump();
+      expect(find.text('Pemula'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets('legacy exercise difficulties render edit form', (tester) async {
+    for (final difficulty in ['easy', 'demo']) {
+      await _pump(
+        tester,
+        location: '/teacher/speaking/exercises/exercise-1/edit',
+        overrides: [
+          teacherSpeakingExerciseProvider.overrideWith(
+            (_, _) async => _exercise(difficulty: difficulty),
+          ),
+        ],
+      );
+      await _bounded(tester);
+      expect(find.text('Pemula'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
+  });
+
   testWidgets('edit is populated and archive calls mutation', (tester) async {
     await _pump(
       tester,
@@ -510,6 +581,148 @@ void main() {
       requests.single.path,
       '/teacher/speaking/exercises/exercise-1/archive',
     );
+  });
+
+  test('repository deletes speaking exercise once at exact endpoint', () async {
+    await repository.deleteSpeakingExercise('exercise-1');
+    expect(requests.map((r) => '${r.method} ${r.path}'), [
+      'DELETE /teacher/speaking/exercises/exercise-1',
+    ]);
+  });
+
+  testWidgets('list delete cancel loading double click and removal', (
+    tester,
+  ) async {
+    final delete = _DeleteRepository(pending: true);
+    await _pump(
+      tester,
+      location: '/teacher/speaking/exercises',
+      overrides: [
+        teacherRepositoryProvider.overrideWith((_) => delete),
+        teacherSpeakingExercisesProvider.overrideWith(
+          (_, _) async => [_exercise()],
+        ),
+      ],
+    );
+    await _bounded(tester);
+    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hapus Latihan'));
+    await tester.pumpAndSettle();
+    expect(find.text('Hapus Latihan?'), findsOneWidget);
+    expect(
+      find.text(
+        'Latihan ini akan dihapus dari kelas. Tindakan ini tidak dapat dibatalkan.',
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Batal'));
+    await tester.pumpAndSettle();
+    expect(delete.calls, 0);
+    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hapus Latihan'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hapus'));
+    await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    await tester.tap(find.byType(FilledButton).last);
+    expect(delete.calls, 1);
+    delete.completer.complete();
+    await tester.pumpAndSettle();
+    expect(find.text('Salam Tolaki'), findsNothing);
+    expect(find.text('Latihan speaking berhasil dihapus.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('detail delete navigates and 422 shows exact friendly dialog', (
+    tester,
+  ) async {
+    final delete = _DeleteRepository();
+    final router = await _pump(
+      tester,
+      location: '/teacher/speaking/exercises/exercise-1',
+      overrides: [
+        teacherRepositoryProvider.overrideWith((_) => delete),
+        teacherSpeakingExerciseProvider.overrideWith(
+          (_, _) async => _exercise(),
+        ),
+        teacherSpeakingExercisesProvider.overrideWith((_, _) async => []),
+      ],
+    );
+    await _bounded(tester);
+    await tester.scrollUntilVisible(find.text('Hapus Latihan'), 200);
+    await tester.tap(find.text('Hapus Latihan'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hapus'));
+    await tester.pumpAndSettle();
+    expect(delete.calls, 1);
+    expect(
+      router.routeInformationProvider.value.uri.path,
+      '/teacher/speaking/exercises',
+    );
+
+    final validation = _DeleteRepository(
+      error: const AppError(
+        type: AppErrorType.validation,
+        message: 'validation',
+      ),
+    );
+    await _pump(
+      tester,
+      location: '/teacher/speaking/exercises/exercise-1',
+      textScale: 1.4,
+      overrides: [
+        teacherRepositoryProvider.overrideWith((_) => validation),
+        teacherSpeakingExerciseProvider.overrideWith(
+          (_, _) async => _exercise(),
+        ),
+      ],
+    );
+    await _bounded(tester);
+    await tester.scrollUntilVisible(find.text('Hapus Latihan'), 200);
+    await tester.tap(find.text('Hapus Latihan'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hapus'));
+    await tester.pumpAndSettle();
+    expect(find.text('Latihan Tidak Dapat Dihapus'), findsOneWidget);
+    expect(
+      find.text(
+        'Latihan ini sudah memiliki hasil siswa. Arsipkan latihan agar tidak lagi tampil kepada siswa.',
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('delete 403 shows friendly AppError', (tester) async {
+    final forbidden = _DeleteRepository(
+      error: const AppError(
+        type: AppErrorType.forbidden,
+        message: 'Anda tidak memiliki izin menghapus latihan ini.',
+      ),
+    );
+    await _pump(
+      tester,
+      location: '/teacher/speaking/exercises/exercise-1',
+      overrides: [
+        teacherRepositoryProvider.overrideWith((_) => forbidden),
+        teacherSpeakingExerciseProvider.overrideWith(
+          (_, _) async => _exercise(),
+        ),
+      ],
+    );
+    await _bounded(tester);
+    await tester.scrollUntilVisible(find.text('Hapus Latihan'), 200);
+    await tester.tap(find.text('Hapus Latihan'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hapus'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Anda tidak memiliki izin menghapus latihan ini.'),
+      findsOneWidget,
+    );
+    expect(forbidden.calls, 1);
   });
 
   testWidgets('attempt loading empty error exact copy and retry', (

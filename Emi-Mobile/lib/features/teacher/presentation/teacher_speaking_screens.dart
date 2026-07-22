@@ -57,6 +57,7 @@ class _Exercises extends ConsumerStatefulWidget {
 
 class _ExercisesState extends ConsumerState<_Exercises> {
   String classroom = '', status = '';
+  final deletedIds = <String>{};
   @override
   Widget build(BuildContext context) {
     final classes = ref.watch(teacherClassesProvider((page: 1, search: '')));
@@ -138,72 +139,96 @@ class _ExercisesState extends ConsumerState<_Exercises> {
               ),
             ),
           ),
-          data: (items) => items.isEmpty
-              ? const SizedBox(
-                  height: 260,
-                  child: FriendlyState(
-                    icon: Icons.mic_none,
-                    title: 'Belum Ada Latihan Speaking',
-                    message:
-                        'Tambahkan latihan untuk membantu siswa berlatih pengucapan.',
-                  ),
-                )
-              : Column(
-                  children: items
-                      .map(
-                        (e) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: EmiCard(
-                            padding: EdgeInsets.zero,
-                            child: Material(
-                              type: MaterialType.transparency,
-                              child: ListTile(
-                                leading: const Icon(
-                                  Icons.record_voice_over_outlined,
-                                ),
-                                title: Text(e.title),
-                                subtitle: Text(
-                                  [
-                                    if (e.classroomName != null)
-                                      e.classroomName!,
-                                    if (e.attemptsCount != null)
-                                      '${e.attemptsCount} hasil',
-                                  ].join(' · '),
-                                ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Chip(label: Text(_status(e.status))),
-                                    PopupMenuButton<String>(
-                                      onSelected: (value) {
-                                        if (value == 'edit') {
-                                          context.push(
-                                            '/teacher/speaking/exercises/${e.id}/edit',
-                                          );
-                                        }
-                                      },
-                                      itemBuilder: (_) => const [
-                                        PopupMenuItem(
-                                          value: 'edit',
-                                          child: Text('Edit'),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                onTap: () => context.push(
-                                  '/teacher/speaking/exercises/${e.id}',
+          data: (items) {
+            final visible = items
+                .where((e) => !deletedIds.contains(e.id))
+                .toList();
+            return visible.isEmpty
+                ? const SizedBox(
+                    height: 260,
+                    child: FriendlyState(
+                      icon: Icons.mic_none,
+                      title: 'Belum Ada Latihan Speaking',
+                      message:
+                          'Tambahkan latihan untuk membantu siswa berlatih pengucapan.',
+                    ),
+                  )
+                : Column(
+                    children: visible
+                        .map(
+                          (e) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: EmiCard(
+                              padding: EdgeInsets.zero,
+                              child: Material(
+                                type: MaterialType.transparency,
+                                child: ListTile(
+                                  leading: const Icon(
+                                    Icons.record_voice_over_outlined,
+                                  ),
+                                  title: Text(e.title),
+                                  subtitle: Text(
+                                    [
+                                      if (e.classroomName != null)
+                                        e.classroomName!,
+                                      if (e.attemptsCount != null)
+                                        '${e.attemptsCount} hasil',
+                                    ].join(' · '),
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Chip(label: Text(_status(e.status))),
+                                      PopupMenuButton<String>(
+                                        onSelected: (value) {
+                                          if (value == 'edit') {
+                                            context.push(
+                                              '/teacher/speaking/exercises/${e.id}/edit',
+                                            );
+                                          } else if (value == 'delete') {
+                                            _delete(e);
+                                          }
+                                        },
+                                        itemBuilder: (_) => const [
+                                          PopupMenuItem(
+                                            value: 'edit',
+                                            child: Text('Edit'),
+                                          ),
+                                          PopupMenuItem(
+                                            value: 'delete',
+                                            child: Text(
+                                              'Hapus Latihan',
+                                              style: TextStyle(
+                                                color: Colors.red,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  onTap: () => context.push(
+                                    '/teacher/speaking/exercises/${e.id}',
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      )
-                      .toList(),
-                ),
+                        )
+                        .toList(),
+                  );
+          },
         ),
       ],
     );
+  }
+
+  Future<void> _delete(TeacherSpeakingExercise exercise) async {
+    if (!await _confirmDelete(context, ref, exercise.id)) return;
+    setState(() => deletedIds.add(exercise.id));
+    ref.invalidate(teacherSpeakingExerciseProvider(exercise.id));
+    ref.invalidate(teacherSpeakingExercisesProvider);
+    if (mounted) _snack(context, 'Latihan speaking berhasil dihapus.');
   }
 }
 
@@ -248,10 +273,29 @@ class TeacherSpeakingExerciseDetailScreen extends ConsumerWidget {
                 onPressed: () => _archive(context, ref, e),
                 child: const Text('Arsipkan'),
               ),
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                onPressed: () => _delete(context, ref, e),
+                child: const Text('Hapus Latihan'),
+              ),
             ],
           ),
         ),
   );
+  Future<void> _delete(
+    BuildContext context,
+    WidgetRef ref,
+    TeacherSpeakingExercise exercise,
+  ) async {
+    if (!await _confirmDelete(context, ref, exercise.id)) return;
+    ref.invalidate(teacherSpeakingExerciseProvider(exercise.id));
+    ref.invalidate(teacherSpeakingExercisesProvider);
+    if (context.mounted) {
+      context.go('/teacher/speaking');
+      _snack(context, 'Latihan speaking berhasil dihapus.');
+    }
+  }
+
   Future<void> _archive(
     BuildContext context,
     WidgetRef ref,
@@ -353,7 +397,7 @@ class _ExerciseFormState
       translation.text = e.targetTranslation ?? '';
       prompt.text = e.promptText ?? '';
       classroom = e.classroomId;
-      difficulty = e.difficulty ?? '';
+      difficulty = _formDifficulty(e.difficulty);
       status = e.status;
       loaded = true;
     }
@@ -391,7 +435,7 @@ class _ExerciseFormState
                           target.text = t.targetText;
                           translation.text = t.targetTranslation ?? '';
                           prompt.text = t.promptText ?? '';
-                          difficulty = t.difficulty ?? '';
+                          difficulty = _formDifficulty(t.difficulty);
                           dirty = true;
                         });
                       },
@@ -868,6 +912,95 @@ class _AttemptDetailState
   }
 }
 
+Future<bool> _confirmDelete(
+  BuildContext context,
+  WidgetRef ref,
+  String id,
+) async =>
+    await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        var deleting = false;
+        return StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            title: const Text('Hapus Latihan?'),
+            content: const SingleChildScrollView(
+              child: Text(
+                'Latihan ini akan dihapus dari kelas. Tindakan ini tidak dapat dibatalkan.',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: deleting
+                    ? null
+                    : () => Navigator.pop(dialogContext, false),
+                child: const Text('Batal'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: deleting
+                    ? null
+                    : () async {
+                        setState(() => deleting = true);
+                        try {
+                          await ref
+                              .read(teacherRepositoryProvider)
+                              .deleteSpeakingExercise(id);
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext, true);
+                          }
+                        } catch (error) {
+                          if (!dialogContext.mounted) return;
+                          setState(() => deleting = false);
+                          if (error is AppError &&
+                              error.type == AppErrorType.validation) {
+                            await showDialog<void>(
+                              context: dialogContext,
+                              builder: (context) => AlertDialog(
+                                title: const Text(
+                                  'Latihan Tidak Dapat Dihapus',
+                                ),
+                                content: const SingleChildScrollView(
+                                  child: Text(
+                                    'Latihan ini sudah memiliki hasil siswa. Arsipkan latihan agar tidak lagi tampil kepada siswa.',
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Tutup'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          } else {
+                            _snack(
+                              dialogContext,
+                              error is AppError
+                                  ? error.message
+                                  : 'Latihan belum bisa dihapus. Silakan coba lagi.',
+                            );
+                          }
+                        }
+                      },
+                child: deleting
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Hapus'),
+              ),
+            ],
+          ),
+        );
+      },
+    ) ??
+    false;
+
 Widget _field(String label, String value) => Padding(
   padding: const EdgeInsets.only(top: 10),
   child: Column(
@@ -892,11 +1025,18 @@ String _status(String v) => v == 'published'
     : v == 'archived'
     ? 'Arsip'
     : 'Draft';
-String _difficulty(String v) => v == 'beginner'
-    ? 'Pemula'
-    : v == 'advanced'
-    ? 'Mahir'
-    : 'Menengah';
+String _formDifficulty(String? value) => switch (value?.toLowerCase()) {
+  'beginner' || 'easy' || 'mudah' || 'demo' => 'beginner',
+  'intermediate' || 'medium' || 'sedang' => 'intermediate',
+  'advanced' || 'hard' || 'sulit' => 'advanced',
+  _ => '',
+};
+String _difficulty(String v) => switch (_formDifficulty(v)) {
+  'beginner' => 'Pemula',
+  'advanced' => 'Mahir',
+  'intermediate' => 'Menengah',
+  _ => 'Tidak ditentukan',
+};
 String _analysis(String v) => v == 'completed'
     ? 'Analisis selesai'
     : v == 'failed'
