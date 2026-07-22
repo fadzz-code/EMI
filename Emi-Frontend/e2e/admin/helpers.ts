@@ -1,4 +1,6 @@
-import { expect, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
+
+test.use({ storageState: "playwright/.auth/admin.json" });
 
 export const adminData = (domain: string) => `[E2E Admin] ${domain} ${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 

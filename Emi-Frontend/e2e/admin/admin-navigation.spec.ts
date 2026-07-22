@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+test.use({ storageState: "playwright/.auth/admin.json" });
+
 const pages = [
   ["/admin/dashboard", "Beranda Admin"],
   ["/admin/approvals", "Persetujuan Akun"],

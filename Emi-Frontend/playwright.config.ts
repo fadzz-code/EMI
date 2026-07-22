@@ -38,7 +38,7 @@ export default defineConfig({
     },
     {
       name: "chromium",
-      testMatch: /.*admin.*\.spec\.ts/,
+      testMatch: /e2e[\\/](admin|teacher)[\\/].*\.spec\.ts/,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/admin.json",
