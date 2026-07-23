@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Speaking\ListSpeakingAttemptsRequest;
 use App\Http\Requests\Speaking\StoreSpeakingAttemptRequest;
 use App\Http\Resources\SpeakingAttemptResource;
 use App\Http\Resources\SpeakingExerciseResource;
@@ -37,22 +38,27 @@ class StudentSpeakingController extends Controller
         return ApiResponse::success('Detail latihan speaking berhasil diambil.', new SpeakingExerciseResource($exercise->load(['referenceAudio'])));
     }
 
-    public function attempts(): JsonResponse
+    public function attempts(ListSpeakingAttemptsRequest $request): JsonResponse
     {
+        $sort = $request->validated('sort', 'created_at');
+        $direction = $request->validated('direction', 'desc');
         $attempts = SpeakingAttempt::query()
-            ->with('exercise')
-            ->forStudent(request()->user())
-            ->latest()
-            ->get();
+            ->with(['exercise', 'reviewer'])
+            ->forStudent($request->user())
+            ->when($request->validated('analysis_status'), fn ($query, $status) => $query->where('analysis_status', $status))
+            ->when($request->validated('review_status'), fn ($query, $status) => $query->where('review_status', $status))
+            ->orderBy($sort, $direction)
+            ->orderBy('id', $direction)
+            ->paginate($request->validated('per_page', 15));
 
-        return ApiResponse::success('Percobaan speaking berhasil diambil.', SpeakingAttemptResource::collection($attempts)->resolve());
+        return ApiResponse::paginated('Percobaan speaking berhasil diambil.', $attempts, SpeakingAttemptResource::collection($attempts->getCollection())->resolve());
     }
 
     public function showAttempt(SpeakingAttempt $attempt): JsonResponse
     {
         abort_unless($attempt->student_id === request()->user()->id, 403);
 
-        return ApiResponse::success('Detail percobaan speaking berhasil diambil.', new SpeakingAttemptResource($attempt->load('exercise')));
+        return ApiResponse::success('Detail percobaan speaking berhasil diambil.', new SpeakingAttemptResource($attempt->load(['exercise', 'reviewer'])));
     }
 
     public function storeAttempt(StoreSpeakingAttemptRequest $request, SpeakingExercise $exercise): JsonResponse

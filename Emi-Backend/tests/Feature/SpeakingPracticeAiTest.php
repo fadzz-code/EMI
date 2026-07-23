@@ -163,6 +163,30 @@ class SpeakingPracticeAiTest extends TestCase
             ->assertJsonPath('data.ai_error', 'Analisis speaking AI gagal.');
     }
 
+    public function test_student_speaking_history_is_paginated_and_excludes_other_students(): void
+    {
+        [$student, , $class] = $this->classroomUsers();
+        $exercise = $this->exercise($class);
+        $ownAttempts = collect([
+            $this->attemptFor($student, $exercise),
+            $this->attemptFor($student, $exercise),
+            $this->attemptFor($student, $exercise),
+        ]);
+        $other = User::factory()->student()->approved()->create();
+        StudentClassMembership::factory()->create(['student_id' => $other->id, 'class_id' => $class->id, 'is_active' => true]);
+        $otherAttempt = $this->attemptFor($other, $exercise);
+
+        $response = $this->withToken($this->tokenFor($student))->getJson('/api/v1/student/speaking/attempts?per_page=2&page=2')
+            ->assertOk()
+            ->assertJsonPath('meta.current_page', 2)
+            ->assertJsonPath('meta.last_page', 2)
+            ->assertJsonPath('meta.total', 3)
+            ->assertJsonCount(1, 'data')
+            ->assertJsonMissing(['id' => $otherAttempt->id]);
+
+        $this->assertTrue($ownAttempts->pluck('id')->contains($response->json('data.0.id')));
+    }
+
     public function test_student_cannot_view_another_students_attempt(): void
     {
         [$student, , $class] = $this->classroomUsers();
@@ -187,13 +211,13 @@ class SpeakingPracticeAiTest extends TestCase
             'teacher_score' => 85,
             'teacher_feedback' => 'Pengucapan sudah cukup jelas, ulangi bagian akhir.',
         ])->assertOk()
-            ->assertJsonPath('data.status', 'reviewed')
+            ->assertJsonPath('data.review_status', 'reviewed')
             ->assertJsonPath('data.teacher_score', 85);
 
         $this->assertDatabaseHas('speaking_attempts', [
             'id' => $attempt->id,
             'reviewed_by_id' => $teacher->id,
-            'status' => 'reviewed',
+            'review_status' => 'reviewed',
         ]);
     }
 
@@ -223,7 +247,7 @@ class SpeakingPracticeAiTest extends TestCase
         }
 
         $this->withToken($token)->patchJson($url, ['teacher_score' => 100])
-            ->assertOk()->assertJsonPath('data.status', 'reviewed')->assertJsonPath('data.teacher_feedback', null);
+            ->assertOk()->assertJsonPath('data.review_status', 'reviewed')->assertJsonPath('data.teacher_feedback', null);
     }
 
     public function test_revoked_teacher_assignment_denies_exercise_attempt_review_and_recording_url(): void
@@ -263,6 +287,7 @@ class SpeakingPracticeAiTest extends TestCase
             'teacher_feedback' => 'Pertahankan tempo.',
             'reviewed_by_id' => $teacher->id,
             'reviewed_at' => $reviewedAt,
+            'review_status' => 'reviewed',
         ])->save();
         $reviewedAt = $attempt->refresh()->reviewed_at;
         $client = new class extends SpeakingAiClient
@@ -285,8 +310,9 @@ class SpeakingPracticeAiTest extends TestCase
         (new AnalyzeSpeakingAttemptJob($attempt->id))->handle($client);
 
         $attempt->refresh();
-        $this->assertFalse($client->called);
-        $this->assertSame('reviewed', $attempt->status);
+        $this->assertTrue($client->called);
+        $this->assertSame('completed', $attempt->analysis_status);
+        $this->assertSame('reviewed', $attempt->review_status);
         $this->assertSame(88.0, (float) $attempt->teacher_score);
         $this->assertSame('Pertahankan tempo.', $attempt->teacher_feedback);
         $this->assertSame($teacher->id, $attempt->reviewed_by_id);

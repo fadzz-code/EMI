@@ -24,6 +24,8 @@ class SpeakingAttempt extends Model
         'capture_source',
         'target_text_snapshot',
         'status',
+        'analysis_status',
+        'review_status',
         'ai_engine',
         'ai_model',
         'ai_transcription',

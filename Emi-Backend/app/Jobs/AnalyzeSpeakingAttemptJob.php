@@ -22,23 +22,24 @@ class AnalyzeSpeakingAttemptJob implements ShouldQueue
     public function handle(SpeakingAiClient $client): void
     {
         $attempt = SpeakingAttempt::query()->with('audioMedia')->find($this->attemptId);
-        if (! $attempt || $attempt->status === 'reviewed') {
+        if (! $attempt) {
             return;
         }
 
         if (! $client->enabled()) {
-            SpeakingAttempt::query()->whereKey($attempt->id)->where('status', '!=', 'reviewed')->update(['status' => 'pending']);
+            SpeakingAttempt::query()->whereKey($attempt->id)->update(['analysis_status' => 'pending', 'status' => 'pending']);
 
             return;
         }
 
-        SpeakingAttempt::query()->whereKey($attempt->id)->where('status', '!=', 'reviewed')->update(['status' => 'processing', 'ai_error' => null]);
+        SpeakingAttempt::query()->whereKey($attempt->id)->update(['analysis_status' => 'processing', 'status' => 'processing', 'ai_error' => null]);
 
         try {
             $result = $client->analyze($attempt->refresh()->load('audioMedia'));
 
-            SpeakingAttempt::query()->whereKey($attempt->id)->where('status', '!=', 'reviewed')->update([
+            SpeakingAttempt::query()->whereKey($attempt->id)->update([
                 'status' => 'completed',
+                'analysis_status' => 'completed',
                 'ai_engine' => $result['engine'] ?? null,
                 'ai_model' => $result['model'] ?? null,
                 'ai_transcription' => $result['transcription'] ?? null,
@@ -66,8 +67,9 @@ class AnalyzeSpeakingAttemptJob implements ShouldQueue
                 'Audio speaking tidak dapat dianalisis.',
                 'Layanan analisis speaking sedang tidak tersedia.',
             ];
-            SpeakingAttempt::query()->whereKey($attempt->id)->where('status', '!=', 'reviewed')->update([
+            SpeakingAttempt::query()->whereKey($attempt->id)->update([
                 'status' => 'failed',
+                'analysis_status' => 'failed',
                 'ai_error' => in_array($exception->getMessage(), $publicErrors, true) ? $exception->getMessage() : 'Analisis speaking AI gagal.',
                 'ai_raw_response' => array_filter([
                     'error_code' => $exception instanceof SpeakingAiException ? $exception->errorCode : 'SPEAKING_AI_RESPONSE_INVALID',

@@ -40,6 +40,8 @@ class SpeakingAttemptService
                 'capture_source' => $captureSource,
                 'target_text_snapshot' => $lockedExercise->target_text,
                 'status' => 'pending',
+                'analysis_status' => 'pending',
+                'review_status' => 'pending',
             ]);
 
             if (config('queue.default') === 'sync') {
