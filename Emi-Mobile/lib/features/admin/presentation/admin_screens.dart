@@ -1421,6 +1421,7 @@ class _AdminClassFormState extends ConsumerState<_AdminClassForm> {
                       const Text('Data sekolah belum bisa dimuat.'),
                   data: (page) => DropdownButtonFormField<String>(
                     initialValue: _schoolId,
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Pilih Sekolah',
                     ),

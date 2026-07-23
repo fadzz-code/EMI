@@ -94,7 +94,7 @@ void main() {
 
     final year = find.widgetWithText(TextFormField, 'Tahun Ajaran');
     await tester.enterText(year, '');
-    await tester.tap(find.text('Simpan'));
+    await tester.tap(find.byKey(const Key('adminSave-classes')));
     await tester.pump();
 
     expect(find.text('Tahun ajaran wajib diisi.'), findsOneWidget);
