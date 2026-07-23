@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:emi_mobile/features/admin/data/admin_crud_providers.dart';
 import 'package:emi_mobile/features/admin/presentation/admin_knowledge_screens.dart';
+import 'package:emi_mobile/features/admin/presentation/admin_settings_screen.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -87,6 +88,300 @@ void main() {
       }
     },
   );
+
+  testWidgets('Modul dan Kuis menjalankan alur utama admin', (tester) async {
+    final fixture = E2eFixtureHelper();
+    try {
+      await fixture.loginAdmin();
+      final admin = await _launchAdmin(tester, binding);
+      final module = await _create(
+        fixture,
+        '/admin/module-templates',
+        fixture.unique('Module'),
+        {
+          'title': fixture.unique('Module'),
+          'description': 'Modul utama E2E Admin',
+          'status': 'draft',
+        },
+      );
+      final lesson = await _create(
+        fixture,
+        '/admin/module-templates/${module.id}/lessons',
+        fixture.unique('Lesson'),
+        {
+          'title': fixture.unique('Lesson'),
+          'description': 'Materi utama E2E Admin',
+          'content_type': 'text',
+          'content_body': 'Isi materi E2E Admin',
+          'status': 'published',
+        },
+        cleanupPath: '/admin/lesson-templates',
+      );
+      final quiz = await _create(
+        fixture,
+        '/admin/quiz-templates',
+        fixture.unique('Quiz'),
+        {
+          'title': fixture.unique('Quiz'),
+          'description': 'Kuis utama E2E Admin',
+          'duration_minutes': 10,
+          'max_attempts': 1,
+          'show_result': true,
+          'status': 'draft',
+        },
+      );
+      final question = await _create(
+        fixture,
+        '/admin/quiz-templates/${quiz.id}/questions',
+        fixture.unique('Question'),
+        {
+          'question_type': 'multiple_choice',
+          'question_text': fixture.unique('Question'),
+          'points': 1,
+          'order_number': 1,
+          'options': const [
+            {'option_text': 'Benar', 'is_correct': true, 'order_number': 1},
+            {'option_text': 'Salah', 'is_correct': false, 'order_number': 2},
+          ],
+        },
+        cleanupPath: '/admin/quiz-template-questions',
+      );
+
+      await _verifyChildPersistence(
+        admin,
+        fixture,
+        module,
+        lesson,
+        quiz,
+        question,
+      );
+      await _verifyRecord(
+        admin,
+        AdminRoutes.moduleDetail,
+        AdminRoutes.modules,
+        module,
+      );
+      await _transition(
+        fixture,
+        '/admin/module-templates/${module.id}',
+        'publish',
+        'published',
+      );
+      await _transition(
+        fixture,
+        '/admin/module-templates/${module.id}',
+        'archive',
+        'archived',
+      );
+      await _verifyRecord(
+        admin,
+        AdminRoutes.quizEdit,
+        AdminRoutes.quizzes,
+        quiz,
+      );
+      await _transition(
+        fixture,
+        '/admin/quiz-templates/${quiz.id}',
+        'publish',
+        'published',
+      );
+      await _transition(
+        fixture,
+        '/admin/quiz-templates/${quiz.id}',
+        'archive',
+        'archived',
+      );
+      await admin.app.clearSessionSafely();
+    } finally {
+      await fixture.close();
+    }
+  });
+
+  testWidgets('Progress menjalankan alur utama admin', (tester) async {
+    final fixture = E2eFixtureHelper();
+    try {
+      await fixture.loginAdmin();
+      final overview = (await fixture.get(
+        '/admin/reports/progress/overview',
+      )).requireDataMap();
+      final students = _responseItems(overview['students']);
+      final classes = _responseItems(overview['classes']);
+      if (students.isEmpty || classes.isEmpty) {
+        throw StateError('Fixture progress membutuhkan siswa dan kelas aktual');
+      }
+      final student = students.first as Map<String, dynamic>;
+      final schoolClass = classes.first as Map<String, dynamic>;
+      final studentId = requireFixtureString(student, 'student_id');
+      final studentName = requireFixtureString(student, 'full_name');
+      final classId = requireFixtureString(schoolClass, 'class_id');
+      final className = requireFixtureString(schoolClass, 'class_name');
+      final admin = await _launchAdmin(tester, binding);
+
+      await admin.go(AdminRoutes.reports);
+      await admin.app.pumpUntilFound(find.text('Ringkasan Progress'));
+      expect(find.text('Rata-rata modul'), findsOneWidget);
+      expect(find.text('Rata-rata kuis akhir'), findsOneWidget);
+      expect(find.text('Belum tersedia'), findsWidgets);
+      await admin.search(
+        studentName,
+        field: find.byKey(const Key('adminSearch-reports')),
+      );
+      await admin.app.pumpUntilFound(find.text(studentName));
+      await admin.go(AdminRoutes.classReport, parameters: {'id': classId});
+      await admin.app.pumpUntilFound(find.textContaining(className));
+      await admin.go(AdminRoutes.studentReport, parameters: {'id': studentId});
+      await admin.app.pumpUntilFound(find.textContaining(studentName));
+      expect(find.textContaining('Modul'), findsWidgets);
+      expect(find.textContaining('Kuis'), findsWidgets);
+      await admin.go(AdminRoutes.reports);
+      await admin.app.pumpUntilFound(find.text('Ringkasan Progress'));
+      await admin.app.clearSessionSafely();
+    } finally {
+      await fixture.close();
+    }
+  });
+
+  testWidgets('Pengaturan menjalankan alur utama admin', (tester) async {
+    final fixture = E2eFixtureHelper();
+    Map<String, Object?>? application;
+    try {
+      await fixture.loginAdmin();
+      final admin = await _launchAdmin(tester, binding);
+      final settings = (await fixture.get('/admin/settings')).requireDataMap();
+      application = Map<String, Object?>.from(
+        settings['application']! as Map<String, dynamic>,
+      );
+      final changedSubtitle =
+          '${application['subtitle'] ?? ''} ${fixture.runId}';
+      await admin.go(AdminRoutes.settings);
+      await admin.app.enterTextSafely(
+        find.widgetWithText(TextFormField, 'Subtitle / Slogan'),
+        changedSubtitle,
+      );
+      expect(
+        admin.app.router().routeInformationProvider.value.uri.path,
+        '/admin/settings',
+      );
+      final settingsRoot = find.byType(AdminSettingsScreen).hitTestable();
+      expect(settingsRoot, findsOneWidget);
+      final save = find.descendant(
+        of: settingsRoot,
+        matching: find.byKey(const Key('saveAdminSettings')),
+      );
+      final saveElement = save.evaluate().single;
+      await Scrollable.ensureVisible(
+        saveElement,
+        alignment: 0.8,
+        duration: const Duration(milliseconds: 300),
+      );
+      await tester.pumpAndSettle();
+      expect(save.hitTestable(), findsOneWidget);
+      await tester.tap(save.hitTestable());
+      await tester.pump();
+      await admin.app.pumpUntilFound(
+        find.text('Pengaturan berhasil disimpan.'),
+      );
+      expect(
+        (await fixture.get('/admin/settings')).requireDataMap()['application'],
+        containsPair('subtitle', changedSubtitle),
+      );
+      await admin.go(AdminRoutes.dashboard);
+      await admin.go(AdminRoutes.settings);
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.widgetWithText(TextFormField, 'Subtitle / Slogan'),
+            )
+            .controller
+            ?.text,
+        changedSubtitle,
+      );
+      await fixture.put('/admin/settings/application', body: application);
+      application = null;
+      await admin.app.tapAndWait(
+        find.text('Keluar').last,
+        expected: find.byKey(const Key('emailField')),
+      );
+    } finally {
+      if (application != null) {
+        await fixture.put('/admin/settings/application', body: application);
+      }
+      await fixture.close();
+    }
+  });
+
+  testWidgets('Speaking dan Budaya menjalankan alur utama admin', (
+    tester,
+  ) async {
+    final fixture = E2eFixtureHelper();
+    try {
+      await fixture.loginAdmin();
+      final admin = await _launchAdmin(tester, binding);
+      final speaking = await _create(
+        fixture,
+        '/admin/speaking/exercises',
+        fixture.unique('Speaking'),
+        {
+          'title': fixture.unique('Speaking'),
+          'target_text': 'Mepokoaso',
+          'target_translation': 'Bersatu',
+          'prompt_text': 'Baca jelas',
+          'difficulty': 'beginner',
+          'status': 'published',
+          'reference_audio_media_id': null,
+        },
+        hardDelete: false,
+      );
+      final culture = await _create(
+        fixture,
+        '/admin/culture/items',
+        fixture.unique('Culture'),
+        {
+          'title': fixture.unique('Culture'),
+          'description': 'Budaya utama E2E Admin',
+          'content_type': 'link',
+          'external_url': 'https://example.test/culture',
+          'display_order': 1,
+          'status': 'draft',
+        },
+      );
+
+      await _verifyRecord(
+        admin,
+        AdminRoutes.speakingDetail,
+        AdminRoutes.speaking,
+        speaking,
+      );
+      await fixture.patch('/admin/speaking/exercises/${speaking.id}/archive');
+      expect(
+        (await fixture.get(
+          '/admin/speaking/exercises/${speaking.id}',
+        )).requireDataMap()['status'],
+        'archived',
+      );
+      await _verifyRecord(
+        admin,
+        AdminRoutes.cultureDetail,
+        AdminRoutes.culture,
+        culture,
+      );
+      await _transition(
+        fixture,
+        '/admin/culture/items/${culture.id}',
+        'publish',
+        'published',
+      );
+      await _transition(
+        fixture,
+        '/admin/culture/items/${culture.id}',
+        'archive',
+        'archived',
+      );
+      await admin.app.clearSessionSafely();
+    } finally {
+      await fixture.close();
+    }
+  });
 }
 
 Future<E2eAdminHelper> _launchAdmin(
@@ -235,7 +530,12 @@ Future<void> _verifyDictionaryContracts(
     record,
   );
   final edited = '${record.name} Edit';
-  await admin.go(AdminRoutes.dictionaryEdit, parameters: {'id': record.id});
+  await admin.go(AdminRoutes.dictionaryDetail, parameters: {'id': record.id});
+  await admin.app.tapAndWait(
+    find.byKey(const Key('adminEdit-dictionary')),
+    expected: find.byKey(const Key('adminScreen-dictionary-form')),
+    within: find.byKey(const Key('adminScreen-dictionary-detail')),
+  );
   await admin.app.enterTextSafely(
     find.widgetWithText(TextFormField, 'Kata Mekongga'),
     edited,
@@ -246,12 +546,6 @@ Future<void> _verifyDictionaryContracts(
     expected: find.byKey(const Key('adminScreen-dictionary-detail')),
     within: find.byKey(const Key('adminScreen-dictionary-form')),
   );
-  expect(
-    admin.app.router().routeInformationProvider.value.uri.path,
-    '/admin/dictionary/${record.id}',
-  );
-  admin.app.container().invalidate(adminDictionaryDetailProvider(record.id));
-  await admin.go(AdminRoutes.dictionaryDetail, parameters: {'id': record.id});
   await admin.app.pumpUntilFound(find.text(edited));
   final stored = (await fixture.get(
     '/admin/dictionary/entries/${record.id}',

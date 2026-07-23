@@ -8,6 +8,9 @@ import 'package:emi_mobile/features/admin/presentation/admin_reports_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../integration_test/helpers/e2e_fixture_helper.dart';
 
 void main() {
   Widget host(Widget child, {double width = 400}) => MaterialApp(
@@ -21,6 +24,25 @@ void main() {
       ),
     ),
   );
+  test('progress fixture requires non-empty canonical class fields', () {
+    expect(
+      requireFixtureString({
+        'class_id': 'c1',
+        'class_name': 'Kelas 1 A',
+      }, 'class_name'),
+      'Kelas 1 A',
+    );
+    for (final data in [
+      <String, dynamic>{'class_name': null},
+      <String, dynamic>{'class_name': ''},
+      <String, dynamic>{},
+    ]) {
+      expect(
+        () => requireFixtureString(data, 'class_name'),
+        throwsA(isA<StateError>()),
+      );
+    }
+  });
   test('unknown progress status uses safe Indonesian label', () {
     expect(adminProgressStatus('future_backend_enum'), 'Status belum dikenal');
     expect(adminProgressStatus(null), '-');
@@ -330,6 +352,81 @@ void main() {
     expect(find.byIcon(Icons.person_outline), findsOneWidget);
     expect(find.byIcon(Icons.groups_outlined), findsOneWidget);
     expect(find.byIcon(Icons.chevron_right), findsNWidgets(2));
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('progress detail screens expose stable root keys', (
+    tester,
+  ) async {
+    final studentDetail = AdminStudentProgressDetail.fromJson({
+      'student': json,
+      'progress': json,
+      'quizzes': {'data': []},
+      'quiz_summary': {},
+      'capabilities': {'speaking_reports': false},
+    });
+    final classDetail = AdminClassProgressDetail.fromJson({
+      'class': {
+        'id': 'c1',
+        'name': 'Kelas 1',
+        'academic_year': '2026/2027',
+        'school': {'name': 'Sekolah A'},
+      },
+      'summary': {},
+      'students': {'data': []},
+      'capabilities': {'speaking_reports': false},
+    });
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          adminStudentProgressProvider.overrideWith(
+            (_, _) async => studentDetail,
+          ),
+          adminClassProgressProvider.overrideWith((_, _) async => classDetail),
+        ],
+        child: MaterialApp.router(
+          routerConfig: GoRouter(
+            initialLocation: '/student',
+            routes: [
+              GoRoute(
+                path: '/student',
+                builder: (_, _) => const AdminStudentProgressScreen(id: 's1'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('adminScreen-student-progress-detail')),
+      findsOneWidget,
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          adminStudentProgressProvider.overrideWith(
+            (_, _) async => studentDetail,
+          ),
+          adminClassProgressProvider.overrideWith((_, _) async => classDetail),
+        ],
+        child: MaterialApp.router(
+          routerConfig: GoRouter(
+            initialLocation: '/class',
+            routes: [
+              GoRoute(
+                path: '/class',
+                builder: (_, _) => const AdminClassProgressScreen(id: 'c1'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('adminScreen-class-progress-detail')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
   testWidgets('detail grids contain required metrics', (tester) async {

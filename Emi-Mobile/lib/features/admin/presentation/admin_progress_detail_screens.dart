@@ -35,6 +35,7 @@ class _AdminStudentProgressScreenState
           error: (_, _) =>
               const Center(child: Text('Detail siswa gagal dimuat.')),
           data: (data) => ListView(
+            key: const Key('adminScreen-student-progress-detail'),
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
               Text(
@@ -148,6 +149,7 @@ class _AdminClassProgressScreenState
           error: (_, _) =>
               const Center(child: Text('Detail kelas gagal dimuat.')),
           data: (data) => ListView(
+            key: const Key('adminScreen-class-progress-detail'),
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
               Text(

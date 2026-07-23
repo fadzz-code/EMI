@@ -5,6 +5,14 @@ import 'package:file_picker/file_picker.dart';
 
 import 'e2e_config.dart';
 
+String requireFixtureString(Map<String, dynamic> data, String key) {
+  final value = data[key];
+  if (value is! String || value.trim().isEmpty) {
+    throw StateError('Fixture field $key harus String tidak kosong');
+  }
+  return value;
+}
+
 class E2eFixtureHelper {
   E2eFixtureHelper({HttpClient? client, String? tokenOverride})
     : _client = client ?? HttpClient(),

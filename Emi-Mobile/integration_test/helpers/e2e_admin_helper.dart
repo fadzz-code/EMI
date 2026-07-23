@@ -257,6 +257,12 @@ class E2eAdminHelper {
       '/admin/dictionary/:id/edit' => const Key('adminScreen-dictionary-form'),
       '/admin/knowledge/create' ||
       '/admin/knowledge/:id/edit' => const Key('adminScreen-knowledge-form'),
+      '/admin/reports/classes/:id' => const Key(
+        'adminScreen-class-progress-detail',
+      ),
+      '/admin/reports/students/:id' => const Key(
+        'adminScreen-student-progress-detail',
+      ),
       _ => null,
     };
     final root = screenKey == null
@@ -285,7 +291,11 @@ class E2eAdminHelper {
         .isNotEmpty) {
       fail('Kategori kamus gagal dimuat');
     }
-    assertHealthy(title: route.title);
+    assertHealthy(
+      title: screenKey == null ? route.title : null,
+      root: screenKey == null ? null : root,
+      path: path,
+    );
   }
 
   String resolve(AdminRoute route, Map<String, String> parameters) {
@@ -353,8 +363,12 @@ class E2eAdminHelper {
     assertHealthy();
   }
 
-  void assertHealthy({String? title}) {
-    if (title != null) expect(find.text(title), findsWidgets);
+  void assertHealthy({String? title, Finder? root, String? path}) {
+    if (title != null) expect(find.text(title).hitTestable(), findsWidgets);
+    if (root != null) expect(root.hitTestable(), findsOneWidget);
+    if (path != null) {
+      expect(app.router().routeInformationProvider.value.uri.path, path);
+    }
     expect(
       find.byKey(const Key('adminMenuButton')).hitTestable(),
       find
