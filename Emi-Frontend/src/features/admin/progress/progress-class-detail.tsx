@@ -19,11 +19,9 @@ import {
   TableHeader,
 } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
-import { classService } from "@/features/admin/management/management-service";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { progressReportService } from "./progress-service";
-import { ClassProgressPrintReport } from "./progress-print-report";
 import { ProgressBar, ProgressSummaryCards } from "./progress-summary-cards";
 import {
   formatDateTime,
@@ -40,60 +38,22 @@ export function ProgressClassDetail({ classId }: { classId: string }) {
   const [studentPage, setStudentPage] = useState(1);
 
   const classQuery = useQuery({
-    queryKey: ["admin", "progress", "class-detail", classId],
-    queryFn: () => classService.detail(token ?? "", classId),
+    queryKey: ["admin", "progress", "class-detail", classId, studentPage],
+    queryFn: () => progressReportService.classDetail(token ?? "", classId, { page: studentPage, per_page: 12 }),
     enabled: Boolean(token && classId),
   });
-
-  const summaryQuery = useQuery({
-    queryKey: ["admin", "progress", "class-summary", classId],
-    queryFn: () => progressReportService.dashboardSummary(token ?? "", { class_id: classId }),
-    enabled: Boolean(token && classId),
-  });
-
-  const studentsQuery = useQuery({
-    queryKey: ["admin", "progress", "class-students", classId, studentPage],
-    queryFn: () =>
-      progressReportService.students(token ?? "", {
-        class_id: classId,
-        page: studentPage,
-        per_page: 12,
-      }),
-    enabled: Boolean(token && classId),
-  });
-
-  const completedStudentsQuery = useQuery({
-    queryKey: ["admin", "progress", "class-students-completed", classId],
-    queryFn: () =>
-      progressReportService.students(token ?? "", {
-        class_id: classId,
-        learning_status: "completed",
-        page: 1,
-        per_page: 1,
-      }),
-    enabled: Boolean(token && classId),
-  });
-
-  const notStartedStudentsQuery = useQuery({
-    queryKey: ["admin", "progress", "class-students-not-started", classId],
-    queryFn: () =>
-      progressReportService.students(token ?? "", {
-        class_id: classId,
-        learning_status: "not_started",
-        page: 1,
-        per_page: 1,
-      }),
-    enabled: Boolean(token && classId),
-  });
-
-  const schoolClass = classQuery.data;
+  const summaryQuery = { ...classQuery, data: classQuery.data?.summary };
+  const studentsQuery = { ...classQuery, data: classQuery.data ? { items: classQuery.data.students.data, meta: classQuery.data.students.meta } : undefined };
+  const completedStudentsQuery = classQuery;
+  const notStartedStudentsQuery = classQuery;
+  const schoolClass = classQuery.data?.class;
   const students = studentsQuery.data?.items ?? [];
   const studentMeta = studentsQuery.data?.meta;
-  const completedStudents = completedStudentsQuery.data?.meta?.total;
-  const notStartedStudents = notStartedStudentsQuery.data?.meta?.total;
+  const completedStudents = classQuery.data?.summary.completed_students;
+  const notStartedStudents = classQuery.data?.summary.not_started_students;
 
   function printReport() {
-    window.print();
+    void progressReportService.downloadPdf(token ?? "", `/admin/reports/progress/classes/${classId}/pdf`);
   }
 
   return (
@@ -121,7 +81,7 @@ export function ProgressClassDetail({ classId }: { classId: string }) {
             <h1 className="mt-2 text-3xl font-black text-ink">{schoolClass.name}</h1>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               {schoolClass.school?.name ?? "-"} | {schoolClass.academic_year} | Guru:{" "}
-              {schoolClass.active_teacher_assignment?.teacher?.full_name ?? "Belum tersedia"}
+              {schoolClass.teacher?.full_name ?? "Belum tersedia"}
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -269,13 +229,6 @@ export function ProgressClassDetail({ classId }: { classId: string }) {
         </CardContent>
       </Card>
 
-      <ClassProgressPrintReport
-        completedStudents={completedStudents}
-        notStartedStudents={notStartedStudents}
-        schoolClass={schoolClass}
-        students={students}
-        summary={summaryQuery.data}
-      />
     </div>
   );
 }

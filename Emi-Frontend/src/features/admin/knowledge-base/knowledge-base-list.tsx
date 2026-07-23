@@ -1,6 +1,7 @@
 "use client";
 
 import { type FormEvent, useMemo, useState } from "react";
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -348,8 +349,11 @@ export function KnowledgeBaseList() {
                         <TableCell>{formatDate(item.updated_at)}</TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-2">
+                            <Link className="inline-flex min-h-9 items-center rounded-lg border-2 border-ink bg-white px-3 py-1 text-xs font-black text-ink hover:bg-yellow-100" href={`/admin/knowledge-base/${item.id}`}>
+                              Detail
+                            </Link>
                             <Button className="min-h-9 px-3 py-1 text-xs" onClick={() => setPreviewItem(item)} variant="ghost">
-                              Lihat
+                              Preview
                             </Button>
                             <Button className="min-h-9 px-3 py-1 text-xs" onClick={() => openEditForm(item)} variant="secondary">
                               Edit
@@ -367,7 +371,7 @@ export function KnowledgeBaseList() {
                               <Button
                                 className="min-h-9 px-3 py-1 text-xs"
                                 disabled={archiveMutation.isPending}
-                                onClick={() => archiveMutation.mutate(item.id)}
+                                onClick={() => { if (confirm(`Arsipkan pengetahuan "${item.title}"? Konten tidak akan digunakan chatbot.`)) archiveMutation.mutate(item.id); }}
                                 variant="ghost"
                               >
                                 Arsipkan

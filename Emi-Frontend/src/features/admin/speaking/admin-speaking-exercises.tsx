@@ -39,8 +39,8 @@ function statusTone(status?: string | null): "yellow" | "blue" | "orange" {
 function statusLabel(status?: string | null) {
   return {
     draft: "Draft",
-    published: "Published",
-    archived: "Archived",
+    published: "Terbit",
+    archived: "Arsip",
   }[status ?? ""] ?? "Status";
 }
 
@@ -186,10 +186,10 @@ export function AdminSpeakingExercises() {
 
   async function archiveExercise(exercise: AdminSpeakingExercise) {
     if (!token) return;
-    if (!window.confirm("Hapus template ini dari daftar? Data akan diarsipkan dan tidak tampil untuk siswa.")) return;
+    if (!window.confirm(`Arsipkan template speaking "${exercise.title}"? Template tidak akan tampil untuk siswa.`)) return;
     try {
       await adminSpeakingService.archiveExercise(token, exercise.id);
-      setMessage("Template speaking berhasil dihapus dari daftar.");
+       setMessage("Template speaking berhasil diarsipkan.");
       await loadExercises();
     } catch (err) {
       setError(getFirstApiError(err));
@@ -221,8 +221,8 @@ export function AdminSpeakingExercises() {
               <Select onChange={(event) => void applyStatus(event.target.value)} value={statusFilter}>
                 <option value="">Semua status</option>
                 <option value="draft">Draft</option>
-                <option value="published">Published</option>
-                <option value="archived">Archived</option>
+<option value="published">Terbit</option>
+                 <option value="archived">Arsip</option>
               </Select>
             </FormField>
             <Button onClick={openCreate} type="button">
@@ -270,7 +270,7 @@ export function AdminSpeakingExercises() {
                 </Button>
                 {exercise.status !== "archived" ? (
                   <Button onClick={() => void archiveExercise(exercise)} type="button" variant="ghost">
-                    <Trash2 className="mr-2 size-4" /> Hapus
+                    <Trash2 className="mr-2 size-4" /> Arsipkan
                   </Button>
                 ) : null}
               </div>
@@ -306,7 +306,7 @@ export function AdminSpeakingExercises() {
             <FormField label="Status">
               <Select onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as FormState["status"] }))} value={form.status}>
                 <option value="draft">Draft</option>
-                <option value="published">Published</option>
+                <option value="published">Terbit</option>
               </Select>
             </FormField>
           </div>

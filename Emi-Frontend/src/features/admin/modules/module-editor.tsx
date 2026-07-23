@@ -69,7 +69,7 @@ function LessonPreview({ lesson }: { lesson: LessonTemplate }) {
   if (lesson.media.visibility === "private") {
     return (
       <p className="text-sm text-slate-600">
-        Media private terhubung dengan ID {lesson.media.id}. Preview langsung tidak tersedia
+        Media privat terhubung. Pratinjau langsung tidak tersedia
         untuk template admin.
       </p>
     );
@@ -295,7 +295,7 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
                   disabled={
                     archiveModuleMutation.isPending || moduleTemplate.status === "archived"
                   }
-                  onClick={() => archiveModuleMutation.mutate()}
+                  onClick={() => { if (confirm(`Arsipkan modul "${moduleTemplate.title}"?`)) archiveModuleMutation.mutate(); }}
                   variant="ghost"
                 >
                   Arsipkan Modul
@@ -400,7 +400,7 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
                                   <Button
                                     className="min-h-9 px-3 py-1 text-xs"
                                     disabled={archiveLessonMutation.isPending}
-                                    onClick={() => archiveLessonMutation.mutate(lesson.id)}
+                                    onClick={() => { if (confirm(`Arsipkan materi "${lesson.title}"?`)) archiveLessonMutation.mutate(lesson.id); }}
                                     variant="ghost"
                                   >
                                     Arsipkan

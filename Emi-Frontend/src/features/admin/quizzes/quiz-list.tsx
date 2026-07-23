@@ -329,7 +329,7 @@ export function QuizList() {
                               <Button
                                 className="min-h-9 px-3 py-1 text-xs"
                                 disabled={archiveMutation.isPending}
-                                onClick={() => archiveMutation.mutate(quiz.id)}
+                                onClick={() => { if (confirm(`Arsipkan kuis "${quiz.title}"?`)) archiveMutation.mutate(quiz.id); }}
                                 variant="ghost"
                               >
                                 Arsipkan

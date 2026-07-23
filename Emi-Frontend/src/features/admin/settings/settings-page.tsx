@@ -100,7 +100,7 @@ export function SettingsPage() {
                 <FormField label="Nama Lengkap"><Input defaultValue={user.full_name} name="full_name" required /></FormField>
                 <FormField label="Email Kantor"><Input className={disabledFieldClass} disabled value={user.email} /></FormField>
                 <FormField label="Telepon Admin"><Input defaultValue={user.phone ?? ""} name="phone" placeholder="Belum diisi" /></FormField>
-                <FormField label="Status Akun"><Input className={disabledFieldClass} disabled value={user.status} /></FormField>
+                <FormField label="Status Akun"><Input className={disabledFieldClass} disabled value={user.status === "approved" ? "Disetujui" : user.status === "pending" ? "Menunggu persetujuan" : user.status === "rejected" ? "Ditolak" : user.status} /></FormField>
                 <Button className="md:col-span-2" disabled={profileMutation.isPending} type="submit">{profileMutation.isPending ? "Menyimpan..." : "Simpan Profil"}</Button>
               </div>
             </form>

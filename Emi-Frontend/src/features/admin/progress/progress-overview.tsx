@@ -24,9 +24,9 @@ import {
 import { useAuth } from "@/features/auth/auth-provider";
 import { classService, schoolService } from "@/features/admin/management/management-service";
 import { getFirstApiError } from "@/lib/api-client";
+import type { ApiPaginationMeta } from "@/lib/api-client";
 
 import { progressReportService } from "./progress-service";
-import { ProgressOverviewPrintReport } from "./progress-print-report";
 import { ProgressBar, ProgressSummaryCards } from "./progress-summary-cards";
 import {
   formatDateTime,
@@ -38,6 +38,10 @@ import {
   statusTone,
 } from "./progress-utils";
 import type { LearningStatus } from "./types";
+
+function paginatedOverview<T>(page: { data: T[]; meta: ApiPaginationMeta }) {
+  return { items: page.data, meta: page.meta };
+}
 
 export function ProgressOverview() {
   const { token } = useAuth();
@@ -71,27 +75,20 @@ export function ProgressOverview() {
     [classPage, schoolId, search],
   );
 
-  const summaryQuery = useQuery({
-    queryKey: ["admin", "progress", "summary", schoolId, classId],
-    queryFn: () =>
-      progressReportService.dashboardSummary(token ?? "", {
-        school_id: schoolId,
-        class_id: classId,
-      }),
+  const overviewQuery = useQuery({
+    queryKey: ["admin", "progress", "overview", studentFilters, classFilters],
+    queryFn: () => progressReportService.overview(token ?? "", {
+      ...studentFilters,
+      student_page: page,
+      student_per_page: 12,
+      class_page: classPage,
+      class_per_page: 8,
+    }),
     enabled: Boolean(token),
   });
-
-  const studentsQuery = useQuery({
-    queryKey: ["admin", "progress", "students", studentFilters],
-    queryFn: () => progressReportService.students(token ?? "", studentFilters),
-    enabled: Boolean(token),
-  });
-
-  const classesQuery = useQuery({
-    queryKey: ["admin", "progress", "classes", classFilters],
-    queryFn: () => progressReportService.classes(token ?? "", classFilters),
-    enabled: Boolean(token),
-  });
+  const summaryQuery = { ...overviewQuery, data: overviewQuery.data?.summary };
+  const studentsQuery = { ...overviewQuery, data: overviewQuery.data ? paginatedOverview(overviewQuery.data.students) : undefined };
+  const classesQuery = { ...overviewQuery, data: overviewQuery.data ? paginatedOverview(overviewQuery.data.classes) : undefined };
 
   const schoolsQuery = useQuery({
     queryKey: ["admin", "progress", "school-options"],
@@ -116,11 +113,6 @@ export function ProgressOverview() {
   const classMeta = classesQuery.data?.meta;
   const schoolOptions = schoolsQuery.data?.items ?? [];
   const classOptions = classOptionsQuery.data?.items ?? [];
-  const selectedSchoolName =
-    schoolOptions.find((school) => school.id === schoolId)?.name ?? "Semua sekolah";
-  const selectedClassName =
-    classOptions.find((schoolClass) => schoolClass.id === classId)?.name ?? "Semua kelas";
-
   function applyFilters() {
     setPage(1);
     setClassPage(1);
@@ -128,7 +120,7 @@ export function ProgressOverview() {
   }
 
   function printReport() {
-    window.print();
+    void progressReportService.downloadPdf(token ?? "", "/admin/reports/progress/pdf", studentFilters);
   }
 
   return (
@@ -403,19 +395,6 @@ export function ProgressOverview() {
         </CardContent>
       </Card>
 
-      <ProgressOverviewPrintReport
-        filters={[
-          { label: "Sekolah", value: selectedSchoolName },
-          { label: "Kelas", value: selectedClassName },
-          {
-            label: "Status",
-            value: learningStatusFilter ? learningStatusLabel(learningStatusFilter) : "Semua status",
-          },
-          { label: "Pencarian", value: search || "-" },
-        ]}
-        students={students}
-        summary={summaryQuery.data}
-      />
     </div>
   );
 }

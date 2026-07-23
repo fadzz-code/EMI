@@ -20,12 +20,10 @@ import {
   TableHeader,
 } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
-import { userManagementService } from "@/features/admin/management/management-service";
 import { userStatusLabel } from "@/features/admin/management/management-utils";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { progressReportService } from "./progress-service";
-import { StudentProgressPrintReport } from "./progress-print-report";
 import { ProgressBar } from "./progress-summary-cards";
 import {
   formatDateTime,
@@ -41,43 +39,23 @@ export function ProgressStudentDetail({ studentId }: { studentId: string }) {
   const { token } = useAuth();
   const [quizPage, setQuizPage] = useState(1);
 
-  const userQuery = useQuery({
-    queryKey: ["admin", "progress", "student-user", studentId],
-    queryFn: () => userManagementService.detail(token ?? "", studentId),
+  const detailQuery = useQuery({
+    queryKey: ["admin", "progress", "student-detail", studentId, quizPage],
+    queryFn: () => progressReportService.studentDetail(token ?? "", studentId, { quiz_page: quizPage, quiz_per_page: 10 }),
     enabled: Boolean(token && studentId),
   });
-
-  const progressQuery = useQuery({
-    queryKey: ["admin", "progress", "student-progress", studentId],
-    queryFn: () =>
-      progressReportService.students(token ?? "", {
-        student_id: studentId,
-        page: 1,
-        per_page: 1,
-      }),
-    enabled: Boolean(token && studentId),
-  });
-
-  const quizResultsQuery = useQuery({
-    queryKey: ["admin", "progress", "student-quiz-results", studentId, quizPage],
-    queryFn: () =>
-      progressReportService.quizResults(token ?? "", {
-        student_id: studentId,
-        page: quizPage,
-        per_page: 10,
-      }),
-    enabled: Boolean(token && studentId),
-  });
-
+  const userQuery = { ...detailQuery, data: detailQuery.data?.student };
+  const progressQuery = { ...detailQuery, data: detailQuery.data?.progress };
+  const quizResultsQuery = { ...detailQuery, data: detailQuery.data ? { items: detailQuery.data.quizzes.data, meta: detailQuery.data.quizzes.meta, summary: detailQuery.data.quiz_summary } : undefined };
   const user = userQuery.data;
-  const progress = progressQuery.data?.items[0] ?? null;
+  const progress = progressQuery.data ?? null;
   const status = progress ? learningStatus(progress) : null;
   const quizRows = quizResultsQuery.data?.items ?? [];
   const quizMeta = quizResultsQuery.data?.meta;
   const quizSummary = quizResultsQuery.data?.summary;
 
   function printReport() {
-    window.print();
+    void progressReportService.downloadPdf(token ?? "", `/admin/reports/progress/students/${studentId}/pdf`);
   }
 
   return (
@@ -107,8 +85,8 @@ export function ProgressStudentDetail({ studentId }: { studentId: string }) {
             </div>
             <h1 className="mt-2 text-3xl font-black text-ink">{user.full_name}</h1>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              {user.email} | {user.active_school?.name ?? "Sekolah belum tersedia"} |{" "}
-              {user.active_class?.name ?? "Kelas belum tersedia"}
+              {user.email} | {progress?.school.name ?? "Sekolah belum tersedia"} |{" "}
+              {progress?.class.name ?? "Kelas belum tersedia"}
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -293,11 +271,6 @@ export function ProgressStudentDetail({ studentId }: { studentId: string }) {
         </CardContent>
       </Card>
 
-      <StudentProgressPrintReport
-        progress={progress}
-        quizRows={quizRows}
-        user={user}
-      />
     </div>
   );
 }

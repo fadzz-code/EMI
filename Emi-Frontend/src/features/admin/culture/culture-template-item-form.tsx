@@ -73,7 +73,7 @@ export function CultureTemplateItemForm({ editingItem, onCancel, onSaved, templa
 
           {isFileBased ? (
             <div className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <h3 className="font-black text-ink">Upload Media</h3>
+              <h3 className="font-black text-ink">Unggah Media</h3>
               {uploadError ? <Alert tone="error">{uploadError}</Alert> : null}
               {uploadSuccess ? <Alert tone="success">{uploadSuccess}</Alert> : null}
               <UploadComponent accept=".jpg,.jpeg,.png,.webp,.pdf,.mp3,.wav,.m4a,.ogg,.webm,image/jpeg,image/png,image/webp,application/pdf,audio/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />

@@ -1,30 +1,34 @@
 import { StatsCard } from "@/components/ui";
 
 import { formatNumber, formatPercent } from "./progress-utils";
-import type { DashboardSummary } from "./types";
+import type { DashboardSummary, ProgressSummary } from "./types";
 
-export function ProgressSummaryCards({ summary }: { summary?: DashboardSummary | null }) {
+export function ProgressSummaryCards({ summary }: { summary?: DashboardSummary | ProgressSummary | null }) {
+  const activeStudents = summary && "overview" in summary ? summary.overview.active_students : summary?.active_students;
+  const moduleProgress = summary && "learning" in summary ? summary.learning.average_learning_progress_percent : summary?.average_module_progress_percent;
+  const quizScore = summary && "quizzes" in summary ? summary.quizzes.average_score_percent : summary?.average_best_final_quiz_score_percent;
+  const speakingReports = summary && "capabilities" in summary ? summary.capabilities.speaking_reports : false;
   return (
     <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <StatsCard
         helper="Akun siswa approved dengan membership aktif."
         label="Total Siswa Aktif"
-        value={formatNumber(summary?.overview.active_students)}
+        value={formatNumber(activeStudents)}
       />
       <StatsCard
         helper="Rata-rata module progress backend."
         label="Rata-rata Progress Modul"
-        value={formatPercent(summary?.learning.average_learning_progress_percent)}
+        value={formatPercent(moduleProgress)}
       />
       <StatsCard
         helper="Best final attempt dari report kuis."
         label="Rata-rata Nilai Kuis"
-        value={formatPercent(summary?.quizzes.average_score_percent)}
+        value={formatPercent(quizScore)}
       />
       <StatsCard
         helper="Speaking report belum aktif pada backend."
         label="Latihan Speaking"
-        value={summary?.capabilities.speaking_reports ? "Aktif" : "Belum tersedia"}
+        value={speakingReports ? "Aktif" : "Belum tersedia"}
       />
     </section>
   );

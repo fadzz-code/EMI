@@ -120,7 +120,7 @@ export function UsersScreen() {
             <option value="">Semua status</option>
             <option value="approved">Disetujui</option>
             <option value="inactive">Nonaktif</option>
-            <option value="pending">Pending</option>
+            <option value="pending">Menunggu persetujuan</option>
             <option value="rejected">Ditolak</option>
           </Select>
         </label>

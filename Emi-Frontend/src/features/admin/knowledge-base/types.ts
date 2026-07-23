@@ -9,6 +9,7 @@ export type AiKnowledgeItem = {
   source_type: AiKnowledgeSourceType;
   source_url?: string | null;
   status: AiKnowledgeStatus;
+  processing_status?: "pending" | "processing" | "ready" | "failed";
   created_by?: string | null;
   updated_by?: string | null;
   created_at?: string | null;

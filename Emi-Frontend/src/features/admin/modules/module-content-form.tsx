@@ -250,7 +250,7 @@ export function ModuleContentForm({
                 value={visibility}
               >
                 <option value="public">Publik</option>
-                <option value="private">Private</option>
+                <option value="private">Privat</option>
               </Select>
             </FormField>
             <Button

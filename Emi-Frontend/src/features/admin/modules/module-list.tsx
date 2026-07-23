@@ -308,7 +308,7 @@ export function ModuleList() {
                               <Button
                                 className="min-h-9 px-3 py-1 text-xs"
                                 disabled={archiveMutation.isPending}
-                                onClick={() => archiveMutation.mutate(module.id)}
+                                onClick={() => { if (confirm(`Arsipkan modul "${module.title}"?`)) archiveMutation.mutate(module.id); }}
                                 variant="ghost"
                               >
                                 Arsipkan

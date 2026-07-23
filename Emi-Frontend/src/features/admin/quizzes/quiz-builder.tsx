@@ -217,7 +217,7 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
                 </Button>
                 <Button
                   disabled={archiveQuizMutation.isPending || quiz.status === "archived"}
-                  onClick={() => archiveQuizMutation.mutate()}
+                  onClick={() => { if (confirm(`Arsipkan kuis "${quiz.title}"?`)) archiveQuizMutation.mutate(); }}
                   variant="ghost"
                 >
                   Arsipkan Kuis

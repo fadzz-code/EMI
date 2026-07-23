@@ -128,7 +128,7 @@ export function DictionaryDetail({ entryId }: { entryId: string }) {
             <DetailItem label="Inggris" value={entry.english} />
             <DetailItem label="Kategori" value={entry.category?.name} />
             <DetailItem label="Status" value={statusLabel(entry.status)} />
-            <DetailItem label="Audio Media ID" value={entry.audio?.id} />
+
             <DetailItem label="Dibuat" value={formatDateTime(entry.created_at)} />
             <DetailItem label="Terakhir Diubah" value={formatDateTime(entry.updated_at)} />
           </div>

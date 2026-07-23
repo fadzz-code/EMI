@@ -100,6 +100,8 @@ export type ClassProgressRow = {
 export type StudentProgressRow = {
   student_id: string;
   full_name: string;
+  email: string;
+  student_status: string;
   school: {
     id: string;
     name: string;
@@ -167,4 +169,43 @@ export type QuizResultRow = {
 
 export type QuizResultReport = PaginatedResult<QuizResultRow> & {
   summary: QuizResultSummary | null;
+};
+
+export type ProgressSummary = {
+  active_students: number;
+  average_module_progress_percent: number;
+  average_best_final_quiz_score_percent: number | null;
+};
+
+export type ProgressOverviewReport = {
+  summary: ProgressSummary;
+  students: { data: StudentProgressRow[]; meta: ApiPaginationMeta };
+  classes: { data: ClassProgressRow[]; meta: ApiPaginationMeta };
+  capabilities: { speaking_reports: boolean };
+};
+
+export type ClassProgressDetail = {
+  class: {
+    id: string;
+    name: string;
+    academic_year: string;
+    status: string;
+    school: { id: string; name: string };
+    teacher: { id: string; full_name: string; email: string } | null;
+  };
+  summary: ProgressSummary & {
+    last_activity_at: string | null;
+    completed_students: number;
+    not_started_students: number;
+  };
+  students: { data: StudentProgressRow[]; meta: ApiPaginationMeta };
+  capabilities: { speaking_reports: boolean };
+};
+
+export type StudentProgressDetail = {
+  student: { id: string; full_name: string; email: string; status: string };
+  progress: StudentProgressRow;
+  quizzes: { data: QuizResultRow[]; meta: ApiPaginationMeta };
+  quiz_summary: QuizResultSummary;
+  capabilities: { speaking_reports: boolean };
 };

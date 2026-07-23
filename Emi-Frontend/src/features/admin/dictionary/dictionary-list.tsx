@@ -12,6 +12,7 @@ import {
   Card,
   CardContent,
   CardHeader,
+  ConfirmDialog,
   EmptyState,
   ErrorState,
   FilterPanel,
@@ -37,6 +38,7 @@ import {
   statusTone,
 } from "./dictionary-utils";
 import type {
+  DictionaryCategory,
   DictionaryCategoryPayload,
   DictionaryEntryPayload,
   DictionaryStatus,
@@ -58,6 +60,8 @@ export function DictionaryList() {
     description: "",
     status: "active" as DictionaryStatus,
   });
+  const [editingCategory, setEditingCategory] = useState<DictionaryCategory | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<DictionaryCategory | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const entryFilters = useMemo(
@@ -105,6 +109,25 @@ export function DictionaryList() {
     },
   });
 
+  const updateCategoryMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: DictionaryCategoryPayload }) => dictionaryService.updateCategory(token ?? "", id, payload),
+    onSuccess: async (category) => {
+      setSuccessMessage(`Kategori ${category.name} berhasil diperbarui.`);
+      setCategoryModalOpen(false);
+      setEditingCategory(null);
+      await queryClient.invalidateQueries({ queryKey: ["admin", "dictionary"] });
+    },
+  });
+
+  const deleteCategoryMutation = useMutation({
+    mutationFn: (id: string) => dictionaryService.deleteCategory(token ?? "", id),
+    onSuccess: async () => {
+      setSuccessMessage("Kategori kamus berhasil dihapus.");
+      setCategoryToDelete(null);
+      await queryClient.invalidateQueries({ queryKey: ["admin", "dictionary"] });
+    },
+  });
+
   const deleteEntryMutation = useMutation({
     mutationFn: (entryId: string) => dictionaryService.deleteEntry(token ?? "", entryId),
     onSuccess: async () => {
@@ -117,7 +140,7 @@ export function DictionaryList() {
   const categories = categoriesQuery.data?.items ?? [];
   const meta = entriesQuery.data?.meta;
   const actionError =
-    createEntryMutation.error ?? createCategoryMutation.error ?? deleteEntryMutation.error;
+    createEntryMutation.error ?? createCategoryMutation.error ?? updateCategoryMutation.error ?? deleteCategoryMutation.error ?? deleteEntryMutation.error;
 
   function applySearch() {
     setPage(1);
@@ -126,11 +149,13 @@ export function DictionaryList() {
 
   function submitCategory(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    createCategoryMutation.mutate({
+    const payload = {
       name: categoryForm.name.trim(),
       description: normalizeNullable(categoryForm.description),
       status: categoryForm.status,
-    });
+    };
+    if (editingCategory) updateCategoryMutation.mutate({ id: editingCategory.id, payload });
+    else createCategoryMutation.mutate(payload);
   }
 
   return (
@@ -150,7 +175,7 @@ export function DictionaryList() {
           >
             Impor CSV/ZIP
           </Link>
-          <Button onClick={() => setCategoryModalOpen(true)} variant="secondary">
+          <Button onClick={() => { setEditingCategory(null); setCategoryForm({ name: "", description: "", status: "active" }); setCategoryModalOpen(true); }} variant="secondary">
             Tambah Kategori
           </Button>
           <Button onClick={() => setEntryModalOpen(true)}>Tambah Kata</Button>
@@ -279,7 +304,7 @@ export function DictionaryList() {
                             <Button
                               className="min-h-9 px-3 py-1 text-xs"
                               disabled={deleteEntryMutation.isPending}
-                              onClick={() => deleteEntryMutation.mutate(entry.id)}
+                              onClick={() => { if (confirm(`Hapus entri "${entry.mekongga}"? Tindakan ini tidak dapat dibatalkan.`)) deleteEntryMutation.mutate(entry.id); }}
                               variant="danger"
                             >
                               Hapus
@@ -299,6 +324,11 @@ export function DictionaryList() {
             )
           ) : null}
         </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><h2 className="text-xl font-black text-ink">Kategori Kamus</h2></CardHeader>
+        <CardContent><div className="grid gap-2">{categories.map((category) => <div className="flex flex-col gap-2 rounded-lg border-2 border-ink p-3 sm:flex-row sm:items-center sm:justify-between" key={category.id}><div><p className="font-black">{category.name}</p><p className="text-sm text-slate-600">{category.description ?? "Tanpa deskripsi"} · {statusLabel(category.status)}</p></div><div className="flex gap-2"><Button className="min-h-9 px-3 py-1 text-xs" onClick={() => { setEditingCategory(category); setCategoryForm({ name: category.name, description: category.description ?? "", status: category.status }); setCategoryModalOpen(true); }} variant="secondary">Edit</Button><Button className="min-h-9 px-3 py-1 text-xs" onClick={() => setCategoryToDelete(category)} variant="danger">Hapus</Button></div></div>)}</div></CardContent>
       </Card>
 
       <Card>
@@ -327,9 +357,9 @@ export function DictionaryList() {
       </Modal>
 
       <Modal
-        onClose={() => setCategoryModalOpen(false)}
+        onClose={() => { setCategoryModalOpen(false); setEditingCategory(null); setCategoryForm({ name: "", description: "", status: "active" }); }}
         open={categoryModalOpen}
-        title="Tambah Kategori Kamus"
+        title={editingCategory ? "Edit Kategori Kamus" : "Tambah Kategori Kamus"}
       >
         <form className="grid gap-4" onSubmit={submitCategory}>
           <FormField label="Nama kategori">
@@ -367,12 +397,13 @@ export function DictionaryList() {
             <Button onClick={() => setCategoryModalOpen(false)} type="button" variant="ghost">
               Batal
             </Button>
-            <Button disabled={createCategoryMutation.isPending} type="submit" variant="secondary">
+            <Button disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending} type="submit" variant="secondary">
               Simpan Kategori
             </Button>
           </div>
         </form>
       </Modal>
+      <ConfirmDialog confirmLabel={deleteCategoryMutation.isPending ? "Menghapus..." : "Ya, hapus"} description={`Kategori ${categoryToDelete?.name ?? "ini"} akan dihapus. Kategori yang masih digunakan entri dapat ditolak backend.`} onCancel={() => setCategoryToDelete(null)} onConfirm={() => categoryToDelete && deleteCategoryMutation.mutate(categoryToDelete.id)} open={Boolean(categoryToDelete)} title="Hapus Kategori Kamus?" />
     </div>
   );
 }

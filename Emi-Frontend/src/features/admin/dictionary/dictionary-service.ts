@@ -85,6 +85,20 @@ export const dictionaryService = {
     return response.data;
   },
 
+  async updateCategory(token: string, categoryId: string, payload: DictionaryCategoryPayload) {
+    const response = await apiClient.put<DictionaryCategory>(
+      `/admin/dictionary/categories/${categoryId}`,
+      payload,
+      { token },
+    );
+    if (!response.data) throw new Error("Response kategori tidak tersedia.");
+    return response.data;
+  },
+
+  async deleteCategory(token: string, categoryId: string) {
+    await apiClient.delete<[]>(`/admin/dictionary/categories/${categoryId}`, { token });
+  },
+
   async listEntries(token: string, filters: DictionaryEntryFilters = {}) {
     const response = await apiClient.get<DictionaryEntry[]>("/admin/dictionary/entries", {
       token,
