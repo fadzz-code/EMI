@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Exceptions\SpeakingAiException;
+use App\Jobs\AnalyzeSpeakingAttemptJob;
 use App\Models\MediaFile;
 use App\Models\SchoolClass;
 use App\Models\SpeakingAttempt;
@@ -194,6 +195,42 @@ class SpeakingPracticeAiTest extends TestCase
             'reviewed_by_id' => $teacher->id,
             'status' => 'reviewed',
         ]);
+    }
+
+    public function test_ai_completion_does_not_overwrite_reviewed_status(): void
+    {
+        [$student, $teacher, $class] = $this->classroomUsers();
+        $attempt = $this->attemptFor($student, $this->exercise($class));
+        $attempt->update(['status' => 'pending']);
+        $client = new class($teacher) extends SpeakingAiClient
+        {
+            public function __construct(private readonly User $teacher) {}
+
+            public function enabled(): bool
+            {
+                return true;
+            }
+
+            public function analyze(SpeakingAttempt $attempt): array
+            {
+                $attempt->newQuery()->whereKey($attempt->id)->update([
+                    'status' => 'reviewed',
+                    'teacher_score' => 90,
+                    'teacher_feedback' => 'Review selesai saat AI berjalan.',
+                    'reviewed_by_id' => $this->teacher->id,
+                    'reviewed_at' => now(),
+                ]);
+
+                return ['engine' => 'fake', 'model' => 'fake-model', 'transcription' => 'ari nggiro', 'score' => 82];
+            }
+        };
+
+        (new AnalyzeSpeakingAttemptJob($attempt->id))->handle($client);
+
+        $attempt->refresh();
+        $this->assertSame('reviewed', $attempt->status);
+        $this->assertSame('Review selesai saat AI berjalan.', $attempt->teacher_feedback);
+        $this->assertSame(90.0, (float) $attempt->teacher_score);
     }
 
     public function test_teacher_cannot_access_unauthorized_attempt(): void

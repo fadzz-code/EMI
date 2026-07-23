@@ -27,26 +27,29 @@ class AnalyzeSpeakingAttemptJob implements ShouldQueue
         }
 
         if (! $client->enabled()) {
-            $attempt->forceFill(['status' => 'pending'])->save();
+            SpeakingAttempt::query()->whereKey($attempt->id)->where('status', '!=', 'reviewed')->update(['status' => 'pending']);
 
             return;
         }
 
-        $attempt->forceFill(['status' => 'processing', 'ai_error' => null])->save();
+        $started = SpeakingAttempt::query()->whereKey($attempt->id)->where('status', '!=', 'reviewed')->update(['status' => 'processing', 'ai_error' => null]);
+        if (! $started) {
+            return;
+        }
 
         try {
             $result = $client->analyze($attempt->refresh()->load('audioMedia'));
 
-            $attempt->forceFill([
+            SpeakingAttempt::query()->whereKey($attempt->id)->where('status', '!=', 'reviewed')->update([
                 'status' => 'completed',
                 'ai_engine' => $result['engine'] ?? null,
                 'ai_model' => $result['model'] ?? null,
                 'ai_transcription' => $result['transcription'] ?? null,
                 'ai_score' => $result['score'] ?? null,
-                'ai_alignment' => $result['alignment'] ?? null,
-                'ai_raw_response' => $result,
+                'ai_alignment' => isset($result['alignment']) ? json_encode($result['alignment'], JSON_THROW_ON_ERROR) : null,
+                'ai_raw_response' => json_encode($result, JSON_THROW_ON_ERROR),
                 'ai_error' => null,
-            ])->save();
+            ]);
         } catch (Throwable $exception) {
             Log::warning('Analisis speaking gagal.', [
                 'attempt_id' => $attempt->id,
@@ -66,13 +69,13 @@ class AnalyzeSpeakingAttemptJob implements ShouldQueue
                 'Audio speaking tidak dapat dianalisis.',
                 'Layanan analisis speaking sedang tidak tersedia.',
             ];
-            $attempt->forceFill([
+            SpeakingAttempt::query()->whereKey($attempt->id)->where('status', '!=', 'reviewed')->update([
                 'status' => 'failed',
                 'ai_error' => in_array($exception->getMessage(), $publicErrors, true) ? $exception->getMessage() : 'Analisis speaking AI gagal.',
-                'ai_raw_response' => array_filter([
+                'ai_raw_response' => json_encode(array_filter([
                     'error_code' => $exception instanceof SpeakingAiException ? $exception->errorCode : 'SPEAKING_AI_RESPONSE_INVALID',
-                ]),
-            ])->save();
+                ]), JSON_THROW_ON_ERROR),
+            ]);
         }
     }
 }
