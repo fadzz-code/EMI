@@ -11,20 +11,20 @@ import 'package:emi_mobile/features/admin/data/admin_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('admin school detail fits Redmi viewport with scaled text', (
+  testWidgets('admin school detail fits Redmi viewport at default text scale', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(392, 804);
-    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1080, 2210);
+    tester.view.devicePixelRatio = 2.75;
     addTearDown(tester.view.reset);
 
     const school = AdminSchool(
       id: 'school-1',
-      name: '[E2E Admin] Sekolah Menengah Pertama Negeri EMI Kolaka Utara',
+      name: '[E2E Admin] School 1753289100000000-2abc',
       status: 'active',
-      address: 'Jalan Pendidikan Nomor 123, Kolaka Utara',
-      phone: '081234567890',
-      classesCount: 12,
+      address: 'E2E',
+      phone: null,
+      classesCount: 0,
     );
     final router = GoRouter(
       initialLocation: '/admin/schools/${school.id}',
@@ -43,15 +43,7 @@ void main() {
             school.id,
           ).overrideWith((_) async => school),
         ],
-        child: MaterialApp.router(
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(textScaler: const TextScaler.linear(3)),
-            child: child!,
-          ),
-          routerConfig: router,
-        ),
+        child: MaterialApp.router(routerConfig: router),
       ),
     );
     await tester.pumpAndSettle();

@@ -2039,7 +2039,7 @@ class _InfoSection extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: EmiSpacing.xs),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final compact = constraints.maxWidth < 320;
+                final compact = constraints.maxWidth < 360;
                 final value = Text(
                   row.value,
                   overflow: TextOverflow.ellipsis,
