@@ -12,6 +12,7 @@ import { getFirstApiError } from "@/lib/api-client";
 import { teacherRoutes } from "@/lib/routes";
 
 import { teacherService } from "./teacher-service";
+import { quizLifecycle } from "./teacher-workflow";
 import type { TeacherClassQuiz } from "./types";
 import { formatCount, formatDate, formatOptional, statusLabel } from "./teacher-utils";
 
@@ -35,6 +36,13 @@ export function TeacherQuizList() {
     queryKey: ["teacher", "classes", "quiz-create"],
     queryFn: () => teacherService.classes(token ?? ""),
     enabled: Boolean(token && showCreate),
+  });
+  const lifecycleMutation = useMutation({
+    mutationFn: async (quiz: TeacherClassQuiz) => {
+      if (quizLifecycle(quiz) === "delete") await teacherService.deleteQuiz(token ?? "", quiz.id);
+      else await teacherService.archiveQuiz(token ?? "", quiz.id);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["teacher", "quizzes"] }),
   });
   const createMutation = useMutation({
     mutationFn: (payload: Partial<TeacherClassQuiz>) => teacherService.createQuiz(token ?? "", payload),
@@ -93,7 +101,8 @@ export function TeacherQuizList() {
         </Card>
       ) : null}
 
-      {quizzesQuery.isLoading ? <LoadingState title="Memuat kuis" /> : null}
+       {lifecycleMutation.error ? <Alert tone="error">{getFirstApiError(lifecycleMutation.error)}</Alert> : null}
+       {quizzesQuery.isLoading ? <LoadingState title="Memuat kuis" /> : null}
       {quizzesQuery.isError ? <ErrorState description={getFirstApiError(quizzesQuery.error)} onRetry={() => void quizzesQuery.refetch()} title="Gagal memuat kuis" /> : null}
 
       {!quizzesQuery.isLoading && !quizzesQuery.isError ? (
@@ -129,8 +138,9 @@ export function TeacherQuizList() {
                         <div className="rounded-xl border-2 border-border bg-surface-muted p-3"><dt className="font-black uppercase text-muted">Soal</dt><dd className="mt-1 font-bold text-ink">{formatCount(quiz.questions_count)}</dd></div>
                         <div className="rounded-xl border-2 border-border bg-surface-muted p-3"><dt className="font-black uppercase text-muted">Attempt</dt><dd className="mt-1 font-bold text-ink">{formatCount(quiz.attempts_count)}</dd></div>
                         <div className="rounded-xl border-2 border-border bg-surface-muted p-3"><dt className="font-black uppercase text-muted">Buka</dt><dd className="mt-1 font-bold text-ink">{formatDate(quiz.open_at)}</dd></div>
-                      </dl>
-                    </CardContent>
+                       </dl>
+                       {quiz.status !== "archived" ? <Button className="mt-4" disabled={lifecycleMutation.isPending} onClick={() => { const action = quizLifecycle(quiz) === "delete" ? "menghapus permanen" : "mengarsipkan"; if (confirm(`Apakah Anda yakin ingin ${action} kuis ini?`)) lifecycleMutation.mutate(quiz); }} type="button" variant="danger">{lifecycleMutation.isPending ? "Memproses..." : quizLifecycle(quiz) === "delete" ? "Hapus Kuis" : "Arsipkan Kuis"}</Button> : null}
+                     </CardContent>
                   </Card>
                 );
               })}

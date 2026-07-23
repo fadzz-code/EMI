@@ -11,6 +11,7 @@ import { teacherRoutes } from "@/lib/routes";
 import { TeacherClassNav } from "./teacher-class-nav";
 import { teacherService } from "./teacher-service";
 import { formatCount, formatOptional, formatPercent, statusLabel } from "./teacher-utils";
+import { teacherProgressKey } from "./teacher-workflow";
 
 export function TeacherClassDetail({ classId }: { classId: string }) {
   const { token } = useAuth();
@@ -35,9 +36,9 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
     enabled: Boolean(token && classId),
   });
   const progressQuery = useQuery({
-    queryKey: ["teacher", "progress", "students"],
-    queryFn: () => teacherService.studentProgress(token ?? ""),
-    enabled: Boolean(token),
+    queryKey: teacherProgressKey(classId, { page: 1 }),
+    queryFn: () => teacherService.studentProgress(token ?? "", { class_id: classId, page: 1 }),
+    enabled: Boolean(token && classId),
   });
 
   const teacherClass = classQuery.data;

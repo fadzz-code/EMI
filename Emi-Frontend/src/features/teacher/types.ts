@@ -311,6 +311,8 @@ export type TeacherUserProfile = {
 export type TeacherProgressStudentRow = {
   student_id?: string;
   full_name?: string;
+  email?: string;
+  student_status?: string;
   school?: {
     id?: string;
     name?: string;

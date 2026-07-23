@@ -2,22 +2,26 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 
-import { Badge, Card, CardContent, EmptyState, ErrorState, LoadingState, PageHeader, StatsCard } from "@/components/ui";
+import { Badge, Card, CardContent, EmptyState, ErrorState, LoadingState, PageHeader, Pagination, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 import { teacherRoutes } from "@/lib/routes";
 
 import { teacherService } from "./teacher-service";
 import { formatCount, formatOptional, formatPercent } from "./teacher-utils";
+import { teacherProgressKey } from "./teacher-workflow";
 
 export function TeacherProgressReport() {
   const { token, user } = useAuth();
+  const classId = user?.active_class?.id ?? "";
+  const [page, setPage] = useState(1);
   const progressQuery = useQuery({
-    queryKey: ["teacher", "progress", "students", "report"],
-    queryFn: () => teacherService.studentProgress(token ?? ""),
-    enabled: Boolean(token),
+    queryKey: teacherProgressKey(classId, { page, view: "report" }),
+    queryFn: () => teacherService.studentProgress(token ?? "", { class_id: classId, page }),
+    enabled: Boolean(token && classId),
   });
 
   const students = progressQuery.data?.items ?? [];
@@ -142,6 +146,7 @@ export function TeacherProgressReport() {
               </table>
               </div>
             </div>
+            <Pagination onPageChange={setPage} page={progressQuery.data?.meta?.current_page ?? page} totalPages={progressQuery.data?.meta?.last_page ?? 1} />
           </div>
         )
       ) : null}

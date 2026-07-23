@@ -40,6 +40,8 @@ export function TeacherCultureList() {
   const deleteMutation = useMutation({ mutationFn: (itemId: string) => teacherService.deleteClassCulture(token ?? "", itemId), onSuccess: invalidate });
   const publishMutation = useMutation({ mutationFn: (itemId: string) => teacherService.publishClassCulture(token ?? "", itemId), onSuccess: invalidate });
   const archiveMutation = useMutation({ mutationFn: (itemId: string) => teacherService.archiveClassCulture(token ?? "", itemId), onSuccess: invalidate });
+  const mutationError = deleteMutation.error ?? publishMutation.error ?? archiveMutation.error;
+  const mutationPending = deleteMutation.isPending || publishMutation.isPending || archiveMutation.isPending;
 
   function openBuilder(item: TeacherCultureItem | null = null) {
     setEditing(item);
@@ -81,6 +83,7 @@ export function TeacherCultureList() {
 
           {showBuilder ? <CultureForm classId={selectedClassId} item={editing} key={editing?.id ?? `new-${selectedClassId}`} onDone={() => { setEditing(null); setShowBuilder(false); void invalidate(); }} /> : null}
 
+          {mutationError ? <Alert tone="error">{getFirstApiError(mutationError)}</Alert> : null}
           {items.length === 0 ? <Card><CardContent><EmptyState description="Belum ada konten budaya untuk kelas ini. Klik Kelola Media untuk menambah konten." title="Budaya Mekongga kosong" /></CardContent></Card> : (
             <div className="grid gap-4 md:grid-cols-2">
               {items.map((item) => (
@@ -91,10 +94,10 @@ export function TeacherCultureList() {
                     {item.created_scope === "admin" || item.admin_group_id ? <p className="mt-2 text-xs font-black uppercase text-muted">Salinan konten admin untuk kelas ini</p> : item.source_template_item_id ? <p className="mt-2 text-xs font-black uppercase text-muted">Salinan dari template admin</p> : <p className="mt-2 text-xs font-black uppercase text-muted">Dibuat guru untuk kelas ini</p>}
                     <CultureMediaPreview item={item} />
                     <div className="mt-auto flex flex-wrap gap-2 pt-4">
-                      <Button type="button" variant="secondary" onClick={() => openBuilder(item)}>Edit</Button>
-                      {item.status !== "published" ? <Button type="button" onClick={() => publishMutation.mutate(item.id)}>Publish</Button> : null}
-                      {item.status !== "archived" ? <Button type="button" variant="secondary" onClick={() => archiveMutation.mutate(item.id)}>Arsipkan</Button> : null}
-                      <Button type="button" variant="danger" onClick={() => deleteMutation.mutate(item.id)}>Hapus dari Kelas Ini</Button>
+                      <Button disabled={mutationPending} type="button" variant="secondary" onClick={() => openBuilder(item)}>Edit</Button>
+                       {item.status !== "published" && item.status !== "archived" ? <Button disabled={mutationPending} type="button" onClick={() => publishMutation.mutate(item.id)}>Publish</Button> : null}
+                       {item.status !== "archived" ? <Button disabled={mutationPending} type="button" variant="secondary" onClick={() => archiveMutation.mutate(item.id)}>{archiveMutation.isPending ? "Mengarsipkan..." : "Arsipkan"}</Button> : null}
+                       <Button disabled={mutationPending} type="button" variant="danger" onClick={() => deleteMutation.mutate(item.id)}>{deleteMutation.isPending ? "Menghapus..." : "Hapus dari Kelas Ini"}</Button>
                     </div>
                   </CardContent>
                 </Card>

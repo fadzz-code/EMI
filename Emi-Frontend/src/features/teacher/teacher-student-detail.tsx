@@ -11,14 +11,15 @@ import { teacherRoutes } from "@/lib/routes";
 
 import { teacherService } from "./teacher-service";
 import { formatCount, formatOptional, formatPercent } from "./teacher-utils";
+import { teacherProgressKey } from "./teacher-workflow";
 
 export function TeacherStudentDetail({ studentId }: { studentId: string }) {
   const { token, user } = useAuth();
-  
+  const classId = user?.active_class?.id ?? "";
   const studentQuery = useQuery({
-    queryKey: ["teacher", "students", studentId],
-    queryFn: () => teacherService.studentDetail(token ?? "", studentId),
-    enabled: Boolean(token && studentId),
+    queryKey: teacherProgressKey(classId, { student_id: studentId }),
+    queryFn: () => teacherService.studentDetail(token ?? "", studentId, classId),
+    enabled: Boolean(token && studentId && classId),
   });
 
   const student = studentQuery.data;

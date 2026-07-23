@@ -1,36 +1,40 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, UserRound } from "lucide-react";
 
-import { Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState, PageHeader, StatsCard } from "@/components/ui";
+import { Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState, PageHeader, Pagination, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 import { teacherRoutes } from "@/lib/routes";
 
 import { teacherService } from "./teacher-service";
 import { formatCount, formatOptional, formatPercent } from "./teacher-utils";
+import { teacherProgressKey } from "./teacher-workflow";
 
 export function TeacherStudentList() {
   const { token, user } = useAuth();
+  const classId = user?.active_class?.id ?? "";
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(timeout);
+  }, [search]);
   const studentsQuery = useQuery({
-    queryKey: ["teacher", "students"],
-    queryFn: () => teacherService.studentProgress(token ?? ""),
-    enabled: Boolean(token),
+    queryKey: teacherProgressKey(classId, { search: debouncedSearch, page }),
+    queryFn: () => teacherService.studentProgress(token ?? "", { class_id: classId, search: debouncedSearch || undefined, page }),
+    enabled: Boolean(token && classId),
   });
 
-  const students = useMemo(() => studentsQuery.data?.items ?? [], [studentsQuery.data?.items]);
-  const filteredStudents = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-    if (!keyword) return students;
-    return students.filter((student) => [
-      student.full_name,
-      student.class?.name,
-    ].filter(Boolean).join(" ").toLowerCase().includes(keyword));
-  }, [search, students]);
+  const students = studentsQuery.data?.items ?? [];
+  const meta = studentsQuery.data?.meta;
 
   return (
     <div className="grid gap-8">
@@ -50,7 +54,7 @@ export function TeacherStudentList() {
       ) : null}
 
       {!studentsQuery.isLoading && !studentsQuery.isError ? (
-        students.length === 0 ? (
+        students.length === 0 && !debouncedSearch ? (
           <Card>
             <CardContent>
               <EmptyState
@@ -62,7 +66,7 @@ export function TeacherStudentList() {
         ) : (
           <div className="grid gap-6">
             <section className="grid gap-4 sm:grid-cols-3">
-              <StatsCard helper={user?.active_class?.name ?? "Kelas aktif"} label="Total siswa" value={formatCount(students.length)} />
+              <StatsCard helper={user?.active_class?.name ?? "Kelas aktif"} label="Total siswa" value={formatCount(meta?.total)} />
               <StatsCard helper="Rata-rata kelas" label="Progress belajar" value={formatPercent(
                 students.length > 0
                   ? students.reduce((acc, s) => acc + (s.overall_learning_progress_percent ?? 0), 0) / students.length
@@ -82,7 +86,7 @@ export function TeacherStudentList() {
               </CardContent>
             </Card>
 
-            {filteredStudents.length === 0 ? (
+            {students.length === 0 ? (
               <Card>
                 <CardContent>
                   <EmptyState description="Coba gunakan kata kunci lain." title="Siswa tidak ditemukan" />
@@ -91,7 +95,7 @@ export function TeacherStudentList() {
             ) : null}
 
             <div className="grid gap-4 md:grid-cols-2">
-              {filteredStudents.map((student) => (
+              {students.map((student) => (
                 <Card className="group flex h-full flex-col transition hover:-translate-y-1 hover:shadow-emi" key={student.student_id}>
                   <CardHeader className="flex-1">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -130,6 +134,7 @@ export function TeacherStudentList() {
                 </Card>
               ))}
             </div>
+            <Pagination onPageChange={setPage} page={meta?.current_page ?? page} totalPages={meta?.last_page ?? 1} />
           </div>
         )
       ) : null}

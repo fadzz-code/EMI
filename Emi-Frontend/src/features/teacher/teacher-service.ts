@@ -1,5 +1,6 @@
 import { apiClient } from "@/lib/api-client";
 
+import { teacherProgressRequestQuery } from "./teacher-workflow";
 import type {
   PaginatedResult,
   TeacherClass,
@@ -69,11 +70,13 @@ export const teacherService = {
     return response.data;
   },
 
-  async classStudents(token: string, classId: string) {
+  async classStudents(token: string, classId: string, query: { page?: number; per_page?: number; search?: string } = {}) {
     const response = await apiClient.get<TeacherClassStudent[]>(`/classes/${classId}/students`, {
       token,
       query: {
-        per_page: 100,
+        page: query.page,
+        per_page: query.per_page ?? 12,
+        search: query.search,
         sort_by: "full_name",
         sort_direction: "asc",
       },
@@ -251,6 +254,16 @@ export const teacherService = {
     return response.data;
   },
 
+  async deleteQuiz(token: string, quizId: string) {
+    await apiClient.delete(`/class-quizzes/${quizId}`, { token });
+  },
+
+  async archiveQuiz(token: string, quizId: string) {
+    const response = await apiClient.post<TeacherClassQuiz>(`/class-quizzes/${quizId}/archive`, {}, { token });
+    if (!response.data) throw new Error("Gagal mengarsipkan kuis.");
+    return response.data;
+  },
+
   async publishQuiz(token: string, quizId: string) {
     const response = await apiClient.post<TeacherClassQuiz>(`/class-quizzes/${quizId}/publish`, {}, { token });
 
@@ -318,28 +331,25 @@ export const teacherService = {
     return response.data;
   },
 
-  async studentProgress(token: string) {
+  async studentProgress(token: string, query: { class_id: string; page?: number; per_page?: number; search?: string } ) {
     const response = await apiClient.get<TeacherProgressStudentRow[]>(
       "/teacher/reports/progress/students",
       {
         token,
-        query: {
-          per_page: 100,
-          sort_by: "full_name",
-          sort_direction: "asc",
-        },
+        query: teacherProgressRequestQuery(query),
       },
     );
 
     return paginated(response.data, response.meta);
   },
 
-  async studentDetail(token: string, studentId: string) {
+  async studentDetail(token: string, studentId: string, classId: string) {
     const response = await apiClient.get<TeacherProgressStudentRow[]>(
       "/teacher/reports/progress/students",
       {
         token,
         query: {
+          class_id: classId,
           per_page: 1,
           student_id: studentId,
         },
