@@ -106,6 +106,50 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('opening admin roots keeps selected ListTile on Material', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final router = await pumpShell(tester, '/admin/dashboard');
+
+    for (final route in [
+      '/admin/dashboard',
+      '/admin/approvals',
+      '/admin/schools',
+      '/admin/classes',
+      '/admin/users',
+      '/admin/dictionary',
+      '/admin/reports',
+      '/admin/settings',
+    ]) {
+      router.go(route);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('adminMenuButton')));
+      await tester.pumpAndSettle();
+      final selectedTile = tester.widget<ListTile>(
+        find.descendant(
+          of: find.byType(Drawer),
+          matching: find.byWidgetPredicate(
+            (widget) => widget is ListTile && widget.selected,
+          ),
+        ),
+      );
+      expect(selectedTile.selectedTileColor, isNotNull);
+      expect(
+        find.ancestor(
+          of: find.byWidget(selectedTile),
+          matching: find.byType(Material),
+        ),
+        findsWidgets,
+      );
+      expect(tester.takeException(), isNull);
+      Navigator.of(tester.element(find.byType(Drawer))).pop();
+      await tester.pumpAndSettle();
+    }
+  });
+
   testWidgets('quick navigation has four balanced root actions', (
     tester,
   ) async {

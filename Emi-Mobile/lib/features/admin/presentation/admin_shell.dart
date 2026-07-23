@@ -381,19 +381,22 @@ class _Item extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.only(
-        left: indented ? EmiSpacing.lg : EmiSpacing.md,
-        right: EmiSpacing.md,
+    return Material(
+      type: MaterialType.transparency,
+      child: ListTile(
+        contentPadding: EdgeInsets.only(
+          left: indented ? EmiSpacing.lg : EmiSpacing.md,
+          right: EmiSpacing.md,
+        ),
+        leading: Icon(icon, size: 22),
+        title: Text(label),
+        selected: selected,
+        selectedTileColor: EmiColors.secondary,
+        onTap: () {
+          Navigator.of(context).pop();
+          if (!selected) context.go(route);
+        },
       ),
-      leading: Icon(icon, size: 22),
-      title: Text(label),
-      selected: selected,
-      selectedTileColor: EmiColors.secondary,
-      onTap: () {
-        Navigator.of(context).pop();
-        if (!selected) context.go(route);
-      },
     );
   }
 }
