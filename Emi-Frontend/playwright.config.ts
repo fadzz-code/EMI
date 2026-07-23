@@ -38,7 +38,7 @@ export default defineConfig({
     },
     {
       name: "chromium",
-      testMatch: /e2e[\\/](admin|teacher|student)[\\/].*\.spec\.ts/,
+      testMatch: /e2e[\\/]admin[\\/].*\.spec\.ts/,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/admin.json",
@@ -47,7 +47,7 @@ export default defineConfig({
     },
     {
       name: "teacher",
-      testMatch: /.*teacher.*\.spec\.ts/,
+      testMatch: /e2e[\\/]teacher[\\/].*\.spec\.ts/,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/teacher.json",
@@ -56,7 +56,7 @@ export default defineConfig({
     },
     {
       name: "student",
-      testMatch: /.*student.*\.spec\.ts/,
+      testMatch: /e2e[\\/]student[\\/].*\.spec\.ts/,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/student.json",
@@ -65,7 +65,7 @@ export default defineConfig({
     },
     {
       name: "cross-role",
-      testMatch: /.*cross-role.*\.spec\.ts/,
+      testMatch: /e2e[\\/]cross-role[\\/].*cross-role.*\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
       dependencies: ["setup"],
     },

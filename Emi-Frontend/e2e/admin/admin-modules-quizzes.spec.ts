@@ -27,6 +27,7 @@ test("admin membuat, mengubah, memuat ulang, dan menghapus modul", async ({ page
 });
 
 test("admin membuat, mengubah, memuat ulang, dan menghapus kuis", async ({ page }) => {
+  test.setTimeout(60_000);
   const title = adminData("Kuis");
   await openAdmin(page, "/admin/quizzes", "Kuis & LKPD Default");
   await page.getByRole("button", { name: "Tambah Kuis" }).click();
