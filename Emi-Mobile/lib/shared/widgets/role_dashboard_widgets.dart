@@ -175,6 +175,8 @@ class FriendlyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.all(EmiSpacing.lg),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       children: [
         const SizedBox(height: EmiSpacing.xl),
         Icon(icon, size: 64),

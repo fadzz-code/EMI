@@ -11,6 +11,36 @@ import 'package:emi_mobile/features/admin/data/admin_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets(
+    'empty admin dashboard nests friendly state without layout error',
+    (tester) async {
+      final router = GoRouter(
+        initialLocation: '/admin/dashboard',
+        routes: [
+          GoRoute(
+            path: '/admin/dashboard',
+            builder: (_, _) => const AdminDashboardScreen(),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            adminDashboardProvider.overrideWith(
+              (_) async => const AdminSummary(items: []),
+            ),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Belum Ada Data'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   test('admin summary maps web dashboard metrics without fake numbers', () {
     final summary = AdminSummary.fromJson({
       'overview': {

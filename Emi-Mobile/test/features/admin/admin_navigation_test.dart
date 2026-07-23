@@ -1,4 +1,5 @@
 import 'package:emi_mobile/features/admin/presentation/admin_shell.dart';
+import 'package:emi_mobile/shared/widgets/emi_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -147,6 +148,40 @@ void main() {
       expect(tester.takeException(), isNull);
       Navigator.of(tester.element(find.byType(Drawer))).pop();
       await tester.pumpAndSettle();
+    }
+  });
+
+  testWidgets('admin card routes provide Material to ListTile variants', (
+    tester,
+  ) async {
+    const routes = <String, Widget>{
+      '/admin/approvals': ListTile(title: Text('Approval')),
+      '/admin/users': ListTile(title: Text('User')),
+      '/admin/schools': ListTile(title: Text('School')),
+      '/admin/classes': ListTile(title: Text('Class')),
+      '/admin/reports': ListTile(title: Text('Report')),
+      '/admin/settings': SwitchListTile(value: true, onChanged: null),
+    };
+
+    for (final entry in routes.entries) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: EmiCard(key: ValueKey(entry.key), child: entry.value),
+          ),
+        ),
+      );
+      await tester.pump();
+      final tile = find.descendant(
+        of: find.byKey(ValueKey(entry.key)),
+        matching: find.byType(entry.value.runtimeType),
+      );
+      expect(
+        find.ancestor(of: tile, matching: find.byType(Material)),
+        findsWidgets,
+        reason: entry.key,
+      );
+      expect(tester.takeException(), isNull, reason: entry.key);
     }
   });
 

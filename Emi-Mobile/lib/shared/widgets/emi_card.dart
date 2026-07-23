@@ -17,12 +17,11 @@ class EmiCard extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: EmiColors.surface,
         border: Border.all(color: EmiColors.border, width: 2),
         borderRadius: BorderRadius.circular(EmiRadii.card),
         boxShadow: const [EmiShadows.hard],
       ),
-      child: child,
+      child: Material(color: EmiColors.surface, child: child),
     );
   }
 }
