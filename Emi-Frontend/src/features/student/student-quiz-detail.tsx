@@ -2,23 +2,31 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ClipboardList } from "lucide-react";
 
-import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, StatsCard } from "@/components/ui";
+import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, Pagination, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { studentQuizService } from "./student-quiz-service";
-import { formatCount, formatDate, formatOptional, formatScoreOutOf100 } from "./student-utils";
+import { formatCount, formatDate, formatOptional, formatScoreOutOf100, statusLabel } from "./student-utils";
 
 export function StudentQuizDetail({ quizId }: { quizId: string }) {
   const { token } = useAuth();
   const router = useRouter();
+  const [historyPage, setHistoryPage] = useState(1);
 
   const quizQuery = useQuery({
     queryKey: ["student", "quizzes", quizId],
     queryFn: () => studentQuizService.detail(token ?? "", quizId),
+    enabled: Boolean(token && quizId),
+  });
+
+  const historyQuery = useQuery({
+    queryKey: ["student", "quiz-attempt-history", quizId, historyPage],
+    queryFn: () => studentQuizService.attempts(token ?? "", quizId, { page: historyPage, per_page: 5 }),
     enabled: Boolean(token && quizId),
   });
 
@@ -96,6 +104,26 @@ export function StudentQuizDetail({ quizId }: { quizId: string }) {
             <StatsCard helper="Percobaan terpakai" label="Percobaan" value={quiz.max_attempts ? `${usedAttempts} / ${quiz.max_attempts}` : formatCount(usedAttempts)} />
             <StatsCard helper={hasSubmittedScore ? `Terakhir dikumpulkan: ${formatDate(quiz.latest_submitted_at)}` : "Belum ada percobaan yang selesai"} label="Nilai Terakhir" value={hasSubmittedScore ? formatScoreOutOf100(quiz.latest_score_normalized) : "Belum dikerjakan"} />
           </section>
+
+          <Card>
+            <CardHeader><h2 className="text-xl font-black text-ink">Riwayat Kuis</h2></CardHeader>
+            <CardContent>
+              {historyQuery.isLoading ? <LoadingState title="Memuat riwayat kuis" /> : null}
+              {historyQuery.isError ? <ErrorState description={getFirstApiError(historyQuery.error)} onRetry={() => void historyQuery.refetch()} title="Gagal memuat riwayat kuis" /> : null}
+              {historyQuery.isSuccess && !historyQuery.data.items.length ? <EmptyState description="Belum ada percobaan kuis." title="Riwayat masih kosong" /> : null}
+              {historyQuery.isSuccess && historyQuery.data.items.length ? (
+                <div className="grid gap-4">
+                  {historyQuery.data.items.map((historyAttempt) => (
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border-2 border-border p-4" key={historyAttempt.id}>
+                      <span className="font-bold text-ink">Percobaan {formatCount(historyAttempt.attempt_number)} · {statusLabel(historyAttempt.status)}</span>
+                      <span className="text-sm font-bold text-muted">{formatDate(historyAttempt.submitted_at ?? historyAttempt.started_at)}</span>
+                    </div>
+                  ))}
+                  <Pagination onPageChange={setHistoryPage} page={historyQuery.data.meta?.current_page ?? historyPage} totalPages={historyQuery.data.meta?.last_page ?? 1} />
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>

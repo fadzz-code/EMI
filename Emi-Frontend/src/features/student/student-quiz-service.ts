@@ -56,6 +56,15 @@ export const studentQuizService = {
     return response.data;
   },
 
+  async attempts(token: string, quizId: string, filters: { page?: number; per_page?: number } = {}) {
+    const response = await apiClient.get<QuizAttempt[]>(`/student/quizzes/${quizId}/attempts`, {
+      token,
+      query: { page: filters.page ?? 1, per_page: filters.per_page ?? 5 },
+    });
+
+    return paginated(response.data, response.meta);
+  },
+
   async getStudentQuizResultsReport(token: string, filters: { quiz_id?: string; page?: number; per_page?: number } = {}) {
     const response = await apiClient.get<StudentQuizResultsReport>("/student/reports/quiz-results", {
       token,

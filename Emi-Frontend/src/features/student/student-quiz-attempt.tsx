@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClipboardCheck } from "lucide-react";
@@ -9,7 +9,12 @@ import { Alert, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, I
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
+import { AnswerSaveQueue, createAttemptFinalizer, type QueuedAnswer } from "./student-quiz-attempt-flow";
 import { studentQuizService } from "./student-quiz-service";
+
+function millisecondsUntil(value: string) {
+  return new Date(value).getTime() - Date.now();
+}
 
 export function StudentQuizAttempt({ quizId }: { quizId: string }) {
   const { token } = useAuth();
@@ -22,6 +27,13 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [shortAnswers, setShortAnswers] = useState<Record<string, string>>({});
+  const [finalizeError, setFinalizeError] = useState<unknown>();
+  const [isFinalizing, setIsFinalizing] = useState(false);
+  const shortAnswerRef = useRef("");
+  const dirtyQuestionIdRef = useRef<string | undefined>(undefined);
+  const finalizingRef = useRef(false);
+  const saveQueueRef = useRef(new AnswerSaveQueue());
+  const finalizerRef = useRef<ReturnType<typeof createAttemptFinalizer> | undefined>(undefined);
 
   const quizQuery = useQuery({
     queryKey: ["student", "quizzes", quizId],
@@ -53,10 +65,6 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
     },
   });
 
-  if (!attemptId) {
-    return <ErrorState description="ID Attempt tidak ditemukan di URL." title="Data tidak lengkap" />;
-  }
-
   const isLoading = quizQuery.isLoading || attemptQuery.isLoading;
   const isError = quizQuery.isError || attemptQuery.isError;
   const error = quizQuery.error || attemptQuery.error;
@@ -69,16 +77,52 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
   const selectedOptionId = currentQuestion ? selectedOptions[currentQuestion.id] ?? existingAnswer?.selected_option_id : undefined;
   const shortAnswer = currentQuestion ? shortAnswers[currentQuestion.id] ?? existingAnswer?.answer_text ?? "" : "";
 
-  function handleOptionSelect(optionId: string) {
-    if (!currentQuestion || attempt?.status !== "in_progress") return;
-    setSelectedOptions((current) => ({ ...current, [currentQuestion.id]: optionId }));
-    saveAnswerMutation.mutate({ questionId: currentQuestion.id, optionId });
+  async function saveAnswer(answer: QueuedAnswer) {
+    await saveAnswerMutation.mutateAsync(answer);
+    if (answer.answerText !== undefined && dirtyQuestionIdRef.current === answer.questionId && shortAnswerRef.current === answer.answerText) dirtyQuestionIdRef.current = undefined;
   }
 
-  function handleShortAnswerBlur(text: string) {
-    if (!currentQuestion || attempt?.status !== "in_progress") return;
-    setShortAnswers((current) => ({ ...current, [currentQuestion.id]: text }));
-    saveAnswerMutation.mutate({ questionId: currentQuestion.id, answerText: text });
+  function queueAnswer(answer: QueuedAnswer) {
+    return saveQueueRef.current.enqueue(answer, saveAnswer);
+  }
+
+  function handleOptionSelect(optionId: string) {
+    if (!currentQuestion || attempt?.status !== "in_progress" || finalizingRef.current) return;
+    setSelectedOptions((current) => ({ ...current, [currentQuestion.id]: optionId }));
+    void queueAnswer({ questionId: currentQuestion.id, optionId }).catch(() => undefined);
+  }
+
+  function handleShortAnswerBlur() {
+    const questionId = dirtyQuestionIdRef.current;
+    if (!questionId || finalizingRef.current) return;
+    void queueAnswer({ questionId, answerText: shortAnswerRef.current }).catch(() => undefined);
+  }
+
+  async function finalize() {
+    if (finalizingRef.current || attempt?.status !== "in_progress") return;
+    finalizingRef.current = true;
+    setIsFinalizing(true);
+    setFinalizeError(undefined);
+    try {
+      const questionId = dirtyQuestionIdRef.current;
+      finalizerRef.current ??= createAttemptFinalizer(saveQueueRef.current, () => submitMutation.mutateAsync());
+      await finalizerRef.current(questionId ? { questionId, answerText: shortAnswerRef.current } : undefined, saveAnswer);
+    } catch (error) {
+      setFinalizeError(error);
+      finalizingRef.current = false;
+      setIsFinalizing(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!attempt?.expires_at || attempt.status !== "in_progress") return;
+    const delay = millisecondsUntil(attempt.expires_at);
+    const timer = window.setTimeout(() => void finalize(), Math.max(0, delay));
+    return () => window.clearTimeout(timer);
+  });
+
+  if (!attemptId) {
+    return <ErrorState description="ID Attempt tidak ditemukan di URL." title="Data tidak lengkap" />;
   }
 
   function handleNext() {
@@ -118,14 +162,12 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
                 <p className="text-sm font-semibold text-muted">Soal {currentQuestionIndex + 1} dari {questions.length}</p>
               </div>
             </div>
-            {submitMutation.error ? <Alert tone="error">{getFirstApiError(submitMutation.error)}</Alert> : null}
+            {finalizeError ? <Alert tone="error">Jawaban belum berhasil disimpan. Coba kumpulkan kembali.</Alert> : null}
             <Button
               className="w-full sm:w-auto"
-              disabled={submitMutation.isPending}
+              disabled={saveAnswerMutation.isPending || submitMutation.isPending || isFinalizing}
               onClick={() => {
-                if (window.confirm("Apakah Anda yakin ingin mengumpulkan kuis ini sekarang?")) {
-                  submitMutation.mutate();
-                }
+                if (window.confirm("Apakah Anda yakin ingin mengumpulkan kuis ini sekarang?")) void finalize();
               }}
             >
               Kumpulkan Kuis
@@ -152,6 +194,7 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
                         className={`flex min-h-12 w-full items-center rounded-xl border-2 px-4 py-2 text-left font-bold transition-colors ${
                           isSelected ? "border-primary bg-[var(--color-primary-muted)] text-ink shadow-emi" : "border-border bg-surface text-ink hover:bg-surface-muted"
                         }`}
+                        disabled={saveAnswerMutation.isPending || submitMutation.isPending || isFinalizing}
                         key={option.id}
                         onClick={() => handleOptionSelect(option.id)}
                         type="button"
@@ -166,7 +209,13 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
                   <label className="text-sm font-bold text-ink">Jawaban Singkat</label>
                   <Input
                     defaultValue={shortAnswer}
-                    onBlur={(e) => handleShortAnswerBlur(e.target.value)}
+                    disabled={saveAnswerMutation.isPending || submitMutation.isPending || isFinalizing}
+                    onBlur={handleShortAnswerBlur}
+                    onChange={(event) => {
+                      shortAnswerRef.current = event.target.value;
+                      dirtyQuestionIdRef.current = currentQuestion.id;
+                      setShortAnswers((current) => ({ ...current, [currentQuestion.id]: event.target.value }));
+                    }}
                     placeholder="Ketik jawaban Anda lalu klik di luar kotak untuk menyimpan"
                   />
                 </div>
