@@ -377,6 +377,11 @@ class AdminModuleDetailScreen extends ConsumerWidget {
                     onPressed: () => _confirmPublish(context, item),
                     child: const Text('Terbitkan'),
                   ),
+                if (item.status == 'published')
+                  OutlinedButton(
+                    onPressed: () => _applyModule(context, item),
+                    child: const Text('Terapkan ke Kelas'),
+                  ),
                 if (item.status != 'archived')
                   OutlinedButton(
                     onPressed: () => _confirmArchive(context, item),
@@ -1179,6 +1184,78 @@ Future<void> _confirmPublish(BuildContext context, AdminModuleItem item) async {
   );
   if (ok != true || !context.mounted) return;
   await _moduleAction(context, item.id, (repo) => repo.publish(item.id));
+}
+
+Future<void> _applyModule(BuildContext context, AdminModuleItem item) async {
+  final container = ProviderScope.containerOf(context);
+  final repository = container.read(adminModuleRepositoryProvider);
+  List<AdminModuleClassTarget> classes;
+  try {
+    classes = await repository.activeClasses();
+  } on AppError catch (error) {
+    if (context.mounted) _message(context, error.message, error: true);
+    return;
+  }
+  if (!context.mounted) return;
+  if (classes.isEmpty) {
+    _message(context, 'Belum ada kelas aktif.', error: true);
+    return;
+  }
+  final selected = <String>{};
+  final apply = await showDialog<bool>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setDialogState) => AlertDialog(
+        title: const Text('Terapkan Modul ke Kelas'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final target in classes)
+                CheckboxListTile(
+                  value: selected.contains(target.id),
+                  title: Text(target.name),
+                  onChanged: (checked) => setDialogState(() {
+                    checked == true
+                        ? selected.add(target.id)
+                        : selected.remove(target.id);
+                  }),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: selected.isEmpty
+                ? null
+                : () => Navigator.pop(context, true),
+            child: const Text('Terapkan'),
+          ),
+        ],
+      ),
+    ),
+  );
+  if (apply != true || !context.mounted) return;
+  try {
+    await repository.apply(item.id, selected.toList());
+    if (context.mounted) _message(context, 'Modul berhasil diterapkan.');
+  } on AppError catch (error) {
+    if (context.mounted) _message(context, error.message, error: true);
+  }
+}
+
+void _message(BuildContext context, String text, {bool error = false}) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(text),
+      backgroundColor: error ? EmiColors.error : null,
+    ),
+  );
 }
 
 Future<void> _confirmArchive(BuildContext context, AdminModuleItem item) async {

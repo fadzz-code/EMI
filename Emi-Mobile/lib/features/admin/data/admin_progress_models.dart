@@ -220,6 +220,59 @@ class AdminProgressClass {
       );
 }
 
+class AdminProgressSchool {
+  const AdminProgressSchool({
+    required this.id,
+    required this.name,
+    required this.activeClasses,
+    required this.activeStudents,
+    required this.averageLearningProgressPercent,
+    required this.averageQuizScorePercent,
+  });
+  final String id;
+  final String name;
+  final int activeClasses;
+  final int activeStudents;
+  final double averageLearningProgressPercent;
+  final double? averageQuizScorePercent;
+  factory AdminProgressSchool.fromJson(Map<String, dynamic> json) =>
+      AdminProgressSchool(
+        id: _string(json['school_id']),
+        name: _string(json['school_name']),
+        activeClasses: _int(json['active_classes'], 0),
+        activeStudents: _int(json['active_students'], 0),
+        averageLearningProgressPercent:
+            _double(json['average_learning_progress_percent']) ?? 0,
+        averageQuizScorePercent: _double(json['average_quiz_score_percent']),
+      );
+}
+
+class AdminQuizResultRow {
+  const AdminQuizResultRow({
+    required this.studentName,
+    required this.quizTitle,
+    required this.className,
+    required this.attemptCount,
+    required this.bestScorePercent,
+    required this.latestStatus,
+  });
+  final String studentName;
+  final String quizTitle;
+  final String className;
+  final int attemptCount;
+  final double? bestScorePercent;
+  final String? latestStatus;
+  factory AdminQuizResultRow.fromJson(Map<String, dynamic> json) =>
+      AdminQuizResultRow(
+        studentName: _string(_map(json['student'])['full_name']),
+        quizTitle: _string(_map(json['quiz'])['title']),
+        className: _string(_map(json['class'])['name']),
+        attemptCount: _int(json['attempt_count'], 0),
+        bestScorePercent: _double(json['best_score_percent']),
+        latestStatus: _nullableString(json['latest_status']),
+      );
+}
+
 class AdminProgressOverview {
   const AdminProgressOverview({
     required this.summary,
@@ -485,7 +538,7 @@ String adminProgressStatus(String? value) => switch (value) {
   'active' => 'Aktif',
   'inactive' => 'Tidak aktif',
   null || '' => '-',
-  _ => value.replaceAll('_', ' '),
+  _ => 'Status belum dikenal',
 };
 String adminProgressPercent(num? value) =>
     value == null ? '-' : '${value.toStringAsFixed(value % 1 == 0 ? 0 : 2)}%';

@@ -39,6 +39,49 @@ class AdminProgressRepository {
     'page': page,
   }, AdminClassProgressDetail.fromJson);
 
+  Future<AdminProgressPage<AdminProgressSchool>> schoolReport({int page = 1}) =>
+      _page('/admin/reports/progress/schools', {
+        'page': page,
+      }, AdminProgressSchool.fromJson);
+
+  Future<AdminProgressPage<AdminQuizResultRow>> quizResults({
+    int page = 1,
+  }) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/admin/reports/quiz-results',
+        queryParameters: {'page': page},
+      );
+      final data = response.data?['data'];
+      final rows = data is Map ? data['rows'] : null;
+      return AdminProgressPage(
+        items: (rows as List? ?? const [])
+            .whereType<Map>()
+            .map(
+              (e) => AdminQuizResultRow.fromJson(Map<String, dynamic>.from(e)),
+            )
+            .toList(),
+        meta: AdminProgressMeta.fromJson(response.data?['meta']),
+      );
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<List<int>> csv(String report, AdminProgressFilters filters) async {
+    try {
+      final response = await _dio.get<List<int>>(
+        '/admin/reports/$report/export',
+        queryParameters: filters.query(studentPage: 1, classPage: 1)
+          ..removeWhere((key, _) => key.endsWith('_page')),
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return response.data ?? const [];
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
   Future<List<AdminProgressOption>> schools() => _options('/schools');
   Future<List<AdminProgressOption>> classes(String? schoolId) =>
       _options('/classes', {'per_page': 100, 'school_id': ?schoolId});
@@ -61,6 +104,28 @@ class AdminProgressRepository {
         options: Options(responseType: ResponseType.bytes),
       );
       return response.data ?? const [];
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<AdminProgressPage<T>> _page<T>(
+    String path,
+    Map<String, dynamic> query,
+    T Function(Map<String, dynamic>) parse,
+  ) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        path,
+        queryParameters: query,
+      );
+      return AdminProgressPage(
+        items: (response.data?['data'] as List? ?? const [])
+            .whereType<Map>()
+            .map((e) => parse(Map<String, dynamic>.from(e)))
+            .toList(),
+        meta: AdminProgressMeta.fromJson(response.data?['meta']),
+      );
     } catch (error) {
       throw _map(error);
     }

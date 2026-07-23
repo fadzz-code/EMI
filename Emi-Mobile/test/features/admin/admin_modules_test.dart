@@ -22,7 +22,8 @@ void main() {
                     requestOptions: options,
                     data:
                         options.method == 'GET' &&
-                            options.path == '/admin/module-templates'
+                            (options.path == '/admin/module-templates' ||
+                                options.path == '/classes')
                         ? {
                             'data': [data],
                             'meta': {
@@ -46,6 +47,10 @@ void main() {
       expect(page.items.single.lessonsCount, 1);
       expect(await repository.summary().then((value) => value.published), 1);
       expect(
+        await repository.activeClasses().then((value) => value.single.id),
+        'm1',
+      );
+      expect(
         await repository.detail('m1').then((value) => value.lessons.single.id),
         'l1',
       );
@@ -66,6 +71,7 @@ void main() {
       );
       await repository.publish('m1');
       await repository.archive('m1');
+      await repository.apply('m1', const ['c1']);
       await repository.delete('m1');
 
       expect(requests, contains('GET /admin/module-templates'));
@@ -73,8 +79,15 @@ void main() {
       expect(requests, contains('PUT /admin/module-templates/m1'));
       expect(requests, contains('POST /admin/module-templates/m1/publish'));
       expect(requests, contains('POST /admin/module-templates/m1/archive'));
+      expect(requests, contains('POST /admin/module-templates/m1/apply'));
       expect(requests, contains('DELETE /admin/module-templates/m1'));
-      expect((bodies.whereType<Map>().last)['status'], 'draft');
+      expect(
+        bodies.whereType<Map>().any(
+          (body) =>
+              body['class_ids'] is List && body['class_ids'].first == 'c1',
+        ),
+        isTrue,
+      );
     },
   );
 

@@ -16,6 +16,11 @@ void main() {
       ),
     ),
   );
+  test('unknown progress status uses safe Indonesian label', () {
+    expect(adminProgressStatus('future_backend_enum'), 'Status belum dikenal');
+    expect(adminProgressStatus(null), '-');
+  });
+
   final json = <String, dynamic>{
     'student_id': 's1',
     'full_name': 'Ani',
@@ -172,6 +177,28 @@ void main() {
       77,
     ),
   );
+  test('school report parses canonical row', () {
+    final item = AdminProgressSchool.fromJson({
+      'school_id': 'school-1',
+      'school_name': 'Sekolah A',
+      'active_classes': 2,
+      'active_students': 40,
+      'average_learning_progress_percent': 75,
+    });
+    expect(item.id, 'school-1');
+    expect(item.activeStudents, 40);
+  });
+  test('quiz result parses nested identities', () {
+    final item = AdminQuizResultRow.fromJson({
+      'student': {'full_name': 'Ani'},
+      'quiz': {'title': 'Kuis 1'},
+      'class': {'name': 'Kelas 1'},
+      'attempt_count': 2,
+      'best_score_percent': 90,
+    });
+    expect(item.studentName, 'Ani');
+    expect(item.bestScorePercent, 90);
+  });
   testWidgets('overview narrow has four cards in two rows', (tester) async {
     await tester.pumpWidget(
       host(

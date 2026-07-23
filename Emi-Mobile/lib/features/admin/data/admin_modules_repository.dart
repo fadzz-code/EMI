@@ -206,6 +206,19 @@ class AdminModuleMediaUpload {
       );
 }
 
+class AdminModuleClassTarget {
+  const AdminModuleClassTarget({required this.id, required this.name});
+
+  final String id;
+  final String name;
+
+  factory AdminModuleClassTarget.fromJson(Map<String, dynamic> json) =>
+      AdminModuleClassTarget(
+        id: _string(json['id']),
+        name: _string(json['name'], fallback: 'Tanpa nama'),
+      );
+}
+
 class AdminModuleTemporaryUrl {
   const AdminModuleTemporaryUrl({required this.url, required this.expiresAt});
 
@@ -358,6 +371,32 @@ class AdminModuleRepository {
   Future<AdminModuleItem> publish(String id) => _moduleAction(id, 'publish');
 
   Future<AdminModuleItem> archive(String id) => _moduleAction(id, 'archive');
+
+  Future<List<AdminModuleClassTarget>> activeClasses() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/classes',
+        queryParameters: const {'status': 'active', 'per_page': 100},
+      );
+      return (response.data?['data'] as List? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(AdminModuleClassTarget.fromJson)
+          .toList();
+    } catch (error) {
+      throw _mapError(error);
+    }
+  }
+
+  Future<void> apply(String id, List<String> classIds) async {
+    try {
+      await _dio.post<Map<String, dynamic>>(
+        '/admin/module-templates/$id/apply',
+        data: {'class_ids': classIds},
+      );
+    } catch (error) {
+      throw _mapError(error);
+    }
+  }
 
   Future<void> delete(String id) async {
     try {

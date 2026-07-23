@@ -963,6 +963,20 @@ class AdminClassDetailScreen extends ConsumerWidget {
             const SizedBox(height: EmiSpacing.sm),
             _ClassStudentsList(classId: klass.id),
             const SizedBox(height: EmiSpacing.md),
+            _ClassContentList(
+              title: 'Modul Kelas',
+              type: 'modules',
+              classId: klass.id,
+              value: ref.watch(adminClassModulesProvider(klass.id)),
+            ),
+            const SizedBox(height: EmiSpacing.md),
+            _ClassContentList(
+              title: 'Kuis Kelas',
+              type: 'quizzes',
+              classId: klass.id,
+              value: ref.watch(adminClassQuizzesProvider(klass.id)),
+            ),
+            const SizedBox(height: EmiSpacing.md),
             FilledButton(
               onPressed: () => context.push('/admin/classes/${klass.id}/edit'),
               child: const Text('Edit Kelas'),
@@ -1164,6 +1178,104 @@ class AdminClassDetailScreen extends ConsumerWidget {
     }
     ref.invalidate(adminClassDetailProvider(klass.id));
     ref.invalidate(adminClassesProvider);
+  }
+}
+
+class _ClassContentList extends ConsumerWidget {
+  const _ClassContentList({
+    required this.title,
+    required this.type,
+    required this.classId,
+    required this.value,
+  });
+
+  final String title;
+  final String type;
+  final String classId;
+  final AsyncValue<List<AdminClassContent>> value;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(title, style: Theme.of(context).textTheme.titleMedium),
+      value.when(
+        loading: () => const LinearProgressIndicator(),
+        error: (_, _) => Text('$title belum bisa dimuat.'),
+        data: (items) => items.isEmpty
+            ? Text('Belum ada $title.')
+            : Column(
+                children: [
+                  for (final item in items)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(item.title),
+                      subtitle: Text(_statusLabel(item.status)),
+                      trailing: item.status == 'draft'
+                          ? TextButton(
+                              onPressed: () => _publishClassContent(
+                                context,
+                                ref,
+                                type,
+                                classId,
+                                item,
+                              ),
+                              child: const Text('Terbitkan'),
+                            )
+                          : null,
+                    ),
+                ],
+              ),
+      ),
+    ],
+  );
+}
+
+Future<void> _publishClassContent(
+  BuildContext context,
+  WidgetRef ref,
+  String type,
+  String classId,
+  AdminClassContent item,
+) async {
+  final label = type == 'modules' ? 'Modul' : 'Kuis';
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text('Terbitkan $label kelas?'),
+      content: Text('${item.title} akan tersedia bagi siswa kelas.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Terbitkan'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true) return;
+  try {
+    await ref.read(adminRepositoryProvider).publishClassContent(type, item.id);
+    if (type == 'modules') {
+      ref.invalidate(adminClassModulesProvider(classId));
+    } else {
+      ref.invalidate(adminClassQuizzesProvider(classId));
+    }
+    ref.invalidate(adminClassDetailProvider(classId));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$label kelas berhasil diterbitkan.')),
+      );
+    }
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$label kelas belum bisa diterbitkan.')),
+      );
+    }
   }
 }
 

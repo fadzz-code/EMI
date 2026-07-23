@@ -10,6 +10,7 @@ import '../../../app/theme/emi_theme.dart';
 import '../../../shared/widgets/emi_card.dart';
 import '../data/admin_progress_models.dart';
 import '../data/admin_progress_providers.dart';
+import '../data/admin_progress_repository.dart';
 import 'admin_shell.dart';
 
 class AdminReportsScreen extends ConsumerStatefulWidget {
@@ -47,20 +48,22 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
               ),
               const Text('Pantau progress belajar siswa dan kelas.'),
               const SizedBox(height: EmiSpacing.sm),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: EmiSpacing.sm,
-                      vertical: 8,
-                    ),
-                    visualDensity: VisualDensity.compact,
+              Wrap(
+                spacing: EmiSpacing.sm,
+                runSpacing: EmiSpacing.sm,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () => _sharePdf(),
+                    icon: const Icon(Icons.print, size: 24),
+                    label: const Text('Cetak PDF'),
                   ),
-                  onPressed: () => _sharePdf(),
-                  icon: const Icon(Icons.print, size: 24),
-                  label: const Text('Cetak PDF'),
-                ),
+                  OutlinedButton.icon(
+                    onPressed: () =>
+                        _shareCsv('progress/students', 'laporan-siswa.csv'),
+                    icon: const Icon(Icons.share),
+                    label: const Text('Export CSV'),
+                  ),
+                ],
               ),
               const SizedBox(height: EmiSpacing.md),
               Text(
@@ -104,11 +107,35 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
                 onPage: (page) =>
                     ref.read(adminProgressProvider.notifier).classes(page),
               ),
+              const SizedBox(height: EmiSpacing.lg),
+              _RemoteReports(
+                repository: ref.read(adminProgressRepositoryProvider),
+                onCsv: _shareCsv,
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _shareCsv(String report, String name) async {
+    try {
+      final controller = ref.read(adminProgressProvider.notifier);
+      final bytes = await ref
+          .read(adminProgressRepositoryProvider)
+          .csv(report, controller.filters);
+      final file = File('${(await getTemporaryDirectory()).path}/$name');
+      await file.writeAsBytes(bytes, flush: true);
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(file.path)], subject: name),
+      );
+    } catch (_) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('CSV gagal disiapkan.')));
+    }
   }
 
   Future<void> _sharePdf() async {
@@ -130,6 +157,79 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
       }
     }
   }
+}
+
+class _RemoteReports extends StatelessWidget {
+  const _RemoteReports({required this.repository, required this.onCsv});
+  final AdminProgressRepository repository;
+  final Future<void> Function(String, String) onCsv;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      const ProgressSectionHeader('Sekolah'),
+      FutureBuilder(
+        future: repository.schoolReport(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done)
+            return const LinearProgressIndicator();
+          if (snapshot.hasError)
+            return const Text('Laporan sekolah belum bisa dimuat.');
+          return Column(
+            children: [
+              for (final item
+                  in snapshot.data?.items ?? const <AdminProgressSchool>[])
+                EmiCard(
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(item.name),
+                    subtitle: Text(
+                      '${item.activeClasses} kelas · ${item.activeStudents} siswa · Modul ${adminProgressPercent(item.averageLearningProgressPercent)} · Kuis ${adminProgressPercent(item.averageQuizScorePercent)}',
+                    ),
+                  ),
+                ),
+              OutlinedButton(
+                onPressed: () =>
+                    onCsv('progress/schools', 'laporan-sekolah.csv'),
+                child: const Text('Export CSV Sekolah'),
+              ),
+            ],
+          );
+        },
+      ),
+      const SizedBox(height: EmiSpacing.lg),
+      const ProgressSectionHeader('Hasil Kuis'),
+      FutureBuilder(
+        future: repository.quizResults(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done)
+            return const LinearProgressIndicator();
+          if (snapshot.hasError)
+            return const Text('Hasil kuis belum bisa dimuat.');
+          return Column(
+            children: [
+              for (final item
+                  in snapshot.data?.items ?? const <AdminQuizResultRow>[])
+                EmiCard(
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('${item.studentName} · ${item.quizTitle}'),
+                    subtitle: Text(
+                      '${item.className} · ${item.attemptCount} percobaan · ${adminProgressPercent(item.bestScorePercent)} · ${adminProgressStatus(item.latestStatus)}',
+                    ),
+                  ),
+                ),
+              OutlinedButton(
+                onPressed: () => onCsv('quiz-results', 'hasil-kuis.csv'),
+                child: const Text('Export CSV Hasil Kuis'),
+              ),
+            ],
+          );
+        },
+      ),
+    ],
+  );
 }
 
 class _Filters extends ConsumerWidget {

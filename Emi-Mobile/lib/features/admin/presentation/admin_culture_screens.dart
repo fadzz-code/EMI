@@ -59,10 +59,21 @@ class _AdminCultureScreenState extends ConsumerState<AdminCultureScreen> {
           children: [
             const Text('Kelola konten Budaya Mekongga.'),
             const SizedBox(height: EmiSpacing.md),
-            FilledButton.icon(
-              onPressed: () => context.push('/admin/culture/create'),
-              icon: const Icon(Icons.add),
-              label: const Text('Tambah Konten'),
+            Wrap(
+              spacing: EmiSpacing.sm,
+              runSpacing: EmiSpacing.sm,
+              children: [
+                FilledButton.icon(
+                  onPressed: () => context.push('/admin/culture/create'),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Tambah Konten'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => context.push('/admin/culture/templates'),
+                  icon: const Icon(Icons.collections_bookmark_outlined),
+                  label: const Text('Template Budaya'),
+                ),
+              ],
             ),
             const SizedBox(height: EmiSpacing.md),
             TextField(

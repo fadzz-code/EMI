@@ -152,6 +152,34 @@ class AdminCultureSaveRequest {
   };
 }
 
+class AdminCultureTemplate {
+  const AdminCultureTemplate({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.status,
+    required this.items,
+  });
+
+  final String id;
+  final String title;
+  final String description;
+  final String status;
+  final List<AdminCultureItem> items;
+
+  factory AdminCultureTemplate.fromJson(Map<String, dynamic> json) =>
+      AdminCultureTemplate(
+        id: _text(json['id']),
+        title: _text(json['title'], 'Tanpa judul'),
+        description: _text(json['description']),
+        status: _text(json['status'], 'draft'),
+        items: (json['items'] as List? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(AdminCultureItem.fromJson)
+            .toList(),
+      );
+}
+
 class AdminCultureRepository {
   const AdminCultureRepository(this._dio, this._errorMapper);
 
@@ -217,6 +245,107 @@ class AdminCultureRepository {
 
   Future<void> publish(String id) => _action(id, 'publish');
   Future<void> archive(String id) => _action(id, 'archive');
+
+  Future<List<AdminCultureTemplate>> templates() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/admin/culture-templates',
+        queryParameters: const {'per_page': 100},
+      );
+      return (response.data?['data'] as List? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(AdminCultureTemplate.fromJson)
+          .toList();
+    } catch (error) {
+      throw _safe(error);
+    }
+  }
+
+  Future<AdminCultureTemplate> template(String id) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/admin/culture-templates/$id',
+      );
+      return AdminCultureTemplate.fromJson(_map(response.data?['data']));
+    } catch (error) {
+      throw _safe(error);
+    }
+  }
+
+  Future<AdminCultureTemplate> saveTemplate({
+    String? id,
+    required String title,
+    required String description,
+  }) async {
+    try {
+      final data = {
+        'title': title,
+        'description': description,
+        'status': 'draft',
+      };
+      final response = id == null
+          ? await _dio.post<Map<String, dynamic>>(
+              '/admin/culture-templates',
+              data: data,
+            )
+          : await _dio.put<Map<String, dynamic>>(
+              '/admin/culture-templates/$id',
+              data: data,
+            );
+      return AdminCultureTemplate.fromJson(_map(response.data?['data']));
+    } catch (error) {
+      throw _safe(error);
+    }
+  }
+
+  Future<void> saveTemplateItem({
+    required String templateId,
+    String? id,
+    required AdminCultureSaveRequest request,
+  }) async {
+    try {
+      if (id == null) {
+        await _dio.post<void>(
+          '/admin/culture-templates/$templateId/items',
+          data: request.toJson(),
+        );
+      } else {
+        await _dio.put<void>(
+          '/admin/culture-template-items/$id',
+          data: request.toJson(),
+        );
+      }
+    } catch (error) {
+      throw _safe(error);
+    }
+  }
+
+  Future<void> publishTemplate(String id) async {
+    try {
+      await _dio.post<void>('/admin/culture-templates/$id/publish');
+    } catch (error) {
+      throw _safe(error);
+    }
+  }
+
+  Future<void> applyTemplate(String id, List<String> classIds) async {
+    try {
+      await _dio.post<void>(
+        '/admin/culture-templates/$id/apply',
+        data: {'class_ids': classIds},
+      );
+    } catch (error) {
+      throw _safe(error);
+    }
+  }
+
+  Future<void> deleteTemplateItem(String id) async {
+    try {
+      await _dio.delete<void>('/admin/culture-template-items/$id');
+    } catch (error) {
+      throw _safe(error);
+    }
+  }
 
   Future<void> delete(String id) async {
     try {

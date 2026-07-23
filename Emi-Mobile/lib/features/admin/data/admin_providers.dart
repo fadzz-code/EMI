@@ -40,6 +40,16 @@ final adminClassStudentsProvider =
       (ref, id) => ref.watch(adminRepositoryProvider).classStudents(id),
     );
 
+final adminClassModulesProvider =
+    FutureProvider.family<List<AdminClassContent>, String>(
+      (ref, id) => ref.watch(adminRepositoryProvider).classModules(id),
+    );
+
+final adminClassQuizzesProvider =
+    FutureProvider.family<List<AdminClassContent>, String>(
+      (ref, id) => ref.watch(adminRepositoryProvider).classQuizzes(id),
+    );
+
 final adminSchoolsProvider =
     AsyncNotifierProvider<AdminSchoolsController, AdminSchoolPage>(
       AdminSchoolsController.new,

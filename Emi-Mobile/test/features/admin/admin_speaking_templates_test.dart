@@ -280,11 +280,14 @@ void main() {
   testWidgets('archive exact dialog copy and cancel keeps detail', (
     tester,
   ) async {
-    await _pump(tester, initial: '/admin/speaking/s1');
+    final requests = <RequestOptions>[];
+    await _pump(tester, initial: '/admin/speaking/s1', requests: requests);
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Arsipkan'), 300);
+    requests.clear();
     await tester.tap(find.text('Arsipkan'));
     await tester.pumpAndSettle();
+    expect(requests, isEmpty);
     expect(
       find.text(
         'Template akan disembunyikan dari latihan baru, tetapi data tetap tersimpan.',

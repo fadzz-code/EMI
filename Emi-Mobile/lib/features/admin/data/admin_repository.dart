@@ -321,6 +321,25 @@ class AdminClass {
   }
 }
 
+class AdminClassContent {
+  const AdminClassContent({
+    required this.id,
+    required this.title,
+    required this.status,
+  });
+
+  final String id;
+  final String title;
+  final String status;
+
+  factory AdminClassContent.fromJson(Map<String, dynamic> json) =>
+      AdminClassContent(
+        id: _string(json['id']),
+        title: _string(json['title'], fallback: 'Tanpa judul'),
+        status: _string(json['status'], fallback: 'draft'),
+      );
+}
+
 class AdminClassStudent {
   const AdminClassStudent({
     required this.id,
@@ -541,6 +560,40 @@ class AdminRepository {
         type: AppErrorType.unknown,
         message: 'Data kelas tidak valid.',
       );
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<List<AdminClassContent>> classModules(String classId) =>
+      _classContent('/classes/$classId/modules');
+
+  Future<List<AdminClassContent>> classQuizzes(String classId) =>
+      _classContent('/class-quizzes', {'class_id': classId, 'per_page': 100});
+
+  Future<void> publishClassContent(String type, String id) async {
+    try {
+      await _dio.post<void>('/class-$type/$id/publish');
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<List<AdminClassContent>> _classContent(
+    String path, [
+    Map<String, dynamic>? query,
+  ]) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        path,
+        queryParameters: query ?? const {'per_page': 100},
+      );
+      final raw = response.data?['data'];
+      final rows = raw is Map ? raw['data'] : raw;
+      return (rows as List? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(AdminClassContent.fromJson)
+          .toList();
     } catch (error) {
       throw _map(error);
     }

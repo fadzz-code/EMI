@@ -9,6 +9,30 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
 
 void main() {
+  test('class instance publish uses canonical endpoints', () async {
+    final requests = <String>[];
+    final repository = AdminRepository(
+      Dio(BaseOptions(baseUrl: 'https://example.test'))
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              requests.add('${options.method} ${options.path}');
+              handler.resolve(
+                Response(requestOptions: options, data: {'data': {}}),
+              );
+            },
+          ),
+        ),
+      const DioErrorMapper(),
+    );
+
+    await repository.publishClassContent('modules', 'm1');
+    await repository.publishClassContent('quizzes', 'q1');
+
+    expect(requests, contains('POST /class-modules/m1/publish'));
+    expect(requests, contains('POST /class-quizzes/q1/publish'));
+  });
+
   testWidgets('admin class movement updates target and source detail caches', (
     tester,
   ) async {
