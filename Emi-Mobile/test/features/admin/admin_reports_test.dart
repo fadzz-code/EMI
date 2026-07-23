@@ -1,7 +1,12 @@
+import 'package:dio/dio.dart';
+import 'package:emi_mobile/core/errors/dio_error_mapper.dart';
 import 'package:emi_mobile/features/admin/data/admin_progress_models.dart';
+import 'package:emi_mobile/features/admin/data/admin_progress_providers.dart';
+import 'package:emi_mobile/features/admin/data/admin_progress_repository.dart';
 import 'package:emi_mobile/features/admin/presentation/admin_progress_detail_screens.dart';
 import 'package:emi_mobile/features/admin/presentation/admin_reports_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -198,6 +203,68 @@ void main() {
     });
     expect(item.studentName, 'Ani');
     expect(item.bestScorePercent, 90);
+  });
+  testWidgets('Redmi 9T progress filters handle long options', (tester) async {
+    final dio = Dio(BaseOptions(baseUrl: 'https://example.test'))
+      ..interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) => handler.resolve(
+            Response(
+              requestOptions: options,
+              data: {
+                'data': {
+                  'summary': {},
+                  'students': {'data': []},
+                  'classes': {'data': []},
+                  'capabilities': {'speaking_reports': false},
+                },
+              },
+            ),
+          ),
+        ),
+      );
+    const school = AdminProgressOption(
+      'school-1',
+      'Sekolah Menengah Pertama Negeri Mekongga dengan Nama Sangat Panjang',
+    );
+    const schoolClass = AdminProgressOption(
+      'class-1',
+      'Kelas Bahasa Mekongga Tingkat Lanjut dengan Nama Sangat Panjang',
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          adminProgressRepositoryProvider.overrideWithValue(
+            AdminProgressRepository(dio, const DioErrorMapper()),
+          ),
+          adminProgressSchoolsProvider.overrideWith((_) async => [school]),
+          adminProgressClassesProvider.overrideWith(
+            (_, _) async => [schoolClass],
+          ),
+        ],
+        child: MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(393, 873)),
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: ProgressFilters(search: TextEditingController()),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final dropdowns = find.byType(DropdownButtonFormField<String>);
+    await tester.tap(dropdowns.at(0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(school.name).last);
+    await tester.pumpAndSettle();
+    await tester.tap(dropdowns.at(1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(schoolClass.name).last);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
   });
   testWidgets('overview narrow has four cards in two rows', (tester) async {
     await tester.pumpWidget(

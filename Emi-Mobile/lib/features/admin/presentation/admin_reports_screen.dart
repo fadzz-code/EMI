@@ -76,7 +76,7 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
                 speakingReports: data.speakingReports,
               ),
               const SizedBox(height: EmiSpacing.md),
-              _Filters(search: search),
+              ProgressFilters(search: search),
               const SizedBox(height: EmiSpacing.lg),
               const ProgressSectionHeader('Siswa'),
               if (data.students.items.isEmpty)
@@ -237,8 +237,8 @@ class _RemoteReports extends StatelessWidget {
   );
 }
 
-class _Filters extends ConsumerWidget {
-  const _Filters({required this.search});
+class ProgressFilters extends ConsumerWidget {
+  const ProgressFilters({super.key, required this.search});
   final TextEditingController search;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -277,6 +277,7 @@ class _Filters extends ConsumerWidget {
         ),
         const SizedBox(height: EmiSpacing.sm),
         DropdownButtonFormField<String>(
+          isExpanded: true,
           initialValue: controller.filters.schoolId,
           decoration: const InputDecoration(
             labelText: 'Sekolah',
@@ -295,6 +296,7 @@ class _Filters extends ConsumerWidget {
         ),
         const SizedBox(height: EmiSpacing.sm),
         DropdownButtonFormField<String>(
+          isExpanded: true,
           initialValue: controller.filters.classId,
           decoration: const InputDecoration(
             labelText: 'Kelas',
