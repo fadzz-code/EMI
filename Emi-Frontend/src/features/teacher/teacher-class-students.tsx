@@ -20,13 +20,13 @@ export function TeacherClassStudents({ classId }: { classId: string }) {
     enabled: Boolean(token && classId),
   });
   const progressQuery = useQuery({
-    queryKey: ["teacher", "progress", "students"],
-    queryFn: () => teacherService.studentProgress(token ?? ""),
-    enabled: Boolean(token),
+    queryKey: ["teacher", "progress", "students", classId, "all"],
+    queryFn: () => teacherService.allStudentProgress(token ?? "", classId),
+    enabled: Boolean(token && classId),
   });
 
   const students = studentsQuery.data?.items ?? [];
-  const progressRows = progressQuery.data?.items ?? [];
+  const progressRows = progressQuery.data ?? [];
 
   return (
     <div className="grid gap-6">
@@ -47,12 +47,12 @@ export function TeacherClassStudents({ classId }: { classId: string }) {
           <div className="grid gap-4">
             <section className="grid gap-4 sm:grid-cols-3">
               <StatsCard helper="Siswa aktif di kelas" label="Total siswa" value={formatCount(students.length)} />
-              <StatsCard helper="Jika laporan progress tersedia" label="Progress tersedia" value={formatCount(progressRows.length)} />
-              <StatsCard helper="Data kosong bukan dibuat-buat" label="Catatan" value={progressRows.length > 0 ? "Real" : "Belum tersedia"} />
+              <StatsCard helper="Siswa dengan laporan progres" label="Progres tersedia" value={formatCount(progressRows.length)} />
+              <StatsCard helper="Berdasarkan data laporan" label="Status data" value={progressRows.length > 0 ? "Tersedia" : "Belum tersedia"} />
             </section>
             <div className="grid gap-4 md:grid-cols-2">
               {students.map((membership) => {
-                const progress = progressRows.find((row) => row.student_id === membership.student.id || row.full_name === membership.student.full_name);
+                const progress = progressRows.find((row) => row.student_id === membership.student.id);
 
                 return (
                   <Card key={membership.membership_id}>

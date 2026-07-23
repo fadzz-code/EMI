@@ -41,8 +41,8 @@ function statusTone(status?: string | null): "yellow" | "blue" | "orange" {
 function statusLabel(status?: string | null) {
   return {
     draft: "Draft",
-    published: "Published",
-    archived: "Archived",
+    published: "Terbit",
+    archived: "Arsip",
   }[status ?? ""] ?? "Status";
 }
 
@@ -297,8 +297,8 @@ export function TeacherSpeakingExercises() {
                 <Select onChange={(event) => void applyFilters(selectedClassId, event.target.value)} value={statusFilter}>
                   <option value="">Semua status</option>
                   <option value="draft">Draft</option>
-                  <option value="published">Published</option>
-                  <option value="archived">Archived</option>
+<option value="published">Terbit</option>
+                   <option value="archived">Arsip</option>
                 </Select>
               </FormField>
             </div>
@@ -425,7 +425,7 @@ export function TeacherSpeakingExercises() {
             <FormField label="Status">
               <Select onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as FormState["status"] }))} value={form.status}>
                 <option value="draft">Draft</option>
-                <option value="published">Published</option>
+                <option value="published">Terbit</option>
               </Select>
             </FormField>
           </div>

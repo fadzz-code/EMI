@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState, PageHeader, StatsCard, Textarea } from "@/components/ui";
+import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState, PageHeader, Pagination, StatsCard, Textarea } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 import { teacherRoutes } from "@/lib/routes";
@@ -25,9 +25,10 @@ export function TeacherQuizList() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
+  const [page, setPage] = useState(1);
   const quizzesQuery = useQuery({
-    queryKey: ["teacher", "quizzes"],
-    queryFn: () => teacherService.quizzes(token ?? ""),
+    queryKey: ["teacher", "quizzes", page],
+    queryFn: () => teacherService.quizzes(token ?? "", { page }),
     enabled: Boolean(token),
   });
   const classesQuery = useQuery({
@@ -41,6 +42,13 @@ export function TeacherQuizList() {
       queryClient.invalidateQueries({ queryKey: ["teacher", "quizzes"] });
       router.push(teacherRoutes.quizBuilder(quiz.id));
     },
+  });
+  const lifecycleMutation = useMutation({
+    mutationFn: async (quiz: TeacherClassQuiz) => {
+      if (quiz.status === "draft" && (quiz.attempts_count ?? 0) === 0) await teacherService.deleteQuiz(token ?? "", quiz.id);
+      else await teacherService.archiveQuiz(token ?? "", quiz.id);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["teacher", "quizzes"] }),
   });
 
   const quizzes = quizzesQuery.data?.items ?? [];
@@ -122,6 +130,7 @@ export function TeacherQuizList() {
                     </CardHeader>
                     <CardContent>
                       {locked ? <Alert tone="warning">{lockedMessage}</Alert> : null}
+                      {lifecycleMutation.error ? <Alert tone="error">{getFirstApiError(lifecycleMutation.error)}</Alert> : null}
                       <p className="mt-3 text-sm leading-6 text-slate-600 line-clamp-2">{formatOptional(quiz.description)}</p>
                       <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                         <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Durasi</dt><dd className="mt-1 font-bold text-ink">{formatCount(quiz.duration_minutes)} menit</dd></div>
@@ -129,11 +138,13 @@ export function TeacherQuizList() {
                         <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Attempt</dt><dd className="mt-1 font-bold text-ink">{formatCount(quiz.attempts_count)}</dd></div>
                         <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Buka</dt><dd className="mt-1 font-bold text-ink">{formatDate(quiz.open_at)}</dd></div>
                       </dl>
+                      {quiz.status !== "archived" ? <Button className="mt-4" disabled={lifecycleMutation.isPending} onClick={() => { const action = quiz.status === "draft" && (quiz.attempts_count ?? 0) === 0 ? "Hapus" : "Arsipkan"; if (confirm(`${action} kuis ini?`)) lifecycleMutation.mutate(quiz); }} type="button" variant="danger">{quiz.status === "draft" && (quiz.attempts_count ?? 0) === 0 ? "Hapus Draft" : "Arsipkan"}</Button> : null}
                     </CardContent>
                   </Card>
                 );
               })}
             </div>
+            <Pagination onPageChange={setPage} page={quizzesQuery.data?.meta?.current_page ?? page} totalPages={quizzesQuery.data?.meta?.last_page ?? 1} />
           </div>
         )
       ) : null}

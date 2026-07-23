@@ -46,7 +46,46 @@ export function statusLabel(status: string | null | undefined) {
     return "Arsip";
   }
 
+  if (status === "approved") {
+    return "Disetujui";
+  }
+
+  if (status === "pending") {
+    return "Menunggu persetujuan";
+  }
+
+  if (status === "rejected") {
+    return "Ditolak";
+  }
+
+  if (status === "not_started") {
+    return "Belum mulai";
+  }
+
+  if (status === "in_progress") {
+    return "Sedang dikerjakan";
+  }
+
+  if (status === "completed") {
+    return "Selesai";
+  }
+
   return formatOptional(status);
+}
+
+export function contentTypeLabel(type: string | null | undefined) {
+  const labels: Record<string, string> = {
+    article: "Artikel",
+    audio: "Audio",
+    image: "Gambar",
+    link: "Tautan",
+    pdf: "PDF",
+    text: "Teks",
+    video: "Video",
+    youtube: "YouTube",
+  };
+
+  return type ? labels[type] ?? "Konten" : "Konten";
 }
 
 export function activityLabel(type: string | null | undefined) {

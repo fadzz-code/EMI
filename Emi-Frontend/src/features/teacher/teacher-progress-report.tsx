@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import { Badge, Card, CardContent, EmptyState, ErrorState, LoadingState, PageHeader, StatsCard } from "@/components/ui";
+import { Badge, Card, CardContent, EmptyState, ErrorState, Input, LoadingState, PageHeader, Pagination, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 import { teacherRoutes } from "@/lib/routes";
@@ -13,18 +14,30 @@ import { formatCount, formatOptional, formatPercent } from "./teacher-utils";
 
 export function TeacherProgressReport() {
   const { token, user } = useAuth();
+  const classId = user?.active_class?.id ?? "";
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [learningStatus, setLearningStatus] = useState("");
+  const [quizStatus, setQuizStatus] = useState("");
+  const filters = { search, learningStatus, quizStatus };
   const progressQuery = useQuery({
-    queryKey: ["teacher", "progress", "students", "report"],
-    queryFn: () => teacherService.studentProgress(token ?? ""),
-    enabled: Boolean(token),
+    queryKey: ["teacher", "progress", "students", "report", classId, page, filters],
+    queryFn: () => teacherService.studentProgress(token ?? "", { classId, page, ...filters }),
+    enabled: Boolean(token && classId),
+  });
+  const summaryQuery = useQuery({
+    queryKey: ["teacher", "progress", "students", "summary", classId, filters],
+    queryFn: () => teacherService.allStudentProgress(token ?? "", classId, filters),
+    enabled: Boolean(token && classId),
   });
 
   const students = progressQuery.data?.items ?? [];
-  const averageProgress = students.length > 0
-    ? students.reduce((acc, student) => acc + (student.overall_learning_progress_percent ?? 0), 0) / students.length
+  const allStudents = summaryQuery.data ?? [];
+  const averageProgress = allStudents.length > 0
+    ? allStudents.reduce((acc, student) => acc + (student.overall_learning_progress_percent ?? 0), 0) / allStudents.length
     : null;
-  const completedQuizCount = students.reduce((acc, student) => acc + (student.quizzes_completed ?? 0), 0);
-  const completedModuleCount = students.reduce((acc, student) => acc + (student.completed_modules ?? 0), 0);
+  const completedQuizCount = allStudents.reduce((acc, student) => acc + (student.quizzes_completed ?? 0), 0);
+  const completedModuleCount = allStudents.reduce((acc, student) => acc + (student.completed_modules ?? 0), 0);
 
   return (
     <div className="grid gap-6">
@@ -34,16 +47,16 @@ export function TeacherProgressReport() {
         title="Laporan Progress Siswa"
       />
 
-      {progressQuery.isLoading ? <LoadingState title="Memuat laporan progress" /> : null}
-      {progressQuery.isError ? (
+      {progressQuery.isLoading || summaryQuery.isLoading ? <LoadingState title="Memuat laporan progress" /> : null}
+      {progressQuery.isError || summaryQuery.isError ? (
         <ErrorState
-          description={getFirstApiError(progressQuery.error)}
-          onRetry={() => void progressQuery.refetch()}
+          description={getFirstApiError(progressQuery.error ?? summaryQuery.error)}
+          onRetry={() => void Promise.all([progressQuery.refetch(), summaryQuery.refetch()])}
           title="Gagal memuat laporan progress"
         />
       ) : null}
 
-      {!progressQuery.isLoading && !progressQuery.isError ? (
+      {!progressQuery.isLoading && !summaryQuery.isLoading && !progressQuery.isError && !summaryQuery.isError ? (
         students.length === 0 ? (
           <Card>
             <CardContent>
@@ -55,8 +68,9 @@ export function TeacherProgressReport() {
           </Card>
         ) : (
           <div className="grid gap-4">
+            <Card><CardContent><div className="grid gap-3 md:grid-cols-3"><Input onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Cari nama siswa..." value={search} /><select className="min-h-11 rounded-lg border-2 border-ink bg-white px-3" onChange={(event) => { setLearningStatus(event.target.value); setPage(1); }} value={learningStatus}><option value="">Semua progress belajar</option><option value="not_started">Belum mulai</option><option value="in_progress">Sedang berjalan</option><option value="completed">Selesai</option></select><select className="min-h-11 rounded-lg border-2 border-ink bg-white px-3" onChange={(event) => { setQuizStatus(event.target.value); setPage(1); }} value={quizStatus}><option value="">Semua progress kuis</option><option value="not_started">Belum mulai</option><option value="in_progress">Sedang berjalan</option><option value="completed">Selesai</option></select></div></CardContent></Card>
             <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <StatsCard helper={user?.active_class?.name ?? "Kelas aktif"} label="Siswa" value={formatCount(students.length)} />
+              <StatsCard helper={user?.active_class?.name ?? "Kelas aktif"} label="Siswa" value={formatCount(allStudents.length)} />
               <StatsCard helper="Rata-rata kelas" label="Progress" value={formatPercent(averageProgress)} />
               <StatsCard helper="Total selesai" label="Modul" value={formatCount(completedModuleCount)} />
               <StatsCard helper="Total selesai" label="Kuis" value={formatCount(completedQuizCount)} />
@@ -140,6 +154,12 @@ export function TeacherProgressReport() {
               </table>
               </div>
             </div>
+
+            <Pagination
+              onPageChange={setPage}
+              page={progressQuery.data?.meta?.current_page ?? page}
+              totalPages={progressQuery.data?.meta?.last_page ?? 1}
+            />
           </div>
         )
       ) : null}

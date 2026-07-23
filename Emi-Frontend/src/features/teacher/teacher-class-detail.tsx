@@ -35,9 +35,9 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
     enabled: Boolean(token && classId),
   });
   const progressQuery = useQuery({
-    queryKey: ["teacher", "progress", "students"],
-    queryFn: () => teacherService.studentProgress(token ?? ""),
-    enabled: Boolean(token),
+    queryKey: ["teacher", "progress", "students", classId],
+    queryFn: () => teacherService.studentProgress(token ?? "", { classId, perPage: 8 }),
+    enabled: Boolean(token && classId),
   });
 
   const teacherClass = classQuery.data;
@@ -75,7 +75,7 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
 
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatsCard helper="Dari detail kelas" label="Sekolah" value={formatOptional(teacherClass.school?.name)} />
-            <StatsCard helper="Assignment aktif" label="Guru" value={formatOptional(teacherClass.active_teacher_assignment?.teacher?.full_name)} />
+            <StatsCard helper="Penugasan aktif" label="Guru" value={formatOptional(teacherClass.active_teacher_assignment?.teacher?.full_name)} />
             <StatsCard helper="Siswa aktif di kelas" label="Siswa" value={formatCount(teacherClass.active_students_count ?? students.length)} />
             <StatsCard helper="Materi yang tersedia" label="Modul" value={formatCount(modules.length)} />
           </section>
@@ -192,7 +192,7 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
                           <Badge tone={quiz.status === "published" ? "blue" : "neutral"}>{statusLabel(quiz.status)}</Badge>
                           <p className="mt-2 font-black text-ink">{quiz.title}</p>
                           <p className="text-sm text-slate-600">{formatOptional(quiz.description)}</p>
-                          <p className="mt-2 text-xs text-slate-500">Soal: {formatCount(quiz.questions_count)} | Attempt: {formatCount(quiz.attempts_count)}</p>
+                          <p className="mt-2 text-xs text-slate-500">Soal: {formatCount(quiz.questions_count)} | Percobaan: {formatCount(quiz.attempts_count)}</p>
                         </div>
                       ))}
                     </div>

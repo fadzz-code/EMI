@@ -43,11 +43,13 @@ export const teacherService = {
     return response.data;
   },
 
-  async classes(token: string) {
+  async classes(token: string, options: { page?: number; perPage?: number; search?: string } = {}) {
     const response = await apiClient.get<TeacherClass[]>("/classes", {
       token,
       query: {
-        per_page: 10,
+        page: options.page ?? 1,
+        per_page: options.perPage ?? 10,
+        search: options.search || undefined,
         sort_by: "name",
         sort_direction: "asc",
       },
@@ -66,11 +68,13 @@ export const teacherService = {
     return response.data;
   },
 
-  async classStudents(token: string, classId: string) {
+  async classStudents(token: string, classId: string, options: { page?: number; perPage?: number; search?: string } = {}) {
     const response = await apiClient.get<TeacherClassStudent[]>(`/classes/${classId}/students`, {
       token,
       query: {
-        per_page: 100,
+        page: options.page ?? 1,
+        per_page: options.perPage ?? 10,
+        search: options.search || undefined,
         sort_by: "full_name",
         sort_direction: "asc",
       },
@@ -152,12 +156,13 @@ export const teacherService = {
     return response.data;
   },
 
-  async classQuizzes(token: string, classId: string) {
+  async classQuizzes(token: string, classId: string, options: { page?: number; perPage?: number } = {}) {
     const response = await apiClient.get<TeacherClassQuiz[]>("/class-quizzes", {
       token,
       query: {
         class_id: classId,
-        per_page: 100,
+        page: options.page ?? 1,
+        per_page: options.perPage ?? 10,
       },
     });
 
@@ -205,11 +210,14 @@ export const teacherService = {
     return this.uploadMedia(token, file, "culture_media", "public");
   },
 
-  async quizzes(token: string) {
+  async quizzes(token: string, options: { page?: number; perPage?: number; search?: string; status?: string } = {}) {
     const response = await apiClient.get<TeacherClassQuiz[]>("/class-quizzes", {
       token,
       query: {
-        per_page: 100,
+        page: options.page ?? 1,
+        per_page: options.perPage ?? 10,
+        search: options.search || undefined,
+        status: options.status || undefined,
         sort_by: "created_at",
         sort_direction: "desc",
       },
@@ -256,6 +264,16 @@ export const teacherService = {
     }
 
     return response.data;
+  },
+
+  async archiveQuiz(token: string, quizId: string) {
+    const response = await apiClient.post<TeacherClassQuiz>(`/class-quizzes/${quizId}/archive`, {}, { token });
+    if (!response.data) throw new Error("Gagal mengarsipkan kuis.");
+    return response.data;
+  },
+
+  async deleteQuiz(token: string, quizId: string) {
+    await apiClient.delete(`/class-quizzes/${quizId}`, { token });
   },
 
   async createQuizQuestion(token: string, quizId: string, payload: Partial<TeacherQuizQuestion>) {
@@ -315,13 +333,18 @@ export const teacherService = {
     return response.data;
   },
 
-  async studentProgress(token: string) {
+  async studentProgress(token: string, options: { classId: string; page?: number; perPage?: number; search?: string; learningStatus?: string; quizStatus?: string }) {
     const response = await apiClient.get<TeacherProgressStudentRow[]>(
       "/teacher/reports/progress/students",
       {
         token,
         query: {
-          per_page: 100,
+          class_id: options.classId,
+          page: options.page ?? 1,
+          per_page: options.perPage ?? 25,
+          search: options.search || undefined,
+          learning_status: options.learningStatus || undefined,
+          quiz_status: options.quizStatus || undefined,
           sort_by: "full_name",
           sort_direction: "asc",
         },
@@ -331,12 +354,28 @@ export const teacherService = {
     return paginated(response.data, response.meta);
   },
 
-  async studentDetail(token: string, studentId: string) {
+  async allStudentProgress(token: string, classId: string, filters: { search?: string; learningStatus?: string; quizStatus?: string } = {}) {
+    const firstPage = await this.studentProgress(token, { classId, page: 1, perPage: 25, ...filters });
+    const lastPage = firstPage.meta?.last_page ?? 1;
+
+    if (lastPage <= 1) return firstPage.items;
+
+    const remainingPages = await Promise.all(
+      Array.from({ length: lastPage - 1 }, (_, index) =>
+        this.studentProgress(token, { classId, page: index + 2, perPage: 25, ...filters }),
+      ),
+    );
+
+    return [firstPage, ...remainingPages].flatMap((result) => result.items);
+  },
+
+  async studentDetail(token: string, studentId: string, classId: string) {
     const response = await apiClient.get<TeacherProgressStudentRow[]>(
       "/teacher/reports/progress/students",
       {
         token,
         query: {
+          class_id: classId,
           per_page: 1,
           student_id: studentId,
         },

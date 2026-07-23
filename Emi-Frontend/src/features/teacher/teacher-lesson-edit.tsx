@@ -66,7 +66,7 @@ export function TeacherLessonEdit({ moduleId, lessonId }: { moduleId: string; le
       <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href={teacherRoutes.moduleEdit(moduleId)}>
         Kembali ke Modul
       </Link>
-      <PageHeader badge="Guru" description="Ubah konten materi kelas Anda." title="Edit Materi (Lesson)" />
+      <PageHeader badge="Guru" description="Ubah konten materi kelas Anda." title="Edit Materi" />
 
       {lessonQuery.isLoading ? <LoadingState title="Memuat detail materi" /> : null}
       {lessonQuery.isError ? <ErrorState description={getFirstApiError(lessonQuery.error)} onRetry={() => void lessonQuery.refetch()} title="Gagal memuat materi" /> : null}
@@ -157,7 +157,7 @@ export function TeacherLessonEdit({ moduleId, lessonId }: { moduleId: string; le
                 {lessonData.media ? (
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                     <p className="font-bold text-ink">Media Terlampir</p>
-                    <p className="text-sm text-slate-600">ID: {lessonData.media.id}</p>
+
                     <p className="text-sm text-slate-600">Tipe: {lessonData.media.mime_type}</p>
                     <div className="mt-2">
                       <Button

@@ -47,8 +47,8 @@ export function TeacherClassQuizzes({ classId }: { classId: string }) {
           <div className="grid gap-4">
             <section className="grid gap-4 sm:grid-cols-3">
               <StatsCard helper="Semua status" label="Total kuis" value={formatCount(quizzes.length)} />
-              <StatsCard helper="Status published" label="Kuis terbit" value={formatCount(publishedCount)} />
-              <StatsCard helper="Percobaan siswa yang tercatat" label="Attempt" value={formatCount(quizzes.reduce((sum, quiz) => sum + (quiz.attempts_count ?? 0), 0))} />
+              <StatsCard helper="Status terbit" label="Kuis terbit" value={formatCount(publishedCount)} />
+              <StatsCard helper="Percobaan siswa yang tercatat" label="Percobaan" value={formatCount(quizzes.reduce((sum, quiz) => sum + (quiz.attempts_count ?? 0), 0))} />
             </section>
             <div className="grid gap-4 md:grid-cols-2">
               {quizzes.map((quiz) => {
@@ -68,7 +68,7 @@ export function TeacherClassQuizzes({ classId }: { classId: string }) {
                       <p className="text-sm leading-6 text-slate-600">{formatOptional(quiz.description)}</p>
                       <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                         <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Soal</dt><dd className="mt-1 font-bold text-ink">{formatCount(quiz.questions_count)}</dd></div>
-                        <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Attempt</dt><dd className="mt-1 font-bold text-ink">{formatCount(quiz.attempts_count)}</dd></div>
+                        <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Percobaan</dt><dd className="mt-1 font-bold text-ink">{formatCount(quiz.attempts_count)}</dd></div>
                         <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Buka</dt><dd className="mt-1 font-bold text-ink">{formatDate(quiz.open_at)}</dd></div>
                         <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Tutup</dt><dd className="mt-1 font-bold text-ink">{formatDate(quiz.close_at)}</dd></div>
                       </dl>

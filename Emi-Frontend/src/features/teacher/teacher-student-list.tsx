@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import { Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState, PageHeader, StatsCard } from "@/components/ui";
+import { Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState, PageHeader, Pagination, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 import { teacherRoutes } from "@/lib/routes";
@@ -14,14 +14,22 @@ import { formatCount, formatOptional, formatPercent } from "./teacher-utils";
 
 export function TeacherStudentList() {
   const { token, user } = useAuth();
+  const classId = user?.active_class?.id ?? "";
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const studentsQuery = useQuery({
-    queryKey: ["teacher", "students"],
-    queryFn: () => teacherService.studentProgress(token ?? ""),
-    enabled: Boolean(token),
+    queryKey: ["teacher", "students", classId, page],
+    queryFn: () => teacherService.studentProgress(token ?? "", { classId, page }),
+    enabled: Boolean(token && classId),
+  });
+  const summaryQuery = useQuery({
+    queryKey: ["teacher", "students", classId, "summary"],
+    queryFn: () => teacherService.allStudentProgress(token ?? "", classId),
+    enabled: Boolean(token && classId),
   });
 
   const students = useMemo(() => studentsQuery.data?.items ?? [], [studentsQuery.data?.items]);
+  const allStudents = summaryQuery.data ?? [];
   const filteredStudents = useMemo(() => {
     const keyword = search.trim().toLowerCase();
     if (!keyword) return students;
@@ -39,16 +47,16 @@ export function TeacherStudentList() {
         title="Daftar Siswa"
       />
 
-      {studentsQuery.isLoading ? <LoadingState title="Memuat siswa" /> : null}
-      {studentsQuery.isError ? (
+      {studentsQuery.isLoading || summaryQuery.isLoading ? <LoadingState title="Memuat siswa" /> : null}
+      {studentsQuery.isError || summaryQuery.isError ? (
         <ErrorState
-          description={getFirstApiError(studentsQuery.error)}
-          onRetry={() => void studentsQuery.refetch()}
+          description={getFirstApiError(studentsQuery.error ?? summaryQuery.error)}
+          onRetry={() => void Promise.all([studentsQuery.refetch(), summaryQuery.refetch()])}
           title="Gagal memuat siswa"
         />
       ) : null}
 
-      {!studentsQuery.isLoading && !studentsQuery.isError ? (
+      {!studentsQuery.isLoading && !summaryQuery.isLoading && !studentsQuery.isError && !summaryQuery.isError ? (
         students.length === 0 ? (
           <Card>
             <CardContent>
@@ -61,15 +69,15 @@ export function TeacherStudentList() {
         ) : (
           <div className="grid gap-4">
             <section className="grid gap-4 sm:grid-cols-3">
-              <StatsCard helper={user?.active_class?.name ?? "Kelas aktif"} label="Total siswa" value={formatCount(students.length)} />
-              <StatsCard helper="Rata-rata kelas" label="Progress belajar" value={formatPercent(
-                students.length > 0
-                  ? students.reduce((acc, s) => acc + (s.overall_learning_progress_percent ?? 0), 0) / students.length
-                  : null
-              )} />
-              <StatsCard helper="Interaksi kuis" label="Penyelesaian Kuis" value={formatCount(
-                students.reduce((acc, s) => acc + (s.quizzes_completed ?? 0), 0)
-              )} />
+               <StatsCard helper={user?.active_class?.name ?? "Kelas aktif"} label="Total siswa" value={formatCount(allStudents.length)} />
+               <StatsCard helper="Rata-rata kelas" label="Progress belajar" value={formatPercent(
+                 allStudents.length > 0
+                   ? allStudents.reduce((acc, s) => acc + (s.overall_learning_progress_percent ?? 0), 0) / allStudents.length
+                   : null
+               )} />
+               <StatsCard helper="Interaksi kuis" label="Penyelesaian Kuis" value={formatCount(
+                 allStudents.reduce((acc, s) => acc + (s.quizzes_completed ?? 0), 0)
+               )} />
             </section>
 
             <Card>
@@ -124,9 +132,15 @@ export function TeacherStudentList() {
                   </CardContent>
                 </Card>
               ))}
-            </div>
-          </div>
-        )
+             </div>
+
+             <Pagination
+               onPageChange={setPage}
+               page={studentsQuery.data?.meta?.current_page ?? page}
+               totalPages={studentsQuery.data?.meta?.last_page ?? 1}
+             />
+           </div>
+         )
       ) : null}
     </div>
   );
