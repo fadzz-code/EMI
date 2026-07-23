@@ -83,7 +83,7 @@ class _TeacherClassesScreenState extends ConsumerState<TeacherClassesScreen> {
                               'Siswa halaman ini',
                               '${result.items.fold<int>(0, (sum, item) => sum + item.studentsCount)}',
                             ),
-                            ('Akses', 'Aman'),
+                            ('Akses', 'Belum tersedia'),
                           ],
                         ),
                         const SizedBox(height: EmiSpacing.md),
@@ -191,13 +191,23 @@ class _TeacherClassDetailScreenState
                 selected: tab,
                 onSelected: (value) => setState(() => tab = value),
               ),
+              if (tab == 4)
+                Padding(
+                  padding: const EdgeInsets.only(top: EmiSpacing.md),
+                  child: FilledButton.icon(
+                    onPressed: () =>
+                        context.push('/teacher/culture?classId=$id'),
+                    icon: const Icon(Icons.public),
+                    label: const Text('Kelola Budaya Kelas'),
+                  ),
+                ),
               const SizedBox(height: EmiSpacing.md),
               switch (tab) {
                 0 => _Summary(id: id),
                 1 => _Students(id: id),
                 2 => _Modules(id: id),
                 3 => _Quizzes(id: id),
-                _ => const _CultureUnavailable(),
+                _ => const SizedBox.shrink(),
               },
             ],
           ),
@@ -368,7 +378,7 @@ class _Students extends ConsumerWidget {
                   items: [
                     ('Total siswa', '${page.items.length}'),
                     ('Progress tersedia', '${progress.length}'),
-                    ('Catatan', progress.isEmpty ? 'Belum tersedia' : 'Real'),
+                    ('Catatan', 'Belum tersedia'),
                   ],
                 ),
                 const SizedBox(height: EmiSpacing.md),
@@ -536,7 +546,7 @@ class _Modules extends ConsumerWidget {
                       'Modul terbit',
                       '${items.where((item) => item.status == 'published').length}',
                     ),
-                    ('Materi', 'Tersedia'),
+                    ('Materi', 'Belum tersedia'),
                   ],
                 ),
                 const SizedBox(height: EmiSpacing.md),
@@ -738,18 +748,6 @@ class _QuizCards extends StatelessWidget {
         const SizedBox(height: EmiSpacing.sm),
       ],
     ],
-  );
-}
-
-class _CultureUnavailable extends StatelessWidget {
-  const _CultureUnavailable();
-
-  @override
-  Widget build(BuildContext context) => const FriendlyState(
-    icon: Icons.public_off_outlined,
-    title: 'Budaya Mekongga belum tersedia',
-    message:
-        'Konteks Budaya Mekongga guru belum tersedia di aplikasi mobile. Gunakan web untuk mengelola konten kelas.',
   );
 }
 

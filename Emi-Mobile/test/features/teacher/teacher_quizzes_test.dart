@@ -318,6 +318,58 @@ void main() {
     ]);
   });
 
+  test(
+    'parses question image and uploads using question image contract',
+    () async {
+      final question = TeacherQuizQuestion.fromJson({
+        'id': 'question-1',
+        'image_media_id': 'media-1',
+        'image_media': {
+          'id': 'media-1',
+          'url': 'https://example.test/question.png',
+          'original_name': 'question.png',
+        },
+      });
+      expect(question.imageMediaId, 'media-1');
+      expect(question.imageUrl, 'https://example.test/question.png');
+    },
+  );
+
+  test(
+    'uses teacher quiz report endpoint and parses backend summary',
+    () async {
+      final page = await repository.report(page: 2, status: 'submitted');
+      expect(requests.single.path, '/teacher/reports/quiz-results');
+      expect(requests.single.queryParameters, {
+        'page': 2,
+        'status': 'submitted',
+      });
+
+      final parsed = TeacherQuizResultPage.fromJson({
+        'data': {
+          'summary': {
+            'average_best_score_percent': 72.5,
+            'highest_best_score_percent': 95,
+            'lowest_best_score_percent': 40,
+          },
+          'rows': [
+            {
+              'student': {'id': 'student-1', 'full_name': 'Budi'},
+              'best_attempt_number': 2,
+              'best_score_percent': 80,
+              'latest_status': 'submitted',
+            },
+          ],
+        },
+        'meta': {'current_page': 2, 'last_page': 3},
+      });
+      expect(page.items, isEmpty);
+      expect([parsed.average, parsed.highest, parsed.lowest], [72.5, 95, 40]);
+      expect(parsed.items.single.studentName, 'Budi');
+      expect(parsed.page, 2);
+    },
+  );
+
   test('raw numeric and boolean values remain typed', () {
     final item = TeacherQuizAttempt.fromJson({
       'id': 'a',

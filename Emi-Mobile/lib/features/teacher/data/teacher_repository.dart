@@ -673,6 +673,17 @@ class TeacherRepository {
     (json) => TeacherModule.fromJson(_data(json, 'Detail modul')),
   );
 
+  Future<TeacherModule> createModule(
+    String classId,
+    Map<String, dynamic> data,
+  ) => _request(
+    () => _dio.post<Map<String, dynamic>>(
+      '/classes/$classId/modules',
+      data: data,
+    ),
+    (json) => TeacherModule.fromJson(_data(json, 'Modul')),
+  );
+
   Future<TeacherModule> updateModule(String id, Map<String, dynamic> data) =>
       _request(
         () => _dio.put<Map<String, dynamic>>('/class-modules/$id', data: data),
@@ -681,6 +692,17 @@ class TeacherRepository {
 
   Future<TeacherModule> publishModule(String id) =>
       _action('/class-modules/$id/publish', 'Modul');
+
+  Future<TeacherModule> archiveModule(String id) =>
+      _action('/class-modules/$id/archive', 'Modul');
+
+  Future<void> deleteModule(String id) async {
+    try {
+      await _dio.delete<void>('/class-modules/$id');
+    } catch (error) {
+      throw error is AppError ? error : _mapper.map(error);
+    }
+  }
 
   Future<TeacherLesson> lessonDetail(String id) => _request(
     () => _dio.get<Map<String, dynamic>>('/class-lessons/$id'),

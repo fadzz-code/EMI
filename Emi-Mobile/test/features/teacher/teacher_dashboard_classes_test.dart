@@ -270,12 +270,12 @@ void main() {
     final classes = File(
       'lib/features/teacher/presentation/teacher_classes_screens.dart',
     ).readAsStringSync();
-    expect(router, contains("path: '/teacher/students'"));
+    expect(router, contains("path: '/teacher/classes'"));
     expect(router, contains("path: '/teacher/students/:id'"));
-    expect(router, contains("path: '/teacher/reports/progress'"));
-    expect(shell, contains("route: '/teacher/students'"));
-    expect(shell, contains("route: '/teacher/reports/progress'"));
-    expect(dashboard, contains("context.go('/teacher/reports/progress')"));
+    expect(router, contains("path: '/teacher/progress'"));
+    expect(shell, contains("route: '/teacher/classes'"));
+    expect(shell, contains("route: '/teacher/progress'"));
+    expect(dashboard, contains("context.go('/teacher/progress')"));
     expect(
       classes,
       contains("context.push('/teacher/students/\${student.id}')"),

@@ -151,6 +151,16 @@ final teacherQuizAttemptsProvider =
           .watch(teacherQuizRepositoryProvider)
           .attempts(value.quizId, page: value.page, status: value.status),
     );
+final teacherQuizReportProvider =
+    FutureProvider.family<
+      TeacherQuizResultPage,
+      ({int page, String quizId, String status})
+    >(
+      (ref, value) => ref
+          .watch(teacherQuizRepositoryProvider)
+          .report(page: value.page, quizId: value.quizId, status: value.status),
+    );
+
 final teacherQuizAttemptProvider =
     FutureProvider.family<TeacherQuizAttempt, String>(
       (ref, id) => ref.watch(teacherQuizRepositoryProvider).attempt(id),

@@ -39,11 +39,15 @@ void main() {
             'title': requestData['title'] ?? 'Bahasa Mekongga',
             'description': requestData['description'] ?? 'Pengantar',
             'sort_order': requestData['sort_order'] ?? 1,
-            'status': options.path.endsWith('/publish') ? 'published' : 'draft',
+            'status': options.path.endsWith('/publish')
+                ? 'published'
+                : options.path.endsWith('/archive')
+                ? 'archived'
+                : 'draft',
             'lessons': [lesson],
           };
           final data = switch (options.path) {
-            '/classes/class-1/modules' => {
+            '/classes/class-1/modules' when options.method == 'GET' => {
               'data': [module],
             },
             '/class-lessons/lesson-1' ||
@@ -90,6 +94,36 @@ void main() {
       'sort_order': 3,
     });
   });
+
+  test('creates module scoped by active class with draft payload', () async {
+    final created = await repository.createModule('class-1', {
+      'title': 'Baru',
+      'description': 'Deskripsi',
+      'sort_order': 2,
+    });
+    expect(created.title, 'Baru');
+    expect(requests.single.method, 'POST');
+    expect(requests.single.path, '/classes/class-1/modules');
+    expect(requests.single.data, {
+      'title': 'Baru',
+      'description': 'Deskripsi',
+      'sort_order': 2,
+    });
+    expect((requests.single.data as Map).containsKey('class_id'), isFalse);
+    expect((requests.single.data as Map).containsKey('status'), isFalse);
+  });
+
+  test(
+    'archives and deletes module through backend lifecycle endpoints',
+    () async {
+      expect((await repository.archiveModule('module-1')).status, 'archived');
+      await repository.deleteModule('module-1');
+      expect(requests.map((item) => '${item.method} ${item.path}'), [
+        'POST /class-modules/module-1/archive',
+        'DELETE /class-modules/module-1',
+      ]);
+    },
+  );
 
   test('publishes module and lesson through action endpoints', () async {
     await repository.publishModule('module-1');

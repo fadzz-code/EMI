@@ -13,12 +13,14 @@ class TeacherShell extends ConsumerWidget {
     required this.child,
     this.fallbackRoute,
     this.onBack,
+    this.actions = const [],
   });
 
   final String title;
   final Widget child;
   final String? fallbackRoute;
   final Future<void> Function()? onBack;
+  final List<Widget> actions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -81,6 +83,7 @@ class TeacherShell extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    ...actions,
                     if (fallbackRoute == null)
                       IconButton(
                         tooltip: 'Profil',

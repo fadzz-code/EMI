@@ -323,9 +323,14 @@ class TeacherSpeakingExerciseDetailScreen extends ConsumerWidget {
       await ref.read(teacherRepositoryProvider).archiveSpeakingExercise(e.id);
       ref.invalidate(teacherSpeakingExercisesProvider);
       if (context.mounted) context.go('/teacher/speaking');
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
-        _snack(context, 'Latihan belum bisa diarsipkan. Silakan coba lagi.');
+        _snack(
+          context,
+          error is AppError
+              ? error.message
+              : 'Latihan belum bisa diarsipkan. Silakan coba lagi.',
+        );
       }
     }
   }
@@ -554,10 +559,8 @@ class _ExerciseFormState
       final refreshedDetail = await ref.refresh(
         teacherSpeakingExerciseProvider(saved.id).future,
       );
-      final refreshedList = await ref.refresh(
-        teacherSpeakingExercisesProvider((classroomId: '', status: '')).future,
-      );
-      if (refreshedDetail.id.isEmpty && refreshedList.isEmpty) return;
+      ref.invalidate(teacherSpeakingExercisesProvider);
+      if (refreshedDetail.id.isEmpty) return;
       if (mounted) context.go('/teacher/speaking/exercises/${saved.id}');
     } catch (e) {
       if (mounted) {

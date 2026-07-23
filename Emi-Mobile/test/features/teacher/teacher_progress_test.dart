@@ -7,7 +7,9 @@ import 'package:emi_mobile/features/auth/presentation/auth_controller.dart';
 import 'package:emi_mobile/features/auth/presentation/auth_state.dart';
 import 'package:emi_mobile/features/teacher/data/teacher_providers.dart';
 import 'package:emi_mobile/features/teacher/data/teacher_repository.dart';
+import 'package:emi_mobile/features/profile/presentation/student_profile_screen.dart';
 import 'package:emi_mobile/features/teacher/presentation/teacher_dashboard_screen.dart';
+import 'package:emi_mobile/features/teacher/presentation/teacher_shell.dart';
 import 'package:emi_mobile/features/teacher/presentation/teacher_dashboard_widgets.dart';
 import 'package:emi_mobile/features/teacher/presentation/teacher_students_screens.dart';
 import 'package:flutter/material.dart';
@@ -100,6 +102,10 @@ Future<GoRouter> _pump(
       GoRoute(
         path: '/teacher/progress',
         builder: (_, _) => const TeacherProgressScreen(),
+      ),
+      GoRoute(
+        path: '/teacher/profile',
+        builder: (_, _) => const StudentProfileScreen(teacher: true),
       ),
       GoRoute(
         path: '/teacher/progress/classes/:classId',
@@ -203,22 +209,69 @@ void main() {
     },
   );
 
-  testWidgets('sidebar places Progress after Speaking and opens route', (
+  testWidgets('sidebar uses exact teacher menu order and Progress route', (
     tester,
   ) async {
     final router = await _pump(tester, location: '/teacher/progress');
     await _settle(tester);
     await tester.tap(find.byKey(const Key('teacherMenuButton')));
     await _settle(tester);
-    expect(find.text('Speaking'), findsOneWidget);
-    expect(find.text('Progress'), findsWidgets);
-    expect(
-      tester.getTopLeft(find.text('Progress').last).dy,
-      greaterThan(tester.getTopLeft(find.text('Speaking')).dy),
-    );
+    const labels = [
+      'Beranda',
+      'Kelas',
+      'Modul Kelas',
+      'Kuis Kelas',
+      'Budaya Mekongga',
+      'Speaking',
+      'Progress',
+    ];
+    final positions = labels
+        .map((label) => tester.getTopLeft(find.text(label).last).dy)
+        .toList();
+    expect(positions, orderedEquals([...positions]..sort()));
     await tester.tap(find.text('Progress').last);
     await _settle(tester);
     expect(router.routeInformationProvider.value.uri.path, '/teacher/progress');
+  });
+
+  testWidgets('teacher profile uses shared content and exact Guru sidebar', (
+    tester,
+  ) async {
+    await _pump(tester, location: '/teacher/profile');
+    await _settle(tester);
+
+    expect(find.byType(StudentProfileScreen), findsOneWidget);
+    expect(find.byType(TeacherShell), findsOneWidget);
+    expect(find.text('Email'), findsOneWidget);
+    expect(find.text('Edit Profil'), findsOneWidget);
+    expect(find.text('Ganti Password'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('teacherMenuButton')));
+    await _settle(tester);
+    const labels = [
+      'Beranda',
+      'Kelas',
+      'Modul Kelas',
+      'Kuis Kelas',
+      'Budaya Mekongga',
+      'Speaking',
+      'Progress',
+    ];
+    final drawer = find.byType(Drawer);
+    final positions = labels
+        .map(
+          (label) => tester
+              .getTopLeft(
+                find.descendant(of: drawer, matching: find.text(label)),
+              )
+              .dy,
+        )
+        .toList();
+    expect(positions, orderedEquals([...positions]..sort()));
+    expect(
+      find.descendant(of: drawer, matching: find.text('Chatbot')),
+      findsNothing,
+    );
   });
 
   testWidgets('dashboard exposes Progress quick action', (tester) async {

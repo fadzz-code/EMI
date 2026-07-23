@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -281,21 +284,29 @@ class _QuizSkeleton extends StatelessWidget {
   );
 }
 
-class TeacherQuizDetailScreen extends ConsumerWidget {
+class TeacherQuizDetailScreen extends ConsumerStatefulWidget {
   const TeacherQuizDetailScreen({super.key, required this.id});
   final String id;
   @override
-  Widget build(BuildContext context, WidgetRef ref) => TeacherShell(
+  ConsumerState<TeacherQuizDetailScreen> createState() =>
+      _TeacherQuizDetailScreenState();
+}
+
+class _TeacherQuizDetailScreenState
+    extends ConsumerState<TeacherQuizDetailScreen> {
+  bool mutating = false;
+  @override
+  Widget build(BuildContext context) => TeacherShell(
     title: 'Detail Kuis',
     fallbackRoute: '/teacher/quizzes',
     child: ref
-        .watch(teacherQuizDetailProvider(id))
+        .watch(teacherQuizDetailProvider(widget.id))
         .when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (_, _) => _State(
             title: 'Detail kuis belum bisa dimuat',
             message: 'Periksa koneksi internet, lalu coba lagi.',
-            retry: () => ref.invalidate(teacherQuizDetailProvider(id)),
+            retry: () => ref.invalidate(teacherQuizDetailProvider(widget.id)),
           ),
           data: (quiz) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
@@ -320,9 +331,10 @@ class TeacherQuizDetailScreen extends ConsumerWidget {
                     ),
                   ),
                   PopupMenuButton<String>(
+                    enabled: !mutating,
                     onSelected: (value) => value == 'result'
-                        ? context.push('/teacher/quizzes/$id/results')
-                        : _action(context, ref, quiz, value == 'publish'),
+                        ? context.push('/teacher/quizzes/${widget.id}/results')
+                        : _action(context, quiz, value),
                     itemBuilder: (_) => [
                       const PopupMenuItem(
                         value: 'result',
@@ -338,13 +350,19 @@ class TeacherQuizDetailScreen extends ConsumerWidget {
                           value: 'archive',
                           child: Text('Arsipkan Kuis'),
                         ),
+                      if (quiz.status == 'draft' && quiz.attemptsCount == 0)
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Text('Hapus Kuis'),
+                        ),
                     ],
                   ),
                 ],
               ),
               const SizedBox(height: EmiSpacing.lg),
               FilledButton.icon(
-                onPressed: () => context.push('/teacher/quizzes/$id/edit'),
+                onPressed: () =>
+                    context.push('/teacher/quizzes/${widget.id}/edit'),
                 icon: const Icon(Icons.edit_outlined),
                 label: const Text('Edit Kuis'),
               ),
@@ -371,7 +389,7 @@ class TeacherQuizDetailScreen extends ConsumerWidget {
                   FilledButton.icon(
                     onPressed: quiz.status == 'draft'
                         ? () => context.push(
-                            '/teacher/quizzes/$id/questions/create',
+                            '/teacher/quizzes/${widget.id}/questions/create',
                           )
                         : null,
                     icon: const Icon(Icons.add),
@@ -406,6 +424,14 @@ class TeacherQuizDetailScreen extends ConsumerWidget {
                                 maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
                               ),
+                              if (quiz.questions[index].imageUrl != null) ...[
+                                const SizedBox(height: EmiSpacing.sm),
+                                Image.network(
+                                  quiz.questions[index].imageUrl!,
+                                  height: 120,
+                                  fit: BoxFit.contain,
+                                ),
+                              ],
                               const SizedBox(height: EmiSpacing.xs),
                               Text(
                                 '${quiz.questions[index].type == 'multiple_choice' ? 'Pilihan ganda' : 'Jawaban singkat'} • ${quiz.questions[index].points} poin',
@@ -416,7 +442,7 @@ class TeacherQuizDetailScreen extends ConsumerWidget {
                         if (quiz.status == 'draft')
                           PopupMenuButton<String>(
                             onSelected: (_) => context.push(
-                              '/teacher/quizzes/$id/questions/${quiz.questions[index].id}/edit',
+                              '/teacher/quizzes/${widget.id}/questions/${quiz.questions[index].id}/edit',
                             ),
                             itemBuilder: (_) => const [
                               PopupMenuItem(
@@ -437,22 +463,35 @@ class TeacherQuizDetailScreen extends ConsumerWidget {
 
   Future<void> _action(
     BuildContext context,
-    WidgetRef ref,
     TeacherQuiz quiz,
-    bool publish,
+    String action,
   ) async {
+    if (mutating) return;
+    final publish = action == 'publish';
+    final delete = action == 'delete';
     if (publish && quiz.questionsCount < 1) {
       _notice(context, 'Tambahkan minimal satu soal sebelum menerbitkan kuis.');
       return;
     }
     if (await _confirm(
           context,
-          publish ? 'Terbitkan kuis?' : 'Arsipkan kuis?',
+          publish
+              ? 'Terbitkan kuis?'
+              : delete
+              ? 'Hapus kuis permanen?'
+              : 'Arsipkan kuis?',
         ) !=
         true) {
       return;
     }
+    setState(() => mutating = true);
     try {
+      if (delete) {
+        await ref.read(teacherQuizRepositoryProvider).deleteQuiz(quiz.id);
+        ref.invalidate(teacherQuizzesProvider);
+        if (context.mounted) context.go('/teacher/quizzes');
+        return;
+      }
       publish
           ? await ref.read(teacherQuizRepositoryProvider).publish(quiz.id)
           : await ref.read(teacherQuizRepositoryProvider).archive(quiz.id);
@@ -460,6 +499,8 @@ class TeacherQuizDetailScreen extends ConsumerWidget {
       ref.invalidate(teacherQuizzesProvider);
     } catch (error) {
       if (context.mounted) _notice(context, _error(error));
+    } finally {
+      if (mounted) setState(() => mutating = false);
     }
   }
 }
@@ -802,6 +843,7 @@ class _TeacherQuestionFormScreenState
   final options = List.generate(4, (_) => TextEditingController());
   int correct = 0, existingOrder = 1;
   String type = 'multiple_choice';
+  String? imageMediaId, imageUrl, imagePath, imageName;
   bool filled = false, dirty = false, saving = false;
   @override
   void dispose() {
@@ -840,6 +882,9 @@ class _TeacherQuestionFormScreenState
               points.text = '${q.points}';
               existingOrder = q.order;
               explanation.text = q.explanation;
+              imageMediaId = q.imageMediaId;
+              imageUrl = q.imageUrl;
+              imageName = q.imageName;
               while (options.length < q.options.length) {
                 options.add(TextEditingController());
               }
@@ -965,6 +1010,41 @@ class _TeacherQuestionFormScreenState
                 ],
                 const SizedBox(height: EmiSpacing.lg),
                 _input(explanation, 'Penjelasan', false),
+                const SizedBox(height: EmiSpacing.lg),
+                Text(
+                  'Gambar Soal',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: EmiSpacing.sm),
+                if (imagePath != null)
+                  Image.file(File(imagePath!), height: 160, fit: BoxFit.contain)
+                else if (imageUrl != null)
+                  Image.network(imageUrl!, height: 160, fit: BoxFit.contain)
+                else if (imageMediaId != null)
+                  Text(imageName ?? 'Gambar soal terhubung.'),
+                Wrap(
+                  spacing: EmiSpacing.sm,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: saving ? null : _pickImage,
+                      icon: const Icon(Icons.image_outlined),
+                      label: Text(
+                        imageMediaId == null ? 'Pilih Gambar' : 'Ganti Gambar',
+                      ),
+                    ),
+                    if (imageMediaId != null || imagePath != null)
+                      TextButton(
+                        onPressed: saving
+                            ? null
+                            : () => setState(() {
+                                imageMediaId = imageUrl = imagePath =
+                                    imageName = null;
+                                dirty = true;
+                              }),
+                        child: const Text('Lepas Gambar'),
+                      ),
+                  ],
+                ),
                 if (q != null)
                   TextButton(
                     onPressed: saving ? null : _delete,
@@ -1018,15 +1098,44 @@ class _TeacherQuestionFormScreenState
         ? 'Nilai minimal 1.'
         : null,
   );
+  Future<void> _pickImage() async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.image);
+    if (!mounted || result == null || result.files.single.path == null) return;
+    final file = result.files.single;
+    if (file.size > 5 * 1024 * 1024) {
+      _notice(context, 'Ukuran gambar maksimal 5 MB.');
+      return;
+    }
+    setState(() {
+      imagePath = file.path;
+      imageName = file.name;
+      dirty = true;
+    });
+  }
+
   Future<void> _save() async {
     if (!form.currentState!.validate()) return;
     setState(() => saving = true);
+    final repository = ref.read(teacherQuizRepositoryProvider);
+    try {
+      if (imagePath != null) {
+        imageMediaId = await repository.uploadQuestionImage(
+          imagePath!,
+          imageName ?? 'question.png',
+        );
+      }
+    } catch (e) {
+      if (mounted) _notice(context, _error(e));
+      if (mounted) setState(() => saving = false);
+      return;
+    }
     final data = {
       'question_type': type,
       'question_text': text.text.trim(),
       'points': int.parse(points.text),
       if (widget.id != null) 'order_number': existingOrder,
       'explanation': explanation.text.trim(),
+      'image_media_id': imageMediaId,
       if (type == 'short_answer') 'correct_answer_text': answer.text.trim(),
       if (type == 'multiple_choice')
         'options': [
@@ -1056,13 +1165,20 @@ class _TeacherQuestionFormScreenState
   }
 
   Future<void> _delete() async {
-    if (await _confirm(context, 'Hapus soal ini?') != true) return;
+    if (saving) return;
+    setState(() => saving = true);
+    if (await _confirm(context, 'Hapus soal ini?') != true) {
+      if (mounted) setState(() => saving = false);
+      return;
+    }
     try {
       await ref.read(teacherQuizRepositoryProvider).deleteQuestion(widget.id!);
       ref.invalidate(teacherQuizDetailProvider(widget.quizId));
       if (mounted) context.go('/teacher/quizzes/${widget.quizId}');
     } catch (e) {
       if (mounted) _notice(context, _error(e));
+    } finally {
+      if (mounted) setState(() => saving = false);
     }
   }
 }
@@ -1083,11 +1199,32 @@ class _TeacherQuizResultsScreenState
   Widget build(BuildContext context) {
     final filter = (quizId: widget.quizId, page: page, status: status);
     final attempts = ref.watch(teacherQuizAttemptsProvider(filter));
+    final reportFilter = (page: page, quizId: widget.quizId, status: status);
+    final report = ref.watch(teacherQuizReportProvider(reportFilter));
     return TeacherShell(
       title: 'Hasil Kuis',
       fallbackRoute: '/teacher/quizzes/${widget.quizId}',
       child: Column(
         children: [
+          report.when(
+            loading: () => const LinearProgressIndicator(),
+            error: (_, _) => const SizedBox.shrink(),
+            data: (data) => Padding(
+              padding: const EdgeInsets.fromLTRB(
+                EmiSpacing.md,
+                EmiSpacing.md,
+                EmiSpacing.md,
+                0,
+              ),
+              child: Row(
+                children: [
+                  Expanded(child: _ResultMetric('Rata-rata', data.average)),
+                  Expanded(child: _ResultMetric('Tertinggi', data.highest)),
+                  Expanded(child: _ResultMetric('Terendah', data.lowest)),
+                ],
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.all(EmiSpacing.md),
             child: DropdownButton<String>(
@@ -1168,6 +1305,19 @@ class _TeacherQuizResultsScreenState
       ),
     );
   }
+}
+
+class _ResultMetric extends StatelessWidget {
+  const _ResultMetric(this.label, this.value);
+  final String label;
+  final num? value;
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      Text(value == null ? '-' : '${value!.toStringAsFixed(1)}%'),
+      Text(label),
+    ],
+  );
 }
 
 class TeacherQuizAttemptScreen extends ConsumerWidget {
@@ -1282,7 +1432,7 @@ String _attemptStatus(String value) => switch (value) {
   'submitted' => 'Dikumpulkan',
   'expired' => 'Berakhir',
   'in_progress' => 'Sedang dikerjakan',
-  _ => value,
+  _ => 'Status tidak diketahui',
 };
 String _status(String v) => switch (v) {
   'published' => 'Terbit',

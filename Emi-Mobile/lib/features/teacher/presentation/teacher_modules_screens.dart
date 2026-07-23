@@ -45,6 +45,14 @@ class TeacherModulesScreen extends ConsumerWidget {
     final modules = ref.watch(teacherModulesProvider(classId));
     return TeacherShell(
       title: 'Modul Kelas',
+      actions: [
+        IconButton(
+          tooltip: 'Tambah Modul',
+          onPressed: () =>
+              context.push('/teacher/modules/create?classId=$classId'),
+          icon: const Icon(Icons.add),
+        ),
+      ],
       child: RefreshIndicator(
         onRefresh: () => ref.refresh(teacherModulesProvider(classId).future),
         child: modules.when(
@@ -90,6 +98,104 @@ class TeacherModulesScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+class TeacherModuleCreateScreen extends ConsumerStatefulWidget {
+  const TeacherModuleCreateScreen({super.key, required this.classId});
+  final String classId;
+
+  @override
+  ConsumerState<TeacherModuleCreateScreen> createState() =>
+      _TeacherModuleCreateScreenState();
+}
+
+class _TeacherModuleCreateScreenState
+    extends ConsumerState<TeacherModuleCreateScreen> {
+  final _form = GlobalKey<FormState>();
+  final _title = TextEditingController();
+  final _description = TextEditingController();
+  final _sort = TextEditingController(text: '1');
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _description.dispose();
+    _sort.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => TeacherShell(
+    title: 'Tambah Modul',
+    fallbackRoute: '/teacher/modules',
+    child: ListView(
+      padding: const EdgeInsets.all(EmiSpacing.md),
+      children: [
+        Form(
+          key: _form,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _title,
+                decoration: const InputDecoration(labelText: 'Judul Modul'),
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'Judul wajib diisi.'
+                    : null,
+              ),
+              const SizedBox(height: EmiSpacing.md),
+              TextFormField(
+                controller: _description,
+                decoration: const InputDecoration(labelText: 'Deskripsi Modul'),
+                minLines: 3,
+                maxLines: 6,
+              ),
+              const SizedBox(height: EmiSpacing.md),
+              TextFormField(
+                controller: _sort,
+                decoration: const InputDecoration(labelText: 'Urutan Tampil'),
+                keyboardType: TextInputType.number,
+                validator: (value) => (int.tryParse(value ?? '') ?? 0) < 1
+                    ? 'Urutan minimal 1.'
+                    : null,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: EmiSpacing.lg),
+        FilledButton(
+          onPressed: _saving ? null : _save,
+          child: Text(_saving ? 'Menyimpan...' : 'Simpan Modul'),
+        ),
+      ],
+    ),
+  );
+
+  Future<void> _save() async {
+    if (!_form.currentState!.validate()) return;
+    if (widget.classId.isEmpty) {
+      return _notice('Kelas aktif tidak tersedia.');
+    }
+    setState(() => _saving = true);
+    try {
+      await ref.read(teacherRepositoryProvider).createModule(widget.classId, {
+        'title': _title.text.trim(),
+        'description': _description.text.trim(),
+        'sort_order': int.parse(_sort.text),
+      });
+      ref.invalidate(teacherModulesProvider(widget.classId));
+      ref.invalidate(teacherDashboardProvider);
+      if (mounted) context.go('/teacher/modules');
+    } catch (error) {
+      if (mounted) _notice(_error(error));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  void _notice(String value) => ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(value)));
 }
 
 class TeacherModuleEditScreen extends ConsumerStatefulWidget {
@@ -208,6 +314,16 @@ class _TeacherModuleEditScreenState
               onPressed: _saving ? null : () => _publish(item),
               child: const Text('Terbitkan Modul'),
             ),
+          if (item.status != 'archived')
+            OutlinedButton(
+              onPressed: _saving ? null : () => _archive(item),
+              child: const Text('Arsipkan Modul'),
+            ),
+          if (item.status == 'draft')
+            TextButton(
+              onPressed: _saving ? null : () => _delete(item),
+              child: const Text('Hapus Draft'),
+            ),
           const SizedBox(height: EmiSpacing.lg),
           Text('Daftar Materi', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: EmiSpacing.sm),
@@ -274,7 +390,60 @@ class _TeacherModuleEditScreenState
     try {
       await ref.read(teacherRepositoryProvider).publishModule(item.id);
       ref.invalidate(teacherModuleDetailProvider(item.id));
+      if (item.classId != null) {
+        ref.invalidate(teacherModulesProvider(item.classId!));
+      }
+      ref.invalidate(teacherDashboardProvider);
       if (mounted) _notice('Modul berhasil diterbitkan.');
+    } catch (error) {
+      if (mounted) _notice(_error(error));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _archive(TeacherModule item) async {
+    if (await _confirm(
+          context,
+          'Arsipkan modul?',
+          'Modul tidak lagi tersedia untuk pembelajaran aktif.',
+        ) !=
+        true) {
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await ref.read(teacherRepositoryProvider).archiveModule(item.id);
+      ref.invalidate(teacherModuleDetailProvider(item.id));
+      if (item.classId != null) {
+        ref.invalidate(teacherModulesProvider(item.classId!));
+      }
+      ref.invalidate(teacherDashboardProvider);
+      if (mounted) _notice('Modul berhasil diarsipkan.');
+    } catch (error) {
+      if (mounted) _notice(_error(error));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _delete(TeacherModule item) async {
+    if (await _confirm(
+          context,
+          'Hapus draft modul?',
+          'Draft hanya dapat dihapus jika belum memiliki progress siswa.',
+        ) !=
+        true) {
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await ref.read(teacherRepositoryProvider).deleteModule(item.id);
+      if (item.classId != null) {
+        ref.invalidate(teacherModulesProvider(item.classId!));
+      }
+      ref.invalidate(teacherDashboardProvider);
+      if (mounted) context.go('/teacher/modules');
     } catch (error) {
       if (mounted) _notice(_error(error));
     } finally {
@@ -562,9 +731,13 @@ class _TeacherLessonEditScreenState
       final refreshedLesson = await ref.refresh(
         teacherLessonDetailProvider(item.id).future,
       );
-      final _ = await ref.refresh(
+      final module = await ref.refresh(
         teacherModuleDetailProvider(widget.moduleId).future,
       );
+      if (module.classId != null) {
+        ref.invalidate(teacherModulesProvider(module.classId!));
+      }
+      ref.invalidate(teacherDashboardProvider);
       _fill(refreshedLesson);
       if (mounted) {
         _notice('Materi berhasil disimpan.');

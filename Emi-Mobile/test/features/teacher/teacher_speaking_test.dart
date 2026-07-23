@@ -301,20 +301,29 @@ void main() {
     },
   );
 
-  testWidgets('drawer orders Speaking after Budaya and navigates', (
+  testWidgets('drawer uses exact teacher menu order and Speaking route', (
     tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(430, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     final router = await _pump(tester, location: '/teacher/dashboard');
     await _bounded(tester);
     await tester.tap(find.byKey(const Key('teacherMenuButton')));
     await _bounded(tester);
-    final culture = find.text('Budaya Mekongga');
-    final speaking = find.text('Speaking');
-    expect(
-      tester.getTopLeft(speaking).dy,
-      greaterThan(tester.getTopLeft(culture).dy),
-    );
-    await tester.tap(speaking);
+    const labels = [
+      'Beranda',
+      'Kelas',
+      'Modul Kelas',
+      'Kuis Kelas',
+      'Budaya Mekongga',
+      'Speaking',
+      'Progress',
+    ];
+    final positions = labels
+        .map((label) => tester.getTopLeft(find.text(label).last).dy)
+        .toList();
+    expect(positions, orderedEquals([...positions]..sort()));
+    await tester.tap(find.text('Speaking'));
     await _bounded(tester);
     expect(
       router.routeInformationProvider.value.uri.path,
@@ -575,6 +584,8 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('Arsipkan'));
     await _bounded(tester);
+    expect(find.text('Arsipkan Latihan?'), findsOneWidget);
+    expect(requests, isEmpty);
     await tester.tap(find.text('Arsipkan').last);
     await _bounded(tester);
     expect(

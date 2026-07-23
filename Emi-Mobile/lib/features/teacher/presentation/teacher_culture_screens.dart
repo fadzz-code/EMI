@@ -29,7 +29,8 @@ final teacherCultureFilePickerProvider = Provider<TeacherCultureFilePicker>(
 );
 
 class TeacherCultureScreen extends ConsumerStatefulWidget {
-  const TeacherCultureScreen({super.key});
+  const TeacherCultureScreen({super.key, this.classId});
+  final String? classId;
 
   @override
   ConsumerState<TeacherCultureScreen> createState() => _CultureScreenState();
@@ -69,8 +70,9 @@ class _CultureScreenState extends ConsumerState<TeacherCultureScreen> {
                 classPage.items.any((e) => e.id == summary.classId)
                 ? summary.classId!
                 : classPage.items.first.id;
-            final classId = classPage.items.any((e) => e.id == selectedClassId)
-                ? selectedClassId!
+            final requestedId = selectedClassId ?? widget.classId;
+            final classId = classPage.items.any((e) => e.id == requestedId)
+                ? requestedId!
                 : defaultId;
             final selectedClass = classPage.items.firstWhere(
               (e) => e.id == classId,
@@ -157,7 +159,7 @@ class _CultureScreenState extends ConsumerState<TeacherCultureScreen> {
   }
 }
 
-class _Tile extends StatelessWidget {
+class _Tile extends StatefulWidget {
   const _Tile({
     required this.item,
     required this.className,
@@ -167,11 +169,19 @@ class _Tile extends StatelessWidget {
   final String className;
   final String classId;
   @override
+  State<_Tile> createState() => _TileState();
+}
+
+class _TileState extends State<_Tile> {
+  bool busy = false;
+  @override
   Widget build(BuildContext context) => EmiCard(
     padding: EdgeInsets.zero,
     child: InkWell(
       borderRadius: BorderRadius.circular(EmiRadii.card),
-      onTap: () => context.push('/teacher/culture/${item.id}'),
+      onTap: busy
+          ? null
+          : () => context.push('/teacher/culture/${widget.item.id}'),
       child: Padding(
         padding: const EdgeInsets.all(EmiSpacing.sm),
         child: Row(
@@ -179,14 +189,16 @@ class _Tile extends StatelessWidget {
             SizedBox(
               width: 56,
               height: 56,
-              child: item.contentType == 'image' && item.contentUrl != null
+              child:
+                  widget.item.contentType == 'image' &&
+                      widget.item.contentUrl != null
                   ? Image.network(
-                      item.contentUrl!,
+                      widget.item.contentUrl!,
                       fit: BoxFit.cover,
                       errorBuilder: (_, _, _) =>
                           const Icon(Icons.broken_image_outlined),
                     )
-                  : Icon(_icon(item.contentType)),
+                  : Icon(_icon(widget.item.contentType)),
             ),
             const SizedBox(width: EmiSpacing.sm),
             Expanded(
@@ -194,28 +206,36 @@ class _Tile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item.title,
+                    widget.item.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  Text(className),
-                  Text('${_type(item.contentType)} · ${_date(item.updatedAt)}'),
-                  _Badge(item.status),
+                  Text(widget.className),
+                  Text(
+                    '${_type(widget.item.contentType)} · ${_date(widget.item.updatedAt)}',
+                  ),
+                  _Badge(widget.item.status),
                 ],
               ),
             ),
             PopupMenuButton<String>(
-              onSelected: (action) => _action(context, item, action, classId),
+              enabled: !busy,
+              onSelected: (action) async {
+                if (busy) return;
+                setState(() => busy = true);
+                await _action(context, widget.item, action, widget.classId);
+                if (mounted) setState(() => busy = false);
+              },
               itemBuilder: (_) => [
                 const PopupMenuItem(value: 'view', child: Text('Lihat')),
                 const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                if (item.status != 'published')
+                if (widget.item.status != 'published')
                   const PopupMenuItem(
                     value: 'publish',
                     child: Text('Terbitkan'),
                   ),
-                if (item.status != 'archived')
+                if (widget.item.status != 'archived')
                   const PopupMenuItem(
                     value: 'archive',
                     child: Text('Arsipkan'),
@@ -230,20 +250,29 @@ class _Tile extends StatelessWidget {
   );
 }
 
-class TeacherCultureDetailScreen extends ConsumerWidget {
+class TeacherCultureDetailScreen extends ConsumerStatefulWidget {
   const TeacherCultureDetailScreen({super.key, required this.id});
   final String id;
   @override
-  Widget build(BuildContext context, WidgetRef ref) => TeacherShell(
+  ConsumerState<TeacherCultureDetailScreen> createState() =>
+      _TeacherCultureDetailScreenState();
+}
+
+class _TeacherCultureDetailScreenState
+    extends ConsumerState<TeacherCultureDetailScreen> {
+  bool busy = false;
+  @override
+  Widget build(BuildContext context) => TeacherShell(
     title: 'Detail Budaya Mekongga',
     fallbackRoute: '/teacher/culture',
     child: ref
-        .watch(teacherCultureDetailProvider(id))
+        .watch(teacherCultureDetailProvider(widget.id))
         .when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => _Error(
             error: error,
-            retry: () => ref.invalidate(teacherCultureDetailProvider(id)),
+            retry: () =>
+                ref.invalidate(teacherCultureDetailProvider(widget.id)),
           ),
           data: (item) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
@@ -281,7 +310,13 @@ class TeacherCultureDetailScreen extends ConsumerWidget {
                     ),
                   ),
                   PopupMenuButton<String>(
-                    onSelected: (a) => _action(context, item, a, item.classId),
+                    enabled: !busy,
+                    onSelected: (a) async {
+                      if (busy) return;
+                      setState(() => busy = true);
+                      await _action(context, item, a, item.classId);
+                      if (mounted) setState(() => busy = false);
+                    },
                     itemBuilder: (_) => [
                       if (item.status != 'published')
                         const PopupMenuItem(

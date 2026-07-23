@@ -100,6 +100,9 @@ class TeacherQuizQuestion {
     required this.options,
     required this.useFuzzyMatching,
     this.fuzzyThreshold,
+    this.imageMediaId,
+    this.imageUrl,
+    this.imageName,
   });
   final String id;
   final String type;
@@ -111,29 +114,36 @@ class TeacherQuizQuestion {
   final List<TeacherQuizOption> options;
   final bool useFuzzyMatching;
   final int? fuzzyThreshold;
+  final String? imageMediaId;
+  final String? imageUrl;
+  final String? imageName;
 
-  factory TeacherQuizQuestion.fromJson(Map<String, dynamic> json) =>
-      TeacherQuizQuestion(
-        id: _text(json['id']),
-        type: _text(json['question_type'], 'multiple_choice'),
-        text: _text(json['question_text']),
-        correctAnswer: _text(json['correct_answer_text']),
-        points: _integer(json['points'], 1),
-        order: _integer(json['order_number'], 1),
-        explanation: _text(json['explanation']),
-        useFuzzyMatching:
-            json['use_fuzzy_matching'] == true ||
-            json['use_fuzzy_matching'] == 1,
-        fuzzyThreshold: json['fuzzy_threshold'] == null
-            ? null
-            : _integer(json['fuzzy_threshold']),
-        options: json['options'] is List
-            ? (json['options'] as List)
-                  .whereType<Map<String, dynamic>>()
-                  .map(TeacherQuizOption.fromJson)
-                  .toList()
-            : const [],
-      );
+  factory TeacherQuizQuestion.fromJson(Map<String, dynamic> json) {
+    final image = _map(json['image_media']);
+    return TeacherQuizQuestion(
+      id: _text(json['id']),
+      type: _text(json['question_type'], 'multiple_choice'),
+      text: _text(json['question_text']),
+      correctAnswer: _text(json['correct_answer_text']),
+      points: _integer(json['points'], 1),
+      order: _integer(json['order_number'], 1),
+      explanation: _text(json['explanation']),
+      useFuzzyMatching:
+          json['use_fuzzy_matching'] == true || json['use_fuzzy_matching'] == 1,
+      fuzzyThreshold: json['fuzzy_threshold'] == null
+          ? null
+          : _integer(json['fuzzy_threshold']),
+      imageMediaId: _nullableText(json['image_media_id'] ?? image['id']),
+      imageUrl: _nullableText(image['url']),
+      imageName: _nullableText(image['original_name']),
+      options: json['options'] is List
+          ? (json['options'] as List)
+                .whereType<Map<String, dynamic>>()
+                .map(TeacherQuizOption.fromJson)
+                .toList()
+          : const [],
+    );
+  }
 }
 
 class TeacherQuizOption {
@@ -156,6 +166,50 @@ class TeacherQuizOption {
     'is_correct': correct,
     'order_number': order,
   };
+}
+
+class TeacherQuizResultPage {
+  const TeacherQuizResultPage({
+    required this.items,
+    required this.page,
+    required this.lastPage,
+    required this.average,
+    required this.highest,
+    required this.lowest,
+  });
+  final List<TeacherQuizAttempt> items;
+  final int page;
+  final int lastPage;
+  final num? average;
+  final num? highest;
+  final num? lowest;
+
+  factory TeacherQuizResultPage.fromJson(Map<String, dynamic>? json) {
+    final data = _map(json?['data']);
+    final summary = _map(data['summary']);
+    final rows = data['rows'];
+    final meta = _map(json?['meta']);
+    return TeacherQuizResultPage(
+      items: rows is List
+          ? rows.whereType<Map<String, dynamic>>().map((row) {
+              final student = _map(row['student']);
+              return TeacherQuizAttempt.fromJson({
+                'id':
+                    '${_text(student['id'])}:${_integer(row['best_attempt_number'])}',
+                'student': student,
+                'attempt_number': row['best_attempt_number'],
+                'status': row['latest_status'],
+                'score_percent': row['best_score_percent'],
+              });
+            }).toList()
+          : const [],
+      page: _integer(meta['current_page'], 1),
+      lastPage: _integer(meta['last_page'], 1),
+      average: summary['average_best_score_percent'] as num?,
+      highest: summary['highest_best_score_percent'] as num?,
+      lowest: summary['lowest_best_score_percent'] as num?,
+    );
+  }
 }
 
 class TeacherQuizAttemptPage {

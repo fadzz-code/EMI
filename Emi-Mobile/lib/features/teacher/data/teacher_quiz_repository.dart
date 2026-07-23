@@ -47,6 +47,17 @@ class TeacherQuizRepository {
     () => _dio.delete<Map<String, dynamic>>('/class-quizzes/$id'),
     (_) {},
   );
+  Future<String> uploadQuestionImage(String path, String name) => _request(
+    () async => _dio.post<Map<String, dynamic>>(
+      '/media',
+      data: FormData.fromMap({
+        'file': await MultipartFile.fromFile(path, filename: name),
+        'purpose': 'question_image',
+        'visibility': 'public',
+      }),
+    ),
+    (json) => _text(_data(json)['id']),
+  );
   Future<TeacherQuizQuestion> question(String id) =>
       _question(() => _dio.get('/quiz-questions/$id'));
   Future<TeacherQuizQuestion> createQuestion(
@@ -77,6 +88,22 @@ class TeacherQuizRepository {
     ),
     TeacherQuizAttemptPage.fromJson,
   );
+  Future<TeacherQuizResultPage> report({
+    int page = 1,
+    String? quizId,
+    String? status,
+  }) => _request(
+    () => _dio.get<Map<String, dynamic>>(
+      '/teacher/reports/quiz-results',
+      queryParameters: {
+        'page': page,
+        if (quizId?.isNotEmpty == true) 'quiz_id': quizId,
+        if (status?.isNotEmpty == true) 'status': status,
+      },
+    ),
+    TeacherQuizResultPage.fromJson,
+  );
+
   Future<TeacherQuizAttempt> attempt(String id) => _request(
     () => _dio.get<Map<String, dynamic>>('/quiz-attempts/$id'),
     (json) => TeacherQuizAttempt.fromJson(_data(json)),
@@ -99,6 +126,8 @@ class TeacherQuizRepository {
     }
   }
 }
+
+String _text(Object? value) => value is String ? value : '';
 
 Map<String, dynamic> _data(Map<String, dynamic>? json) {
   final data = json?['data'];
