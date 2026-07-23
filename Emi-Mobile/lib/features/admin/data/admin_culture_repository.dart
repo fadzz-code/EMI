@@ -110,7 +110,7 @@ class AdminCultureItem {
       title: _text(json['title'], 'Tanpa judul'),
       description: _text(json['description']),
       contentType: _text(json['content_type'], 'article'),
-      mediaId: _nullable(json['media_id']),
+      mediaId: _nullable(json['media_id']) ?? _nullable(media['id']),
       mediaUrl: _nullable(media['url']),
       mediaName: _nullable(media['original_name']),
       mediaSize: _integer(media['size_bytes']),
@@ -150,6 +150,25 @@ class AdminCultureSaveRequest {
     'display_order': displayOrder,
     'status': status,
   };
+}
+
+class AdminCultureApplyResult {
+  const AdminCultureApplyResult({
+    required this.applied,
+    required this.skipped,
+    required this.failed,
+  });
+
+  final int applied;
+  final int skipped;
+  final int failed;
+
+  factory AdminCultureApplyResult.fromJson(Map<String, dynamic> json) =>
+      AdminCultureApplyResult(
+        applied: (json['applied'] as List? ?? const []).length,
+        skipped: (json['skipped'] as List? ?? const []).length,
+        failed: (json['failed'] as List? ?? const []).length,
+      );
 }
 
 class AdminCultureTemplate {
@@ -328,12 +347,16 @@ class AdminCultureRepository {
     }
   }
 
-  Future<void> applyTemplate(String id, List<String> classIds) async {
+  Future<AdminCultureApplyResult> applyTemplate(
+    String id,
+    List<String> classIds,
+  ) async {
     try {
-      await _dio.post<void>(
+      final response = await _dio.post<Map<String, dynamic>>(
         '/admin/culture-templates/$id/apply',
         data: {'class_ids': classIds},
       );
+      return AdminCultureApplyResult.fromJson(_map(response.data?['data']));
     } catch (error) {
       throw _safe(error);
     }

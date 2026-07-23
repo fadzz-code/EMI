@@ -1424,7 +1424,7 @@ class _AdminClassFormState extends ConsumerState<_AdminClassForm> {
                           child: Text(school.name),
                         ),
                     ],
-                    onChanged: _saving
+                    onChanged: _saving || widget.klass != null
                         ? null
                         : (value) => setState(() => _schoolId = value),
                     validator: (value) => value == null || value.isEmpty
@@ -1441,6 +1441,10 @@ class _AdminClassFormState extends ConsumerState<_AdminClassForm> {
                 TextFormField(
                   controller: _year,
                   decoration: const InputDecoration(labelText: 'Tahun Ajaran'),
+                  maxLength: 50,
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Tahun ajaran wajib diisi.'
+                      : null,
                 ),
                 const SizedBox(height: EmiSpacing.md),
                 DropdownButtonFormField<String>(

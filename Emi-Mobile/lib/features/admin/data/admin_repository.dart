@@ -620,7 +620,7 @@ class AdminRepository {
   }) async {
     try {
       final data = {
-        'school_id': schoolId,
+        if (id == null) 'school_id': schoolId,
         'name': name,
         'grade_level': gradeLevel,
         'academic_year': academicYear,

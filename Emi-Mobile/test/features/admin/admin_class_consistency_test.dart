@@ -33,6 +33,73 @@ void main() {
     expect(requests, contains('POST /class-quizzes/q1/publish'));
   });
 
+  testWidgets('class edit locks school and requires academic year', (
+    tester,
+  ) async {
+    final repository = AdminRepository(
+      Dio(BaseOptions(baseUrl: 'https://example.test'))
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              final data = options.path == '/classes/c1'
+                  ? {
+                      'data': {
+                        'id': 'c1',
+                        'school_id': 's1',
+                        'name': 'Kelas VII A',
+                        'academic_year': '2026/2027',
+                        'status': 'active',
+                      },
+                    }
+                  : {
+                      'data': [
+                        {
+                          'id': 's1',
+                          'name': 'Sekolah Satu',
+                          'status': 'active',
+                        },
+                        {'id': 's2', 'name': 'Sekolah Dua', 'status': 'active'},
+                      ],
+                    };
+              handler.resolve(Response(requestOptions: options, data: data));
+            },
+          ),
+        ),
+      const DioErrorMapper(),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [adminRepositoryProvider.overrideWithValue(repository)],
+        child: MaterialApp.router(
+          routerConfig: GoRouter(
+            initialLocation: '/admin/classes/c1/edit',
+            routes: [
+              GoRoute(
+                path: '/admin/classes/:id/edit',
+                builder: (_, state) =>
+                    AdminClassFormScreen(id: state.pathParameters['id']),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final school = tester.widget<DropdownButtonFormField<String>>(
+      find.byType(DropdownButtonFormField<String>).first,
+    );
+    expect(school.onChanged, isNull);
+
+    final year = find.widgetWithText(TextFormField, 'Tahun Ajaran');
+    await tester.enterText(year, '');
+    await tester.tap(find.text('Simpan'));
+    await tester.pump();
+
+    expect(find.text('Tahun ajaran wajib diisi.'), findsOneWidget);
+  });
+
   testWidgets('admin class movement updates target and source detail caches', (
     tester,
   ) async {

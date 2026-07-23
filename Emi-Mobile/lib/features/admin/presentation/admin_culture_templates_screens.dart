@@ -110,10 +110,11 @@ class AdminCultureTemplateDetailScreen extends ConsumerWidget {
                       onPressed: () => _publish(context, ref, template.id),
                       child: const Text('Terbitkan'),
                     ),
-                  FilledButton(
-                    onPressed: () => _apply(context, ref, template.id),
-                    child: const Text('Terapkan ke Kelas'),
-                  ),
+                  if (template.status == 'published')
+                    FilledButton(
+                      onPressed: () => _apply(context, ref, template.id),
+                      child: const Text('Terapkan ke Kelas'),
+                    ),
                 ],
               ),
               const Divider(),
@@ -265,7 +266,7 @@ Future<void> _editItem(
           mediaId: null,
           externalUrl: url.text.trim(),
           displayOrder: item?.displayOrder ?? 1,
-          status: item?.status == 'published' ? 'published' : 'draft',
+          status: item?.status ?? 'published',
         ),
       );
   ref.invalidate(adminCultureTemplateProvider(templateId));
@@ -311,11 +312,15 @@ Future<void> _apply(BuildContext context, WidgetRef ref, String id) async {
     ),
   );
   if (ok != true) return;
-  await ref
+  final result = await ref
       .read(adminCultureRepositoryProvider)
       .applyTemplate(id, selected.toList());
   if (context.mounted)
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Template diterapkan ke kelas.')),
+      SnackBar(
+        content: Text(
+          'Diterapkan: ${result.applied}, dilewati: ${result.skipped}, gagal: ${result.failed}.',
+        ),
+      ),
     );
 }

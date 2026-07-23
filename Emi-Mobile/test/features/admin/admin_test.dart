@@ -691,6 +691,8 @@ void main() {
       'POST /classes/c1/assign-teacher',
       'POST /classes/c1/assign-student',
     ]);
+    expect(bodies[0], containsPair('school_id', 's1'));
+    expect(bodies[1], isNot(contains('school_id')));
     expect(bodies[3], {'teacher_id': 't1'});
     expect(bodies[4], {'student_id': 'u1'});
   });

@@ -54,6 +54,11 @@ void main() {
     expect(item.mediaName, 'lulo.jpg');
     expect(item.displayOrder, 3);
   });
+  test('item retains media ID from actual nested media response', () {
+    final json = _item()..remove('media_id');
+    (json['media'] as Map<String, dynamic>)['id'] = 'nested-media-id';
+    expect(AdminCultureItem.fromJson(json).mediaId, 'nested-media-id');
+  });
   test(
     'save payload contains actual fields only',
     () => expect(
