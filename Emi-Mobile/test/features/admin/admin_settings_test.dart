@@ -234,21 +234,22 @@ void main() {
     },
   );
 
-  testWidgets('save success updates baseline and sends no blank password', (
+  testWidgets('save success persists subtitle and sends no blank password', (
     tester,
   ) async {
     final requests = <String>[];
+    final payloads = <Map<String, dynamic>>[];
     final auth = _MockAuthRepository();
     await _pump(
       tester,
-      repository: _repository(requests: requests),
+      repository: _repository(requests: requests, payloads: payloads),
       auth: auth,
     );
     await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'Nama Aplikasi'),
-      'EMI Baru',
+      find.widgetWithText(TextFormField, 'Subtitle / Slogan'),
+      'Subtitle Baru',
     );
     tester.testTextInput.hide();
     await tester.pumpAndSettle();
@@ -264,6 +265,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Pengaturan berhasil disimpan.'), findsOneWidget);
     expect(requests, contains('PUT /admin/settings/application'));
+    expect(payloads.single['subtitle'], 'Subtitle Baru');
     verifyNever(
       () => auth.updatePassword(
         currentPassword: any(named: 'currentPassword'),
@@ -433,6 +435,7 @@ Future<void> _findByScrolling(WidgetTester tester, String text) async {
 
 AdminSettingsRepository _repository({
   List<String>? requests,
+  List<Map<String, dynamic>>? payloads,
   Future<void>? wait,
   int failures = 0,
   bool failUpdates = false,
@@ -445,6 +448,9 @@ AdminSettingsRepository _repository({
         InterceptorsWrapper(
           onRequest: (options, handler) async {
             requests?.add('${options.method} ${options.path}');
+            if (options.method != 'GET' && options.data is Map) {
+              payloads?.add(Map<String, dynamic>.from(options.data as Map));
+            }
             if (wait != null) await wait;
             if (remainingFailures > 0 ||
                 (failUpdates && options.method != 'GET')) {
