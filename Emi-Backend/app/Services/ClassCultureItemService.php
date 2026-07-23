@@ -4,21 +4,24 @@ namespace App\Services;
 
 use App\Exceptions\ApiException;
 use App\Models\ClassCultureItem;
-use App\Models\MediaFile;
 use App\Models\SchoolClass;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 
 class ClassCultureItemService
 {
-    public function __construct(private readonly AuditLogService $auditLogService) {}
+    public function __construct(
+        private readonly AuditLogService $auditLogService,
+        private readonly CultureContentValidator $contentValidator,
+        private readonly CultureMediaCleanupService $mediaCleanupService,
+    ) {}
 
     public function create(SchoolClass $class, array $data, User $actor, Request $request): ClassCultureItem
     {
         $this->assertActiveClass($class);
-        $this->validateContent($data, $actor);
+        $data = $this->contentValidator->normalize($data);
+        $this->contentValidator->validate($data, $actor);
 
         return DB::transaction(function () use ($class, $data, $actor, $request) {
             $item = ClassCultureItem::query()->create([
@@ -42,11 +45,13 @@ class ClassCultureItemService
 
     public function update(ClassCultureItem $item, array $data, User $actor, Request $request): ClassCultureItem
     {
+        $data = $this->contentValidator->normalize($data, $item->content_type);
         $merged = array_merge($item->toArray(), $data);
-        $this->validateContent($merged, $actor);
+        $this->contentValidator->validate($merged, $actor);
 
         return DB::transaction(function () use ($item, $data, $actor, $request) {
             $old = $item->only(['title', 'content_type', 'status']);
+            $oldMediaId = $item->media_id;
             $this->detachAdminGroupForTeacherAction($item, $actor);
             $item->fill(collect($data)->only(['title', 'description', 'content_type', 'media_id', 'external_url', 'display_order', 'status'])->all());
             $item->updated_by = $actor->id;
@@ -63,6 +68,9 @@ class ClassCultureItemService
             $item->save();
 
             $this->auditLogService->record('class_culture_item.updated', $item, $actor, $old, $item->only(['title', 'content_type', 'status']), [], $request);
+            if ($oldMediaId !== $item->media_id) {
+                $this->mediaCleanupService->afterCommit([$oldMediaId], $actor, $request);
+            }
 
             return $item->refresh()->load('media', 'schoolClass');
         });
@@ -70,6 +78,7 @@ class ClassCultureItemService
 
     public function publish(ClassCultureItem $item, User $actor, Request $request): ClassCultureItem
     {
+        $this->contentValidator->validate($item->toArray(), $actor);
         $this->detachAdminGroupForTeacherAction($item, $actor);
 
         $item->forceFill([
@@ -101,8 +110,12 @@ class ClassCultureItemService
 
     public function delete(ClassCultureItem $item, User $actor, Request $request): void
     {
-        $item->delete();
-        $this->auditLogService->record('class_culture_item.deleted', $item, $actor, null, ['deleted_at' => now()->toISOString()], [], $request);
+        DB::transaction(function () use ($item, $actor, $request) {
+            $mediaIds = [$item->media_id, $item->thumbnail_media_id];
+            $item->delete();
+            $this->auditLogService->record('class_culture_item.deleted', $item, $actor, null, ['deleted_at' => now()->toISOString()], [], $request);
+            $this->mediaCleanupService->afterCommit($mediaIds, $actor, $request);
+        });
     }
 
     private function detachAdminGroupForTeacherAction(ClassCultureItem $item, User $actor): void
@@ -110,26 +123,6 @@ class ClassCultureItemService
         if ($actor->role === 'teacher' && $item->created_scope === 'admin' && $item->admin_group_id !== null) {
             $item->admin_group_id = null;
             $item->created_scope = 'teacher';
-        }
-    }
-
-    private function validateContent(array $data, User $actor): void
-    {
-        $type = $data['content_type'] ?? null;
-        if (in_array($type, ['image', 'audio', 'pdf', 'video'], true) && empty($data['media_id'])) {
-            throw new ApiException('Media ID wajib diisi untuk tipe konten file.', 'VALIDATION_ERROR', 422);
-        }
-        if (in_array($type, ['image', 'audio', 'pdf', 'video'], true) && ! empty($data['media_id'])) {
-            $media = MediaFile::query()->find($data['media_id']);
-            if (! $media || $media->purpose !== 'culture_media') {
-                throw new ApiException('Media budaya harus menggunakan purpose culture_media.', 'VALIDATION_ERROR', 422);
-            }
-            if (! Gate::forUser($actor)->allows('delete', $media)) {
-                throw new ApiException('Media budaya tidak dapat digunakan.', 'MEDIA_FORBIDDEN', 403);
-            }
-        }
-        if (in_array($type, ['youtube', 'article', 'link'], true) && empty($data['external_url'])) {
-            throw new ApiException('URL eksternal wajib diisi untuk tipe konten tautan.', 'VALIDATION_ERROR', 422);
         }
     }
 

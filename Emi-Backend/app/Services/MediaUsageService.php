@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\AdminCultureItem;
+use App\Models\ClassCultureItem;
 use App\Models\ClassLesson;
+use App\Models\CultureTemplateItem;
 use App\Models\DictionaryEntry;
 use App\Models\LessonTemplate;
 use App\Models\MediaFile;
@@ -19,6 +22,9 @@ class MediaUsageService
             || LessonTemplate::query()->where('media_id', $mediaFile->id)->exists()
             || ClassLesson::query()->where('media_id', $mediaFile->id)->exists()
             || QuizTemplateQuestion::query()->where('image_media_id', $mediaFile->id)->exists()
-            || QuizQuestion::query()->where('image_media_id', $mediaFile->id)->exists();
+            || QuizQuestion::query()->where('image_media_id', $mediaFile->id)->exists()
+            || AdminCultureItem::query()->where('media_id', $mediaFile->id)->exists()
+            || ClassCultureItem::query()->where(fn ($query) => $query->where('media_id', $mediaFile->id)->orWhere('thumbnail_media_id', $mediaFile->id))->exists()
+            || CultureTemplateItem::query()->where(fn ($query) => $query->where('media_id', $mediaFile->id)->orWhere('thumbnail_media_id', $mediaFile->id))->exists();
     }
 }

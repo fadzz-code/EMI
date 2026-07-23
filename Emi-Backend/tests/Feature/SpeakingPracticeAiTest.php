@@ -971,6 +971,32 @@ class SpeakingPracticeAiTest extends TestCase
         ])->assertUnprocessable();
     }
 
+    public function test_canonical_speaking_filters_pagination_validation_and_admin_reports(): void
+    {
+        [$student, $teacher, $class] = $this->classroomUsers();
+        $admin = User::factory()->admin()->create();
+        $exercise = $this->exercise($class);
+        $completed = $this->attemptFor($student, $exercise);
+        $completed->update(['analysis_status' => 'completed', 'review_status' => 'pending', 'ai_score' => 80]);
+        $pending = $this->attemptFor($student, $exercise);
+        $pending->update(['analysis_status' => 'pending', 'review_status' => 'reviewed', 'teacher_score' => null]);
+
+        $this->withToken($this->tokenFor($teacher))->getJson('/api/v1/teacher/speaking/attempts?analysis_status=completed&review_status=pending&per_page=1')
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $completed->id)->assertJsonPath('meta.per_page', 1);
+        $this->app['auth']->forgetGuards();
+        $this->withToken($this->tokenFor($student))->getJson('/api/v1/student/speaking/attempts?analysis_status=invalid')->assertUnprocessable();
+        $this->app['auth']->forgetGuards();
+        $this->withToken($this->tokenFor($admin))->getJson("/api/v1/admin/reports/speaking/students?class_id={$class->id}")
+            ->assertOk()->assertJsonPath('data.capabilities.speaking_reports', true)
+            ->assertJsonPath('data.students.data.0.average_ai_score', 80)
+            ->assertJsonPath('data.students.data.0.average_teacher_score', null);
+        $this->withToken($this->tokenFor($admin))->getJson("/api/v1/admin/reports/speaking/classes?class_id={$class->id}&per_page=1")
+            ->assertOk()->assertJsonPath('data.classes.data.0.class_id', $class->id)
+            ->assertJsonPath('data.classes.data.0.average_teacher_score', null)
+            ->assertJsonPath('data.classes.meta.per_page', 1);
+        $this->withToken($this->tokenFor($admin))->getJson('/api/v1/admin/reports/speaking/students?analysis_status=bad')->assertUnprocessable();
+    }
+
     public function test_route_list_includes_student_and_teacher_speaking_endpoints(): void
     {
         $routes = collect(app('router')->getRoutes());
@@ -981,6 +1007,9 @@ class SpeakingPracticeAiTest extends TestCase
         $this->assertContains('api/v1/teacher/speaking/exercises', $uris);
         $this->assertContains('api/v1/teacher/speaking/exercises/{exercise}/archive', $uris);
         $this->assertContains('api/v1/teacher/speaking/attempts', $uris);
+        $this->assertContains('api/v1/admin/reports/speaking/students', $uris);
+        $this->assertContains('api/v1/admin/reports/speaking/classes', $uris);
+        $this->assertContains('api/v1/teacher/reports/progress/class', $uris);
         $this->assertTrue($routes->contains(fn ($route): bool => $route->uri() === 'api/v1/teacher/speaking/exercises/{exercise}' && in_array('DELETE', $route->methods(), true)));
     }
 

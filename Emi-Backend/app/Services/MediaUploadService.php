@@ -27,7 +27,7 @@ class MediaUploadService
         $mimeType = (string) $file->getMimeType();
         $clientExtension = strtolower($file->getClientOriginalExtension());
         $this->validateMime($purpose, $mimeType, $clientExtension);
-        $this->validateSize($purpose, (int) $file->getSize());
+        $this->validateSize($purpose, $mimeType, (int) $file->getSize());
 
         $extension = config("media.extensions.{$mimeType}");
 
@@ -130,11 +130,12 @@ class MediaUploadService
         ]);
     }
 
-    private function validateSize(string $purpose, int $sizeBytes): void
+    private function validateSize(string $purpose, string $mimeType, int $sizeBytes): void
     {
         $maxKb = match ($purpose) {
             'avatar', 'question_image', 'lesson_image', 'login_banner' => (int) config('media.max_kb.image'),
-            'document', 'culture_media' => (int) config('media.max_kb.document'),
+            'culture_media' => str_starts_with($mimeType, 'video/') ? (int) config('media.max_kb.video') : (int) config('media.max_kb.document'),
+            'document' => (int) config('media.max_kb.document'),
             'audio', 'speaking_recording', 'speaking_reference_audio' => (int) config('media.max_kb.audio'),
             default => 0,
         };

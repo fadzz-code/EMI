@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\AdminCultureItem;
 use App\Models\ClassCultureItem;
+use App\Models\CultureTemplate;
+use App\Models\MediaFile;
 use App\Models\School;
 use App\Models\SchoolClass;
 use App\Models\StudentClassMembership;
@@ -331,6 +333,75 @@ class Phase9CultureGlobalIsolationTest extends TestCase
             'external_url' => null,
             'media_id' => $media,
         ]))->assertCreated();
+    }
+
+    public function test_canonical_type_matrix_transitions_video_urls_and_failed_association_retains_upload(): void
+    {
+        Storage::fake('public');
+        config(['media.max_kb.video' => 1024]);
+        $admin = User::factory()->admin()->create();
+        [$class] = $this->classes($admin, 1);
+        $teacher = $this->teacherFor($class, $admin);
+        $image = $this->uploadCultureMedia($teacher, $this->pngFile())->assertCreated()->json('data.id');
+        $video = $this->uploadCultureMedia($teacher, UploadedFile::fake()->create('culture.webm', 1, 'video/webm'))->assertCreated()->json('data.id');
+
+        $this->admin($teacher)->postJson("/api/v1/classes/{$class->id}/culture", $this->payload(['content_type' => 'video', 'external_url' => null, 'media_id' => $video]))->assertCreated();
+        $this->admin($teacher)->postJson("/api/v1/classes/{$class->id}/culture", $this->payload(['content_type' => 'video', 'external_url' => null, 'media_id' => $image]))->assertUnprocessable();
+        $this->admin($teacher)->postJson("/api/v1/classes/{$class->id}/culture", $this->payload(['external_url' => 'javascript:alert(1)']))->assertUnprocessable();
+        $this->assertDatabaseHas('media_files', ['id' => $image, 'deleted_at' => null]);
+
+        $id = $this->admin($teacher)->postJson("/api/v1/classes/{$class->id}/culture", $this->payload(['content_type' => 'image', 'external_url' => null, 'media_id' => $image]))->assertCreated()->json('data.id');
+        $this->admin($teacher)->putJson("/api/v1/class-culture-items/{$id}", ['title' => 'Retain'])->assertOk()->assertJsonPath('data.media.id', $image);
+        $this->admin($teacher)->putJson("/api/v1/class-culture-items/{$id}", ['content_type' => 'link', 'external_url' => 'https://example.com/new'])->assertOk();
+        $this->assertDatabaseHas('class_culture_items', ['id' => $id, 'media_id' => null, 'external_url' => 'https://example.com/new']);
+    }
+
+    public function test_template_uses_same_validator_and_publish_rejects_invalid_class_item(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->admin()->create();
+        [$class] = $this->classes($admin, 1);
+        $teacher = $this->teacherFor($class, $admin);
+        $template = CultureTemplate::query()->create(['title' => 'Template', 'status' => 'draft', 'created_by' => $admin->id]);
+        $pdf = $this->uploadCultureMedia($admin, $this->pdfFile())->assertCreated()->json('data.id');
+
+        $this->admin($admin)->postJson("/api/v1/admin/culture-templates/{$template->id}/items", $this->payload(['content_type' => 'image', 'external_url' => null, 'media_id' => $pdf]))->assertUnprocessable();
+        $item = ClassCultureItem::query()->create(array_merge($this->payload(), ['class_id' => $class->id, 'created_by' => $teacher->id, 'external_url' => null]));
+        $this->admin($teacher)->postJson("/api/v1/class-culture-items/{$item->id}/publish")->assertUnprocessable();
+    }
+
+    public function test_culture_media_usage_shared_orphan_cleanup_and_idempotent_delete(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->admin()->create();
+        [$class] = $this->classes($admin, 1);
+        $teacher = $this->teacherFor($class, $admin);
+        $old = $this->uploadCultureMedia($teacher, $this->pngFile())->assertCreated()->json('data.id');
+        $new = $this->uploadCultureMedia($teacher, $this->pngFile())->assertCreated()->json('data.id');
+        $first = ClassCultureItem::query()->create(array_merge($this->payload(['content_type' => 'image', 'external_url' => null, 'media_id' => $old]), ['class_id' => $class->id, 'created_by' => $teacher->id]));
+        $shared = ClassCultureItem::query()->create(array_merge($this->payload(['content_type' => 'image', 'external_url' => null, 'media_id' => $old]), ['class_id' => $class->id, 'created_by' => $teacher->id]));
+
+        $this->admin($teacher)->deleteJson("/api/v1/media/{$old}")->assertConflict();
+        $this->admin($teacher)->putJson("/api/v1/class-culture-items/{$first->id}", ['media_id' => $new])->assertOk();
+        $this->assertDatabaseHas('media_files', ['id' => $old, 'deleted_at' => null]);
+        $this->admin($teacher)->deleteJson("/api/v1/class-culture-items/{$shared->id}")->assertOk();
+        $this->assertSoftDeleted('media_files', ['id' => $old]);
+        $this->admin($teacher)->deleteJson("/api/v1/class-culture-items/{$first->id}")->assertOk();
+        $this->assertSoftDeleted('media_files', ['id' => $new]);
+    }
+
+    public function test_cleanup_storage_failure_does_not_rollback_entity_and_media_remains_retryable(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->admin()->create();
+        [$class] = $this->classes($admin, 1);
+        $teacher = $this->teacherFor($class, $admin);
+        $media = MediaFile::factory()->public()->create(['uploaded_by' => $teacher->id, 'purpose' => 'culture_media', 'mime_type' => 'image/png', 'disk' => 'public', 'path' => 'missing.png']);
+        $item = ClassCultureItem::query()->create(array_merge($this->payload(['content_type' => 'image', 'external_url' => null, 'media_id' => $media->id]), ['class_id' => $class->id, 'created_by' => $teacher->id]));
+
+        $this->admin($teacher)->deleteJson("/api/v1/class-culture-items/{$item->id}")->assertOk();
+        $this->assertSoftDeleted('class_culture_items', ['id' => $item->id]);
+        $this->assertDatabaseHas('media_files', ['id' => $media->id, 'deleted_at' => null]);
     }
 
     private function createItem(User $admin, array $overrides = []): string

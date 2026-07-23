@@ -248,6 +248,44 @@ class Phase8DashboardReportsTest extends TestCase
         }
     }
 
+    public function test_teacher_class_summary_scope_empty_null_score_admin_parity_and_page_independence(): void
+    {
+        [$admin, $teacher, , $school, $class] = $this->seedLearningAndQuizDataset();
+        $teacherResponse = $this->withToken($this->tokenFor($teacher))->getJson('/api/v1/teacher/reports/progress/class?page=99&per_page=1')
+            ->assertOk()->assertJsonPath('data.class.id', $class->id)
+            ->assertJsonPath('data.summary.active_students', 2)
+            ->assertJsonPath('data.summary.average_best_final_quiz_score_percent', 90);
+        $adminResponse = $this->withToken($this->tokenFor($admin))->getJson("/api/v1/admin/reports/progress/classes/{$class->id}")->assertOk();
+        $this->assertSame($adminResponse->json('data.summary'), $teacherResponse->json('data.summary'));
+
+        $emptyClass = SchoolClass::factory()->create(['school_id' => $school->id, 'created_by' => $admin->id]);
+        TeacherClassAssignment::query()->where('teacher_id', $teacher->id)->update(['is_active' => false]);
+        TeacherClassAssignment::factory()->create(['teacher_id' => $teacher->id, 'class_id' => $emptyClass->id, 'assigned_by' => $admin->id]);
+        $this->withToken($this->tokenFor($teacher))->getJson("/api/v1/teacher/reports/progress/class?class_id={$emptyClass->id}")
+            ->assertOk()->assertJsonPath('data.summary.active_students', 0)->assertJsonPath('data.summary.average_best_final_quiz_score_percent', null);
+        TeacherClassAssignment::query()->where('teacher_id', $teacher->id)->update(['is_active' => false]);
+        $this->withToken($this->tokenFor($teacher))->getJson('/api/v1/teacher/reports/progress/class')->assertUnprocessable();
+    }
+
+    public function test_quiz_canonical_submitted_expired_in_progress_final_and_null_scores(): void
+    {
+        [$admin, , $student, , , $quiz] = $this->seedLearningAndQuizDataset();
+        $second = StudentClassMembership::query()->where('student_id', '!=', $student->id)->firstOrFail()->student_id;
+        QuizAttempt::query()->where('class_quiz_id', $quiz->id)->where('student_id', $second)->delete();
+        QuizAttempt::factory()->create(['class_quiz_id' => $quiz->id, 'student_id' => $second, 'attempt_number' => 1, 'status' => 'expired', 'score_percent' => 0]);
+        QuizAttempt::factory()->create(['class_quiz_id' => $quiz->id, 'student_id' => $second, 'attempt_number' => 2, 'status' => 'in_progress', 'score_percent' => 0]);
+
+        $response = $this->withToken($this->tokenFor($admin))->getJson("/api/v1/admin/reports/quiz-results?quiz_id={$quiz->id}")->assertOk();
+        $row = collect($response->json('data.rows'))->first(fn ($row) => $row['student']['id'] === $second);
+        $this->assertSame(0, $row['final_attempt_count']);
+        $this->assertFalse($row['final_attempt']);
+        $this->assertSame(1, $row['expired_attempts']);
+        $this->assertSame(1, $row['in_progress_attempts']);
+        $this->assertNull($row['best_score_percent']);
+        $this->assertSame(1, $response->json('data.summary.finalized_students'));
+        $this->assertSame(1, $response->json('data.summary.expired_attempts'));
+    }
+
     public function test_validation_csv_export_formula_sanitization_and_route_security(): void
     {
         [$admin, $teacher] = $this->seedLearningAndQuizDataset(studentName: '=Formula Student');

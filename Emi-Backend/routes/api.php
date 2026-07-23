@@ -108,6 +108,8 @@ Route::prefix('v1')->group(function () {
         Route::get('reports/progress/classes', [AdminProgressReportController::class, 'classes']);
         Route::get('reports/progress/students', [AdminProgressReportController::class, 'students']);
         Route::get('reports/quiz-results', [AdminQuizResultReportController::class, 'index']);
+        Route::get('reports/speaking/students', [AdminProgressReportController::class, 'speakingStudents']);
+        Route::get('reports/speaking/classes', [AdminProgressReportController::class, 'speakingClasses']);
         Route::get('reports/progress/schools/export', [ReportExportController::class, 'adminSchools']);
         Route::get('reports/progress/classes/export', [ReportExportController::class, 'adminClasses']);
         Route::get('reports/progress/students/export', [ReportExportController::class, 'adminStudents']);
@@ -284,6 +286,7 @@ Route::prefix('v1')->group(function () {
 
     Route::middleware(['auth:sanctum', 'role:teacher'])->prefix('teacher')->group(function () {
         Route::get('dashboard/summary', [TeacherDashboardController::class, 'summary']);
+        Route::get('reports/progress/class', [TeacherProgressReportController::class, 'class']);
         Route::get('reports/progress/students', [TeacherProgressReportController::class, 'students']);
         Route::get('reports/quiz-results', [TeacherQuizResultReportController::class, 'index']);
         Route::get('speaking/templates', [TeacherSpeakingExerciseController::class, 'templates']);

@@ -9,6 +9,7 @@ return [
         'image' => (int) env('MEDIA_MAX_IMAGE_KB', 5120),
         'document' => (int) env('MEDIA_MAX_DOCUMENT_KB', 25600),
         'audio' => (int) env('MEDIA_MAX_AUDIO_KB', 30720),
+        'video' => (int) env('MEDIA_MAX_VIDEO_KB', 102400),
     ],
 
     'purposes' => [
@@ -55,6 +56,8 @@ return [
             'audio/mp4',
             'audio/ogg',
             'audio/webm',
+            'video/mp4',
+            'video/webm',
         ],
         'document' => [
             'application/pdf',
@@ -105,6 +108,7 @@ return [
         'audio/m4a' => 'm4a',
         'audio/ogg' => 'ogg',
         'audio/webm' => 'webm',
+        'video/mp4' => 'mp4',
         'video/webm' => 'webm',
     ],
 ];

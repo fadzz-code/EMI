@@ -18,6 +18,17 @@ class TeacherProgressReportController extends Controller
         private readonly ReportScopeService $scopeService,
     ) {}
 
+    public function class(StudentProgressReportRequest $request): JsonResponse
+    {
+        $filters = array_merge($request->validated(), $this->periodService->resolve($request->validated()));
+        $class = $this->scopeService->assertTeacherFilters($request->user(), $filters);
+
+        return ApiResponse::success('Ringkasan progress kelas berhasil diambil.', [
+            'class' => ['id' => $class->id, 'name' => $class->name],
+            'summary' => $this->reportService->classSummary($class->id, $filters),
+        ]);
+    }
+
     public function students(StudentProgressReportRequest $request): JsonResponse
     {
         $this->periodService->resolve($request->validated());

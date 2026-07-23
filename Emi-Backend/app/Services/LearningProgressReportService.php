@@ -121,6 +121,22 @@ class LearningProgressReportService
         ];
     }
 
+    public function classSummary(string $classId, array $filters = []): array
+    {
+        $metrics = DB::query()->fromSub($this->studentMetricQuery($filters)->where('c.id', $classId), 'students')
+            ->selectRaw("count(*)::int as active_students, round(coalesce(avg(overall_learning_progress_percent), 0)::numeric, 2) as average_module_progress_percent, round(avg(average_best_quiz_score_percent) filter (where average_best_quiz_score_percent is not null)::numeric, 2) as average_best_final_quiz_score_percent, max(greatest(coalesce(last_learning_activity_at, '-infinity'::timestamp), coalesce(last_quiz_activity_at, '-infinity'::timestamp))) as last_activity_at, sum(case when published_modules > 0 and completed_modules = published_modules then 1 else 0 end)::int as completed_students, sum(case when started_modules = 0 then 1 else 0 end)::int as not_started_students")
+            ->first();
+
+        return [
+            'active_students' => (int) ($metrics?->active_students ?? 0),
+            'average_module_progress_percent' => (float) ($metrics?->average_module_progress_percent ?? 0),
+            'average_best_final_quiz_score_percent' => $metrics?->average_best_final_quiz_score_percent !== null ? (float) $metrics->average_best_final_quiz_score_percent : null,
+            'last_activity_at' => $metrics?->last_activity_at,
+            'completed_students' => (int) ($metrics?->completed_students ?? 0),
+            'not_started_students' => (int) ($metrics?->not_started_students ?? 0),
+        ];
+    }
+
     public function averageProgress(?string $schoolId = null, ?string $classId = null): float
     {
         $query = DB::query()->fromSub($this->studentMetricQuery(), 'students')

@@ -23,6 +23,10 @@ class AdminProgressOverviewRequest extends ApiFormRequest
             'student_per_page' => ['nullable', 'integer', 'min:1', "max:{$max}"],
             'class_page' => ['nullable', 'integer', 'min:1'],
             'class_per_page' => ['nullable', 'integer', 'min:1', "max:{$max}"],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', "max:{$max}"],
+            'analysis_status' => ['nullable', Rule::in(['pending', 'processing', 'completed', 'failed'])],
+            'review_status' => ['nullable', Rule::in(['pending', 'reviewed'])],
         ];
     }
 }

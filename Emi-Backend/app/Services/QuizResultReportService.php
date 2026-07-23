@@ -72,13 +72,13 @@ class QuizResultReportService
             ->when($filters['date_to'] ?? null, fn ($query, $date) => $query->whereRaw('coalesce(submitted_at, updated_at, created_at) <= ?', [$date.' 23:59:59.999999']))
             ->selectRaw('class_quiz_id, student_id')
             ->selectRaw('count(*)::int as attempt_count')
-            ->selectRaw("count(*) filter (where status in ('submitted', 'expired'))::int as final_attempt_count")
+            ->selectRaw("count(*) filter (where status = 'submitted')::int as final_attempt_count")
             ->selectRaw("count(*) filter (where status = 'submitted')::int as submitted_attempts")
             ->selectRaw("count(*) filter (where status = 'expired')::int as expired_attempts")
             ->selectRaw("count(*) filter (where status = 'in_progress')::int as in_progress_attempts")
-            ->selectRaw("(array_agg(score_percent order by score_percent desc nulls last, attempt_number asc, id asc) filter (where status in ('submitted', 'expired')))[1] as best_score_percent")
-            ->selectRaw("(array_agg(attempt_number order by score_percent desc nulls last, attempt_number asc, id asc) filter (where status in ('submitted', 'expired')))[1] as best_attempt_number")
-            ->selectRaw("max(submitted_at) filter (where status in ('submitted', 'expired')) as latest_submitted_at")
+            ->selectRaw("(array_agg(score_percent order by score_percent desc nulls last, attempt_number asc, id asc) filter (where status = 'submitted' and score_percent is not null))[1] as best_score_percent")
+            ->selectRaw("(array_agg(attempt_number order by score_percent desc nulls last, attempt_number asc, id asc) filter (where status = 'submitted' and score_percent is not null))[1] as best_attempt_number")
+            ->selectRaw("max(submitted_at) filter (where status = 'submitted') as latest_submitted_at")
             ->selectRaw('(array_agg(status order by coalesce(submitted_at, updated_at) desc, id desc))[1] as latest_status')
             ->groupBy('class_quiz_id', 'student_id');
 
@@ -126,6 +126,10 @@ class QuizResultReportService
             'best_attempt_number' => $row->best_attempt_number !== null ? (int) $row->best_attempt_number : null,
             'attempt_count' => (int) $row->attempt_count,
             'final_attempt_count' => (int) $row->final_attempt_count,
+            'submitted_attempts' => (int) $row->submitted_attempts,
+            'expired_attempts' => (int) $row->expired_attempts,
+            'in_progress_attempts' => (int) $row->in_progress_attempts,
+            'final_attempt' => (int) $row->final_attempt_count > 0,
             'best_score_percent' => $row->best_score_percent !== null ? (float) $row->best_score_percent : null,
             'latest_status' => $row->latest_status,
             'latest_submitted_at' => $row->latest_submitted_at,

@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Exceptions\ApiException;
 use App\Models\CultureTemplate;
 use App\Models\CultureTemplateItem;
 use App\Models\User;
@@ -11,11 +10,16 @@ use Illuminate\Support\Facades\DB;
 
 class CultureTemplateItemService
 {
-    public function __construct(private readonly AuditLogService $auditLogService) {}
+    public function __construct(
+        private readonly AuditLogService $auditLogService,
+        private readonly CultureContentValidator $contentValidator,
+        private readonly CultureMediaCleanupService $mediaCleanupService,
+    ) {}
 
     public function create(CultureTemplate $template, array $data, User $actor, Request $request): CultureTemplateItem
     {
-        $this->validateContent($data);
+        $data = $this->contentValidator->normalize($data);
+        $this->contentValidator->validate($data, $actor);
 
         return DB::transaction(function () use ($template, $data, $actor, $request) {
             $item = $template->items()->create([
@@ -38,11 +42,13 @@ class CultureTemplateItemService
 
     public function update(CultureTemplateItem $item, array $data, User $actor, Request $request): CultureTemplateItem
     {
+        $data = $this->contentValidator->normalize($data, $item->content_type);
         $merged = array_merge($item->toArray(), $data);
-        $this->validateContent($merged);
+        $this->contentValidator->validate($merged, $actor);
 
         return DB::transaction(function () use ($item, $data, $actor, $request) {
             $old = $item->only(['title', 'content_type', 'status']);
+            $oldMediaId = $item->media_id;
             $item->fill(collect($data)->only(['title', 'description', 'content_type', 'media_id', 'external_url', 'display_order', 'status'])->all());
             $item->updated_by = $actor->id;
 
@@ -58,6 +64,9 @@ class CultureTemplateItemService
             $item->save();
 
             $this->auditLogService->record('culture_template_item.updated', $item, $actor, $old, $item->only(['title', 'content_type', 'status']), [], $request);
+            if ($oldMediaId !== $item->media_id) {
+                $this->mediaCleanupService->afterCommit([$oldMediaId], $actor, $request);
+            }
 
             return $item->refresh()->load('media');
         });
@@ -65,18 +74,11 @@ class CultureTemplateItemService
 
     public function delete(CultureTemplateItem $item, User $actor, Request $request): void
     {
-        $item->delete();
-        $this->auditLogService->record('culture_template_item.deleted', $item, $actor, null, ['deleted_at' => now()->toISOString()], [], $request);
-    }
-
-    private function validateContent(array $data): void
-    {
-        $type = $data['content_type'] ?? null;
-        if (in_array($type, ['image', 'audio', 'pdf', 'video'], true) && empty($data['media_id'])) {
-            throw new ApiException('Media ID wajib diisi untuk tipe konten file.', 'VALIDATION_ERROR', 422);
-        }
-        if (in_array($type, ['youtube', 'article', 'link'], true) && empty($data['external_url'])) {
-            throw new ApiException('URL eksternal wajib diisi untuk tipe konten tautan.', 'VALIDATION_ERROR', 422);
-        }
+        DB::transaction(function () use ($item, $actor, $request) {
+            $mediaIds = [$item->media_id, $item->thumbnail_media_id];
+            $item->delete();
+            $this->auditLogService->record('culture_template_item.deleted', $item, $actor, null, ['deleted_at' => now()->toISOString()], [], $request);
+            $this->mediaCleanupService->afterCommit($mediaIds, $actor, $request);
+        });
     }
 }

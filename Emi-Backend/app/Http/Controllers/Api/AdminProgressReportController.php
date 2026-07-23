@@ -17,6 +17,7 @@ use App\Services\LearningProgressReportService;
 use App\Services\QuizResultReportService;
 use App\Services\ReportScopeService;
 use App\Services\SimplePdfService;
+use App\Services\SpeakingReportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -31,6 +32,7 @@ class AdminProgressReportController extends Controller
         private readonly ReportScopeService $scopeService,
         private readonly SimplePdfService $pdfService,
         private readonly AuditLogService $auditLogService,
+        private readonly SpeakingReportService $speakingReportService,
     ) {}
 
     public function overview(AdminProgressOverviewRequest $request): JsonResponse
@@ -72,12 +74,12 @@ class AdminProgressReportController extends Controller
         $this->scopeService->assertAdminScope($filters);
         $students = $this->reportService->studentRows($filters);
         $teacher = DB::table('teacher_class_assignments as tca')->join('users as u', 'u.id', '=', 'tca.teacher_id')->where('tca.class_id', $class->id)->where('tca.is_active', true)->select('u.id', 'u.full_name', 'u.email')->first();
-        $metrics = DB::query()->fromSub($this->reportService->studentMetricQuery($filters)->where('c.id', $class->id), 'students')->selectRaw("count(*)::int as active_students, round(coalesce(avg(overall_learning_progress_percent), 0)::numeric, 2) as average_module_progress_percent, round(avg(average_best_quiz_score_percent) filter (where average_best_quiz_score_percent is not null)::numeric, 2) as average_best_final_quiz_score_percent, max(greatest(coalesce(last_learning_activity_at, '-infinity'::timestamp), coalesce(last_quiz_activity_at, '-infinity'::timestamp))) as last_activity_at, sum(case when published_modules > 0 and completed_modules = published_modules then 1 else 0 end)::int as completed_students, sum(case when started_modules = 0 then 1 else 0 end)::int as not_started_students")->first();
+        $summary = $this->reportService->classSummary($class->id, $filters);
         $class->load('school');
 
         return ApiResponse::success('Detail progress kelas berhasil diambil.', [
             'class' => ['id' => $class->id, 'name' => $class->name, 'academic_year' => $class->academic_year, 'status' => $class->status, 'school' => ['id' => $class->school->id, 'name' => $class->school->name], 'teacher' => $teacher],
-            'summary' => ['active_students' => (int) ($metrics?->active_students ?? 0), 'average_module_progress_percent' => (float) ($metrics?->average_module_progress_percent ?? 0), 'average_best_final_quiz_score_percent' => $metrics?->average_best_final_quiz_score_percent !== null ? (float) $metrics->average_best_final_quiz_score_percent : null, 'last_activity_at' => $metrics?->last_activity_at, 'completed_students' => (int) ($metrics?->completed_students ?? 0), 'not_started_students' => (int) ($metrics?->not_started_students ?? 0)],
+            'summary' => $summary,
             'students' => $this->page($students),
             'capabilities' => ['speaking_reports' => false],
         ]);
@@ -167,6 +169,28 @@ class AdminProgressReportController extends Controller
         $rows = $this->reportService->classRows($filters);
 
         return ApiResponse::paginated('Laporan progress kelas berhasil diambil.', $rows, $rows->getCollection()->all());
+    }
+
+    public function speakingStudents(AdminProgressOverviewRequest $request): JsonResponse
+    {
+        $filters = array_merge($request->validated(), $this->periodService->resolve($request->validated()));
+        $this->scopeService->assertAdminScope($filters);
+
+        return ApiResponse::success('Laporan speaking siswa berhasil diambil.', [
+            'students' => $this->speakingReportService->studentSummary($filters),
+            'capabilities' => ['speaking_reports' => true],
+        ]);
+    }
+
+    public function speakingClasses(AdminProgressOverviewRequest $request): JsonResponse
+    {
+        $filters = array_merge($request->validated(), $this->periodService->resolve($request->validated()));
+        $this->scopeService->assertAdminScope($filters);
+
+        return ApiResponse::success('Laporan speaking kelas berhasil diambil.', [
+            'classes' => $this->speakingReportService->classSummary($filters),
+            'capabilities' => ['speaking_reports' => true],
+        ]);
     }
 
     public function students(StudentProgressReportRequest $request): JsonResponse
