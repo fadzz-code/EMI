@@ -83,6 +83,29 @@ export type SchoolProgressRow = {
   average_quiz_score_percent: number | null;
 };
 
+export type ClassProgressSummary = {
+  active_students: number;
+  average_module_progress_percent: number;
+  average_best_final_quiz_score_percent: number | null;
+  last_activity_at: string | null;
+  completed_students: number;
+  not_started_students: number;
+};
+
+export type ClassProgressDetail = {
+  class: {
+    id: string;
+    name: string;
+    academic_year: string;
+    status: string;
+    school: { id: string; name: string };
+    teacher: { id: string; full_name: string; email: string } | null;
+  };
+  summary: ClassProgressSummary;
+  students: PaginatedResult<StudentProgressRow>;
+  capabilities: { speaking_reports: boolean };
+};
+
 export type ClassProgressRow = {
   class_id: string;
   class_name: string;
@@ -160,6 +183,10 @@ export type QuizResultRow = {
   best_attempt_number: number | null;
   attempt_count: number;
   final_attempt_count: number;
+  submitted_attempts: number;
+  expired_attempts: number;
+  in_progress_attempts: number;
+  final_attempt: boolean;
   best_score_percent: number | null;
   latest_status?: string | null;
   latest_submitted_at?: string | null;

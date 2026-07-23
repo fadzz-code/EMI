@@ -25,12 +25,12 @@ import {
 import { classService } from "@/features/admin/management/management-service";
 import { useAuth } from "@/features/auth/auth-provider";
 import { CultureMediaPreview } from "@/features/culture/culture-media-preview";
+import { cultureFileMatches, cultureFields, cultureMediaAccept, cultureTypeTransition, isCultureFileType } from "@/features/culture/culture-content";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { adminCultureService } from "./culture-service";
 import type { AdminGlobalCultureItem } from "./types";
 
-const fileTypes = ["image", "audio", "pdf", "video"];
 const contentTypes = ["image", "audio", "pdf", "video", "youtube", "article", "link"];
 
 function contentTypeLabel(type: string) {
@@ -161,30 +161,32 @@ function AdminGlobalCultureForm({
 }) {
   const [type, setType] = useState(String(item?.content_type ?? "image"));
   const [file, setFile] = useState<File | null>(null);
+  const [mediaId, setMediaId] = useState<string | null>(item?.media_id ?? null);
+  const [externalUrl, setExternalUrl] = useState(item?.external_url ?? "");
   const [formError, setFormError] = useState<string | null>(null);
   const mutation = useMutation({
     mutationFn: (payload: Partial<AdminGlobalCultureItem>) => item ? adminCultureService.updateGlobalItem(token, item.id, payload) : adminCultureService.createGlobalItem(token, payload),
     onSuccess: onDone,
   });
-  const isFileBased = fileTypes.includes(type);
+  const isFileBased = isCultureFileType(type);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
     const formData = new FormData(event.currentTarget);
-    let mediaId = item?.media_id ?? null;
+    let nextMediaId = mediaId;
 
     try {
       if (isFileBased && file) {
-        mediaId = (await adminCultureService.uploadMedia(token, file)).id;
+        if (!cultureFileMatches(type, file)) throw new Error("Jenis file tidak sesuai tipe konten.");
+        nextMediaId = (await adminCultureService.uploadMedia(token, file)).id;
       }
 
       mutation.mutate({
         title: String(formData.get("title") ?? ""),
         description: String(formData.get("description") ?? ""),
         content_type: type,
-        media_id: isFileBased ? mediaId : null,
-        external_url: isFileBased ? null : String(formData.get("external_url") ?? ""),
+        ...cultureFields(type, nextMediaId, externalUrl || null),
         display_order: Number(formData.get("display_order") ?? 1),
         status: String(formData.get("status") ?? "draft"),
       });
@@ -231,7 +233,8 @@ function AdminGlobalCultureForm({
               <FormField label="Tipe konten">
                 <Select
                   name="content_type"
-                  onChange={(event) => setType(event.target.value)}
+                   onChange={(event) => { const nextType = event.target.value; const next = cultureTypeTransition(type, nextType, item?.media_id ?? null); setType(nextType); setFile(next.file); setMediaId(next.mediaId); setExternalUrl(next.externalUrl); setFormError(null); }}
+
                   value={type}
                 >
                   {contentTypes.map((contentType) => (
@@ -253,7 +256,7 @@ function AdminGlobalCultureForm({
             {isFileBased ? (
               <div className="grid gap-3">
                 <FormField label="File media">
-                  <UploadComponent onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+                  <UploadComponent accept={cultureMediaAccept(type)} onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
                 </FormField>
                 {file ? (
                   <FilePreview
@@ -262,7 +265,7 @@ function AdminGlobalCultureForm({
                     type={file.type || "File"}
                   />
                 ) : null}
-                {item?.media_id && !file ? (
+                {mediaId && !file ? (
                   <p className="text-sm font-bold font-semibold text-muted">
                     Media saat ini tetap dipakai jika tidak upload file baru.
                   </p>
@@ -271,8 +274,9 @@ function AdminGlobalCultureForm({
             ) : (
               <FormField label="URL">
                 <Input
-                  defaultValue={item?.external_url ?? ""}
                   name="external_url"
+                  onChange={(event) => setExternalUrl(event.target.value)}
+                  value={externalUrl}
                   required
                   type="url"
                 />

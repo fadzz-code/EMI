@@ -19,17 +19,15 @@ import {
   TableHeader,
 } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
-import { classService } from "@/features/admin/management/management-service";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { progressReportService } from "./progress-service";
 import { ClassProgressPrintReport } from "./progress-print-report";
-import { ProgressBar, ProgressSummaryCards } from "./progress-summary-cards";
+import { ProgressBar } from "./progress-summary-cards";
 import {
   formatDateTime,
   formatNumber,
   formatPercent,
-  latestActivity,
   learningStatus,
   learningStatusLabel,
   statusTone,
@@ -39,58 +37,18 @@ export function ProgressClassDetail({ classId }: { classId: string }) {
   const { token } = useAuth();
   const [studentPage, setStudentPage] = useState(1);
 
-  const classQuery = useQuery({
-    queryKey: ["admin", "progress", "class-detail", classId],
-    queryFn: () => classService.detail(token ?? "", classId),
+  const detailQuery = useQuery({
+    queryKey: ["admin", "progress", "class-detail", classId, studentPage],
+    queryFn: () => progressReportService.classDetail(token ?? "", classId, { page: studentPage, per_page: 12 }),
     enabled: Boolean(token && classId),
   });
 
-  const summaryQuery = useQuery({
-    queryKey: ["admin", "progress", "class-summary", classId],
-    queryFn: () => progressReportService.dashboardSummary(token ?? "", { class_id: classId }),
-    enabled: Boolean(token && classId),
-  });
-
-  const studentsQuery = useQuery({
-    queryKey: ["admin", "progress", "class-students", classId, studentPage],
-    queryFn: () =>
-      progressReportService.students(token ?? "", {
-        class_id: classId,
-        page: studentPage,
-        per_page: 12,
-      }),
-    enabled: Boolean(token && classId),
-  });
-
-  const completedStudentsQuery = useQuery({
-    queryKey: ["admin", "progress", "class-students-completed", classId],
-    queryFn: () =>
-      progressReportService.students(token ?? "", {
-        class_id: classId,
-        learning_status: "completed",
-        page: 1,
-        per_page: 1,
-      }),
-    enabled: Boolean(token && classId),
-  });
-
-  const notStartedStudentsQuery = useQuery({
-    queryKey: ["admin", "progress", "class-students-not-started", classId],
-    queryFn: () =>
-      progressReportService.students(token ?? "", {
-        class_id: classId,
-        learning_status: "not_started",
-        page: 1,
-        per_page: 1,
-      }),
-    enabled: Boolean(token && classId),
-  });
-
-  const schoolClass = classQuery.data;
-  const students = studentsQuery.data?.items ?? [];
-  const studentMeta = studentsQuery.data?.meta;
-  const completedStudents = completedStudentsQuery.data?.meta?.total;
-  const notStartedStudents = notStartedStudentsQuery.data?.meta?.total;
+  const schoolClass = detailQuery.data?.class;
+  const students = detailQuery.data?.students.items ?? [];
+  const studentMeta = detailQuery.data?.students.meta;
+  const summary = detailQuery.data?.summary;
+  const completedStudents = summary?.completed_students;
+  const notStartedStudents = summary?.not_started_students;
 
   function printReport() {
     window.print();
@@ -105,11 +63,11 @@ export function ProgressClassDetail({ classId }: { classId: string }) {
         Kembali ke Progress
       </Link>
 
-      {classQuery.isLoading ? <LoadingState title="Memuat identitas kelas" /> : null}
-      {classQuery.isError ? (
+      {detailQuery.isLoading ? <LoadingState title="Memuat identitas kelas" /> : null}
+      {detailQuery.isError ? (
         <ErrorState
-          description={getFirstApiError(classQuery.error)}
-          onRetry={() => void classQuery.refetch()}
+          description={getFirstApiError(detailQuery.error)}
+          onRetry={() => void detailQuery.refetch()}
           title="Gagal memuat kelas"
         />
       ) : null}
@@ -121,18 +79,12 @@ export function ProgressClassDetail({ classId }: { classId: string }) {
             <h1 className="mt-2 text-3xl font-black text-ink">{schoolClass.name}</h1>
             <p className="mt-2 text-sm leading-6 font-semibold text-muted">
               {schoolClass.school?.name ?? "-"} | {schoolClass.academic_year} | Guru:{" "}
-              {schoolClass.active_teacher_assignment?.teacher?.full_name ?? "Belum tersedia"}
+              {schoolClass.teacher?.full_name ?? "Belum tersedia"}
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button
-              disabled={
-                classQuery.isLoading ||
-                summaryQuery.isLoading ||
-                studentsQuery.isLoading ||
-                completedStudentsQuery.isLoading ||
-                notStartedStudentsQuery.isLoading
-              }
+              disabled={detailQuery.isLoading}
               onClick={printReport}
             >
               Cetak PDF
@@ -141,17 +93,8 @@ export function ProgressClassDetail({ classId }: { classId: string }) {
         </header>
       ) : null}
 
-      {summaryQuery.isLoading ? <LoadingState title="Memuat ringkasan kelas" /> : null}
-      {summaryQuery.isError ? (
-        <ErrorState
-          description={getFirstApiError(summaryQuery.error)}
-          onRetry={() => void summaryQuery.refetch()}
-          title="Gagal memuat ringkasan kelas"
-        />
-      ) : null}
-      {!summaryQuery.isLoading && !summaryQuery.isError ? (
+      {!detailQuery.isLoading && !detailQuery.isError && summary ? (
         <>
-          <ProgressSummaryCards summary={summaryQuery.data} />
           <section className="grid gap-4 md:grid-cols-3">
             <Card>
               <CardContent>
@@ -160,7 +103,7 @@ export function ProgressClassDetail({ classId }: { classId: string }) {
                   {formatNumber(completedStudents)}
                 </p>
                 <p className="mt-2 text-sm font-semibold text-muted">
-                  Dari filter `learning_status=completed`.
+                  Agregat siswa yang menyelesaikan semua modul terbit.
                 </p>
               </CardContent>
             </Card>
@@ -171,7 +114,7 @@ export function ProgressClassDetail({ classId }: { classId: string }) {
                   {formatNumber(notStartedStudents)}
                 </p>
                 <p className="mt-2 text-sm font-semibold text-muted">
-                  Dari filter `learning_status=not_started`.
+                  Agregat siswa yang belum memulai modul.
                 </p>
               </CardContent>
             </Card>
@@ -179,10 +122,10 @@ export function ProgressClassDetail({ classId }: { classId: string }) {
               <CardContent>
                 <p className="text-xs font-black uppercase text-muted">Aktivitas terakhir</p>
                 <p className="mt-3 text-xl font-black text-ink">
-                  {formatDateTime(students.map(latestActivity).filter(Boolean).sort().pop())}
+                  {formatDateTime(summary.last_activity_at)}
                 </p>
                 <p className="mt-2 text-sm font-semibold text-muted">
-                  Diambil dari halaman siswa saat ini.
+                  Aktivitas terbaru seluruh siswa dalam kelas.
                 </p>
               </CardContent>
             </Card>
@@ -195,15 +138,9 @@ export function ProgressClassDetail({ classId }: { classId: string }) {
           <h2 className="text-xl font-black text-ink">Daftar Siswa Kelas</h2>
         </CardHeader>
         <CardContent>
-          {studentsQuery.isLoading ? <LoadingState title="Memuat siswa kelas" /> : null}
-          {studentsQuery.isError ? (
-            <ErrorState
-              description={getFirstApiError(studentsQuery.error)}
-              onRetry={() => void studentsQuery.refetch()}
-              title="Gagal memuat progress siswa kelas"
-            />
-          ) : null}
-          {!studentsQuery.isLoading && !studentsQuery.isError ? (
+          {detailQuery.isLoading ? <LoadingState title="Memuat siswa kelas" /> : null}
+          {detailQuery.isError ? <ErrorState description={getFirstApiError(detailQuery.error)} onRetry={() => void detailQuery.refetch()} title="Gagal memuat progress siswa kelas" /> : null}
+          {!detailQuery.isLoading && !detailQuery.isError ? (
             students.length === 0 ? (
               <EmptyState
                 description="Belum ada progress siswa di kelas ini."
@@ -274,7 +211,7 @@ export function ProgressClassDetail({ classId }: { classId: string }) {
         notStartedStudents={notStartedStudents}
         schoolClass={schoolClass}
         students={students}
-        summary={summaryQuery.data}
+        summary={summary}
       />
     </div>
   );

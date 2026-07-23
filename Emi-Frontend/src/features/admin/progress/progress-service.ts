@@ -2,6 +2,7 @@ import { apiClient } from "@/lib/api-client";
 import { env } from "@/lib/env";
 
 import type {
+  ClassProgressDetail,
   ClassProgressFilters,
   ClassProgressRow,
   DashboardSummary,
@@ -75,6 +76,19 @@ export const progressReportService = {
     });
 
     return paginated(response.data, response.meta);
+  },
+
+  async classDetail(token: string, classId: string, filters: Pick<ProgressScopeFilters, "page" | "per_page"> = {}) {
+    const response = await apiClient.get<ClassProgressDetail>(`/admin/reports/progress/classes/${classId}`, {
+      token,
+      query: {
+        page: filters.page ?? 1,
+        per_page: filters.per_page ?? 12,
+      },
+    });
+    if (!response.data) throw new Error("Ringkasan progress kelas tidak tersedia.");
+    const students = response.data.students as unknown as { data?: StudentProgressRow[]; items?: StudentProgressRow[]; meta?: unknown };
+    return { ...response.data, students: paginated(students.data ?? students.items, students.meta) };
   },
 
   async students(token: string, filters: ProgressScopeFilters = {}) {

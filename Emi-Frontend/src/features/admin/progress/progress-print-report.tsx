@@ -1,4 +1,4 @@
-import type { ManagedUser, SchoolClass } from "@/features/admin/management/types";
+import type { ManagedUser } from "@/features/admin/management/types";
 import { userStatusLabel } from "@/features/admin/management/management-utils";
 
 import {
@@ -10,6 +10,7 @@ import {
   learningStatusLabel,
 } from "./progress-utils";
 import type {
+  ClassProgressSummary,
   DashboardSummary,
   QuizResultRow,
   StudentProgressRow,
@@ -296,8 +297,8 @@ export function ClassProgressPrintReport({
   completedStudents,
   notStartedStudents,
 }: {
-  schoolClass?: SchoolClass | null;
-  summary?: DashboardSummary | null;
+  schoolClass?: { name: string; academic_year: string; school: { name: string }; teacher: { full_name: string } | null } | null;
+  summary?: ClassProgressSummary | null;
   students: StudentProgressRow[];
   completedStudents?: number | null;
   notStartedStudents?: number | null;
@@ -311,9 +312,9 @@ export function ClassProgressPrintReport({
         <SummaryItem label="Tahun ajaran" value={unavailable(schoolClass?.academic_year)} />
         <SummaryItem
           label="Guru"
-          value={unavailable(schoolClass?.active_teacher_assignment?.teacher?.full_name)}
+          value={unavailable(schoolClass?.teacher?.full_name)}
         />
-        <SummaryItem label="Jumlah siswa" value={formatNumber(summary?.overview.active_students)} />
+        <SummaryItem label="Jumlah siswa" value={formatNumber(summary?.active_students)} />
         <SummaryItem label="Siswa belum mulai" value={formatNumber(notStartedStudents)} />
       </div>
 
@@ -321,11 +322,11 @@ export function ClassProgressPrintReport({
       <div className="print-summary">
         <SummaryItem
           label="Rata-rata progress modul"
-          value={formatPercent(summary?.learning.average_learning_progress_percent)}
+          value={formatPercent(summary?.average_module_progress_percent)}
         />
         <SummaryItem
           label="Rata-rata nilai kuis"
-          value={formatPercent(summary?.quizzes.average_score_percent)}
+          value={formatPercent(summary?.average_best_final_quiz_score_percent)}
         />
         <SummaryItem label="Siswa selesai modul" value={formatNumber(completedStudents)} />
       </div>
