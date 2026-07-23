@@ -195,6 +195,7 @@ class _AdminDrawer extends ConsumerWidget {
               ),
             const Divider(height: 1),
             ListTile(
+              key: const Key('adminLogoutButton'),
               leading: const Icon(Icons.logout),
               title: const Text('Keluar'),
               onTap: () async {
