@@ -74,6 +74,43 @@ void main() {
     expect(page.hasNextPage, isFalse);
   });
 
+  test(
+    'repository resolves private culture media with temporary URL',
+    () async {
+      final repository = CultureRepository(
+        _dio((options, handler) {
+          expect(options.path, '/media/media-1/temporary-url');
+          handler.resolve(
+            Response(
+              requestOptions: options,
+              data: {
+                'data': {'url': 'https://example.test/private.mp3'},
+              },
+            ),
+          );
+        }),
+        const DioErrorMapper(),
+      );
+      final item = CultureItem.fromJson({
+        'id': 'culture-1',
+        'class_id': 'class-1',
+        'title': 'Audio',
+        'content_type': 'audio',
+        'status': 'published',
+        'media': {
+          'id': 'media-1',
+          'visibility': 'private',
+          'url': '/api/v1/media/media-1',
+        },
+      });
+
+      expect(
+        await repository.playbackUrl(item),
+        'https://example.test/private.mp3',
+      );
+    },
+  );
+
   test('repository maps backend error', () async {
     final repository = CultureRepository(
       _dio((options, handler) {

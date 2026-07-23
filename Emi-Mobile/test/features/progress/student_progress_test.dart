@@ -2,6 +2,17 @@ import 'package:emi_mobile/features/progress/data/student_progress.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('maps progress statuses to safe Indonesian labels', () {
+    expect(studentProgressStatus('not_started'), 'Belum mulai');
+    expect(studentProgressStatus('in_progress'), 'Sedang berjalan');
+    expect(studentProgressStatus('completed'), 'Selesai');
+    expect(
+      studentProgressStatus('future_backend_enum'),
+      'Status belum dikenal',
+    );
+    expect(studentProgressStatus(null), '-');
+  });
+
   test('maps student progress report json', () {
     final report = StudentProgressReport.fromJson({
       'data': {

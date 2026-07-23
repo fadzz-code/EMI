@@ -10,9 +10,14 @@ import '../data/student_quiz.dart';
 import '../data/student_quiz_providers.dart';
 
 class StudentQuizAttemptScreen extends ConsumerStatefulWidget {
-  const StudentQuizAttemptScreen({super.key, required this.quizId});
+  const StudentQuizAttemptScreen({
+    super.key,
+    required this.quizId,
+    this.attemptId,
+  });
 
   final String quizId;
+  final String? attemptId;
 
   @override
   ConsumerState<StudentQuizAttemptScreen> createState() =>
@@ -27,6 +32,7 @@ class _StudentQuizAttemptScreenState
   bool _saving = false;
   bool _submitting = false;
   bool _confirmingSubmit = false;
+  bool _allowPop = false;
   String? _submitKey;
   Object? _error;
   final _selectedOptions = <String, String>{};
@@ -57,11 +63,15 @@ class _StudentQuizAttemptScreenState
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: _attempt == null || _attempt!.isFinished,
+      canPop: _allowPop || _attempt == null || _attempt!.isFinished,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop || _attempt == null || _attempt!.isFinished) return;
         final leave = await _confirmLeave();
-        if (leave && context.mounted) context.pop();
+        if (!leave) return;
+        final saved = await _saveCurrent();
+        if (!saved || !context.mounted) return;
+        setState(() => _allowPop = true);
+        context.pop();
       },
       child: Scaffold(
         body: SafeArea(
@@ -108,9 +118,10 @@ class _StudentQuizAttemptScreenState
       _error = null;
     });
     try {
-      final attempt = await ref
-          .read(studentQuizRepositoryProvider)
-          .startAttempt(widget.quizId);
+      final repository = ref.read(studentQuizRepositoryProvider);
+      final attempt = widget.attemptId == null
+          ? await repository.startAttempt(widget.quizId)
+          : await repository.attempt(widget.attemptId!);
       if (!mounted) return;
       _hydrate(attempt);
       setState(() {
@@ -286,7 +297,7 @@ class _StudentQuizAttemptScreenState
           builder: (context) => AlertDialog(
             title: const Text('Keluar dari kuis?'),
             content: const Text(
-              'Jawaban tersimpan saat pindah soal. Jawaban di soal ini yang belum disimpan bisa hilang.',
+              'Jawaban pada soal ini akan disimpan sebelum keluar.',
             ),
             actions: [
               TextButton(

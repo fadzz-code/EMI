@@ -10,10 +10,13 @@ import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
 import '../../auth/domain/session_user.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../teacher/presentation/teacher_shell.dart';
 import 'avatar_validator.dart';
 
 class StudentProfileScreen extends ConsumerStatefulWidget {
-  const StudentProfileScreen({super.key});
+  const StudentProfileScreen({super.key, this.teacher = false});
+
+  final bool teacher;
 
   @override
   ConsumerState<StudentProfileScreen> createState() =>
@@ -50,80 +53,81 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
 
     final isStudent = user?.role == UserRole.student;
 
+    final content = ListView(
+      padding: const EdgeInsets.all(EmiSpacing.md),
+      children: [
+        if (auth.error != null) ...[
+          EmiCard(child: Text(auth.error!.message)),
+          const SizedBox(height: EmiSpacing.md),
+        ],
+        _ProfileHeader(
+          user: user,
+          previewPath: _avatarPreview?.path,
+          progress: _avatarProgress,
+          isBusy: auth.isLoading,
+          onPick: user == null || auth.isLoading ? null : _pickAvatar,
+          onDelete: user == null || user.avatarUrl == null || auth.isLoading
+              ? null
+              : _confirmDeleteAvatar,
+        ),
+        const SizedBox(height: EmiSpacing.lg),
+        EmiCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _ProfileRow(label: 'Email', value: user?.email ?? '-'),
+              _ProfileRow(label: 'Telepon', value: user?.phone ?? '-'),
+              _ProfileRow(label: 'Role', value: user?.role.value ?? '-'),
+              _ProfileRow(label: 'Status', value: user?.status ?? '-'),
+              _ProfileRow(
+                label: 'Sekolah',
+                value: user?.activeSchoolName ?? '-',
+              ),
+              _ProfileRow(label: 'Kelas', value: user?.activeClassName ?? '-'),
+            ],
+          ),
+        ),
+        const SizedBox(height: EmiSpacing.lg),
+        ElevatedButton.icon(
+          onPressed: user == null || auth.isLoading
+              ? null
+              : () => _showEditProfile(user),
+          icon: const Icon(Icons.edit_outlined),
+          label: const Text('Edit Profil'),
+        ),
+        const SizedBox(height: EmiSpacing.sm),
+        OutlinedButton.icon(
+          onPressed: user == null || auth.isLoading
+              ? null
+              : _showChangePassword,
+          icon: const Icon(Icons.lock_outline),
+          label: const Text('Ganti Password'),
+        ),
+        const SizedBox(height: EmiSpacing.lg),
+        OutlinedButton.icon(
+          onPressed: user == null || auth.isLoading ? null : _showDeleteAccount,
+          icon: const Icon(Icons.delete_forever_outlined),
+          label: const Text('Hapus Akun'),
+        ),
+        const SizedBox(height: EmiSpacing.sm),
+        OutlinedButton(
+          onPressed: auth.isLoading
+              ? null
+              : () => ref.read(authControllerProvider.notifier).logout(),
+          child: const Text('Logout'),
+        ),
+      ],
+    );
+
+    if (widget.teacher) {
+      return TeacherShell(title: 'Profil', child: content);
+    }
+
     return EmiScaffold(
       title: 'Profil',
       currentIndex: isStudent ? 4 : null,
       onNavTap: isStudent ? (index) => _go(context, index) : null,
-      child: ListView(
-        padding: const EdgeInsets.all(EmiSpacing.md),
-        children: [
-          if (auth.error != null) ...[
-            EmiCard(child: Text(auth.error!.message)),
-            const SizedBox(height: EmiSpacing.md),
-          ],
-          _ProfileHeader(
-            user: user,
-            previewPath: _avatarPreview?.path,
-            progress: _avatarProgress,
-            isBusy: auth.isLoading,
-            onPick: user == null || auth.isLoading ? null : _pickAvatar,
-            onDelete: user == null || user.avatarUrl == null || auth.isLoading
-                ? null
-                : _confirmDeleteAvatar,
-          ),
-          const SizedBox(height: EmiSpacing.lg),
-          EmiCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _ProfileRow(label: 'Email', value: user?.email ?? '-'),
-                _ProfileRow(label: 'Telepon', value: user?.phone ?? '-'),
-                _ProfileRow(label: 'Role', value: user?.role.value ?? '-'),
-                _ProfileRow(label: 'Status', value: user?.status ?? '-'),
-                _ProfileRow(
-                  label: 'Sekolah',
-                  value: user?.activeSchoolName ?? '-',
-                ),
-                _ProfileRow(
-                  label: 'Kelas',
-                  value: user?.activeClassName ?? '-',
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: EmiSpacing.lg),
-          ElevatedButton.icon(
-            onPressed: user == null || auth.isLoading
-                ? null
-                : () => _showEditProfile(user),
-            icon: const Icon(Icons.edit_outlined),
-            label: const Text('Edit Profil'),
-          ),
-          const SizedBox(height: EmiSpacing.sm),
-          OutlinedButton.icon(
-            onPressed: user == null || auth.isLoading
-                ? null
-                : _showChangePassword,
-            icon: const Icon(Icons.lock_outline),
-            label: const Text('Ganti Password'),
-          ),
-          const SizedBox(height: EmiSpacing.lg),
-          OutlinedButton.icon(
-            onPressed: user == null || auth.isLoading
-                ? null
-                : _showDeleteAccount,
-            icon: const Icon(Icons.delete_forever_outlined),
-            label: const Text('Hapus Akun'),
-          ),
-          const SizedBox(height: EmiSpacing.sm),
-          OutlinedButton(
-            onPressed: auth.isLoading
-                ? null
-                : () => ref.read(authControllerProvider.notifier).logout(),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
+      child: content,
     );
   }
 

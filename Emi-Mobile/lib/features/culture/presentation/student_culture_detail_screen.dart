@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../shared/widgets/emi_card.dart';
@@ -98,56 +100,122 @@ class _CultureDetail extends StatelessWidget {
   }
 }
 
-class _CultureMediaCard extends StatelessWidget {
+class _CultureMediaCard extends ConsumerStatefulWidget {
   const _CultureMediaCard({required this.item});
 
   final CultureItem item;
 
   @override
-  Widget build(BuildContext context) {
-    final url = item.contentUrl;
-    if (url == null || url.isEmpty) {
-      return const EmiCard(child: Text('Konten belum memiliki URL publik.'));
-    }
+  ConsumerState<_CultureMediaCard> createState() => _CultureMediaCardState();
+}
 
-    if (item.contentType == 'image') {
+class _CultureMediaCardState extends ConsumerState<_CultureMediaCard> {
+  final _player = AudioPlayer();
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final item = widget.item;
+    if (item.contentUrl?.isNotEmpty != true) {
+      return const EmiCard(child: Text('Konten belum tersedia.'));
+    }
+    if (item.contentType == 'image' && item.media?.visibility != 'private') {
       return EmiCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(EmiRadii.card),
-              child: Image.network(
-                url,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const Text('Gambar gagal dimuat.'),
-              ),
-            ),
-            const SizedBox(height: EmiSpacing.sm),
-            SelectableText(url),
-          ],
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(EmiRadii.card),
+          child: Image.network(
+            item.contentUrl!,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => const Text('Gambar gagal dimuat.'),
+          ),
         ),
       );
     }
-
+    if (item.contentType == 'audio') {
+      return EmiCard(
+        child: StreamBuilder<PlayerState>(
+          stream: _player.playerStateStream,
+          builder: (context, snapshot) => ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: IconButton.filled(
+              onPressed: _loading
+                  ? null
+                  : () => _toggleAudio(snapshot.data?.playing == true),
+              icon: _loading
+                  ? const CircularProgressIndicator()
+                  : Icon(
+                      snapshot.data?.playing == true
+                          ? Icons.pause
+                          : Icons.play_arrow,
+                    ),
+            ),
+            title: Text(_error ?? 'Putar audio'),
+          ),
+        ),
+      );
+    }
     return EmiCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(_openLabel(item.contentType)),
-          const SizedBox(height: EmiSpacing.sm),
-          SelectableText(url),
-        ],
+      child: FilledButton.icon(
+        onPressed: _loading ? null : _openExternal,
+        icon: Icon(
+          item.contentType == 'pdf' ? Icons.picture_as_pdf : Icons.open_in_new,
+        ),
+        label: Text(
+          item.contentType == 'video'
+              ? 'Putar video'
+              : item.contentType == 'pdf'
+              ? 'Buka PDF'
+              : 'Buka tautan',
+        ),
       ),
     );
   }
 
-  String _openLabel(String type) {
-    return switch (type) {
-      'pdf' => 'Buka PDF di URL berikut:',
-      'video' => 'Buka video di URL berikut:',
-      'audio' => 'Buka audio di URL berikut:',
-      _ => 'Buka konten di URL berikut:',
-    };
+  Future<String> _url() =>
+      ref.read(cultureRepositoryProvider).playbackUrl(widget.item);
+
+  Future<void> _toggleAudio(bool playing) async {
+    if (playing) return _player.pause();
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await _player.setUrl(await _url());
+      await _player.play();
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Audio gagal diputar.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _openExternal() async {
+    setState(() => _loading = true);
+    try {
+      final uri = Uri.tryParse(await _url());
+      if (uri == null || !{'https', 'http'}.contains(uri.scheme)) {
+        throw const FormatException();
+      }
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        throw const FormatException();
+      }
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Konten gagal dibuka.');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Konten gagal dibuka.')));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 }

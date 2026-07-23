@@ -8,14 +8,27 @@ import '../../../shared/widgets/emi_scaffold.dart';
 import '../data/student_quiz.dart';
 import '../data/student_quiz_providers.dart';
 
-class StudentQuizDetailScreen extends ConsumerWidget {
+class StudentQuizDetailScreen extends ConsumerStatefulWidget {
   const StudentQuizDetailScreen({super.key, required this.quizId});
 
   final String quizId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StudentQuizDetailScreen> createState() =>
+      _StudentQuizDetailScreenState();
+}
+
+class _StudentQuizDetailScreenState
+    extends ConsumerState<StudentQuizDetailScreen> {
+  int _historyPage = 1;
+
+  @override
+  Widget build(BuildContext context) {
+    final quizId = widget.quizId;
     final quiz = ref.watch(studentQuizDetailProvider(quizId));
+    final history = ref.watch(
+      studentQuizAttemptsProvider((quizId: quizId, page: _historyPage)),
+    );
 
     return EmiScaffold(
       title: 'Detail Kuis',
@@ -109,6 +122,64 @@ class StudentQuizDetailScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: EmiSpacing.lg),
+              EmiCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Riwayat Percobaan',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: EmiSpacing.sm),
+                    history.when(
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
+                      error: (error, _) => Text(error.toString()),
+                      data: (page) => Column(
+                        children: [
+                          ...page.items.map(
+                            (attempt) => ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text('Percobaan ${attempt.attemptNumber}'),
+                              subtitle: Text(attempt.status),
+                              trailing: Text(
+                                attempt.scorePercent == null
+                                    ? '-'
+                                    : '${attempt.scorePercent!.round()}%',
+                              ),
+                              onTap: () => context.push(
+                                '/student/quizzes/${widget.quizId}/attempt?attemptId=${attempt.id}',
+                              ),
+                            ),
+                          ),
+                          if (page.items.isEmpty)
+                            const Text('Belum ada riwayat percobaan.'),
+                          if (page.lastPage > 1)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                IconButton(
+                                  onPressed: page.currentPage > 1
+                                      ? () => setState(() => _historyPage--)
+                                      : null,
+                                  icon: const Icon(Icons.chevron_left),
+                                ),
+                                Text('${page.currentPage}/${page.lastPage}'),
+                                IconButton(
+                                  onPressed: page.currentPage < page.lastPage
+                                      ? () => setState(() => _historyPage++)
+                                      : null,
+                                  icon: const Icon(Icons.chevron_right),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: EmiSpacing.lg),
               ElevatedButton.icon(
                 onPressed: item.canStart
                     ? () => context.go('/student/quizzes/${item.id}/attempt')
@@ -116,7 +187,9 @@ class StudentQuizDetailScreen extends ConsumerWidget {
                 icon: const Icon(Icons.play_arrow),
                 label: Text(
                   item.canStart
-                      ? 'Mulai / lanjut kuis'
+                      ? item.hasActiveAttempt
+                            ? 'Lanjutkan kuis'
+                            : 'Mulai kuis'
                       : 'Kuis belum dapat dimulai',
                 ),
               ),

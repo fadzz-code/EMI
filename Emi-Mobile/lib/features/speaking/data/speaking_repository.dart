@@ -34,12 +34,16 @@ class SpeakingRepository {
     }
   }
 
-  Future<List<SpeakingAttempt>> listAttempts() async {
+  Future<SpeakingAttemptPage> listAttempts({
+    int page = 1,
+    int perPage = 15,
+  }) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '/student/speaking/attempts',
+        queryParameters: {'page': page, 'per_page': perPage},
       );
-      return _list(response.data, SpeakingAttempt.fromJson);
+      return SpeakingAttemptPage.fromJson(response.data ?? const {});
     } catch (error) {
       throw _map(error);
     }
@@ -95,6 +99,7 @@ class SpeakingRepository {
         ),
         if (durationSeconds != null)
           'audio_duration_seconds': durationSeconds.clamp(1, 30),
+        'capture_source': 'mobile_microphone',
       });
       final response = await _dio.post<Map<String, dynamic>>(
         '/student/speaking/exercises/$exerciseId/attempts',

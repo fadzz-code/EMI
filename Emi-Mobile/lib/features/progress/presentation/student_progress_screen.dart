@@ -249,7 +249,7 @@ class _StatusPill extends StatelessWidget {
         border: Border.all(color: EmiColors.border, width: 2),
         borderRadius: BorderRadius.circular(EmiRadii.pill),
       ),
-      child: Text(status),
+      child: Text(studentProgressStatus(status)),
     );
   }
 }

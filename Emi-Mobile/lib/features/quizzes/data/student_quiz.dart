@@ -3,8 +3,11 @@ class StudentQuiz {
     required this.id,
     required this.title,
     required this.canStart,
+    required this.hasActiveAttempt,
     required this.attemptLimitReached,
     required this.submittedAttemptsCount,
+    required this.expiredAttemptsCount,
+    required this.finishedAttemptsCount,
     required this.questionsCount,
     this.description,
     this.instructions,
@@ -19,6 +22,9 @@ class StudentQuiz {
     this.latestScorePercent,
     this.bestScorePercent,
     this.latestSubmittedAt,
+    this.activeAttempt,
+    this.bestResult,
+    this.latestResult,
     this.questions = const [],
   });
 
@@ -35,12 +41,18 @@ class StudentQuiz {
   final int? attemptsCount;
   final int? usedAttempts;
   final int submittedAttemptsCount;
+  final int expiredAttemptsCount;
+  final int finishedAttemptsCount;
   final int? remainingAttempts;
   final bool attemptLimitReached;
   final bool canStart;
+  final bool hasActiveAttempt;
   final double? latestScorePercent;
   final double? bestScorePercent;
   final String? latestSubmittedAt;
+  final QuizAttemptSummary? activeAttempt;
+  final QuizResultSummary? bestResult;
+  final QuizResultSummary? latestResult;
   final List<QuizQuestion> questions;
 
   QuizAvailability get availability {
@@ -83,15 +95,74 @@ class StudentQuiz {
       attemptsCount: _nullableInt(json['attempts_count']),
       usedAttempts: _nullableInt(json['used_attempts']),
       submittedAttemptsCount: _int(json['submitted_attempts_count']),
+      expiredAttemptsCount: _int(json['expired_attempts_count']),
+      finishedAttemptsCount: _int(json['finished_attempts_count']),
       remainingAttempts: _nullableInt(json['remaining_attempts']),
       attemptLimitReached: json['attempt_limit_reached'] as bool? ?? false,
       canStart: json['can_start'] as bool? ?? false,
+      hasActiveAttempt: json['has_active_attempt'] as bool? ?? false,
       latestScorePercent: _double(json['latest_score_percent']),
       bestScorePercent: _double(json['best_score_percent']),
       latestSubmittedAt: json['latest_submitted_at']?.toString(),
+      activeAttempt: json['active_attempt'] is Map<String, dynamic>
+          ? QuizAttemptSummary.fromJson(json['active_attempt'])
+          : null,
+      bestResult: json['best_result'] is Map<String, dynamic>
+          ? QuizResultSummary.fromJson(json['best_result'])
+          : null,
+      latestResult: json['latest_result'] is Map<String, dynamic>
+          ? QuizResultSummary.fromJson(json['latest_result'])
+          : null,
       questions: _list(json['questions']).map(QuizQuestion.fromJson).toList(),
     );
   }
+}
+
+class QuizAttemptSummary {
+  const QuizAttemptSummary({
+    required this.id,
+    required this.status,
+    this.attemptNumber,
+    this.startedAt,
+    this.expiresAt,
+  });
+
+  final String id;
+  final String status;
+  final int? attemptNumber;
+  final DateTime? startedAt;
+  final DateTime? expiresAt;
+
+  factory QuizAttemptSummary.fromJson(Map<String, dynamic> json) =>
+      QuizAttemptSummary(
+        id: json['id'] as String? ?? '',
+        status: json['status'] as String? ?? '',
+        attemptNumber: _nullableInt(json['attempt_number']),
+        startedAt: _date(json['started_at']),
+        expiresAt: _date(json['expires_at']),
+      );
+}
+
+class QuizResultSummary {
+  const QuizResultSummary({
+    required this.scorePercent,
+    this.scorePoints,
+    this.maxPoints,
+    this.submittedAt,
+  });
+
+  final double scorePercent;
+  final double? scorePoints;
+  final double? maxPoints;
+  final DateTime? submittedAt;
+
+  factory QuizResultSummary.fromJson(Map<String, dynamic> json) =>
+      QuizResultSummary(
+        scorePercent: _double(json['score_percent']) ?? 0,
+        scorePoints: _double(json['score_points']),
+        maxPoints: _double(json['max_points']),
+        submittedAt: _date(json['submitted_at']),
+      );
 }
 
 class QuizQuestion {
@@ -242,6 +313,38 @@ class QuizAttempt {
           ? StudentQuiz.fromJson(quizJson)
           : null,
       answers: _list(json['answers']).map(QuizAnswer.fromJson).toList(),
+    );
+  }
+}
+
+class QuizAttemptPage {
+  const QuizAttemptPage({
+    required this.items,
+    required this.currentPage,
+    required this.lastPage,
+    required this.total,
+  });
+
+  final List<QuizAttempt> items;
+  final int currentPage;
+  final int lastPage;
+  final int total;
+
+  factory QuizAttemptPage.fromJson(Map<String, dynamic> json) {
+    final data = json['data'];
+    final meta = json['meta'];
+    return QuizAttemptPage(
+      items: data is List
+          ? data
+                .whereType<Map<String, dynamic>>()
+                .map(QuizAttempt.fromJson)
+                .toList()
+          : const [],
+      currentPage: meta is Map<String, dynamic>
+          ? _int(meta['current_page'])
+          : 1,
+      lastPage: meta is Map<String, dynamic> ? _int(meta['last_page']) : 1,
+      total: meta is Map<String, dynamic> ? _int(meta['total']) : 0,
     );
   }
 }

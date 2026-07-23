@@ -20,6 +20,7 @@ void main() {
           'remaining_attempts': 1,
           'attempt_limit_reached': false,
           'can_start': true,
+          'has_active_attempt': true,
           'latest_score_percent': 80,
           'best_score_percent': 90,
           'latest_submitted_at': '2026-07-13T10:00:00Z',
@@ -31,6 +32,7 @@ void main() {
     expect(page.items.single.title, 'Kuis Sapaan');
     expect(page.items.single.durationMinutes, 20);
     expect(page.items.single.bestScorePercent, 90);
+    expect(page.items.single.hasActiveAttempt, true);
     expect(page.hasNextPage, true);
   });
 
@@ -78,6 +80,46 @@ void main() {
     expect(attempt.quiz?.questions.single.isMultipleChoice, true);
     expect(attempt.quiz?.questions.single.options.single.optionText, 'Menyapa');
     expect(attempt.answers.single.isCorrect, true);
+  });
+
+  test('maps active attempt answers and original expiry', () {
+    final attempt = QuizAttempt.fromJson({
+      'id': 'attempt-old',
+      'class_quiz_id': 'quiz-1',
+      'attempt_number': 1,
+      'status': 'in_progress',
+      'started_at': '2026-07-22T10:00:00Z',
+      'expires_at': '2026-07-22T10:30:00Z',
+      'class_quiz': {
+        'id': 'quiz-1',
+        'title': 'Kuis',
+        'questions_count': 2,
+        'submitted_attempts_count': 0,
+        'attempt_limit_reached': false,
+        'can_start': true,
+        'has_active_attempt': true,
+        'questions': const [],
+      },
+      'answers': [
+        {
+          'id': 'answer-1',
+          'quiz_question_id': 'question-1',
+          'selected_option_id': 'option-1',
+        },
+        {
+          'id': 'answer-2',
+          'quiz_question_id': 'question-2',
+          'answer_text': 'Mekongga',
+        },
+      ],
+    });
+
+    expect(attempt.id, 'attempt-old');
+    expect(attempt.isInProgress, true);
+    expect(attempt.expiresAt, DateTime.parse('2026-07-22T10:30:00Z'));
+    expect(attempt.answers.first.selectedOptionId, 'option-1');
+    expect(attempt.answers.last.answerText, 'Mekongga');
+    expect(attempt.quiz?.hasActiveAttempt, true);
   });
 
   test('detects quiz status', () {

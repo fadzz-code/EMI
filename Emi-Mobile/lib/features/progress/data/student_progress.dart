@@ -100,6 +100,14 @@ class StudentProgressSummary {
   }
 }
 
+String studentProgressStatus(String? value) => switch (value) {
+  'not_started' => 'Belum mulai',
+  'in_progress' => 'Sedang berjalan',
+  'completed' => 'Selesai',
+  null || '' => '-',
+  _ => 'Status belum dikenal',
+};
+
 class StudentProgressModule {
   const StudentProgressModule({
     required this.id,

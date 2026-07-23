@@ -204,11 +204,14 @@ class _StudentSpeakingDetailScreenState
         timer.cancel();
         return;
       }
-      ref.invalidate(speakingAttemptProvider(attemptId));
-      final next = await ref
-          .read(speakingRepositoryProvider)
-          .getAttempt(attemptId);
-      if (!next.isProcessing) timer.cancel();
+      try {
+        final next = await ref.refresh(
+          speakingAttemptProvider(attemptId).future,
+        );
+        if (!next.isProcessing) timer.cancel();
+      } catch (_) {
+        timer.cancel();
+      }
     });
   }
 }

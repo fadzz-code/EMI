@@ -37,6 +37,26 @@ void main() {
     expect(attempt.aiScore, 88.5);
     expect(attempt.isCompleted, isTrue);
     expect(attempt.teacherFeedback, 'Bagus');
+
+    final page = SpeakingAttemptPage.fromJson({
+      'data': [
+        {
+          'id': 'attempt-2',
+          'exercise_id': 'exercise-1',
+          'status': 'completed',
+          'analysis': {'score': 91, 'transcription': 'Mombesara'},
+          'review': {'score': 95, 'feedback': 'Jelas'},
+          'recording': {'media_id': 'media-2'},
+        },
+      ],
+      'meta': {'current_page': 2, 'last_page': 3, 'total': 31},
+    });
+    expect(page.currentPage, 2);
+    expect(page.lastPage, 3);
+    expect(page.total, 31);
+    expect(page.items.single.aiScore, 91);
+    expect(page.items.single.teacherFeedback, 'Jelas');
+    expect(page.items.single.audioMediaId, 'media-2');
   });
 
   test('normalizes multipart filename mime and size validation', () {
@@ -87,6 +107,19 @@ void main() {
           );
           return;
         }
+        if (options.path == '/student/speaking/attempts') {
+          expect(options.queryParameters, {'page': 2, 'per_page': 15});
+          handler.resolve(
+            Response(
+              requestOptions: options,
+              data: {
+                'data': [_attemptJson],
+                'meta': {'current_page': 2, 'last_page': 2, 'total': 16},
+              },
+            ),
+          );
+          return;
+        }
         if (options.path == '/student/speaking/attempts/attempt-1') {
           handler.resolve(
             Response(requestOptions: options, data: {'data': _attemptJson}),
@@ -107,7 +140,16 @@ void main() {
         if (options.path == '/student/speaking/exercises/exercise-1/attempts') {
           final form = options.data as FormData;
           expect(form.files.single.key, 'file');
-          expect(form.fields.single.key, 'audio_duration_seconds');
+          expect(
+            form.fields.map((field) => field.key),
+            containsAll(['audio_duration_seconds', 'capture_source']),
+          );
+          expect(
+            form.fields
+                .firstWhere((field) => field.key == 'capture_source')
+                .value,
+            'mobile_microphone',
+          );
           handler.resolve(
             Response(
               requestOptions: options,
@@ -124,6 +166,10 @@ void main() {
 
     expect((await repository.listExercises()).single.id, 'exercise-1');
     expect((await repository.getExercise('exercise-1')).title, 'Salam');
+    expect(
+      (await repository.listAttempts(page: 2)).items.single.id,
+      'attempt-1',
+    );
     expect((await repository.getAttempt('attempt-1')).status, 'pending');
     expect(
       await repository.temporaryMediaUrl('media-1'),

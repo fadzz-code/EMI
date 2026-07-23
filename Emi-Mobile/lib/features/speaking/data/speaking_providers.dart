@@ -19,10 +19,10 @@ final speakingExerciseProvider = FutureProvider.autoDispose
       return ref.watch(speakingRepositoryProvider).getExercise(id);
     });
 
-final speakingAttemptsProvider =
-    FutureProvider.autoDispose<List<SpeakingAttempt>>(
-      (ref) => ref.watch(speakingRepositoryProvider).listAttempts(),
-    );
+final speakingAttemptsProvider = FutureProvider.autoDispose
+    .family<SpeakingAttemptPage, int>((ref, page) {
+      return ref.watch(speakingRepositoryProvider).listAttempts(page: page);
+    });
 
 final speakingAttemptProvider = FutureProvider.autoDispose
     .family<SpeakingAttempt, String>((ref, id) {

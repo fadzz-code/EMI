@@ -81,7 +81,8 @@ class SpeakingRecorderController extends StateNotifier<SpeakingRecorderState> {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       final next = state.duration + const Duration(seconds: 1);
       if (next.inSeconds >= 30) {
-        stop();
+        state = state.copyWith(duration: const Duration(seconds: 30));
+        unawaited(stop());
       } else {
         state = state.copyWith(duration: next);
       }

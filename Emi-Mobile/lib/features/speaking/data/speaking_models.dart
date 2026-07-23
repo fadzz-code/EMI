@@ -113,18 +113,29 @@ class SpeakingAttempt {
 
   factory SpeakingAttempt.fromJson(Map<String, dynamic> json) {
     final exercise = json['exercise'];
+    final analysis = json['analysis'];
+    final review = json['review'];
+    final recording = json['recording'];
     return SpeakingAttempt(
       id: json['id'] as String? ?? '',
       exerciseId: json['exercise_id'] as String? ?? '',
       targetText: json['target_text'] as String?,
       status: json['status'] as String? ?? '',
-      aiScore: _double(json['ai_score']),
-      aiTranscription: json['ai_transcription'] as String?,
-      aiAlignment: json['ai_alignment'],
-      aiError: json['ai_error'] as String?,
-      teacherScore: _double(json['teacher_score']),
-      teacherFeedback: json['teacher_feedback'] as String?,
-      audioMediaId: json['audio_media_id'] as String?,
+      aiScore: _double(json['ai_score'] ?? _mapValue(analysis, 'score')),
+      aiTranscription:
+          (json['ai_transcription'] ?? _mapValue(analysis, 'transcription'))
+              as String?,
+      aiAlignment: json['ai_alignment'] ?? _mapValue(analysis, 'alignment'),
+      aiError: (json['ai_error'] ?? _mapValue(analysis, 'error')) as String?,
+      teacherScore: _double(
+        json['teacher_score'] ?? _mapValue(review, 'score'),
+      ),
+      teacherFeedback:
+          (json['teacher_feedback'] ?? _mapValue(review, 'feedback'))
+              as String?,
+      audioMediaId:
+          (json['audio_media_id'] ?? _mapValue(recording, 'media_id'))
+              as String?,
       audioUrl: json['audio_url'] as String?,
       createdAt: DateTime.tryParse(json['created_at'] as String? ?? ''),
       updatedAt: DateTime.tryParse(json['updated_at'] as String? ?? ''),
@@ -134,10 +145,50 @@ class SpeakingAttempt {
     );
   }
 
+  static Object? _mapValue(Object? value, String key) =>
+      value is Map<String, dynamic> ? value[key] : null;
+
   static double? _double(Object? value) {
     if (value is num) return value.toDouble();
     if (value is String) return double.tryParse(value);
     return null;
+  }
+}
+
+class SpeakingAttemptPage {
+  const SpeakingAttemptPage({
+    required this.items,
+    required this.currentPage,
+    required this.lastPage,
+    required this.total,
+  });
+
+  final List<SpeakingAttempt> items;
+  final int currentPage;
+  final int lastPage;
+  final int total;
+
+  factory SpeakingAttemptPage.fromJson(Map<String, dynamic> json) {
+    final data = json['data'];
+    final meta = json['meta'];
+    return SpeakingAttemptPage(
+      items: data is List
+          ? data
+                .whereType<Map<String, dynamic>>()
+                .map(SpeakingAttempt.fromJson)
+                .toList()
+          : const [],
+      currentPage: meta is Map<String, dynamic>
+          ? _int(meta['current_page'], 1)
+          : 1,
+      lastPage: meta is Map<String, dynamic> ? _int(meta['last_page'], 1) : 1,
+      total: meta is Map<String, dynamic> ? _int(meta['total']) : 0,
+    );
+  }
+
+  static int _int(Object? value, [int fallback = 0]) {
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
   }
 }
 

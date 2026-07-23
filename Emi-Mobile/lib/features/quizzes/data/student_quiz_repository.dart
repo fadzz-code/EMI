@@ -41,6 +41,23 @@ class StudentQuizRepository {
     }
   }
 
+  Future<QuizAttemptPage> attempts(
+    String quizId, {
+    int page = 1,
+    int perPage = 5,
+  }) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/student/quizzes/$quizId/attempts',
+        queryParameters: {'page': page, 'per_page': perPage},
+      );
+      return QuizAttemptPage.fromJson(response.data ?? const {});
+    } catch (error) {
+      if (error is AppError) rethrow;
+      throw _errorMapper.map(error);
+    }
+  }
+
   Future<QuizAttempt> startAttempt(String quizId) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(

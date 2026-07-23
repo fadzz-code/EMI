@@ -18,10 +18,11 @@ class StudentQuizzesScreen extends ConsumerStatefulWidget {
 
 class _StudentQuizzesScreenState extends ConsumerState<StudentQuizzesScreen> {
   String? _availability;
+  int _page = 1;
 
   @override
   Widget build(BuildContext context) {
-    final query = StudentQuizQuery(availability: _availability);
+    final query = StudentQuizQuery(availability: _availability, page: _page);
     final quizzes = ref.watch(studentQuizListProvider(query));
 
     return EmiScaffold(
@@ -62,7 +63,10 @@ class _StudentQuizzesScreenState extends ConsumerState<StudentQuizzesScreen> {
               const SizedBox(height: EmiSpacing.lg),
               _Filters(
                 value: _availability,
-                onChanged: (value) => setState(() => _availability = value),
+                onChanged: (value) => setState(() {
+                  _availability = value;
+                  _page = 1;
+                }),
               ),
               const SizedBox(height: EmiSpacing.lg),
               _Summary(page: page),
@@ -76,12 +80,24 @@ class _StudentQuizzesScreenState extends ConsumerState<StudentQuizzesScreen> {
                     child: _QuizCard(quiz: quiz),
                   ),
                 ),
-              if (page.hasNextPage)
-                OutlinedButton(
-                  onPressed: null,
-                  child: Text(
-                    'Halaman ${page.currentPage} dari ${page.lastPage}',
-                  ),
+              if (page.lastPage > 1)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      onPressed: page.currentPage > 1
+                          ? () => setState(() => _page--)
+                          : null,
+                      icon: const Icon(Icons.chevron_left),
+                    ),
+                    Text('Halaman ${page.currentPage} dari ${page.lastPage}'),
+                    IconButton(
+                      onPressed: page.hasNextPage
+                          ? () => setState(() => _page++)
+                          : null,
+                      icon: const Icon(Icons.chevron_right),
+                    ),
+                  ],
                 ),
             ],
           ),
