@@ -260,12 +260,14 @@ class _AdminClassesScreenState extends ConsumerState<AdminClassesScreen> {
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
             FilledButton.icon(
+              key: const Key('adminAdd-classes'),
               onPressed: () => context.push('/admin/classes/create'),
               icon: const Icon(Icons.add),
               label: const Text('Tambah Kelas'),
             ),
             const SizedBox(height: EmiSpacing.md),
             TextField(
+              key: const Key('adminSearch-classes'),
               controller: _search,
               decoration: InputDecoration(
                 hintText: 'Cari nama kelas',
@@ -300,6 +302,7 @@ class _AdminClassesScreenState extends ConsumerState<AdminClassesScreen> {
                 if (data.items.isEmpty) {
                   final hasSearch = _search.text.trim().isNotEmpty;
                   return FriendlyState(
+                    key: const Key('adminEmpty-classes'),
                     icon: Icons.school_outlined,
                     title: hasSearch
                         ? 'Kelas Tidak Ditemukan'
@@ -463,12 +466,14 @@ class _AdminSchoolsScreenState extends ConsumerState<AdminSchoolsScreen> {
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
             FilledButton.icon(
+              key: const Key('adminAdd-schools'),
               onPressed: () => context.push('/admin/schools/create'),
               icon: const Icon(Icons.add),
               label: const Text('Tambah Sekolah'),
             ),
             const SizedBox(height: EmiSpacing.md),
             TextField(
+              key: const Key('adminSearch-schools'),
               controller: _search,
               decoration: InputDecoration(
                 hintText: 'Cari nama sekolah',
@@ -502,6 +507,7 @@ class _AdminSchoolsScreenState extends ConsumerState<AdminSchoolsScreen> {
                 if (data.items.isEmpty) {
                   final hasSearch = _search.text.trim().isNotEmpty;
                   return FriendlyState(
+                    key: const Key('adminEmpty-schools'),
                     icon: Icons.apartment_outlined,
                     title: hasSearch
                         ? 'Sekolah Tidak Ditemukan'
@@ -858,6 +864,7 @@ class _AdminSchoolFormState extends ConsumerState<_AdminSchoolForm> {
             ),
             const SizedBox(height: EmiSpacing.lg),
             FilledButton(
+              key: const Key('adminSave-schools'),
               onPressed: _saving ? null : _save,
               child: Text(_saving ? 'Menyimpan...' : 'Simpan'),
             ),
@@ -1463,6 +1470,7 @@ class _AdminClassFormState extends ConsumerState<_AdminClassForm> {
                 ),
                 const SizedBox(height: EmiSpacing.lg),
                 FilledButton(
+                  key: const Key('adminSave-classes'),
                   onPressed: _saving ? null : _save,
                   child: Text(_saving ? 'Menyimpan...' : 'Simpan'),
                 ),
@@ -1573,11 +1581,13 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
     return AdminShell(
       title: 'Guru dan Siswa',
       child: RefreshIndicator(
+        key: const Key('adminUsersScreen'),
         onRefresh: () => ref.read(adminUsersProvider.notifier).refresh(),
         child: ListView(
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
             TextField(
+              key: const Key('adminSearch-users'),
               controller: _search,
               decoration: InputDecoration(
                 hintText: 'Cari nama atau email',
@@ -1611,6 +1621,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                 if (data.items.isEmpty) {
                   final hasSearch = _search.text.trim().isNotEmpty;
                   return FriendlyState(
+                    key: const Key('adminEmpty-users'),
                     icon: Icons.people_outline,
                     title: hasSearch
                         ? 'Pengguna Tidak Ditemukan'
@@ -1724,6 +1735,7 @@ class _AdminUserTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
+    key: Key('adminUserRow-${user.id}'),
     leading: CircleAvatar(
       child: Icon(user.role == 'teacher' ? Icons.school : Icons.person),
     ),
@@ -1753,51 +1765,57 @@ class AdminUserDetailScreen extends ConsumerWidget {
     return AdminShell(
       title: 'Guru dan Siswa',
       fallbackRoute: '/admin/users',
-      child: detail.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => FriendlyState(
-          icon: Icons.wifi_off_outlined,
-          title: 'Data belum bisa dimuat',
-          message: 'Periksa koneksi internet, lalu coba lagi.',
-          onRetry: () => ref.invalidate(adminUserDetailProvider(id)),
-        ),
-        data: (user) => ListView(
-          padding: const EdgeInsets.all(EmiSpacing.md),
-          children: [
-            _AdminUserHeader(user: user),
-            const SizedBox(height: EmiSpacing.lg),
-            _InfoSection(
-              title: 'Data Akun',
-              rows: {
-                'Email': user.email,
-                'Role': _roleLabel(user.role),
-                'Status': _statusLabel(user.status),
-                'Nomor Telepon': user.phone ?? '-',
-              },
-            ),
-            const SizedBox(height: EmiSpacing.md),
-            _InfoSection(
-              title: 'Sekolah dan Kelas',
-              rows: {
-                'Sekolah': user.schoolName ?? 'Belum Ada Sekolah',
-                'Kelas': user.className ?? 'Belum Ditempatkan ke Kelas',
-              },
-            ),
-            const SizedBox(height: EmiSpacing.md),
-            FilledButton(
-              onPressed: () => _showEditUser(context, ref, user),
-              child: const Text('Edit Data'),
-            ),
-            const SizedBox(height: EmiSpacing.sm),
-            OutlinedButton(
-              onPressed: () => _confirmStatus(context, ref, user),
-              child: Text(
-                user.status == 'approved'
-                    ? 'Nonaktifkan Akun'
-                    : 'Aktifkan Akun',
+      child: Semantics(
+        key: const Key('adminUserDetailScreen'),
+        container: true,
+        child: detail.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, _) => FriendlyState(
+            icon: Icons.wifi_off_outlined,
+            title: 'Data belum bisa dimuat',
+            message: 'Periksa koneksi internet, lalu coba lagi.',
+            onRetry: () => ref.invalidate(adminUserDetailProvider(id)),
+          ),
+          data: (user) => ListView(
+            padding: const EdgeInsets.all(EmiSpacing.md),
+            children: [
+              _AdminUserHeader(user: user),
+              const SizedBox(height: EmiSpacing.lg),
+              _InfoSection(
+                title: 'Data Akun',
+                rows: {
+                  'Email': user.email,
+                  'Role': _roleLabel(user.role),
+                  'Status': _statusLabel(user.status),
+                  'Nomor Telepon': user.phone ?? '-',
+                },
               ),
-            ),
-          ],
+              const SizedBox(height: EmiSpacing.md),
+              _InfoSection(
+                title: 'Sekolah dan Kelas',
+                rows: {
+                  'Sekolah': user.schoolName ?? 'Belum Ada Sekolah',
+                  'Kelas': user.className ?? 'Belum Ditempatkan ke Kelas',
+                },
+              ),
+              const SizedBox(height: EmiSpacing.md),
+              FilledButton(
+                key: const Key('adminUserEdit'),
+                onPressed: () => _showEditUser(context, ref, user),
+                child: const Text('Edit Data'),
+              ),
+              const SizedBox(height: EmiSpacing.sm),
+              OutlinedButton(
+                key: const Key('adminUserStatus'),
+                onPressed: () => _confirmStatus(context, ref, user),
+                child: Text(
+                  user.status == 'approved'
+                      ? 'Nonaktifkan Akun'
+                      : 'Aktifkan Akun',
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -2019,18 +2037,28 @@ class _InfoSection extends StatelessWidget {
         for (final row in rows.entries)
           Padding(
             padding: const EdgeInsets.only(bottom: EmiSpacing.xs),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(width: 120, child: Text(row.key)),
-                Expanded(
-                  child: Text(
-                    row.value,
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 2,
-                  ),
-                ),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 320;
+                final value = Text(
+                  row.value,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                );
+                if (compact) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [Text(row.key), value],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(width: 120, child: Text(row.key)),
+                    Expanded(child: value),
+                  ],
+                );
+              },
             ),
           ),
       ],

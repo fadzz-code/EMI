@@ -11,6 +11,55 @@ import 'package:emi_mobile/features/admin/data/admin_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('admin school detail fits Redmi viewport with scaled text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(392, 804);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    const school = AdminSchool(
+      id: 'school-1',
+      name: '[E2E Admin] Sekolah Menengah Pertama Negeri EMI Kolaka Utara',
+      status: 'active',
+      address: 'Jalan Pendidikan Nomor 123, Kolaka Utara',
+      phone: '081234567890',
+      classesCount: 12,
+    );
+    final router = GoRouter(
+      initialLocation: '/admin/schools/${school.id}',
+      routes: [
+        GoRoute(
+          path: '/admin/schools/:id',
+          builder: (_, _) => const AdminSchoolDetailScreen(id: 'school-1'),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          adminSchoolDetailProvider(
+            school.id,
+          ).overrideWith((_) async => school),
+        ],
+        child: MaterialApp.router(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(3)),
+            child: child!,
+          ),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text(school.name), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'empty admin dashboard nests friendly state without layout error',
     (tester) async {
@@ -616,8 +665,11 @@ void main() {
 
     await tester.pumpAndSettle();
     expect(find.text('Budi'), findsOneWidget);
+    expect(find.byKey(const Key('adminUserDetailScreen')), findsOneWidget);
+    expect(find.byKey(const Key('adminUserEdit')), findsOneWidget);
+    expect(find.byKey(const Key('adminUserStatus')), findsOneWidget);
 
-    await tester.tap(find.text('Edit Data'));
+    await tester.tap(find.byKey(const Key('adminUserEdit')));
     await tester.pumpAndSettle();
     expect(find.text('Edit Data').last, findsOneWidget);
 
