@@ -5,6 +5,7 @@ import 'package:emi_mobile/core/errors/app_error.dart';
 import 'package:emi_mobile/core/errors/dio_error_mapper.dart';
 import 'package:emi_mobile/features/speaking/data/speaking_models.dart';
 import 'package:emi_mobile/features/speaking/data/speaking_repository.dart';
+import 'package:emi_mobile/features/speaking/presentation/student_speaking_detail_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -213,7 +214,59 @@ void main() {
     expect(repository.listExercises(), throwsA(isA<AppError>()));
   });
 
-  test('manual refresh and bounded polling contract states', () {
+  test('polling is single flight bounded and times out accurately', () async {
+    var fetches = 0;
+    final controller = SpeakingPollingController(
+      maxPolls: 3,
+      interval: Duration.zero,
+      fetch: () async {
+        fetches++;
+        return const SpeakingAttempt(
+          id: '1',
+          exerciseId: 'e',
+          status: 'submitted',
+          analysisStatus: 'processing',
+        );
+      },
+    );
+
+    expect(await controller.poll(), SpeakingPollingStop.timeout);
+    expect(fetches, 3);
+  });
+
+  test('polling stops at terminal and dispose stops safely', () async {
+    var fetches = 0;
+    final controller = SpeakingPollingController(
+      maxPolls: 5,
+      interval: Duration.zero,
+      fetch: () async {
+        fetches++;
+        return SpeakingAttempt(
+          id: '1',
+          exerciseId: 'e',
+          status: 'submitted',
+          analysisStatus: fetches == 2 ? 'completed' : 'processing',
+        );
+      },
+    );
+
+    expect(await controller.poll(), SpeakingPollingStop.terminal);
+    expect(fetches, 2);
+    controller.dispose();
+    expect(await controller.poll(), SpeakingPollingStop.timeout);
+    expect(fetches, 2);
+  });
+
+  test('polling exposes fetch error', () async {
+    final controller = SpeakingPollingController(
+      interval: Duration.zero,
+      fetch: () => throw StateError('offline'),
+    );
+
+    expect(await controller.poll(), SpeakingPollingStop.error);
+  });
+
+  test('manual refresh and canonical analysis states', () {
     const pending = SpeakingAttempt(
       id: '1',
       exerciseId: 'e',
@@ -234,7 +287,15 @@ void main() {
     expect(pending.isProcessing, isTrue);
     expect(processing.isProcessing, isTrue);
     expect(completed.isProcessing, isFalse);
+    final canonical = SpeakingAttempt.fromJson({
+      'id': '5',
+      'exercise_id': 'e',
+      'status': 'submitted',
+      'analysis_status': 'processing',
+    });
+
     expect(failed.isFailed, isTrue);
+    expect(canonical.isProcessing, isTrue);
     expect(12 * 5, 60);
   });
 }

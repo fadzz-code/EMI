@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:emi_mobile/features/quizzes/data/student_quiz.dart';
+import 'package:emi_mobile/features/quizzes/presentation/student_quiz_attempt_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -122,6 +125,91 @@ void main() {
     expect(attempt.quiz?.hasActiveAttempt, true);
   });
 
+  test('maps canonical active attempt', () {
+    final quiz = StudentQuiz.fromJson({
+      'id': 'quiz-1',
+      'title': 'Kuis',
+      'questions_count': 1,
+      'can_start': true,
+      'has_active_attempt': true,
+      'active_attempt': {
+        'id': 'attempt-1',
+        'status': 'in_progress',
+        'expires_at': '2026-07-22T10:30:00Z',
+      },
+    });
+
+    expect(quiz.activeAttempt?.id, 'attempt-1');
+    expect(
+      quiz.activeAttempt?.expiresAt,
+      DateTime.parse('2026-07-22T10:30:00Z'),
+    );
+  });
+
+  test(
+    'submission saves before one submit across manual auto collision',
+    () async {
+      final events = <String>[];
+      final saveGate = Completer<void>();
+      final coordinator = QuizSubmissionCoordinator(
+        save: () async {
+          events.add('save');
+          await saveGate.future;
+          return true;
+        },
+        submit: () async {
+          events.add('submit');
+          return _attempt('submitted');
+        },
+        onSuccess: (_) => events.add('success'),
+        onError: (_) => events.add('error'),
+      );
+
+      final manual = coordinator.run();
+      final automatic = coordinator.run();
+      expect(events, ['save']);
+      saveGate.complete();
+      await Future.wait([manual, automatic]);
+      expect(events, ['save', 'submit', 'success']);
+    },
+  );
+
+  test('submission save failure prevents submit', () async {
+    var submits = 0;
+    final coordinator = QuizSubmissionCoordinator(
+      save: () async => false,
+      submit: () async {
+        submits++;
+        return _attempt('submitted');
+      },
+      onSuccess: (_) {},
+      onError: (_) {},
+    );
+
+    await coordinator.run();
+    expect(submits, 0);
+  });
+
+  test('submission dispose suppresses async callbacks', () async {
+    final gate = Completer<void>();
+    var callbacks = 0;
+    final coordinator = QuizSubmissionCoordinator(
+      save: () async {
+        await gate.future;
+        return true;
+      },
+      submit: () async => _attempt('submitted'),
+      onSuccess: (_) => callbacks++,
+      onError: (_) => callbacks++,
+    );
+
+    final operation = coordinator.run();
+    coordinator.dispose();
+    gate.complete();
+    await operation;
+    expect(callbacks, 0);
+  });
+
   test('detects quiz status', () {
     final finished = StudentQuiz.fromJson({
       'id': 'quiz-1',
@@ -147,3 +235,11 @@ void main() {
     expect(locked.statusLabel, 'Terkunci');
   });
 }
+
+QuizAttempt _attempt(String status) => QuizAttempt(
+  id: 'attempt-1',
+  quizId: 'quiz-1',
+  attemptNumber: 1,
+  status: status,
+  answers: const [],
+);

@@ -16,8 +16,14 @@ void main() {
   test('dictionary query keeps stable provider identity', () {
     const first = DictionaryQuery(search: 'monga', categoryId: 'category-1');
     const second = DictionaryQuery(search: 'monga', categoryId: 'category-1');
+    const nextPage = DictionaryQuery(
+      search: 'monga',
+      categoryId: 'category-1',
+      page: 2,
+    );
 
     expect(first, second);
+    expect(first, isNot(nextPage));
     expect(first.hashCode, second.hashCode);
   });
 

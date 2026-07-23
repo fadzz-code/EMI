@@ -14,6 +14,45 @@ import '../data/speaking_providers.dart';
 import '../data/speaking_repository.dart';
 import 'speaking_recorder_controller.dart';
 
+enum SpeakingPollingStop { terminal, timeout, error }
+
+class SpeakingPollingController {
+  SpeakingPollingController({
+    required this.fetch,
+    this.maxPolls = 12,
+    this.interval = const Duration(seconds: 5),
+  });
+
+  final Future<SpeakingAttempt> Function() fetch;
+  final int maxPolls;
+  final Duration interval;
+  bool _disposed = false;
+  bool _running = false;
+
+  Future<SpeakingPollingStop> poll() async {
+    if (_running) return SpeakingPollingStop.error;
+    _running = true;
+    try {
+      for (var count = 0; count < maxPolls && !_disposed; count++) {
+        if (interval > Duration.zero) await Future<void>.delayed(interval);
+        if (_disposed) return SpeakingPollingStop.error;
+        try {
+          final attempt = await fetch();
+          if (_disposed) return SpeakingPollingStop.error;
+          if (!attempt.isProcessing) return SpeakingPollingStop.terminal;
+        } catch (_) {
+          return SpeakingPollingStop.error;
+        }
+      }
+      return SpeakingPollingStop.timeout;
+    } finally {
+      _running = false;
+    }
+  }
+
+  void dispose() => _disposed = true;
+}
+
 class StudentSpeakingDetailScreen extends ConsumerStatefulWidget {
   const StudentSpeakingDetailScreen({super.key, required this.exerciseId});
 
@@ -32,12 +71,12 @@ class _StudentSpeakingDetailScreenState
   var _progress = 0.0;
   String? _attemptId;
   String? _error;
-  Timer? _pollTimer;
-  var _pollCount = 0;
+  SpeakingPollingController? _polling;
+  String? _pollingMessage;
 
   @override
   void dispose() {
-    _pollTimer?.cancel();
+    _polling?.dispose();
     _referencePlayer.dispose();
     _previewPlayer.dispose();
     super.dispose();
@@ -151,7 +190,8 @@ class _StudentSpeakingDetailScreenState
                     onRetry: () =>
                         ref.invalidate(speakingAttemptProvider(_attemptId!)),
                   ),
-                  data: _AttemptResultCard.new,
+                  data: (data) =>
+                      _AttemptResultCard(data, pollingMessage: _pollingMessage),
                 ),
               ],
             ],
@@ -196,23 +236,26 @@ class _StudentSpeakingDetailScreenState
     }
   }
 
-  void _startBoundedPolling(String attemptId) {
-    _pollTimer?.cancel();
-    _pollCount = 0;
-    _pollTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
-      if (_pollCount++ >= 12) {
-        timer.cancel();
-        return;
-      }
-      try {
-        final next = await ref.refresh(
-          speakingAttemptProvider(attemptId).future,
-        );
-        if (!next.isProcessing) timer.cancel();
-      } catch (_) {
-        timer.cancel();
-      }
-    });
+  Future<void> _startBoundedPolling(String attemptId) async {
+    _polling?.dispose();
+    final polling = SpeakingPollingController(
+      fetch: () => ref.refresh(speakingAttemptProvider(attemptId).future),
+    );
+    _polling = polling;
+    if (mounted) setState(() => _pollingMessage = null);
+    final stop = await polling.poll();
+    if (!mounted || _polling != polling) return;
+    if (stop == SpeakingPollingStop.timeout) {
+      setState(
+        () => _pollingMessage =
+            'Analisis belum selesai. Tekan Refresh untuk memeriksa lagi.',
+      );
+    } else if (stop == SpeakingPollingStop.error) {
+      setState(
+        () => _pollingMessage =
+            'Status analisis gagal diperbarui. Tekan Refresh untuk mencoba lagi.',
+      );
+    }
   }
 }
 
@@ -443,9 +486,10 @@ class _SubmitCard extends StatelessWidget {
 }
 
 class _AttemptResultCard extends ConsumerStatefulWidget {
-  const _AttemptResultCard(this.attempt);
+  const _AttemptResultCard(this.attempt, {required this.pollingMessage});
 
   final SpeakingAttempt attempt;
+  final String? pollingMessage;
 
   @override
   ConsumerState<_AttemptResultCard> createState() => _AttemptResultCardState();
@@ -495,9 +539,7 @@ class _AttemptResultCardState extends ConsumerState<_AttemptResultCard> {
             ),
           ],
           if (attempt.isProcessing)
-            const Text(
-              'Analisis AI sedang diproses. Refresh manual atau tunggu polling terbatas.',
-            ),
+            Text(widget.pollingMessage ?? 'Analisis AI sedang diproses.'),
           if (attempt.aiScore != null) Text('Skor AI: ${attempt.aiScore}'),
           if (attempt.aiTranscription != null)
             Text('Transkripsi: ${attempt.aiTranscription}'),

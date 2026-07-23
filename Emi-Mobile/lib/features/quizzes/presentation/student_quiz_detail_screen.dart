@@ -182,7 +182,12 @@ class _StudentQuizDetailScreenState
               const SizedBox(height: EmiSpacing.lg),
               ElevatedButton.icon(
                 onPressed: item.canStart
-                    ? () => context.go('/student/quizzes/${item.id}/attempt')
+                    ? () {
+                        final activeAttemptId = item.activeAttempt?.id;
+                        context.go(
+                          '/student/quizzes/${item.id}/attempt${activeAttemptId == null || activeAttemptId.isEmpty ? '' : '?attemptId=$activeAttemptId'}',
+                        );
+                      }
                     : null,
                 icon: const Icon(Icons.play_arrow),
                 label: Text(

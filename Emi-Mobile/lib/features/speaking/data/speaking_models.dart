@@ -77,6 +77,7 @@ class SpeakingAttempt {
     required this.id,
     required this.exerciseId,
     required this.status,
+    this.analysisStatus,
     this.targetText,
     this.aiScore,
     this.aiTranscription,
@@ -94,6 +95,7 @@ class SpeakingAttempt {
   final String id;
   final String exerciseId;
   final String status;
+  final String? analysisStatus;
   final String? targetText;
   final double? aiScore;
   final String? aiTranscription;
@@ -107,9 +109,12 @@ class SpeakingAttempt {
   final DateTime? updatedAt;
   final SpeakingExercise? exercise;
 
-  bool get isProcessing => status == 'pending' || status == 'processing';
-  bool get isCompleted => status == 'completed';
-  bool get isFailed => status == 'failed';
+  String get effectiveAnalysisStatus => analysisStatus ?? status;
+  bool get isProcessing =>
+      effectiveAnalysisStatus == 'pending' ||
+      effectiveAnalysisStatus == 'processing';
+  bool get isCompleted => effectiveAnalysisStatus == 'completed';
+  bool get isFailed => effectiveAnalysisStatus == 'failed';
 
   factory SpeakingAttempt.fromJson(Map<String, dynamic> json) {
     final exercise = json['exercise'];
@@ -121,6 +126,7 @@ class SpeakingAttempt {
       exerciseId: json['exercise_id'] as String? ?? '',
       targetText: json['target_text'] as String?,
       status: json['status'] as String? ?? '',
+      analysisStatus: json['analysis_status'] as String?,
       aiScore: _double(json['ai_score'] ?? _mapValue(analysis, 'score')),
       aiTranscription:
           (json['ai_transcription'] ?? _mapValue(analysis, 'transcription'))

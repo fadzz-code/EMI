@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:just_audio/just_audio.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../shared/widgets/emi_card.dart';
@@ -23,6 +24,7 @@ class _DictionaryListScreenState extends ConsumerState<DictionaryListScreen> {
   Timer? _debounce;
   String? _search;
   String? _categoryId;
+  int _page = 1;
 
   @override
   void dispose() {
@@ -33,7 +35,11 @@ class _DictionaryListScreenState extends ConsumerState<DictionaryListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final query = DictionaryQuery(search: _search, categoryId: _categoryId);
+    final query = DictionaryQuery(
+      search: _search,
+      categoryId: _categoryId,
+      page: _page,
+    );
     final entries = ref.watch(dictionaryListProvider(query));
 
     return EmiScaffold(
@@ -72,7 +78,10 @@ class _DictionaryListScreenState extends ConsumerState<DictionaryListScreen> {
               _CategoryChips(
                 entries: page.items,
                 activeId: _categoryId,
-                onChanged: (id) => setState(() => _categoryId = id),
+                onChanged: (id) => setState(() {
+                  _categoryId = id;
+                  _page = 1;
+                }),
               ),
               const SizedBox(height: EmiSpacing.lg),
               if (page.items.isEmpty)
@@ -84,13 +93,34 @@ class _DictionaryListScreenState extends ConsumerState<DictionaryListScreen> {
                     child: _DictionaryCard(entry: entry),
                   ),
                 ),
-              if (page.hasNextPage)
-                OutlinedButton(
-                  onPressed: null,
-                  child: Text(
-                    'Halaman ${page.currentPage} dari ${page.lastPage}',
+              Text(
+                'Halaman ${page.currentPage} dari ${page.lastPage} · ${page.total} kata',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: EmiSpacing.sm),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      key: const Key('dictionaryPreviousPage'),
+                      onPressed: page.currentPage > 1
+                          ? () => setState(() => _page = page.currentPage - 1)
+                          : null,
+                      child: const Text('Sebelumnya'),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: EmiSpacing.sm),
+                  Expanded(
+                    child: OutlinedButton(
+                      key: const Key('dictionaryNextPage'),
+                      onPressed: page.hasNextPage
+                          ? () => setState(() => _page = page.currentPage + 1)
+                          : null,
+                      child: const Text('Berikutnya'),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -101,7 +131,10 @@ class _DictionaryListScreenState extends ConsumerState<DictionaryListScreen> {
   void _onSearchChanged(String value) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 400), () {
-      setState(() => _search = value.trim().isEmpty ? null : value.trim());
+      setState(() {
+        _search = value.trim().isEmpty ? null : value.trim();
+        _page = 1;
+      });
     });
   }
 
@@ -184,10 +217,34 @@ class _Chip extends StatelessWidget {
   }
 }
 
-class _DictionaryCard extends StatelessWidget {
+class _DictionaryCard extends ConsumerStatefulWidget {
   const _DictionaryCard({required this.entry});
 
   final DictionaryEntry entry;
+
+  @override
+  ConsumerState<_DictionaryCard> createState() => _DictionaryCardState();
+}
+
+class _DictionaryCardState extends ConsumerState<_DictionaryCard> {
+  late final DictionaryAudioPlayer _player;
+
+  @override
+  void initState() {
+    super.initState();
+    _player = ref.read(dictionaryAudioPlayerFactoryProvider)();
+  }
+
+  bool _loading = false;
+  String? _error;
+
+  DictionaryEntry get entry => widget.entry;
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -212,20 +269,33 @@ class _DictionaryCard extends StatelessWidget {
                   ),
                 ),
                 if (entry.hasAudio)
-                  Container(
-                    padding: const EdgeInsets.all(EmiSpacing.sm),
-                    decoration: BoxDecoration(
-                      color: EmiColors.primary,
-                      border: Border.all(color: EmiColors.border, width: 2),
-                      borderRadius: BorderRadius.circular(EmiRadii.pill),
-                      boxShadow: const [EmiShadows.hard],
-                    ),
-                    child: const Icon(Icons.play_arrow),
+                  StreamBuilder<PlayerState>(
+                    stream: _player.playerStateStream,
+                    builder: (context, snapshot) {
+                      final playing = snapshot.data?.playing == true;
+                      return IconButton.filled(
+                        key: Key('dictionaryAudio-${entry.id}'),
+                        onPressed: _loading ? null : () => _toggle(playing),
+                        icon: _loading
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(playing ? Icons.pause : Icons.play_arrow),
+                      );
+                    },
                   ),
               ],
             ),
             const SizedBox(height: EmiSpacing.sm),
             Text(entry.english),
+            if (_error != null) ...[
+              const SizedBox(height: EmiSpacing.xs),
+              Text(_error!, style: const TextStyle(color: EmiColors.error)),
+            ],
             if (entry.category != null) ...[
               const SizedBox(height: EmiSpacing.sm),
               Text(
@@ -237,6 +307,33 @@ class _DictionaryCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _toggle(bool playing) async {
+    if (_loading) return;
+    if (playing) {
+      await _player.pause();
+      return;
+    }
+    try {
+      if (!_player.hasSource) {
+        setState(() {
+          _loading = true;
+          _error = null;
+        });
+        await _player.setUrl(entry.audio!.url);
+        if (!mounted) return;
+        setState(() => _loading = false);
+      }
+      await _player.play();
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Audio gagal diputar. Coba lagi.';
+        });
+      }
+    }
   }
 }
 

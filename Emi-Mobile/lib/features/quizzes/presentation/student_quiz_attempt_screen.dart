@@ -9,6 +9,43 @@ import '../../../shared/widgets/emi_card.dart';
 import '../data/student_quiz.dart';
 import '../data/student_quiz_providers.dart';
 
+class QuizSubmissionCoordinator {
+  QuizSubmissionCoordinator({
+    required this.save,
+    required this.submit,
+    required this.onSuccess,
+    required this.onError,
+  });
+
+  final Future<bool> Function() save;
+  final Future<QuizAttempt> Function() submit;
+  final void Function(QuizAttempt) onSuccess;
+  final void Function(Object) onError;
+  Future<void>? _operation;
+  bool _disposed = false;
+  bool _submitted = false;
+
+  Future<void> run() {
+    if (_submitted || _disposed) return Future.value();
+    return _operation ??= _run();
+  }
+
+  Future<void> _run() async {
+    try {
+      if (!await save() || _disposed) return;
+      final result = await submit();
+      _submitted = true;
+      if (!_disposed) onSuccess(result);
+    } catch (error) {
+      if (!_disposed) onError(error);
+    } finally {
+      _operation = null;
+    }
+  }
+
+  void dispose() => _disposed = true;
+}
+
 class StudentQuizAttemptScreen extends ConsumerStatefulWidget {
   const StudentQuizAttemptScreen({
     super.key,
@@ -39,6 +76,7 @@ class _StudentQuizAttemptScreenState
   final _textAnswers = <String, TextEditingController>{};
   Timer? _timer;
   Duration? _remaining;
+  late final QuizSubmissionCoordinator _submission;
 
   List<QuizQuestion> get _questions => _attempt?.quiz?.questions ?? const [];
   QuizQuestion? get _question => _questions.isEmpty
@@ -48,12 +86,19 @@ class _StudentQuizAttemptScreenState
   @override
   void initState() {
     super.initState();
+    _submission = QuizSubmissionCoordinator(
+      save: _saveCurrent,
+      submit: _submitAttempt,
+      onSuccess: _submissionSucceeded,
+      onError: _submissionFailed,
+    );
     _start();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _submission.dispose();
     for (final controller in _textAnswers.values) {
       controller.dispose();
     }
@@ -246,49 +291,61 @@ class _StudentQuizAttemptScreenState
     );
     if (!mounted) return;
     setState(() => _confirmingSubmit = false);
-    if (confirmed != true || _submitting) return;
-    setState(() => _submitting = true);
-    final saved = await _saveCurrent();
-    if (!saved || _attempt == null) {
-      if (mounted) setState(() => _submitting = false);
-      return;
-    }
+    if (confirmed == true) await _submitPipeline();
+  }
 
+  Future<void> _submitPipeline() async {
+    if (_attempt == null) return;
+    if (!_submitting && mounted) setState(() => _submitting = true);
+    await _submission.run();
+    if (mounted && _attempt?.isFinished != true) {
+      setState(() => _submitting = false);
+    }
+  }
+
+  Future<QuizAttempt> _submitAttempt() {
     final attemptId = _attempt!.id;
     _submitKey ??= _idempotencyKey(attemptId);
-    try {
-      final result = await ref
-          .read(studentQuizRepositoryProvider)
-          .submitAttempt(attemptId: attemptId, idempotencyKey: _submitKey!);
-      _timer?.cancel();
-      setState(() {
-        _attempt = result;
-        _submitting = false;
-      });
-      ref.invalidate(studentQuizDetailProvider(widget.quizId));
-      ref.invalidate(studentQuizListProvider);
-    } catch (error) {
-      setState(() => _submitting = false);
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.toString())));
-      }
-    }
+    return ref
+        .read(studentQuizRepositoryProvider)
+        .submitAttempt(attemptId: attemptId, idempotencyKey: _submitKey!);
+  }
+
+  void _submissionSucceeded(QuizAttempt result) {
+    _timer?.cancel();
+    setState(() {
+      _attempt = result;
+      _submitting = false;
+    });
+    ref.invalidate(studentQuizDetailProvider(widget.quizId));
+    ref.invalidate(studentQuizListProvider);
+  }
+
+  void _submissionFailed(Object error) {
+    setState(() => _submitting = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Kuis belum terkirim. Coba lagi.')),
+    );
   }
 
   void _startTimer(QuizAttempt attempt) {
     _timer?.cancel();
     if (attempt.expiresAt == null || !attempt.isInProgress) return;
     void tick() {
+      if (!mounted) return;
       final remaining = attempt.expiresAt!.difference(DateTime.now());
-      setState(
-        () => _remaining = remaining.isNegative ? Duration.zero : remaining,
-      );
+      final bounded = remaining.isNegative ? Duration.zero : remaining;
+      setState(() => _remaining = bounded);
+      if (bounded == Duration.zero) {
+        _timer?.cancel();
+        _submitPipeline();
+      }
     }
 
     tick();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => tick());
+    if (_remaining != Duration.zero) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) => tick());
+    }
   }
 
   Future<bool> _confirmLeave() async {

@@ -42,7 +42,10 @@ class StudentDashboardScreen extends ConsumerWidget {
                 const SizedBox(height: EmiSpacing.xl),
                 _QuickMenu(
                   onTapModules: () => context.go('/student/modules'),
+                  onTapDictionary: () => context.go('/student/dictionary'),
+                  onTapQuizzes: () => context.go('/student/quizzes'),
                   onTapChatbot: () => context.go('/student/chatbot'),
+                  onTapProfile: () => context.go('/student/profile'),
                 ),
               ],
             ],
@@ -202,10 +205,19 @@ class _ContinueCard extends StatelessWidget {
 }
 
 class _QuickMenu extends StatelessWidget {
-  const _QuickMenu({required this.onTapModules, required this.onTapChatbot});
+  const _QuickMenu({
+    required this.onTapModules,
+    required this.onTapDictionary,
+    required this.onTapQuizzes,
+    required this.onTapChatbot,
+    required this.onTapProfile,
+  });
 
   final VoidCallback onTapModules;
+  final VoidCallback onTapDictionary;
+  final VoidCallback onTapQuizzes;
   final VoidCallback onTapChatbot;
+  final VoidCallback onTapProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -222,15 +234,23 @@ class _QuickMenu extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           children: [
             _QuickMenuItem(
+              key: const Key('studentQuickMenuModules'),
               label: 'Modul',
               icon: Icons.menu_book_outlined,
               onTap: onTapModules,
             ),
-            const _QuickMenuItem(
+            _QuickMenuItem(
+              key: const Key('studentQuickMenuDictionary'),
               label: 'Kamus',
               icon: Icons.translate_outlined,
+              onTap: onTapDictionary,
             ),
-            const _QuickMenuItem(label: 'Kuis', icon: Icons.quiz_outlined),
+            _QuickMenuItem(
+              key: const Key('studentQuickMenuQuizzes'),
+              label: 'Kuis',
+              icon: Icons.quiz_outlined,
+              onTap: onTapQuizzes,
+            ),
             _QuickMenuItem(
               label: 'Progress',
               icon: Icons.trending_up_outlined,
@@ -241,7 +261,12 @@ class _QuickMenu extends StatelessWidget {
               icon: Icons.auto_awesome_outlined,
               onTap: onTapChatbot,
             ),
-            const _QuickMenuItem(label: 'Profil', icon: Icons.person_outline),
+            _QuickMenuItem(
+              key: const Key('studentQuickMenuProfile'),
+              label: 'Profil',
+              icon: Icons.person_outline,
+              onTap: onTapProfile,
+            ),
           ],
         ),
       ],
@@ -250,7 +275,12 @@ class _QuickMenu extends StatelessWidget {
 }
 
 class _QuickMenuItem extends StatelessWidget {
-  const _QuickMenuItem({required this.label, required this.icon, this.onTap});
+  const _QuickMenuItem({
+    super.key,
+    required this.label,
+    required this.icon,
+    this.onTap,
+  });
 
   final String label;
   final IconData icon;

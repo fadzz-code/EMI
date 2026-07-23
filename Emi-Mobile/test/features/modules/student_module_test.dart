@@ -1,7 +1,26 @@
+import 'package:emi_mobile/features/auth/data/auth_providers.dart';
+import 'package:emi_mobile/features/auth/domain/auth_repository.dart';
 import 'package:emi_mobile/features/modules/data/student_module.dart';
+import 'package:emi_mobile/features/modules/data/student_module_providers.dart';
+import 'package:emi_mobile/features/modules/presentation/student_lesson_detail_screen.dart';
+import 'package:emi_mobile/features/modules/presentation/student_module_detail_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:mocktail/mocktail.dart';
+
+class _AuthRepository extends Mock implements AuthRepository {}
 
 void main() {
+  testWidgets('module detail bottom Quiz navigates quizzes', (tester) async {
+    await _navigationTest(tester, lesson: false);
+  });
+
+  testWidgets('lesson detail bottom Quiz navigates quizzes', (tester) async {
+    await _navigationTest(tester, lesson: true);
+  });
+
   test('maps module page json', () {
     final page = StudentModulePage.fromJson({
       'data': [
@@ -71,3 +90,64 @@ void main() {
     expect(progress.progressPercent, 100);
   });
 }
+
+Future<void> _navigationTest(
+  WidgetTester tester, {
+  required bool lesson,
+}) async {
+  final router = GoRouter(
+    initialLocation: lesson
+        ? '/student/lessons/lesson-1'
+        : '/student/modules/module-1',
+    routes: [
+      GoRoute(
+        path: '/student/modules/:id',
+        builder: (_, _) =>
+            const StudentModuleDetailScreen(moduleId: 'module-1'),
+      ),
+      GoRoute(
+        path: '/student/lessons/:id',
+        builder: (_, _) => const StudentLessonDetailScreen(
+          lessonId: 'lesson-1',
+          moduleId: 'module-1',
+        ),
+      ),
+      GoRoute(
+        path: '/student/quizzes',
+        builder: (_, _) => const Text('QUIZZES'),
+      ),
+    ],
+  );
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        authRepositoryProvider.overrideWithValue(_AuthRepository()),
+        studentModuleDetailProvider.overrideWith((_, _) async => _module),
+        studentLessonDetailProvider.overrideWith((_, _) async => _lesson),
+        studentLessonContentProvider.overrideWith((_, _) async => null),
+      ],
+      child: MaterialApp.router(routerConfig: router),
+    ),
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Kuis'));
+  await tester.pumpAndSettle();
+  expect(router.routeInformationProvider.value.uri.path, '/student/quizzes');
+}
+
+final _module = StudentModule.fromJson({
+  'id': 'module-1',
+  'title': 'Modul',
+  'status': 'published',
+  'progress': {'progress_percent': 0},
+  'lessons': const [],
+});
+
+final _lesson = StudentLesson.fromJson({
+  'id': 'lesson-1',
+  'class_module_id': 'module-1',
+  'title': 'Lesson',
+  'content_type': 'text',
+  'content_body': 'Isi',
+  'status': 'published',
+});
