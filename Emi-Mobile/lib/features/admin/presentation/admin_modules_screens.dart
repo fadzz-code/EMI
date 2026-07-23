@@ -67,12 +67,14 @@ class _AdminModulesScreenState extends ConsumerState<AdminModulesScreen> {
             ),
             const SizedBox(height: EmiSpacing.md),
             FilledButton.icon(
+              key: const Key('adminAdd-modules'),
               onPressed: () => context.push('/admin/modules/create'),
               icon: const Icon(Icons.add),
               label: const Text('Tambah Modul'),
             ),
             const SizedBox(height: EmiSpacing.md),
             TextField(
+              key: const Key('adminSearch-modules'),
               controller: _search,
               decoration: InputDecoration(
                 hintText: 'Cari judul Modul',
@@ -114,6 +116,7 @@ class _AdminModulesScreenState extends ConsumerState<AdminModulesScreen> {
                   final hasSearch =
                       _search.text.trim().isNotEmpty || query.status != null;
                   return FriendlyState(
+                    key: const Key('adminEmpty-modules'),
                     icon: Icons.menu_book_outlined,
                     title: hasSearch
                         ? 'Modul Tidak Ditemukan'
@@ -374,6 +377,7 @@ class AdminModuleDetailScreen extends ConsumerWidget {
               children: [
                 if (item.status != 'published')
                   OutlinedButton(
+                    key: const Key('adminPublish-modules'),
                     onPressed: () => _confirmPublish(context, item),
                     child: const Text('Terbitkan'),
                   ),
@@ -384,10 +388,12 @@ class AdminModuleDetailScreen extends ConsumerWidget {
                   ),
                 if (item.status != 'archived')
                   OutlinedButton(
+                    key: const Key('adminArchive-modules'),
                     onPressed: () => _confirmArchive(context, item),
                     child: const Text('Arsipkan'),
                   ),
                 OutlinedButton(
+                  key: const Key('adminDelete-modules'),
                   onPressed: () => _confirmDelete(context, item),
                   child: const Text('Hapus'),
                 ),
@@ -570,6 +576,7 @@ class _AdminModuleFormScreenState extends ConsumerState<AdminModuleFormScreen> {
                       const SizedBox(width: EmiSpacing.sm),
                       Expanded(
                         child: FilledButton(
+                          key: const Key('adminSave-modules'),
                           onPressed: _saving ? null : () => _save(item),
                           child: Text(
                             _saving ? 'Menyimpan...' : 'Simpan Modul',

@@ -174,6 +174,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Informasi Konten'), findsOneWidget);
     expect(find.text('Media atau Tautan'), findsOneWidget);
+    expect(find.byKey(const Key('adminArchive-culture')), findsOneWidget);
+    expect(find.byKey(const Key('adminDelete-culture')), findsOneWidget);
     expect(find.text('media-secret'), findsNothing);
     expect(find.text('image'), findsNothing);
     expect(tester.takeException(), isNull);

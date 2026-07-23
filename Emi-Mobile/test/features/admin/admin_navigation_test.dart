@@ -127,6 +127,9 @@ void main() {
     ]) {
       router.go(route);
       await tester.pumpAndSettle();
+      final domain = route.split('/').last;
+      expect(find.byKey(Key('adminScreen-$domain')), findsOneWidget);
+      expect(find.byKey(Key('adminTitle-$domain')), findsOneWidget);
       await tester.tap(find.byKey(const Key('adminMenuButton')));
       await tester.pumpAndSettle();
       final selectedTile = tester.widget<ListTile>(

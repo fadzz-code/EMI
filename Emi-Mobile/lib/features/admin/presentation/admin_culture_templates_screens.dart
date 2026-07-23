@@ -315,7 +315,7 @@ Future<void> _apply(BuildContext context, WidgetRef ref, String id) async {
   final result = await ref
       .read(adminCultureRepositoryProvider)
       .applyTemplate(id, selected.toList());
-  if (context.mounted)
+  if (context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -323,4 +323,5 @@ Future<void> _apply(BuildContext context, WidgetRef ref, String id) async {
         ),
       ),
     );
+  }
 }

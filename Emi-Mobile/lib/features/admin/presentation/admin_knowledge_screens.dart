@@ -537,24 +537,27 @@ class _AdminKnowledgeFormScreenState
     final detail = widget.id == null
         ? null
         : ref.watch(adminKnowledgeDetailProvider(widget.id!));
-    return AdminShell(
-      title: widget.id == null
-          ? 'Tambah Pengetahuan'
-          : 'Edit Pengetahuan Basis AI',
-      fallbackRoute: widget.id == null
-          ? '/admin/knowledge'
-          : '/admin/knowledge/${widget.id}',
-      child: widget.id == null
-          ? _form(null)
-          : detail!.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (_, _) => const FriendlyState(
-                icon: Icons.wifi_off_outlined,
-                title: 'Data belum bisa dimuat',
-                message: 'Periksa koneksi internet, lalu coba lagi.',
+    return Semantics(
+      key: const Key('adminScreen-knowledge-form'),
+      child: AdminShell(
+        title: widget.id == null
+            ? 'Tambah Pengetahuan'
+            : 'Edit Pengetahuan Basis AI',
+        fallbackRoute: widget.id == null
+            ? '/admin/knowledge'
+            : '/admin/knowledge/${widget.id}',
+        child: widget.id == null
+            ? _form(null)
+            : detail!.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (_, _) => const FriendlyState(
+                  icon: Icons.wifi_off_outlined,
+                  title: 'Data belum bisa dimuat',
+                  message: 'Periksa koneksi internet, lalu coba lagi.',
+                ),
+                data: (item) => _form(item),
               ),
-              data: (item) => _form(item),
-            ),
+      ),
     );
   }
 

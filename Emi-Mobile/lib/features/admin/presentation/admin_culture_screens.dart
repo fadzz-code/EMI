@@ -64,6 +64,7 @@ class _AdminCultureScreenState extends ConsumerState<AdminCultureScreen> {
               runSpacing: EmiSpacing.sm,
               children: [
                 FilledButton.icon(
+                  key: const Key('adminAdd-culture'),
                   onPressed: () => context.push('/admin/culture/create'),
                   icon: const Icon(Icons.add),
                   label: const Text('Tambah Konten'),
@@ -77,6 +78,7 @@ class _AdminCultureScreenState extends ConsumerState<AdminCultureScreen> {
             ),
             const SizedBox(height: EmiSpacing.md),
             TextField(
+              key: const Key('adminSearch-culture'),
               controller: _search,
               decoration: InputDecoration(
                 hintText: 'Cari judul konten',
@@ -110,6 +112,7 @@ class _AdminCultureScreenState extends ConsumerState<AdminCultureScreen> {
               ),
               data: (page) => page.items.isEmpty
                   ? const FriendlyState(
+                      key: Key('adminEmpty-culture'),
                       icon: Icons.public_off_outlined,
                       title: 'Konten Tidak Ditemukan',
                       message: 'Tambah konten atau ubah pencarian dan filter.',
@@ -323,15 +326,18 @@ class AdminCultureDetailScreen extends ConsumerWidget {
                 children: [
                   if (item.status != 'published')
                     OutlinedButton(
+                      key: const Key('adminPublish-culture'),
                       onPressed: () => _action(context, item, 'publish'),
                       child: const Text('Terbitkan'),
                     ),
                   if (item.status != 'archived')
                     OutlinedButton(
+                      key: const Key('adminArchive-culture'),
                       onPressed: () => _action(context, item, 'archive'),
                       child: const Text('Arsipkan'),
                     ),
                   TextButton(
+                    key: const Key('adminDelete-culture'),
                     onPressed: () => _action(context, item, 'delete'),
                     child: const Text('Hapus'),
                   ),
@@ -554,6 +560,7 @@ class _AdminCultureFormScreenState
               const SizedBox(width: EmiSpacing.sm),
               Expanded(
                 child: FilledButton(
+                  key: const Key('adminSave-culture'),
                   onPressed: _saving ? null : _save,
                   child: Text(_saving ? 'Menyimpan...' : 'Simpan'),
                 ),

@@ -138,15 +138,16 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    // Scroll down to ensure buttons are visible
+    expect(find.byKey(const Key('adminApprovalDetailScreen')), findsOneWidget);
+
     await tester.drag(find.byType(ListView), const Offset(0, -500));
     await tester.pumpAndSettle();
 
-    // Tap approve
-    await tester.tap(find.text('Setujui Akun'));
+    expect(find.byKey(const Key('adminApprovalApprove')), findsOneWidget);
+    expect(find.byKey(const Key('adminApprovalReject')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('adminApprovalApprove')));
     await tester.pumpAndSettle();
 
-    // Confirm approve
     await tester.tap(find.text('Setujui'));
     await tester.pumpAndSettle();
 

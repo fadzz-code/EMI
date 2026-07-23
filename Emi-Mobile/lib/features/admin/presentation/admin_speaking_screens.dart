@@ -57,12 +57,14 @@ class _AdminSpeakingScreenState extends ConsumerState<AdminSpeakingScreen> {
             const Text('Kelola template global untuk latihan speaking.'),
             const SizedBox(height: EmiSpacing.md),
             FilledButton.icon(
+              key: const Key('adminAdd-speaking'),
               onPressed: () => context.push('/admin/speaking/create'),
               icon: const Icon(Icons.add),
               label: const Text('Tambah Template'),
             ),
             const SizedBox(height: EmiSpacing.md),
             TextField(
+              key: const Key('adminSearch-speaking'),
               controller: _search,
               decoration: InputDecoration(
                 hintText: 'Cari judul atau kalimat latihan',
@@ -96,6 +98,7 @@ class _AdminSpeakingScreenState extends ConsumerState<AdminSpeakingScreen> {
               ),
               data: (page) => page.items.isEmpty
                   ? const FriendlyState(
+                      key: Key('adminEmpty-speaking'),
                       icon: Icons.mic_none_outlined,
                       title: 'Template Speaking Tidak Ditemukan',
                       message:
@@ -286,6 +289,7 @@ class AdminSpeakingDetailScreen extends ConsumerWidget {
             ),
             if (item.status != 'archived')
               OutlinedButton(
+                key: const Key('adminArchive-speaking'),
                 onPressed: () => _archive(context, item),
                 child: const Text('Arsipkan'),
               ),
@@ -519,6 +523,7 @@ class _AdminSpeakingFormScreenState
               const SizedBox(width: EmiSpacing.sm),
               Expanded(
                 child: FilledButton(
+                  key: const Key('adminSave-speaking'),
                   onPressed: _saving ? null : _save,
                   child: Text(_saving ? 'Menyimpan...' : 'Simpan'),
                 ),

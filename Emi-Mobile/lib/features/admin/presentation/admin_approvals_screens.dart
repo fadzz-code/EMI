@@ -48,11 +48,13 @@ class _AdminApprovalsScreenState extends ConsumerState<AdminApprovalsScreen> {
     return AdminShell(
       title: 'Persetujuan Akun',
       child: RefreshIndicator(
+        key: const Key('adminApprovalsScreen'),
         onRefresh: () async => ref.invalidate(adminApprovalsProvider(query)),
         child: ListView(
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
             TextField(
+              key: const Key('adminSearch-approvals'),
               controller: _search,
               decoration: InputDecoration(
                 hintText: 'Cari nama atau email',
@@ -92,6 +94,7 @@ class _AdminApprovalsScreenState extends ConsumerState<AdminApprovalsScreen> {
                       _role != null ||
                       _status != 'pending';
                   return FriendlyState(
+                    key: const Key('adminEmpty-approvals'),
                     icon: Icons.how_to_reg_outlined,
                     title: filtered
                         ? 'Pengajuan Tidak Ditemukan'
@@ -201,6 +204,7 @@ class _ApprovalTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => EmiCard(
+    key: Key('adminApprovalRow-${item.id}'),
     child: ListTile(
       leading: CircleAvatar(child: Icon(_roleIcon(item.requestedRole))),
       title: Text(item.userName, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -241,76 +245,86 @@ class _AdminApprovalDetailScreenState
     return AdminShell(
       title: 'Detail Pemohon',
       fallbackRoute: '/admin/approvals',
-      child: detail.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => FriendlyState(
-          icon: Icons.wifi_off_outlined,
-          title: 'Data belum bisa dimuat',
-          message: 'Periksa koneksi internet, lalu coba lagi.',
-          onRetry: () => ref.invalidate(adminApprovalDetailProvider(widget.id)),
-        ),
-        data: (item) => ListView(
-          padding: const EdgeInsets.all(EmiSpacing.md),
-          children: [
-            EmiCard(
-              child: ListTile(
-                leading: CircleAvatar(
-                  child: Icon(_roleIcon(item.requestedRole)),
-                ),
-                title: Text(
-                  item.userName,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Text(
-                  '${_roleLabel(item.requestedRole)} • ${_statusLabel(item.status)}',
+      child: Semantics(
+        key: const Key('adminApprovalDetailScreen'),
+        container: true,
+        child: detail.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, _) => FriendlyState(
+            icon: Icons.wifi_off_outlined,
+            title: 'Data belum bisa dimuat',
+            message: 'Periksa koneksi internet, lalu coba lagi.',
+            onRetry: () =>
+                ref.invalidate(adminApprovalDetailProvider(widget.id)),
+          ),
+          data: (item) => ListView(
+            padding: const EdgeInsets.all(EmiSpacing.md),
+            children: [
+              EmiCard(
+                child: ListTile(
+                  leading: CircleAvatar(
+                    child: Icon(_roleIcon(item.requestedRole)),
+                  ),
+                  title: Text(
+                    item.userName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    '${_roleLabel(item.requestedRole)} • ${_statusLabel(item.status)}',
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: EmiSpacing.md),
-            _InfoSection(
-              title: 'Data Akun',
-              rows: {
-                'Nama': item.userName,
-                'Email': item.userEmail,
-                'Role': _roleLabel(item.requestedRole),
-                'Status': _statusLabel(item.status),
-              },
-            ),
-            const SizedBox(height: EmiSpacing.md),
-            _InfoSection(
-              title: 'Sekolah dan Kelas',
-              rows: {
-                'Sekolah': item.schoolName ?? 'Belum Memilih Sekolah',
-                'Kelas': item.className ?? 'Belum Ditempatkan ke Kelas',
-              },
-            ),
-            const SizedBox(height: EmiSpacing.md),
-            _InfoSection(
-              title: 'Informasi Pengajuan',
-              rows: {
-                'Tanggal Pengajuan': item.createdAt == null
-                    ? 'Belum Diisi'
-                    : _dateLabel(item.createdAt!),
-                if (item.reviewNote?.isNotEmpty == true)
-                  'Alasan Penolakan': item.reviewNote!,
-              },
-            ),
-            if (item.status == 'pending') ...[
               const SizedBox(height: EmiSpacing.md),
-              Text('Tindakan', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: EmiSpacing.sm),
-              FilledButton(
-                onPressed: _saving ? null : () => _confirmApprove(item),
-                child: Text(_saving ? 'Memproses...' : 'Setujui Akun'),
+              _InfoSection(
+                title: 'Data Akun',
+                rows: {
+                  'Nama': item.userName,
+                  'Email': item.userEmail,
+                  'Role': _roleLabel(item.requestedRole),
+                  'Status': _statusLabel(item.status),
+                },
               ),
-              const SizedBox(height: EmiSpacing.sm),
-              OutlinedButton(
-                onPressed: _saving ? null : () => _confirmReject(item),
-                child: const Text('Tolak Akun'),
+              const SizedBox(height: EmiSpacing.md),
+              _InfoSection(
+                title: 'Sekolah dan Kelas',
+                rows: {
+                  'Sekolah': item.schoolName ?? 'Belum Memilih Sekolah',
+                  'Kelas': item.className ?? 'Belum Ditempatkan ke Kelas',
+                },
               ),
+              const SizedBox(height: EmiSpacing.md),
+              _InfoSection(
+                title: 'Informasi Pengajuan',
+                rows: {
+                  'Tanggal Pengajuan': item.createdAt == null
+                      ? 'Belum Diisi'
+                      : _dateLabel(item.createdAt!),
+                  if (item.reviewNote?.isNotEmpty == true)
+                    'Alasan Penolakan': item.reviewNote!,
+                },
+              ),
+              if (item.status == 'pending') ...[
+                const SizedBox(height: EmiSpacing.md),
+                Text(
+                  'Tindakan',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: EmiSpacing.sm),
+                FilledButton(
+                  key: const Key('adminApprovalApprove'),
+                  onPressed: _saving ? null : () => _confirmApprove(item),
+                  child: Text(_saving ? 'Memproses...' : 'Setujui Akun'),
+                ),
+                const SizedBox(height: EmiSpacing.sm),
+                OutlinedButton(
+                  key: const Key('adminApprovalReject'),
+                  onPressed: _saving ? null : () => _confirmReject(item),
+                  child: const Text('Tolak Akun'),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

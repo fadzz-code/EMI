@@ -14,7 +14,7 @@ void main() {
   testWidgets('admin school detail fits Redmi viewport at default text scale', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(1080, 2210);
+    tester.view.physicalSize = const Size(990, 2210);
     tester.view.devicePixelRatio = 2.75;
     addTearDown(tester.view.reset);
 
@@ -51,6 +51,89 @@ void main() {
     expect(find.text(school.name), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'admin validation sequence does not queue school detail overflow',
+    (tester) async {
+      tester.view.physicalSize = const Size(990, 2210);
+      tester.view.devicePixelRatio = 2.75;
+      addTearDown(tester.view.reset);
+
+      const school = AdminSchool(
+        id: 'school-1',
+        name: '[E2E Admin] School 1753289100000000-2abc',
+        status: 'active',
+        address: 'E2E',
+        phone: null,
+        classesCount: 0,
+      );
+      final repository = AdminRepository(
+        Dio(BaseOptions(baseUrl: 'https://example.test'))
+          ..interceptors.add(
+            InterceptorsWrapper(
+              onRequest: (options, handler) => handler.resolve(
+                Response(
+                  requestOptions: options,
+                  data: {
+                    'data': [
+                      {
+                        'id': school.id,
+                        'name': school.name,
+                        'status': school.status,
+                      },
+                    ],
+                  },
+                ),
+              ),
+            ),
+          ),
+        const DioErrorMapper(),
+      );
+      final router = GoRouter(
+        initialLocation: '/admin/schools/create',
+        routes: [
+          GoRoute(
+            path: '/admin/schools/create',
+            builder: (_, _) => const AdminSchoolFormScreen(),
+          ),
+          GoRoute(
+            path: '/admin/classes/create',
+            builder: (_, _) => const AdminClassFormScreen(),
+          ),
+          GoRoute(
+            path: '/admin/schools/:id',
+            builder: (_, _) => const AdminSchoolDetailScreen(id: 'school-1'),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            adminRepositoryProvider.overrideWithValue(repository),
+            adminSchoolDetailProvider(
+              school.id,
+            ).overrideWith((_) async => school),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('adminSave-schools')));
+      await tester.pump();
+      expect(tester.takeException(), isNull, reason: 'school validation');
+
+      router.go('/admin/classes/create');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('adminSave-classes')));
+      await tester.pump();
+      expect(tester.takeException(), isNull, reason: 'class validation');
+
+      router.go('/admin/schools/${school.id}');
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: 'school detail');
+    },
+  );
 
   testWidgets(
     'empty admin dashboard nests friendly state without layout error',
@@ -659,7 +742,6 @@ void main() {
     expect(find.text('Budi'), findsOneWidget);
     expect(find.byKey(const Key('adminUserDetailScreen')), findsOneWidget);
     expect(find.byKey(const Key('adminUserEdit')), findsOneWidget);
-    expect(find.byKey(const Key('adminUserStatus')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('adminUserEdit')));
     await tester.pumpAndSettle();

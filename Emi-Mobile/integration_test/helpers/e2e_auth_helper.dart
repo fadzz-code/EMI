@@ -10,28 +10,57 @@ class E2eAuthHelper {
   final E2eAppHelper app;
 
   Future<void> ensureLoggedOut() async {
-    if (find.byKey(const Key('emailField')).evaluate().isNotEmpty) return;
-    if (find.byKey(const Key('adminMenuButton')).evaluate().isNotEmpty) {
+    await app.pumpUntilAny([
+      find.byKey(const Key('emailField')).hitTestable(),
+      find.byKey(const Key('adminMenuButton')).hitTestable(),
+      find.byKey(const Key('teacherMenuButton')).hitTestable(),
+      find.byKey(const Key('studentMenuButton')).hitTestable(),
+    ]);
+    if (find
+        .byKey(const Key('emailField'))
+        .hitTestable()
+        .evaluate()
+        .isNotEmpty) {
+      return;
+    }
+    if (find
+        .byKey(const Key('adminMenuButton'))
+        .hitTestable()
+        .evaluate()
+        .isNotEmpty) {
       await _openAndLogout(
         const Key('adminMenuButton'),
         const Key('adminLogoutButton'),
       );
       return;
     }
-    if (find.byKey(const Key('teacherMenuButton')).evaluate().isNotEmpty) {
+    if (find
+        .byKey(const Key('teacherMenuButton'))
+        .hitTestable()
+        .evaluate()
+        .isNotEmpty) {
       await _openAndLogout(
         const Key('teacherMenuButton'),
         const Key('teacherLogoutButton'),
       );
       return;
     }
-    if (find.byKey(const Key('studentMenuButton')).evaluate().isNotEmpty) {
+    if (find
+        .byKey(const Key('studentMenuButton'))
+        .hitTestable()
+        .evaluate()
+        .isNotEmpty) {
       app.router().go('/student/profile');
       await app.tester.pump();
-      await app.tapAndWait(
-        find.text('Logout'),
-        expected: find.byKey(const Key('emailField')),
-      );
+      await app.waitForLoadingToFinish();
+      if (find.text('Logout').evaluate().isNotEmpty) {
+        await app.tapAndWait(
+          find.text('Logout'),
+          expected: find.byKey(const Key('emailField')),
+        );
+      } else {
+        await app.clearSessionSafely();
+      }
       return;
     }
     app.router().go('/login');

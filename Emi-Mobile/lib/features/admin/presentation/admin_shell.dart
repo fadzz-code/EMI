@@ -28,6 +28,11 @@ class AdminShell extends ConsumerWidget {
 
     final showQuickNavigation =
         fallbackRoute == null && MediaQuery.viewInsetsOf(context).bottom == 0;
+    final segments = location
+        .split('/')
+        .where((part) => part.isNotEmpty)
+        .toList();
+    final domain = segments.length > 1 ? segments[1] : 'dashboard';
 
     return PopScope(
       canPop: fallbackRoute == null || context.canPop(),
@@ -37,6 +42,7 @@ class AdminShell extends ConsumerWidget {
         }
       },
       child: Scaffold(
+        key: Key('adminScreen-$domain'),
         drawer: _AdminDrawer(user: user, location: location),
         bottomNavigationBar: showQuickNavigation
             ? SafeArea(
@@ -78,6 +84,7 @@ class AdminShell extends ConsumerWidget {
                     Expanded(
                       child: Text(
                         title,
+                        key: Key('adminTitle-$domain'),
                         style: Theme.of(context).textTheme.titleLarge,
                         overflow: TextOverflow.ellipsis,
                       ),

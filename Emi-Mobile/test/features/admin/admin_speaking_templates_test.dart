@@ -268,7 +268,7 @@ void main() {
       findsOneWidget,
     );
     final save = tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, 'Simpan'),
+      find.byKey(const Key('adminSave-speaking')),
     );
     save.onPressed!();
     await tester.pump();
@@ -283,9 +283,10 @@ void main() {
     final requests = <RequestOptions>[];
     await _pump(tester, initial: '/admin/speaking/s1', requests: requests);
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Arsipkan'), 300);
+    final archive = find.byKey(const Key('adminArchive-speaking'));
+    await tester.scrollUntilVisible(archive, 300);
     requests.clear();
-    await tester.tap(find.text('Arsipkan'));
+    await tester.tap(archive);
     await tester.pumpAndSettle();
     expect(requests, isEmpty);
     expect(

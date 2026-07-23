@@ -51,12 +51,14 @@ class _AdminQuizScreenState extends ConsumerState<AdminQuizScreen> {
             ),
             const SizedBox(height: EmiSpacing.md),
             FilledButton.icon(
+              key: const Key('adminAdd-quizzes'),
               onPressed: () => context.push('/admin/quizzes/create'),
               icon: const Icon(Icons.add),
               label: const Text('Tambah Template Kuis'),
             ),
             const SizedBox(height: EmiSpacing.md),
             TextField(
+              key: const Key('adminSearch-quizzes'),
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Cari judul Template Kuis',
@@ -99,13 +101,16 @@ class _AdminQuizScreenState extends ConsumerState<AdminQuizScreen> {
                 if (page.items.isEmpty) {
                   final searching =
                       (_search?.trim().isNotEmpty ?? false) || _status != null;
-                  return _Empty(
-                    title: searching
-                        ? 'Template Kuis Tidak Ditemukan'
-                        : 'Belum Ada Template Kuis',
-                    message: searching
-                        ? 'Coba gunakan judul atau filter yang berbeda.'
-                        : 'Tambahkan Template Kuis untuk menyiapkan latihan atau penilaian pembelajaran.',
+                  return KeyedSubtree(
+                    key: const Key('adminEmpty-quizzes'),
+                    child: _Empty(
+                      title: searching
+                          ? 'Template Kuis Tidak Ditemukan'
+                          : 'Belum Ada Template Kuis',
+                      message: searching
+                          ? 'Coba gunakan judul atau filter yang berbeda.'
+                          : 'Tambahkan Template Kuis untuk menyiapkan latihan atau penilaian pembelajaran.',
+                    ),
                   );
                 }
                 return Column(
@@ -381,6 +386,7 @@ class _AdminQuizFormScreenState extends ConsumerState<AdminQuizFormScreen> {
                   ),
                   const SizedBox(height: EmiSpacing.md),
                   FilledButton(
+                    key: const Key('adminSave-quizzes'),
                     onPressed: _saving ? null : _save,
                     child: Text(_saving ? 'Menyimpan...' : 'Simpan'),
                   ),
@@ -397,12 +403,14 @@ class _AdminQuizFormScreenState extends ConsumerState<AdminQuizFormScreen> {
                       spacing: EmiSpacing.sm,
                       children: [
                         TextButton(
+                          key: const Key('adminPublish-quizzes'),
                           onPressed: _saving
                               ? null
                               : () => _statusAction('publish'),
                           child: const Text('Terbitkan'),
                         ),
                         TextButton(
+                          key: const Key('adminArchive-quizzes'),
                           onPressed: _saving
                               ? null
                               : () => _statusAction('archive'),
@@ -413,6 +421,7 @@ class _AdminQuizFormScreenState extends ConsumerState<AdminQuizFormScreen> {
                           child: const Text('Terapkan ke Kelas'),
                         ),
                         TextButton(
+                          key: const Key('adminDelete-quizzes'),
                           onPressed: _saving ? null : _delete,
                           child: const Text('Hapus'),
                         ),

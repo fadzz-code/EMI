@@ -183,6 +183,7 @@ class _AdminDictionaryFormScreenState
   File? _audioFile;
   bool _removeAudio = false;
   bool _saving = false;
+  bool _submitted = false;
   AppError? _error;
   bool _hydrated = false;
 
@@ -216,174 +217,204 @@ class _AdminDictionaryFormScreenState
       _initialAudioUrl = item.audioUrl;
       _hydrated = true;
     }
-    return AdminShell(
-      title: _editing ? 'Edit Kosakata' : 'Tambah Kosakata',
-      child: detail?.isLoading == true
-          ? const Center(child: CircularProgressIndicator())
-          : Form(
-              key: _formKey,
-              child: ListView(
-                padding: const EdgeInsets.all(EmiSpacing.md),
-                children: [
-                  _PageIntro(
-                    title: _editing ? 'Edit Kosakata' : 'Tambah Kosakata',
-                    subtitle:
-                        'Isi data dengan bahasa yang mudah dipahami siswa.',
-                    icon: Icons.menu_book_outlined,
-                  ),
-                  if (_error != null) _ValidationBox(error: _error!),
-                  _SectionCard(
-                    title: 'Arti Kosakata',
-                    icon: Icons.translate,
-                    children: [
-                      _GapField(
-                        child: TextFormField(
-                          key: const Key('adminField-dictionary-mekongga'),
-                          controller: _mekongga,
-                          decoration: const InputDecoration(
-                            labelText: 'Kata Mekongga',
-                            hintText: 'Contoh: mowila',
-                          ),
-                          validator: _required,
-                        ),
-                      ),
-                      _GapField(
-                        child: TextFormField(
-                          key: const Key('adminField-dictionary-indonesia'),
-                          controller: _indonesia,
-                          decoration: const InputDecoration(
-                            labelText: 'Arti Bahasa Indonesia',
-                          ),
-                          validator: _required,
-                        ),
-                      ),
-                      _GapField(
-                        child: TextFormField(
-                          key: const Key('adminField-dictionary-english'),
-                          controller: _english,
-                          decoration: const InputDecoration(
-                            labelText: 'Arti Bahasa Inggris',
-                          ),
-                          validator: _required,
-                        ),
-                      ),
-                    ],
-                  ),
-                  _SectionCard(
-                    title: 'Pengelompokan',
-                    icon: Icons.category_outlined,
-                    children: [
-                      _GapField(
-                        child: categories.when(
-                          loading: () => const LinearProgressIndicator(),
-                          error: (e, _) =>
-                              const Text('Kategori belum bisa dimuat.'),
-                          data: (page) => DropdownButtonFormField<String>(
-                            initialValue: _categoryId?.isEmpty == true
-                                ? null
-                                : _categoryId,
+    return Semantics(
+      key: const Key('adminScreen-dictionary-form'),
+      child: AdminShell(
+        title: _editing ? 'Edit Kosakata' : 'Tambah Kosakata',
+        child: detail?.isLoading == true
+            ? const Center(child: CircularProgressIndicator())
+            : Form(
+                key: _formKey,
+                autovalidateMode: _submitted
+                    ? AutovalidateMode.always
+                    : AutovalidateMode.disabled,
+                child: ListView(
+                  padding: const EdgeInsets.all(EmiSpacing.md),
+                  children: [
+                    _PageIntro(
+                      title: _editing ? 'Edit Kosakata' : 'Tambah Kosakata',
+                      subtitle:
+                          'Isi data dengan bahasa yang mudah dipahami siswa.',
+                      icon: Icons.menu_book_outlined,
+                    ),
+                    if (_error != null) _ValidationBox(error: _error!),
+                    _SectionCard(
+                      title: 'Arti Kosakata',
+                      icon: Icons.translate,
+                      children: [
+                        _GapField(
+                          child: TextFormField(
+                            key: const Key('adminField-dictionary-mekongga'),
+                            controller: _mekongga,
                             decoration: const InputDecoration(
-                              labelText: 'Kategori',
+                              labelText: 'Kata Mekongga',
+                              hintText: 'Contoh: mowila',
                             ),
-                            items: [
-                              for (final c in page.items)
-                                DropdownMenuItem(
-                                  value: c.id,
-                                  child: Text(c.name),
-                                ),
+                            validator: _required,
+                          ),
+                        ),
+                        _GapField(
+                          child: TextFormField(
+                            key: const Key('adminField-dictionary-indonesia'),
+                            controller: _indonesia,
+                            decoration: const InputDecoration(
+                              labelText: 'Arti Bahasa Indonesia',
+                            ),
+                            validator: _required,
+                          ),
+                        ),
+                        _GapField(
+                          child: TextFormField(
+                            key: const Key('adminField-dictionary-english'),
+                            controller: _english,
+                            decoration: const InputDecoration(
+                              labelText: 'Arti Bahasa Inggris',
+                            ),
+                            validator: _required,
+                          ),
+                        ),
+                      ],
+                    ),
+                    _SectionCard(
+                      title: 'Pengelompokan',
+                      icon: Icons.category_outlined,
+                      children: [
+                        _GapField(
+                          child: categories.when(
+                            loading: () => Semantics(
+                              key: const Key('adminLoading-dictionary-form'),
+                              child: const LinearProgressIndicator(),
+                            ),
+                            error: (e, _) => Semantics(
+                              key: const Key('adminError-dictionary-form'),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Kategori belum bisa dimuat.'),
+                                  TextButton(
+                                    key: const Key(
+                                      'adminRetry-dictionary-form',
+                                    ),
+                                    onPressed: () => ref.invalidate(
+                                      dictionaryCategoriesProvider,
+                                    ),
+                                    child: const Text('Coba lagi'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            data: (page) => DropdownButtonFormField<String>(
+                              key: const Key('adminField-dictionary-category'),
+                              isExpanded: true,
+                              initialValue: _categoryId?.isEmpty == true
+                                  ? null
+                                  : _categoryId,
+                              decoration: const InputDecoration(
+                                labelText: 'Kategori',
+                              ),
+                              items: [
+                                for (final c in page.items)
+                                  DropdownMenuItem(
+                                    value: c.id,
+                                    child: Text(c.name),
+                                  ),
+                              ],
+                              onChanged: _saving
+                                  ? null
+                                  : (v) => setState(() => _categoryId = v),
+                              validator: (v) => v == null || v.isEmpty
+                                  ? 'Kategori wajib diisi.'
+                                  : null,
+                            ),
+                          ),
+                        ),
+                        _GapField(
+                          child: DropdownButtonFormField<String>(
+                            initialValue: _status,
+                            decoration: const InputDecoration(
+                              labelText: 'Status',
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'active',
+                                child: Text('Aktif'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'inactive',
+                                child: Text('Tidak Aktif'),
+                              ),
                             ],
                             onChanged: _saving
                                 ? null
-                                : (v) => setState(() => _categoryId = v),
-                            validator: (v) => v == null || v.isEmpty
-                                ? 'Kategori wajib diisi.'
-                                : null,
+                                : (v) =>
+                                      setState(() => _status = v ?? 'active'),
                           ),
                         ),
-                      ),
-                      _GapField(
-                        child: DropdownButtonFormField<String>(
-                          initialValue: _status,
-                          decoration: const InputDecoration(
-                            labelText: 'Status',
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'active',
-                              child: Text('Aktif'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'inactive',
-                              child: Text('Tidak Aktif'),
-                            ),
-                          ],
-                          onChanged: _saving
-                              ? null
-                              : (v) => setState(() => _status = v ?? 'active'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  _SectionCard(
-                    title: 'Contoh Kalimat',
-                    icon: Icons.format_quote,
-                    children: [
-                      _GapField(
-                        child: TextFormField(
-                          controller: _exampleMekongga,
-                          minLines: 2,
-                          maxLines: 4,
-                          decoration: const InputDecoration(
-                            labelText: 'Contoh Mekongga',
-                          ),
-                        ),
-                      ),
-                      _GapField(
-                        child: TextFormField(
-                          controller: _exampleIndonesia,
-                          minLines: 2,
-                          maxLines: 4,
-                          decoration: const InputDecoration(
-                            labelText: 'Contoh Indonesia',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  _SectionCard(
-                    title: 'Audio Pelafalan',
-                    icon: Icons.volume_up_outlined,
-                    children: [
-                      _AudioField(
-                        initialAudioUrl: _initialAudioUrl,
-                        audioFile: _audioFile,
-                        removeAudio: _removeAudio,
-                        disabled: _saving,
-                        onPick: _pickAudio,
-                        onRemove: () => setState(() => _removeAudio = true),
-                        onRestore: () => setState(() => _removeAudio = false),
-                        onClearSelected: () =>
-                            setState(() => _audioFile = null),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: EmiSpacing.md),
-                  FilledButton.icon(
-                    key: const Key('adminSave-dictionary'),
-                    onPressed: _saving ? null : _save,
-                    icon: const Icon(Icons.save_outlined),
-                    label: Text(_saving ? 'Menyimpan...' : 'Simpan'),
-                  ),
-                  if (_editing)
-                    TextButton.icon(
-                      key: const Key('adminDelete-dictionary'),
-                      onPressed: _saving ? null : _delete,
-                      icon: const Icon(Icons.delete_outline),
-                      label: const Text('Hapus'),
+                      ],
                     ),
-                ],
+                    _SectionCard(
+                      title: 'Contoh Kalimat',
+                      icon: Icons.format_quote,
+                      children: [
+                        _GapField(
+                          child: TextFormField(
+                            controller: _exampleMekongga,
+                            minLines: 2,
+                            maxLines: 4,
+                            decoration: const InputDecoration(
+                              labelText: 'Contoh Mekongga',
+                            ),
+                          ),
+                        ),
+                        _GapField(
+                          child: TextFormField(
+                            controller: _exampleIndonesia,
+                            minLines: 2,
+                            maxLines: 4,
+                            decoration: const InputDecoration(
+                              labelText: 'Contoh Indonesia',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    _SectionCard(
+                      title: 'Audio Pelafalan',
+                      icon: Icons.volume_up_outlined,
+                      children: [
+                        _AudioField(
+                          initialAudioUrl: _initialAudioUrl,
+                          audioFile: _audioFile,
+                          removeAudio: _removeAudio,
+                          disabled: _saving,
+                          onPick: _pickAudio,
+                          onRemove: () => setState(() => _removeAudio = true),
+                          onRestore: () => setState(() => _removeAudio = false),
+                          onClearSelected: () =>
+                              setState(() => _audioFile = null),
+                        ),
+                      ],
+                    ),
+                    if (categories.hasValue) ...[
+                      const SizedBox(height: EmiSpacing.md),
+                      FilledButton.icon(
+                        key: const Key('adminSave-dictionary'),
+                        onPressed: _saving ? null : _save,
+                        icon: const Icon(Icons.save_outlined),
+                        label: Text(_saving ? 'Menyimpan...' : 'Simpan'),
+                      ),
+                    ],
+                    if (_editing)
+                      TextButton.icon(
+                        key: const Key('adminDelete-dictionary'),
+                        onPressed: _saving ? null : _delete,
+                        icon: const Icon(Icons.delete_outline),
+                        label: const Text('Hapus'),
+                      ),
+                  ],
+                ),
               ),
-            ),
+      ),
     );
   }
 
@@ -404,7 +435,9 @@ class _AdminDictionaryFormScreenState
     'audio_media_id': _removeAudio ? null : _audioMediaId,
   };
   Future<void> _save() async {
-    if (_saving || !_formKey.currentState!.validate()) return;
+    if (_saving) return;
+    setState(() => _submitted = true);
+    if (!_formKey.currentState!.validate()) return;
     setState(() {
       _saving = true;
       _error = null;
@@ -504,6 +537,7 @@ class _AdminDictionaryDetailScreenState
           onRetry: () => ref.invalidate(adminDictionaryDetailProvider(id)),
         ),
         data: (item) => ListView(
+          key: const Key('adminScreen-dictionary-detail'),
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
             _PageIntro(

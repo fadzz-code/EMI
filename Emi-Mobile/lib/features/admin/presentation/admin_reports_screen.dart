@@ -131,10 +131,11 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
         ShareParams(files: [XFile(file.path)], subject: name),
       );
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('CSV gagal disiapkan.')));
+      }
     }
   }
 
@@ -172,10 +173,12 @@ class _RemoteReports extends StatelessWidget {
       FutureBuilder(
         future: repository.schoolReport(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done)
+          if (snapshot.connectionState != ConnectionState.done) {
             return const LinearProgressIndicator();
-          if (snapshot.hasError)
+          }
+          if (snapshot.hasError) {
             return const Text('Laporan sekolah belum bisa dimuat.');
+          }
           return Column(
             children: [
               for (final item
@@ -203,10 +206,12 @@ class _RemoteReports extends StatelessWidget {
       FutureBuilder(
         future: repository.quizResults(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done)
+          if (snapshot.connectionState != ConnectionState.done) {
             return const LinearProgressIndicator();
-          if (snapshot.hasError)
+          }
+          if (snapshot.hasError) {
             return const Text('Hasil kuis belum bisa dimuat.');
+          }
           return Column(
             children: [
               for (final item
@@ -262,6 +267,7 @@ class _Filters extends ConsumerWidget {
     return Column(
       children: [
         TextField(
+          key: const Key('adminSearch-reports'),
           controller: search,
           decoration: const InputDecoration(
             labelText: 'Cari siswa atau kelas',

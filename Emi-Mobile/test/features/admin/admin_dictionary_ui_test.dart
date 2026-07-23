@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:emi_mobile/app/theme/emi_theme.dart';
 import 'package:emi_mobile/core/errors/dio_error_mapper.dart';
 import 'package:emi_mobile/features/admin/presentation/admin_dictionary_screens.dart';
+import 'package:emi_mobile/features/admin/presentation/admin_knowledge_screens.dart';
 import 'package:emi_mobile/features/admin/data/admin_crud_providers.dart';
 import 'package:emi_mobile/features/admin/data/admin_crud_repository.dart';
 
@@ -313,5 +314,133 @@ void main() {
     expect(find.text('Hapus Audio'), findsOneWidget);
 
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('knowledge form marker and save are present', (tester) async {
+    final router = GoRouter(
+      initialLocation: '/admin/knowledge/create',
+      routes: [
+        GoRoute(
+          path: '/admin/knowledge/create',
+          builder: (_, _) => const AdminKnowledgeFormScreen(),
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp.router(
+          theme: EmiTheme.light(),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(const Key('adminScreen-knowledge-form')), findsOneWidget);
+    expect(find.byKey(const Key('adminSave-knowledge')), findsOneWidget);
+  });
+
+  testWidgets(
+    'dictionary validation remains available after bottom save scroll',
+    (tester) async {
+      final router = GoRouter(
+        initialLocation: '/admin/dictionary/create',
+        routes: [
+          GoRoute(
+            path: '/admin/dictionary/create',
+            builder: (_, _) => const AdminDictionaryFormScreen(),
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            dictionaryCategoriesProvider.overrideWith(
+              (_) => const AdminCrudPage(items: [], total: 0),
+            ),
+          ],
+          child: MaterialApp.router(
+            theme: EmiTheme.light(),
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final scrollable = find.byType(Scrollable).first;
+      final save = find.byKey(const Key('adminSave-dictionary'));
+      await tester.scrollUntilVisible(save, 300, scrollable: scrollable);
+      await tester.drag(scrollable, const Offset(0, -100));
+      await tester.pump();
+      await tester.tap(save.hitTestable());
+      await tester.pump();
+      expect(
+        router.routeInformationProvider.value.uri.path,
+        '/admin/dictionary/create',
+      );
+
+      for (final validation in const [
+        ('adminField-dictionary-mekongga', 'Wajib diisi.'),
+        ('adminField-dictionary-indonesia', 'Wajib diisi.'),
+        ('adminField-dictionary-english', 'Wajib diisi.'),
+        ('adminField-dictionary-category', 'Kategori wajib diisi.'),
+      ]) {
+        final field = find.byKey(Key(validation.$1));
+        await tester.scrollUntilVisible(field, -300, scrollable: scrollable);
+        await tester.pump();
+        expect(
+          tester.state<FormFieldState<String>>(field).errorText,
+          validation.$2,
+        );
+      }
+    },
+  );
+
+  testWidgets('dictionary form markers track category loading and data', (
+    tester,
+  ) async {
+    final categories = Completer<AdminCrudPage<DictionaryCategory>>();
+    final router = GoRouter(
+      initialLocation: '/admin/dictionary/create',
+      routes: [
+        GoRoute(
+          path: '/admin/dictionary/create',
+          builder: (_, _) => const AdminDictionaryFormScreen(),
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          dictionaryCategoriesProvider.overrideWith((_) => categories.future),
+        ],
+        child: MaterialApp.router(
+          theme: EmiTheme.light(),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      find.byKey(const Key('adminScreen-dictionary-form')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('adminLoading-dictionary-form')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('adminSave-dictionary')), findsNothing);
+
+    categories.complete(const AdminCrudPage(items: [], total: 0));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('adminLoading-dictionary-form')), findsNothing);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('adminSave-dictionary')),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.byKey(const Key('adminSave-dictionary')), findsOneWidget);
   });
 }
