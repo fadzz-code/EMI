@@ -40,12 +40,14 @@ test("guru membuat, mengedit, menerbitkan, lalu mengarsipkan target speaking lew
 
 test("guru meninjau attempt speaking seeded lalu memulihkan feedback", async ({ page }) => {
   await page.goto("/teacher/speaking/results");
-  const score = page.getByLabel("Skor guru (0-100)");
-  if (!await score.count()) {
-    await expect(page.getByText("Belum ada hasil speaking", { exact: true })).toBeVisible();
-    return;
-  }
+  await expect(page.getByRole("heading", { name: "Percobaan Siswa" })).toBeVisible();
+  await page.getByPlaceholder("Cari siswa, latihan, status...").fill("[E2E Student] Speaking");
+  const reviewedAttempt = page.getByRole("button").filter({ hasText: /Skor guru: (?!-)/ }).first();
+  await expect(reviewedAttempt).toBeVisible();
+  await reviewedAttempt.click();
 
+  const score = page.getByLabel("Skor guru (0-100)");
+  await expect(score).not.toHaveValue("");
   const originalScore = await score.inputValue();
   const feedback = page.getByLabel("Feedback guru");
   const originalFeedback = await feedback.inputValue();
