@@ -13,6 +13,19 @@ import '../data/admin_knowledge_providers.dart';
 import '../data/admin_knowledge_repository.dart';
 import 'admin_shell.dart';
 
+typedef AdminKnowledgePdfPicker = Future<PlatformFile?> Function();
+
+final adminKnowledgePdfPickerProvider = Provider<AdminKnowledgePdfPicker>(
+  (_) => () async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['pdf'],
+      withData: false,
+    );
+    return result?.files.single;
+  },
+);
+
 class AdminKnowledgeScreen extends ConsumerStatefulWidget {
   const AdminKnowledgeScreen({super.key});
 
@@ -71,12 +84,14 @@ class _AdminKnowledgeScreenState extends ConsumerState<AdminKnowledgeScreen> {
             ),
             const SizedBox(height: EmiSpacing.md),
             FilledButton.icon(
+              key: const Key('adminAdd-knowledge'),
               onPressed: () => context.push('/admin/knowledge/create'),
               icon: const Icon(Icons.add),
               label: const Text('Tambah Pengetahuan'),
             ),
             const SizedBox(height: EmiSpacing.md),
             TextField(
+              key: const Key('adminSearch-knowledge'),
               controller: _search,
               decoration: InputDecoration(
                 hintText: 'Cari judul atau isi pengetahuan',
@@ -137,6 +152,7 @@ class _AdminKnowledgeScreenState extends ConsumerState<AdminKnowledgeScreen> {
                       query.sourceType != null ||
                       query.status != null;
                   return FriendlyState(
+                    key: const Key('adminEmpty-knowledge'),
                     icon: Icons.psychology_alt_outlined,
                     title: hasSearch
                         ? 'Pengetahuan Tidak Ditemukan'
@@ -149,7 +165,10 @@ class _AdminKnowledgeScreenState extends ConsumerState<AdminKnowledgeScreen> {
                 return Column(
                   children: [
                     for (final item in data.items) ...[
-                      _KnowledgeTile(item: item),
+                      _KnowledgeTile(
+                        key: Key('adminKnowledgeRow-${item.id}'),
+                        item: item,
+                      ),
                       const SizedBox(height: EmiSpacing.sm),
                     ],
                     if (data.hasMore)
@@ -263,7 +282,7 @@ class _AdminKnowledgeScreenState extends ConsumerState<AdminKnowledgeScreen> {
 }
 
 class _KnowledgeTile extends StatelessWidget {
-  const _KnowledgeTile({required this.item});
+  const _KnowledgeTile({super.key, required this.item});
 
   final AdminKnowledgeItem item;
 
@@ -437,6 +456,7 @@ class AdminKnowledgeDetailScreen extends ConsumerWidget {
             ],
             const SizedBox(height: EmiSpacing.md),
             FilledButton(
+              key: const Key('adminEdit-knowledge'),
               onPressed: () => context.push('/admin/knowledge/${item.id}/edit'),
               child: const Text('Edit Pengetahuan'),
             ),
@@ -446,20 +466,25 @@ class AdminKnowledgeDetailScreen extends ConsumerWidget {
               children: [
                 if (item.status != 'published')
                   OutlinedButton(
+                    key: const Key('adminPublish-knowledge'),
                     onPressed: () => _confirmPublish(context, item),
                     child: const Text('Terbitkan'),
                   ),
                 if (item.status != 'archived')
                   OutlinedButton(
+                    key: const Key('adminArchive-knowledge'),
                     onPressed: () => _confirmArchive(context, item),
                     child: const Text('Arsipkan'),
                   ),
-                if (item.sourceType == 'pdf')
+                if (item.sourceType == 'pdf' &&
+                    item.processingStatus == 'failed')
                   OutlinedButton(
+                    key: const Key('adminRetry-knowledge'),
                     onPressed: () => _retry(context, item),
                     child: const Text('Coba Proses Lagi'),
                   ),
                 OutlinedButton(
+                  key: const Key('adminDelete-knowledge'),
                   onPressed: () => _confirmDelete(context, item),
                   child: const Text('Hapus'),
                 ),
@@ -590,6 +615,7 @@ class _AdminKnowledgeFormScreenState
                   'Judul dan kategori membantu Admin menemukan sumber saat mengelola Basis AI.',
                 ),
                 TextFormField(
+                  key: const Key('adminField-knowledge-title'),
                   controller: _title,
                   decoration: const InputDecoration(
                     labelText: 'Judul',
@@ -601,6 +627,7 @@ class _AdminKnowledgeFormScreenState
                 ),
                 const SizedBox(height: EmiSpacing.md),
                 TextFormField(
+                  key: const Key('adminField-knowledge-category'),
                   controller: _category,
                   decoration: const InputDecoration(labelText: 'Kategori'),
                 ),
@@ -611,6 +638,7 @@ class _AdminKnowledgeFormScreenState
                 ),
                 if (_sourceType != 'pdf')
                   TextFormField(
+                    key: const Key('adminField-knowledge-content'),
                     controller: _content,
                     minLines: 6,
                     maxLines: 12,
@@ -762,6 +790,7 @@ class _AdminKnowledgeFormScreenState
                             ),
                             const SizedBox(height: EmiSpacing.md),
                             FilledButton.icon(
+                              key: const Key('adminPickPdf-knowledge'),
                               onPressed: _saving ? null : _pickPdf,
                               icon: const Icon(Icons.upload_file),
                               label: const Text('Pilih PDF'),
@@ -786,11 +815,15 @@ class _AdminKnowledgeFormScreenState
                           ] else ...[
                             Text(
                               _pdf!.name,
+                              key: const Key('adminPdfFilename-knowledge'),
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            Text('${_pdf!.size} byte'),
+                            Text(
+                              '${_pdf!.size} byte',
+                              key: const Key('adminPdfStatus-knowledge'),
+                            ),
                             const SizedBox(height: EmiSpacing.md),
                             Row(
                               children: [
@@ -813,6 +846,7 @@ class _AdminKnowledgeFormScreenState
                 ],
                 const SizedBox(height: EmiSpacing.lg),
                 FilledButton(
+                  key: const Key('adminSave-knowledge'),
                   onPressed: _saving ? null : _save,
                   child: Text(_saving ? 'Menyimpan...' : 'Simpan Pengetahuan'),
                 ),
@@ -862,12 +896,9 @@ class _AdminKnowledgeFormScreenState
   }
 
   Future<void> _pickPdf() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf'],
-    );
-    if (result == null || result.files.isEmpty) return;
-    setState(() => _pdf = result.files.single);
+    final file = await ref.read(adminKnowledgePdfPickerProvider)();
+    if (file == null) return;
+    setState(() => _pdf = file);
   }
 
   Future<void> _save() async {

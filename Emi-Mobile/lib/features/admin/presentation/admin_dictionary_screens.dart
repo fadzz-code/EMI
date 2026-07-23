@@ -238,6 +238,7 @@ class _AdminDictionaryFormScreenState
                     children: [
                       _GapField(
                         child: TextFormField(
+                          key: const Key('adminField-dictionary-mekongga'),
                           controller: _mekongga,
                           decoration: const InputDecoration(
                             labelText: 'Kata Mekongga',
@@ -248,6 +249,7 @@ class _AdminDictionaryFormScreenState
                       ),
                       _GapField(
                         child: TextFormField(
+                          key: const Key('adminField-dictionary-indonesia'),
                           controller: _indonesia,
                           decoration: const InputDecoration(
                             labelText: 'Arti Bahasa Indonesia',
@@ -257,6 +259,7 @@ class _AdminDictionaryFormScreenState
                       ),
                       _GapField(
                         child: TextFormField(
+                          key: const Key('adminField-dictionary-english'),
                           controller: _english,
                           decoration: const InputDecoration(
                             labelText: 'Arti Bahasa Inggris',
@@ -366,12 +369,14 @@ class _AdminDictionaryFormScreenState
                   ),
                   const SizedBox(height: EmiSpacing.md),
                   FilledButton.icon(
+                    key: const Key('adminSave-dictionary'),
                     onPressed: _saving ? null : _save,
                     icon: const Icon(Icons.save_outlined),
                     label: Text(_saving ? 'Menyimpan...' : 'Simpan'),
                   ),
                   if (_editing)
                     TextButton.icon(
+                      key: const Key('adminDelete-dictionary'),
                       onPressed: _saving ? null : _delete,
                       icon: const Icon(Icons.delete_outline),
                       label: const Text('Hapus'),
@@ -430,16 +435,29 @@ class _AdminDictionaryFormScreenState
   }
 
   Future<void> _delete() async {
+    if (_saving) return;
     final ok = await _confirm(
       context,
       'Hapus kosakata ini?\nTindakan ini tidak dapat dibatalkan.',
     );
     if (ok != true || _saving) return;
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
     try {
       await ref.read(adminCrudRepositoryProvider).deleteDictionary(widget.id!);
       ref.invalidate(adminDictionaryProvider);
       if (mounted) context.go('/admin/dictionary');
+    } catch (e) {
+      if (mounted) {
+        setState(
+          () => _error = AppError(
+            type: AppErrorType.unknown,
+            message: 'Kosakata belum dapat dihapus. Silakan coba lagi.',
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -460,11 +478,21 @@ class _AdminDictionaryFormScreenState
   }
 }
 
-class AdminDictionaryDetailScreen extends ConsumerWidget {
+class AdminDictionaryDetailScreen extends ConsumerStatefulWidget {
   const AdminDictionaryDetailScreen({super.key, required this.id});
   final String id;
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AdminDictionaryDetailScreen> createState() =>
+      _AdminDictionaryDetailScreenState();
+}
+
+class _AdminDictionaryDetailScreenState
+    extends ConsumerState<AdminDictionaryDetailScreen> {
+  bool _deleting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final id = widget.id;
     final detail = ref.watch(adminDictionaryDetailProvider(id));
     return AdminShell(
       title: 'Detail Kosakata',
@@ -571,6 +599,7 @@ class AdminDictionaryDetailScreen extends ConsumerWidget {
             ),
             const SizedBox(height: EmiSpacing.md),
             FilledButton.icon(
+              key: const Key('adminEdit-dictionary'),
               onPressed: () async {
                 await context.push('/admin/dictionary/$id/edit');
                 ref.invalidate(adminDictionaryDetailProvider(id));
@@ -579,18 +608,8 @@ class AdminDictionaryDetailScreen extends ConsumerWidget {
               label: const Text('Edit Entri'),
             ),
             TextButton.icon(
-              onPressed: () async {
-                final ok = await _confirm(
-                  context,
-                  'Hapus kosakata ini dari Kamus?\nKosakata tidak akan tampil pada daftar aktif, tetapi datanya tetap disimpan oleh sistem.',
-                );
-                if (ok != true) return;
-                await ref
-                    .read(adminCrudRepositoryProvider)
-                    .deleteDictionary(id);
-                ref.invalidate(adminDictionaryProvider);
-                if (context.mounted) context.go('/admin/dictionary');
-              },
+              key: const Key('adminDelete-dictionary'),
+              onPressed: _deleting ? null : () => _delete(id),
               icon: const Icon(Icons.delete_outline),
               label: const Text('Hapus'),
             ),
@@ -598,6 +617,31 @@ class AdminDictionaryDetailScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _delete(String id) async {
+    if (_deleting) return;
+    final ok = await _confirm(
+      context,
+      'Hapus kosakata ini dari Kamus?\nKosakata tidak akan tampil pada daftar aktif, tetapi datanya tetap disimpan oleh sistem.',
+    );
+    if (ok != true || _deleting) return;
+    setState(() => _deleting = true);
+    try {
+      await ref.read(adminCrudRepositoryProvider).deleteDictionary(id);
+      ref.invalidate(adminDictionaryProvider);
+      if (mounted) context.go('/admin/dictionary');
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Kosakata belum dapat dihapus. Silakan coba lagi.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _deleting = false);
+    }
   }
 }
 
@@ -1063,6 +1107,7 @@ class _SearchBar extends StatelessWidget {
           icon: Icons.auto_stories_outlined,
         ),
         TextField(
+          key: const Key('adminSearch-dictionary'),
           decoration: const InputDecoration(
             prefixIcon: Icon(Icons.search),
             hintText: 'Cari kata atau arti',
@@ -1075,6 +1120,7 @@ class _SearchBar extends StatelessWidget {
           runSpacing: EmiSpacing.sm,
           children: [
             FilledButton.icon(
+              key: const Key('adminAdd-dictionary'),
               onPressed: onAdd,
               icon: const Icon(Icons.add),
               label: const Text('Tambah Kosakata'),
@@ -1695,7 +1741,11 @@ Future<bool?> _confirm(BuildContext context, String text) => showDialog<bool>(
         onPressed: () => context.pop(false),
         child: const Text('Batal'),
       ),
-      FilledButton(onPressed: () => context.pop(true), child: const Text('Ya')),
+      FilledButton(
+        key: const Key('adminConfirmDelete-dictionary'),
+        onPressed: () => context.pop(true),
+        child: const Text('Ya'),
+      ),
     ],
   ),
 );

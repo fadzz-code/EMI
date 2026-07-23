@@ -1,9 +1,13 @@
+import 'dart:async';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:emi_mobile/app/theme/emi_theme.dart';
+import 'package:emi_mobile/core/errors/dio_error_mapper.dart';
 import 'package:emi_mobile/features/admin/presentation/admin_dictionary_screens.dart';
 import 'package:emi_mobile/features/admin/data/admin_crud_providers.dart';
 import 'package:emi_mobile/features/admin/data/admin_crud_repository.dart';
@@ -149,6 +153,91 @@ void main() {
     expect(find.text('Terakhir Diubah: 16/07/2026'), findsOneWidget);
   });
 
+  testWidgets(
+    'failed detail delete stays, reports error, and blocks double tap',
+    (tester) async {
+      var deletes = 0;
+      final deleteResult = Completer<void>();
+      final repository = AdminCrudRepository(
+        Dio(BaseOptions(baseUrl: 'https://example.test'))
+          ..interceptors.add(
+            InterceptorsWrapper(
+              onRequest: (options, handler) async {
+                if (options.method == 'DELETE') {
+                  deletes++;
+                  await deleteResult.future;
+                  handler.reject(
+                    DioException.connectionError(
+                      requestOptions: options,
+                      reason: 'offline',
+                    ),
+                  );
+                }
+              },
+            ),
+          ),
+        const DioErrorMapper(),
+      );
+      const entry = DictionaryEntryAdmin(
+        id: '1',
+        mekongga: 'Mowali',
+        indonesia: 'Pulang',
+        english: 'Go home',
+        categoryId: 'c1',
+      );
+      final router = GoRouter(
+        initialLocation: '/admin/dictionary/1',
+        routes: [
+          GoRoute(
+            path: '/admin/dictionary/:id',
+            builder: (_, state) =>
+                AdminDictionaryDetailScreen(id: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: '/admin/dictionary',
+            builder: (_, _) => const SizedBox(),
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            adminCrudRepositoryProvider.overrideWithValue(repository),
+            adminDictionaryDetailProvider('1').overrideWith((_) => entry),
+          ],
+          child: MaterialApp.router(
+            theme: EmiTheme.light(),
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.text('Hapus'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.byKey(const Key('adminDelete-dictionary')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('adminConfirmDelete-dictionary')));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(deletes, 1);
+      await tester.tap(find.byKey(const Key('adminDelete-dictionary')));
+      await tester.pump();
+      expect(deletes, 1);
+
+      deleteResult.complete();
+      await tester.pumpAndSettle();
+      expect(find.text('Detail Kosakata'), findsOneWidget);
+      expect(
+        find.text('Kosakata belum dapat dihapus. Silakan coba lagi.'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('admin dictionary UI audio form displays correct state', (
     tester,
   ) async {
@@ -204,6 +293,8 @@ void main() {
     expect(find.text('Ganti Audio'), findsOneWidget);
     await tester.drag(find.byType(ListView), const Offset(0, -1000));
     await tester.pumpAndSettle();
+    expect(find.byKey(const Key('adminSave-dictionary')), findsOneWidget);
+    expect(find.byKey(const Key('adminDelete-dictionary')), findsOneWidget);
 
     final hapusBtn = find.text('Hapus Audio');
     expect(hapusBtn, findsOneWidget);
