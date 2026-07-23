@@ -32,7 +32,7 @@ class EmiScaffold extends ConsumerWidget {
           children: [
             if (title != null)
               Container(
-                height: 64,
+                constraints: const BoxConstraints(minHeight: 64),
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: EmiSpacing.md),
                 decoration: const BoxDecoration(
@@ -97,9 +97,16 @@ class _StudentDrawer extends StatelessWidget {
                       children: [
                         Text(
                           user?.fullName ?? 'Siswa EMI',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        if (user?.email != null) Text(user!.email),
+                        if (user?.email != null)
+                          Text(
+                            user!.email,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                       ],
                     ),
                   ),
@@ -258,31 +265,36 @@ class _EmiBottomNav extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: List.generate(labels.length, (item) {
           final active = item == index;
-          return InkWell(
-            borderRadius: BorderRadius.circular(EmiRadii.pill),
-            onTap: () => onTap(item),
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: active ? EmiSpacing.md : EmiSpacing.xs,
-                vertical: active ? 4 : EmiSpacing.xs,
-              ),
-              decoration: active
-                  ? BoxDecoration(
-                      color: EmiColors.success,
-                      border: Border.all(color: EmiColors.border, width: 2),
-                      borderRadius: BorderRadius.circular(EmiRadii.pill),
-                    )
-                  : null,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icons[item], size: 20),
-                  const SizedBox(height: 4),
-                  Text(
-                    labels[item],
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
-                ],
+          return Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(EmiRadii.pill),
+              onTap: () => onTap(item),
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: active ? EmiSpacing.md : EmiSpacing.xs,
+                  vertical: active ? 4 : EmiSpacing.xs,
+                ),
+                decoration: active
+                    ? BoxDecoration(
+                        color: EmiColors.success,
+                        border: Border.all(color: EmiColors.border, width: 2),
+                        borderRadius: BorderRadius.circular(EmiRadii.pill),
+                      )
+                    : null,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icons[item], size: 20),
+                    const SizedBox(height: 4),
+                    Text(
+                      labels[item],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                  ],
+                ),
               ),
             ),
           );

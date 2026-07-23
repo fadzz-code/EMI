@@ -139,6 +139,31 @@ void main() {
     expect(find.text('Chatbot'), findsNothing);
     expect(find.text('Budaya Mekongga'), findsNothing);
   });
+
+  testWidgets('header and drawer handle small screen with large text', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 568));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final router = _router('/student/dashboard');
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(FakeAuthRepository()),
+        ],
+        child: MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('studentMenuButton')));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
 }
 
 GoRouter _router(String initialLocation) {

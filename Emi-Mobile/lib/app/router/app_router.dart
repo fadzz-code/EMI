@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/admin/data/admin_providers.dart';
 import '../../features/admin/presentation/admin_approvals_screens.dart';
 import '../../features/admin/presentation/admin_culture_screens.dart';
+import '../../features/admin/presentation/admin_culture_templates_screens.dart';
 import '../../features/admin/presentation/admin_dictionary_screens.dart';
 import '../../features/admin/presentation/admin_knowledge_screens.dart';
 import '../../features/admin/presentation/admin_modules_screens.dart';
@@ -169,6 +170,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const TeacherModulesScreen(),
       ),
       GoRoute(
+        path: '/teacher/modules/create',
+        builder: (_, state) => TeacherModuleCreateScreen(
+          classId: state.uri.queryParameters['classId'] ?? '',
+        ),
+      ),
+      GoRoute(
         path: '/teacher/modules/:id/edit',
         builder: (_, state) =>
             TeacherModuleEditScreen(id: state.pathParameters['id'] ?? ''),
@@ -225,7 +232,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/teacher/culture',
-        builder: (_, _) => const TeacherCultureScreen(),
+        builder: (_, state) =>
+            TeacherCultureScreen(classId: state.uri.queryParameters['classId']),
       ),
       GoRoute(
         path: '/teacher/culture/create',
@@ -278,7 +286,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/teacher/profile',
-        builder: (_, _) => const StudentProfileScreen(),
+        builder: (_, _) => const StudentProfileScreen(teacher: true),
       ),
       GoRoute(
         path: '/student/dashboard',
@@ -325,6 +333,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/student/quizzes/:quizId/attempt',
         builder: (_, state) => StudentQuizAttemptScreen(
           quizId: state.pathParameters['quizId'] ?? '',
+          attemptId: state.uri.queryParameters['attemptId'],
         ),
       ),
       GoRoute(
@@ -538,6 +547,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/admin/culture/create',
         builder: (_, _) => const AdminCultureFormScreen(),
+      ),
+      GoRoute(
+        path: '/admin/culture/templates',
+        builder: (_, _) => const AdminCultureTemplatesScreen(),
+      ),
+      GoRoute(
+        path: '/admin/culture/templates/:id',
+        builder: (_, state) => AdminCultureTemplateDetailScreen(
+          id: state.pathParameters['id'] ?? '',
+        ),
       ),
       GoRoute(
         path: '/admin/culture/:id/edit',
