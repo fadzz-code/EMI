@@ -70,7 +70,7 @@ class AdminProgressDetailPdfTest extends TestCase
             ->assertJsonPath('data.class.teacher.id', $teacher->id)->assertJsonPath('data.summary.active_students', 2)
             ->assertJsonPath('data.summary.average_module_progress_percent', 50)->assertJsonPath('data.summary.average_best_final_quiz_score_percent', 90)
             ->assertJsonPath('data.summary.completed_students', 1)->assertJsonPath('data.summary.not_started_students', 1)
-            ->assertJsonPath('data.summary.last_activity_at', fn ($value) => str_contains($value, '2026-06-15'))
+            ->assertJsonPath('data.summary.last_activity_at', fn ($value) => str_contains($value, now('UTC')->toDateString()))
             ->assertJsonPath('data.capabilities.speaking_reports', false)->assertJsonPath('data.students.meta.current_page', 2);
     }
 
@@ -128,6 +128,17 @@ class AdminProgressDetailPdfTest extends TestCase
         $this->admin($student)->get($path)->assertForbidden();
     }
 
+    public function test_detail_rejects_contradictory_identity_query_and_csv_is_private(): void
+    {
+        [$admin, , $student] = $this->dataset();
+        $other = User::factory()->student()->approved()->create();
+
+        $this->admin($admin)->getJson("/api/v1/admin/reports/progress/students/{$student->id}?student_id={$other->id}")->assertUnprocessable();
+        $response = $this->admin($admin)->get('/api/v1/admin/reports/progress/students/export')->assertOk();
+        $this->assertStringContainsString('no-store', $response->headers->get('cache-control'));
+        $this->assertStringContainsString('private', $response->headers->get('cache-control'));
+    }
+
     public function test_period_validation_applies_to_overview_details_and_pdfs(): void
     {
         [$admin, , $student, , $class] = $this->dataset();
@@ -146,10 +157,10 @@ class AdminProgressDetailPdfTest extends TestCase
         $student = $this->student($class, $admin, 'Siswa Utama');
         $this->student($class, $admin, 'Siswa Kosong');
         $module = ClassModule::factory()->published()->create(['class_id' => $class->id, 'created_by' => $admin->id]);
-        ModuleProgress::factory()->create(['student_id' => $student->id, 'class_module_id' => $module->id, 'status' => 'completed', 'progress_percent' => 100, 'completed_at' => '2026-06-15 10:00:00', 'last_calculated_at' => '2026-06-15 10:00:00', 'created_at' => '2026-06-15 10:00:00', 'updated_at' => '2026-06-15 10:00:00']);
+        ModuleProgress::factory()->create(['student_id' => $student->id, 'class_module_id' => $module->id, 'status' => 'completed', 'progress_percent' => 100, 'completed_at' => now('UTC')->setTime(10, 0), 'last_calculated_at' => now('UTC')->setTime(10, 0), 'created_at' => now('UTC')->setTime(10, 0), 'updated_at' => now('UTC')->setTime(10, 0)]);
         $quiz = ClassQuiz::factory()->published()->create(['class_id' => $class->id, 'created_by' => $admin->id]);
-        QuizAttempt::factory()->create(['class_quiz_id' => $quiz->id, 'student_id' => $student->id, 'attempt_number' => 1, 'status' => 'submitted', 'score_percent' => 70, 'submitted_at' => '2026-06-15 12:00:00']);
-        QuizAttempt::factory()->create(['class_quiz_id' => $quiz->id, 'student_id' => $student->id, 'attempt_number' => 2, 'status' => 'submitted', 'score_percent' => 90, 'submitted_at' => '2026-06-15 13:00:00']);
+        QuizAttempt::factory()->create(['class_quiz_id' => $quiz->id, 'student_id' => $student->id, 'attempt_number' => 1, 'status' => 'submitted', 'score_percent' => 70, 'submitted_at' => now('UTC')->setTime(12, 0)]);
+        QuizAttempt::factory()->create(['class_quiz_id' => $quiz->id, 'student_id' => $student->id, 'attempt_number' => 2, 'status' => 'submitted', 'score_percent' => 90, 'submitted_at' => now('UTC')->setTime(13, 0)]);
 
         return [$admin, $teacher, $student, $school, $class];
     }

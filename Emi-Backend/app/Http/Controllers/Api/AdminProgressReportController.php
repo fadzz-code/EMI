@@ -35,8 +35,7 @@ class AdminProgressReportController extends Controller
 
     public function overview(AdminProgressOverviewRequest $request): JsonResponse
     {
-        $filters = $request->validated();
-        $this->periodService->resolve($filters);
+        $filters = array_merge($request->validated(), $this->periodService->resolve($request->validated()));
         $this->scopeService->assertAdminScope($filters);
         $students = $this->reportService->studentRows(array_merge($filters, ['page' => $filters['student_page'] ?? 1, 'per_page' => $filters['student_per_page'] ?? config('dashboard.default_per_page'), '_page_name' => 'student_page']));
         $classes = $this->reportService->classRows(array_merge($filters, ['page' => $filters['class_page'] ?? 1, 'per_page' => $filters['class_per_page'] ?? config('dashboard.default_per_page')]));
@@ -52,8 +51,7 @@ class AdminProgressReportController extends Controller
     public function student(StudentProgressReportRequest $request, User $student): JsonResponse
     {
         abort_unless($student->role === 'student', 404);
-        $filters = $request->validated();
-        $this->periodService->resolve($filters);
+        $filters = array_merge($request->validated(), $this->periodService->resolve($request->validated()));
         $progress = $this->reportService->studentRows($filters, null, $student->id, false)->first();
         abort_unless($progress, 404);
         $quizFilters = array_merge($filters, ['page' => $filters['quiz_page'] ?? 1, 'per_page' => $filters['quiz_per_page'] ?? config('dashboard.default_per_page')]);
@@ -70,8 +68,8 @@ class AdminProgressReportController extends Controller
 
     public function class(AdminClassProgressReportRequest $request, SchoolClass $class): JsonResponse
     {
-        $filters = array_merge($request->validated(), ['class_id' => $class->id]);
-        $this->periodService->resolve($filters);
+        $filters = array_merge($request->validated(), $this->periodService->resolve($request->validated()), ['class_id' => $class->id]);
+        $this->scopeService->assertAdminScope($filters);
         $students = $this->reportService->studentRows($filters);
         $teacher = DB::table('teacher_class_assignments as tca')->join('users as u', 'u.id', '=', 'tca.teacher_id')->where('tca.class_id', $class->id)->where('tca.is_active', true)->select('u.id', 'u.full_name', 'u.email')->first();
         $metrics = DB::query()->fromSub($this->reportService->studentMetricQuery($filters)->where('c.id', $class->id), 'students')->selectRaw("count(*)::int as active_students, round(coalesce(avg(overall_learning_progress_percent), 0)::numeric, 2) as average_module_progress_percent, round(avg(average_best_quiz_score_percent) filter (where average_best_quiz_score_percent is not null)::numeric, 2) as average_best_final_quiz_score_percent, max(greatest(coalesce(last_learning_activity_at, '-infinity'::timestamp), coalesce(last_quiz_activity_at, '-infinity'::timestamp))) as last_activity_at, sum(case when published_modules > 0 and completed_modules = published_modules then 1 else 0 end)::int as completed_students, sum(case when started_modules = 0 then 1 else 0 end)::int as not_started_students")->first();
@@ -89,6 +87,7 @@ class AdminProgressReportController extends Controller
     {
         $filters = $request->validated();
         $period = $this->periodService->resolve($filters);
+        $filters = array_merge($filters, $period);
         $this->scopeService->assertAdminScope($filters);
         $rows = $this->reportService->studentRows($filters, null, null, false);
         $summary = $this->reportService->overviewSummary($filters);
@@ -111,6 +110,7 @@ class AdminProgressReportController extends Controller
         abort_unless($student->role === 'student', 404);
         $filters = $request->validated();
         $period = $this->periodService->resolve($filters);
+        $filters = array_merge($filters, $period);
         $row = $this->reportService->studentRows($filters, null, $student->id, false)->first();
         abort_unless($row, 404);
         $quizzes = $this->quizService->rows($filters, null, $student->id, false);
@@ -132,6 +132,8 @@ class AdminProgressReportController extends Controller
     {
         $filters = array_merge($request->validated(), ['class_id' => $class->id]);
         $period = $this->periodService->resolve($filters);
+        $filters = array_merge($filters, $period);
+        $this->scopeService->assertAdminScope($filters);
         $rows = $this->reportService->studentRows($filters, null, null, false);
         $summary = $this->reportService->overviewSummary($filters);
         $teacher = DB::table('teacher_class_assignments as tca')->join('users as u', 'u.id', '=', 'tca.teacher_id')->where('tca.class_id', $class->id)->where('tca.is_active', true)->value('u.full_name');
@@ -152,26 +154,26 @@ class AdminProgressReportController extends Controller
 
     public function schools(AdminSchoolProgressReportRequest $request): JsonResponse
     {
-        $this->periodService->resolve($request->validated());
-        $rows = $this->reportService->schoolRows($request->validated());
+        $filters = array_merge($request->validated(), $this->periodService->resolve($request->validated()));
+        $rows = $this->reportService->schoolRows($filters);
 
         return ApiResponse::paginated('Laporan progress sekolah berhasil diambil.', $rows, $rows->getCollection()->all());
     }
 
     public function classes(AdminClassProgressReportRequest $request): JsonResponse
     {
-        $this->periodService->resolve($request->validated());
-        $this->scopeService->assertAdminScope($request->validated());
-        $rows = $this->reportService->classRows($request->validated());
+        $filters = array_merge($request->validated(), $this->periodService->resolve($request->validated()));
+        $this->scopeService->assertAdminScope($filters);
+        $rows = $this->reportService->classRows($filters);
 
         return ApiResponse::paginated('Laporan progress kelas berhasil diambil.', $rows, $rows->getCollection()->all());
     }
 
     public function students(StudentProgressReportRequest $request): JsonResponse
     {
-        $this->periodService->resolve($request->validated());
-        $this->scopeService->assertAdminScope($request->validated());
-        $rows = $this->reportService->studentRows($request->validated());
+        $filters = array_merge($request->validated(), $this->periodService->resolve($request->validated()));
+        $this->scopeService->assertAdminScope($filters);
+        $rows = $this->reportService->studentRows($filters);
 
         return ApiResponse::paginated('Laporan progress siswa berhasil diambil.', $rows, $rows->getCollection()->all());
     }

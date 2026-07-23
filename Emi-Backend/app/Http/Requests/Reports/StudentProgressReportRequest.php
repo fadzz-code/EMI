@@ -12,7 +12,7 @@ class StudentProgressReportRequest extends ApiFormRequest
         return [
             'school_id' => ['nullable', 'uuid'],
             'class_id' => ['nullable', 'uuid'],
-            'student_id' => ['nullable', 'uuid'],
+            'student_id' => [Rule::prohibitedIf(fn () => $this->route('student') !== null), 'nullable', 'uuid'],
             'search' => ['nullable', 'string', 'max:255'],
             'learning_status' => ['nullable', Rule::in(['not_started', 'in_progress', 'completed'])],
             'quiz_status' => ['nullable', Rule::in(['not_started', 'in_progress', 'completed'])],

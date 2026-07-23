@@ -27,6 +27,7 @@ class CsvReportExportService
             fclose($handle);
         }, $safeFilename, [
             'Content-Type' => 'text/csv; charset=UTF-8',
+            'Cache-Control' => 'no-store, private',
         ]);
     }
 
