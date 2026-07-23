@@ -11,6 +11,7 @@ import type {
   TeacherCulturePayload,
   TeacherClassStudent,
   TeacherDashboardSummary,
+  TeacherProgressClassSummary,
   TeacherProgressStudentRow,
   TeacherMediaFile,
   TeacherLessonPayload,
@@ -328,6 +329,15 @@ export const teacherService = {
       throw new Error("Laporan kuis tidak tersedia.");
     }
 
+    return response.data;
+  },
+
+  async classProgress(token: string, classId: string) {
+    const response = await apiClient.get<{ class: { id: string; name: string }; summary: TeacherProgressClassSummary }>(
+      "/teacher/reports/progress/class",
+      { token, query: { class_id: classId } },
+    );
+    if (!response.data) throw new Error("Ringkasan progress kelas tidak tersedia.");
     return response.data;
   },
 

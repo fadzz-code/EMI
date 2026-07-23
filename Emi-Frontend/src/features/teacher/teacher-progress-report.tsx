@@ -18,6 +18,11 @@ export function TeacherProgressReport() {
   const { token, user } = useAuth();
   const classId = user?.active_class?.id ?? "";
   const [page, setPage] = useState(1);
+  const summaryQuery = useQuery({
+    queryKey: ["teacher", "progress", "class", classId],
+    queryFn: () => teacherService.classProgress(token ?? "", classId),
+    enabled: Boolean(token && classId),
+  });
   const progressQuery = useQuery({
     queryKey: teacherProgressKey(classId, { page, view: "report" }),
     queryFn: () => teacherService.studentProgress(token ?? "", { class_id: classId, page }),
@@ -25,11 +30,7 @@ export function TeacherProgressReport() {
   });
 
   const students = progressQuery.data?.items ?? [];
-  const averageProgress = students.length > 0
-    ? students.reduce((acc, student) => acc + (student.overall_learning_progress_percent ?? 0), 0) / students.length
-    : null;
-  const completedQuizCount = students.reduce((acc, student) => acc + (student.quizzes_completed ?? 0), 0);
-  const completedModuleCount = students.reduce((acc, student) => acc + (student.completed_modules ?? 0), 0);
+  const summary = summaryQuery.data?.summary;
 
   return (
     <div className="grid gap-8">
@@ -39,13 +40,23 @@ export function TeacherProgressReport() {
         title="Laporan Progress Siswa"
       />
 
-      {progressQuery.isLoading ? <LoadingState title="Memuat laporan progress" /> : null}
+      {progressQuery.isLoading || summaryQuery.isLoading ? <LoadingState title="Memuat laporan progress" /> : null}
+      {summaryQuery.isError ? <ErrorState description={getFirstApiError(summaryQuery.error)} onRetry={() => void summaryQuery.refetch()} title="Gagal memuat ringkasan kelas" /> : null}
       {progressQuery.isError ? (
         <ErrorState
           description={getFirstApiError(progressQuery.error)}
           onRetry={() => void progressQuery.refetch()}
           title="Gagal memuat laporan progress"
         />
+      ) : null}
+
+      {!summaryQuery.isLoading && !summaryQuery.isError && summary ? (
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatsCard helper={user?.active_class?.name ?? "Kelas aktif"} label="Siswa" value={formatCount(summary.active_students)} />
+          <StatsCard helper="Rata-rata kelas" label="Progress" value={formatPercent(summary.average_module_progress_percent)} />
+          <StatsCard helper="Siswa selesai semua modul" label="Selesai" value={formatCount(summary.completed_students)} />
+          <StatsCard helper="Best final attempt" label="Nilai Kuis" value={formatPercent(summary.average_best_final_quiz_score_percent)} />
+        </section>
       ) : null}
 
       {!progressQuery.isLoading && !progressQuery.isError ? (
@@ -60,12 +71,6 @@ export function TeacherProgressReport() {
           </Card>
         ) : (
           <div className="grid gap-6">
-            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <StatsCard helper={user?.active_class?.name ?? "Kelas aktif"} label="Siswa" value={formatCount(students.length)} />
-              <StatsCard helper="Rata-rata kelas" label="Progress" value={formatPercent(averageProgress)} />
-              <StatsCard helper="Total selesai" label="Modul" value={formatCount(completedModuleCount)} />
-              <StatsCard helper="Total selesai" label="Kuis" value={formatCount(completedQuizCount)} />
-            </section>
 
             <div className="grid gap-3 md:hidden">
               {students.map((row) => (

@@ -308,6 +308,15 @@ export type TeacherUserProfile = {
   updated_at?: string | null;
 };
 
+export type TeacherProgressClassSummary = {
+  active_students: number;
+  average_module_progress_percent: number;
+  average_best_final_quiz_score_percent: number | null;
+  last_activity_at: string | null;
+  completed_students: number;
+  not_started_students: number;
+};
+
 export type TeacherProgressStudentRow = {
   student_id?: string;
   full_name?: string;
