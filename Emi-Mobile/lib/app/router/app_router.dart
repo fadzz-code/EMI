@@ -9,6 +9,7 @@ import '../../features/admin/presentation/admin_dictionary_screens.dart';
 import '../../features/admin/presentation/admin_knowledge_screens.dart';
 import '../../features/admin/presentation/admin_modules_screens.dart';
 import '../../features/admin/presentation/admin_quiz_screens.dart';
+import '../../features/admin/presentation/admin_profile_screen.dart';
 import '../../features/admin/presentation/admin_progress_detail_screens.dart';
 import '../../features/admin/presentation/admin_reports_screen.dart';
 import '../../features/admin/presentation/admin_screens.dart';
@@ -612,7 +613,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/admin/profile',
-        builder: (_, _) => const StudentProfileScreen(),
+        builder: (_, _) => const AdminProfileScreen(),
       ),
       GoRoute(
         path: '/unsupported-role',

@@ -44,6 +44,32 @@ class AdminProgressRepository {
         'page': page,
       }, AdminProgressSchool.fromJson);
 
+  Future<AdminProgressPage<AdminSpeakingStudentSummary>> speakingStudents(
+    AdminProgressFilters filters, {
+    int page = 1,
+  }) => _nestedPage(
+    '/admin/reports/speaking/students',
+    'students',
+    filters.query(studentPage: page, classPage: 1)
+      ..removeWhere((key, _) => key.endsWith('_page'))
+      ..['page'] = page
+      ..['per_page'] = 15,
+    AdminSpeakingStudentSummary.fromJson,
+  );
+
+  Future<AdminProgressPage<AdminSpeakingClassSummary>> speakingClasses(
+    AdminProgressFilters filters, {
+    int page = 1,
+  }) => _nestedPage(
+    '/admin/reports/speaking/classes',
+    'classes',
+    filters.query(studentPage: 1, classPage: page)
+      ..removeWhere((key, _) => key.endsWith('_page'))
+      ..['page'] = page
+      ..['per_page'] = 15,
+    AdminSpeakingClassSummary.fromJson,
+  );
+
   Future<AdminProgressPage<AdminQuizResultRow>> quizResults({
     int page = 1,
   }) async {
@@ -104,6 +130,39 @@ class AdminProgressRepository {
         options: Options(responseType: ResponseType.bytes),
       );
       return response.data ?? const [];
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<AdminProgressPage<T>> _nestedPage<T>(
+    String path,
+    String key,
+    Map<String, dynamic> query,
+    T Function(Map<String, dynamic>) parse,
+  ) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        path,
+        queryParameters: query,
+      );
+      final page = response.data?['data'] is Map
+          ? (response.data!['data'] as Map)[key]
+          : null;
+      final mapped = page is Map
+          ? Map<String, dynamic>.from(page)
+          : const <String, dynamic>{};
+      return AdminProgressPage(
+        items: (mapped['data'] as List? ?? const [])
+            .whereType<Map>()
+            .map((e) => parse(Map<String, dynamic>.from(e)))
+            .toList(),
+        meta: AdminProgressMeta.fromJson(
+          mapped['meta'] is Map
+              ? Map<String, dynamic>.from(mapped['meta'])
+              : null,
+        ),
+      );
     } catch (error) {
       throw _map(error);
     }

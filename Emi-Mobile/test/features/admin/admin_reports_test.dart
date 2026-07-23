@@ -45,7 +45,7 @@ void main() {
   });
   test('unknown progress status uses safe Indonesian label', () {
     expect(adminProgressStatus('future_backend_enum'), 'Status belum dikenal');
-    expect(adminProgressStatus(null), '-');
+    expect(adminProgressStatus(null), 'Belum tersedia');
   });
 
   final json = <String, dynamic>{
@@ -203,6 +203,116 @@ void main() {
       }).averageQuizScorePercent,
       77,
     ),
+  );
+  test('speaking summaries preserve canonical null semantics', () {
+    final student = AdminSpeakingStudentSummary.fromJson({
+      'student_id': 's1',
+      'full_name': 'Ani',
+      'attempt_count': 2,
+      'average_ai_score': null,
+    });
+    final schoolClass = AdminSpeakingClassSummary.fromJson({
+      'class_id': 'c1',
+      'class_name': 'Kelas 1',
+      'school_name': 'Sekolah A',
+      'participating_students': 4,
+      'average_teacher_score': 88,
+    });
+    expect(student.averageAiScore, isNull);
+    expect(adminProgressPercent(student.averageAiScore), 'Belum tersedia');
+    expect(schoolClass.averageTeacherScore, 88);
+  });
+  test(
+    'speaking repositories use canonical endpoints and nested pages',
+    () async {
+      final requests = <RequestOptions>[];
+      final dio = Dio(BaseOptions(baseUrl: 'https://example.test'))
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              requests.add(options);
+              final students = options.path.endsWith('students');
+              final key = students ? 'students' : 'classes';
+              handler.resolve(
+                Response(
+                  requestOptions: options,
+                  data: {
+                    'data': {
+                      key: {
+                        'data': [
+                          students
+                              ? {
+                                  'student_id': 's1',
+                                  'full_name': 'Ani',
+                                  'attempt_count': 3,
+                                  'analyzed_attempts': 2,
+                                  'reviewed_attempts': 1,
+                                  'average_ai_score': null,
+                                  'average_teacher_score': '87.5',
+                                }
+                              : {
+                                  'class_id': 'c1',
+                                  'class_name': 'Kelas 1',
+                                  'school_name': 'Sekolah A',
+                                  'attempt_count': 4,
+                                  'participating_students': 2,
+                                  'average_ai_score': '91',
+                                  'average_teacher_score': null,
+                                },
+                        ],
+                        'meta': {
+                          'current_page': 2,
+                          'last_page': 4,
+                          'per_page': 15,
+                          'total': 42,
+                        },
+                      },
+                    },
+                  },
+                ),
+              );
+            },
+          ),
+        );
+      final repository = AdminProgressRepository(dio, const DioErrorMapper());
+      const filters = AdminProgressFilters(
+        schoolId: 'school-1',
+        classId: 'class-1',
+        analysisStatus: 'completed',
+        reviewStatus: 'reviewed',
+        dateFrom: '2026-07-01',
+        dateTo: '2026-07-31',
+      );
+      final students = await repository.speakingStudents(filters, page: 2);
+      final classes = await repository.speakingClasses(filters, page: 2);
+      expect(requests.map((e) => e.path), [
+        '/admin/reports/speaking/students',
+        '/admin/reports/speaking/classes',
+      ]);
+      for (final request in requests) {
+        expect(request.queryParameters, {
+          'school_id': 'school-1',
+          'class_id': 'class-1',
+          'analysis_status': 'completed',
+          'review_status': 'reviewed',
+          'date_from': '2026-07-01',
+          'date_to': '2026-07-31',
+          'page': 2,
+          'per_page': 15,
+        });
+      }
+      expect(students.items.single.analyzedAttempts, 2);
+      expect(students.items.single.averageAiScore, isNull);
+      expect(students.items.single.averageTeacherScore, 87.5);
+      expect(classes.items.single.participatingStudents, 2);
+      expect(classes.items.single.averageAiScore, 91);
+      expect(classes.items.single.averageTeacherScore, isNull);
+      expect(students.meta.currentPage, 2);
+      expect(classes.meta.lastPage, 4);
+      expect(classes.meta.total, 42);
+      expect(adminProgressStatus('processing'), 'Diproses');
+      expect(adminProgressStatus('reviewed'), 'Sudah diulas');
+    },
   );
   test('school report parses canonical row', () {
     final item = AdminProgressSchool.fromJson({

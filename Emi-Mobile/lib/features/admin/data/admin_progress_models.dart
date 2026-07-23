@@ -5,6 +5,8 @@ class AdminProgressFilters {
     this.classId,
     this.learningStatus,
     this.quizStatus,
+    this.analysisStatus,
+    this.reviewStatus,
     this.dateFrom,
     this.dateTo,
   });
@@ -14,6 +16,8 @@ class AdminProgressFilters {
   final String? classId;
   final String? learningStatus;
   final String? quizStatus;
+  final String? analysisStatus;
+  final String? reviewStatus;
   final String? dateFrom;
   final String? dateTo;
 
@@ -28,6 +32,8 @@ class AdminProgressFilters {
     if (classId?.isNotEmpty == true) 'class_id': classId,
     if (learningStatus?.isNotEmpty == true) 'learning_status': learningStatus,
     if (quizStatus?.isNotEmpty == true) 'quiz_status': quizStatus,
+    if (analysisStatus?.isNotEmpty == true) 'analysis_status': analysisStatus,
+    if (reviewStatus?.isNotEmpty == true) 'review_status': reviewStatus,
     if (dateFrom?.isNotEmpty == true) 'date_from': dateFrom,
     if (dateTo?.isNotEmpty == true) 'date_to': dateTo,
   };
@@ -528,24 +534,87 @@ class AdminClassProgressDetail {
   }
 }
 
+class AdminSpeakingStudentSummary {
+  const AdminSpeakingStudentSummary({
+    required this.id,
+    required this.name,
+    required this.attemptCount,
+    required this.analyzedAttempts,
+    required this.reviewedAttempts,
+    required this.averageAiScore,
+    required this.averageTeacherScore,
+  });
+  final String id;
+  final String name;
+  final int attemptCount;
+  final int analyzedAttempts;
+  final int reviewedAttempts;
+  final double? averageAiScore;
+  final double? averageTeacherScore;
+  factory AdminSpeakingStudentSummary.fromJson(Map<String, dynamic> json) =>
+      AdminSpeakingStudentSummary(
+        id: _string(json['student_id']),
+        name: _string(json['full_name']),
+        attemptCount: _int(json['attempt_count'], 0),
+        analyzedAttempts: _int(json['analyzed_attempts'], 0),
+        reviewedAttempts: _int(json['reviewed_attempts'], 0),
+        averageAiScore: _double(json['average_ai_score']),
+        averageTeacherScore: _double(json['average_teacher_score']),
+      );
+}
+
+class AdminSpeakingClassSummary {
+  const AdminSpeakingClassSummary({
+    required this.id,
+    required this.name,
+    required this.schoolName,
+    required this.attemptCount,
+    required this.participatingStudents,
+    required this.averageAiScore,
+    required this.averageTeacherScore,
+  });
+  final String id;
+  final String name;
+  final String schoolName;
+  final int attemptCount;
+  final int participatingStudents;
+  final double? averageAiScore;
+  final double? averageTeacherScore;
+  factory AdminSpeakingClassSummary.fromJson(Map<String, dynamic> json) =>
+      AdminSpeakingClassSummary(
+        id: _string(json['class_id']),
+        name: _string(json['class_name']),
+        schoolName: _string(json['school_name']),
+        attemptCount: _int(json['attempt_count'], 0),
+        participatingStudents: _int(json['participating_students'], 0),
+        averageAiScore: _double(json['average_ai_score']),
+        averageTeacherScore: _double(json['average_teacher_score']),
+      );
+}
+
 String adminProgressStatus(String? value) => switch (value) {
   'not_started' => 'Belum mulai',
   'in_progress' => 'Sedang berjalan',
   'completed' => 'Selesai',
   'submitted' => 'Dikirim',
   'expired' => 'Kedaluwarsa',
+  'pending' => 'Menunggu',
+  'processing' => 'Diproses',
+  'failed' => 'Gagal',
+  'reviewed' => 'Sudah diulas',
   'approved' => 'Aktif',
   'active' => 'Aktif',
   'inactive' => 'Tidak aktif',
-  null || '' => '-',
+  null || '' => 'Belum tersedia',
   _ => 'Status belum dikenal',
 };
-String adminProgressPercent(num? value) =>
-    value == null ? '-' : '${value.toStringAsFixed(value % 1 == 0 ? 0 : 2)}%';
+String adminProgressPercent(num? value) => value == null
+    ? 'Belum tersedia'
+    : '${value.toStringAsFixed(value % 1 == 0 ? 0 : 2)}%';
 String adminProgressDate(String? value) {
-  if (value == null || value.isEmpty) return '-';
+  if (value == null || value.isEmpty) return 'Belum tersedia';
   final date = DateTime.tryParse(value);
-  if (date == null) return '-';
+  if (date == null) return 'Belum tersedia';
   final local = date.toLocal();
   String two(int number) => number.toString().padLeft(2, '0');
   return '${two(local.day)}/${two(local.month)}/${local.year} ${two(local.hour)}:${two(local.minute)}';

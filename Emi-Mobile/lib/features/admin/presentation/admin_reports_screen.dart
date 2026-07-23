@@ -108,6 +108,11 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
                     ref.read(adminProgressProvider.notifier).classes(page),
               ),
               const SizedBox(height: EmiSpacing.lg),
+              AdminSpeakingReports(
+                repository: ref.read(adminProgressRepositoryProvider),
+                filters: ref.read(adminProgressProvider.notifier).filters,
+              ),
+              const SizedBox(height: EmiSpacing.lg),
               _RemoteReports(
                 repository: ref.read(adminProgressRepositoryProvider),
                 onCsv: _shareCsv,
@@ -158,6 +163,264 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
       }
     }
   }
+}
+
+class AdminSpeakingReports extends ConsumerStatefulWidget {
+  const AdminSpeakingReports({
+    super.key,
+    required this.repository,
+    required this.filters,
+  });
+  final AdminProgressRepository repository;
+  final AdminProgressFilters filters;
+
+  @override
+  ConsumerState<AdminSpeakingReports> createState() =>
+      _AdminSpeakingReportsState();
+}
+
+class _AdminSpeakingReportsState extends ConsumerState<AdminSpeakingReports> {
+  int studentPage = 1;
+  int classPage = 1;
+  late AdminProgressFilters filters;
+  late Future<AdminProgressPage<AdminSpeakingStudentSummary>> students;
+  late Future<AdminProgressPage<AdminSpeakingClassSummary>> classes;
+
+  @override
+  void initState() {
+    super.initState();
+    filters = widget.filters;
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant AdminSpeakingReports oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.filters != widget.filters) {
+      studentPage = 1;
+      classPage = 1;
+      filters = widget.filters;
+      _load();
+    }
+  }
+
+  void _load() {
+    students = widget.repository.speakingStudents(filters, page: studentPage);
+    classes = widget.repository.speakingClasses(filters, page: classPage);
+  }
+
+  void _retry() => setState(_load);
+
+  @override
+  Widget build(BuildContext context) {
+    final schools =
+        ref.watch(adminProgressSchoolsProvider).valueOrNull ?? const [];
+    final classOptions =
+        ref.watch(adminProgressClassesProvider(filters.schoolId)).valueOrNull ??
+        const [];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const ProgressSectionHeader('Filter Speaking'),
+        DropdownButtonFormField<String>(
+          key: const Key('adminSpeakingSchoolFilter'),
+          initialValue: filters.schoolId,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'Sekolah'),
+          items: [
+            const DropdownMenuItem(value: null, child: Text('Semua sekolah')),
+            for (final item in schools)
+              DropdownMenuItem(value: item.id, child: Text(item.name)),
+          ],
+          onChanged: (value) => _apply(
+            schoolId: value,
+            clearSchool: value == null,
+            clearClass: true,
+          ),
+        ),
+        const SizedBox(height: EmiSpacing.sm),
+        DropdownButtonFormField<String>(
+          key: const Key('adminSpeakingClassFilter'),
+          initialValue: filters.classId,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'Kelas'),
+          items: [
+            const DropdownMenuItem(value: null, child: Text('Semua kelas')),
+            for (final item in classOptions)
+              DropdownMenuItem(value: item.id, child: Text(item.name)),
+          ],
+          onChanged: (value) =>
+              _apply(classId: value, clearClass: value == null),
+        ),
+        const SizedBox(height: EmiSpacing.sm),
+        DropdownButtonFormField<String>(
+          key: const Key('adminSpeakingAnalysisFilter'),
+          initialValue: filters.analysisStatus,
+          decoration: const InputDecoration(labelText: 'Status analisis'),
+          items: const [
+            DropdownMenuItem(value: null, child: Text('Semua status analisis')),
+            DropdownMenuItem(value: 'pending', child: Text('Menunggu')),
+            DropdownMenuItem(value: 'processing', child: Text('Diproses')),
+            DropdownMenuItem(value: 'completed', child: Text('Selesai')),
+            DropdownMenuItem(value: 'failed', child: Text('Gagal')),
+          ],
+          onChanged: (value) =>
+              _apply(analysisStatus: value, clearAnalysis: value == null),
+        ),
+        const SizedBox(height: EmiSpacing.sm),
+        DropdownButtonFormField<String>(
+          key: const Key('adminSpeakingReviewFilter'),
+          initialValue: filters.reviewStatus,
+          decoration: const InputDecoration(labelText: 'Status ulasan'),
+          items: const [
+            DropdownMenuItem(value: null, child: Text('Semua status ulasan')),
+            DropdownMenuItem(value: 'pending', child: Text('Belum diulas')),
+            DropdownMenuItem(value: 'reviewed', child: Text('Sudah diulas')),
+          ],
+          onChanged: (value) =>
+              _apply(reviewStatus: value, clearReview: value == null),
+        ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            key: const Key('adminSpeakingClearFilters'),
+            onPressed: _clear,
+            icon: const Icon(Icons.clear),
+            label: const Text('Hapus filter speaking'),
+          ),
+        ),
+        const SizedBox(height: EmiSpacing.md),
+        const ProgressSectionHeader('Speaking Siswa'),
+        FutureBuilder(
+          future: students,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const LinearProgressIndicator();
+            }
+            if (snapshot.hasError) {
+              return _ReportError(onRetry: _retry);
+            }
+            final page = snapshot.data!;
+            return Column(
+              children: [
+                if (page.items.isEmpty)
+                  const EmiCard(child: Text('Laporan speaking siswa kosong.')),
+                for (final item in page.items)
+                  EmiCard(
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(item.name),
+                      subtitle: Text(
+                        '${item.attemptCount} percobaan · AI ${adminProgressPercent(item.averageAiScore)} · Guru ${adminProgressPercent(item.averageTeacherScore)}',
+                      ),
+                    ),
+                  ),
+                _Pager(
+                  meta: page.meta,
+                  onPage: (value) => setState(() {
+                    studentPage = value;
+                    _load();
+                  }),
+                ),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: EmiSpacing.lg),
+        const ProgressSectionHeader('Speaking Kelas'),
+        FutureBuilder(
+          future: classes,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const LinearProgressIndicator();
+            }
+            if (snapshot.hasError) {
+              return _ReportError(onRetry: _retry);
+            }
+            final page = snapshot.data!;
+            return Column(
+              children: [
+                if (page.items.isEmpty)
+                  const EmiCard(child: Text('Laporan speaking kelas kosong.')),
+                for (final item in page.items)
+                  EmiCard(
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(item.name),
+                      subtitle: Text(
+                        '${item.schoolName} · ${item.participatingStudents} siswa · AI ${adminProgressPercent(item.averageAiScore)} · Guru ${adminProgressPercent(item.averageTeacherScore)}',
+                      ),
+                    ),
+                  ),
+                _Pager(
+                  meta: page.meta,
+                  onPage: (value) => setState(() {
+                    classPage = value;
+                    _load();
+                  }),
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  void _apply({
+    String? schoolId,
+    String? classId,
+    String? analysisStatus,
+    String? reviewStatus,
+    bool clearSchool = false,
+    bool clearClass = false,
+    bool clearAnalysis = false,
+    bool clearReview = false,
+  }) {
+    setState(() {
+      filters = AdminProgressFilters(
+        search: filters.search,
+        schoolId: clearSchool ? null : schoolId ?? filters.schoolId,
+        classId: clearClass ? null : classId ?? filters.classId,
+        analysisStatus: clearAnalysis
+            ? null
+            : analysisStatus ?? filters.analysisStatus,
+        reviewStatus: clearReview ? null : reviewStatus ?? filters.reviewStatus,
+        dateFrom: filters.dateFrom,
+        dateTo: filters.dateTo,
+      );
+      studentPage = 1;
+      classPage = 1;
+      _load();
+    });
+  }
+
+  void _clear() {
+    setState(() {
+      filters = AdminProgressFilters(
+        search: widget.filters.search,
+        dateFrom: widget.filters.dateFrom,
+        dateTo: widget.filters.dateTo,
+      );
+      studentPage = 1;
+      classPage = 1;
+      _load();
+    });
+  }
+}
+
+class _ReportError extends StatelessWidget {
+  const _ReportError({required this.onRetry});
+  final VoidCallback onRetry;
+  @override
+  Widget build(BuildContext context) => EmiCard(
+    child: Column(
+      children: [
+        const Text('Laporan speaking belum bisa dimuat.'),
+        OutlinedButton(onPressed: onRetry, child: const Text('Coba lagi')),
+      ],
+    ),
+  );
 }
 
 class _RemoteReports extends StatelessWidget {

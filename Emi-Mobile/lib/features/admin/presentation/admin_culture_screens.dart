@@ -5,8 +5,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:just_audio/just_audio.dart';
 
 import '../../../app/theme/emi_theme.dart';
+import '../../../shared/media/media_opener.dart';
 import '../../../shared/widgets/role_dashboard_widgets.dart';
 import '../data/admin_culture_providers.dart';
 import '../data/admin_culture_repository.dart';
@@ -17,18 +19,59 @@ typedef AdminCultureFilePicker =
 
 final adminCultureFilePickerProvider = Provider<AdminCultureFilePicker>(
   (_) => (type) async {
+    final extensions = switch (type) {
+      'pdf' => const ['pdf'],
+      'video' => const ['mp4', 'webm'],
+      _ => null,
+    };
     final result = await FilePicker.platform.pickFiles(
       type: type == 'image'
           ? FileType.image
           : type == 'audio'
           ? FileType.audio
           : FileType.custom,
-      allowedExtensions: type == 'pdf' ? const ['pdf'] : null,
+      allowedExtensions: extensions,
       withData: false,
     );
     return result?.files.single;
   },
 );
+
+final adminCultureMediaOpenerProvider = Provider<MediaOpener>(
+  (_) => const ExternalMediaOpener(),
+);
+
+abstract interface class AdminCultureAudioPlayer {
+  Stream<PlayerState> get playerStateStream;
+  bool get prepared;
+  Future<void> prepare(String url);
+  Future<void> play();
+  Future<void> pause();
+  Future<void> dispose();
+}
+
+class JustAudioAdminCulturePlayer implements AdminCultureAudioPlayer {
+  JustAudioAdminCulturePlayer() : _player = AudioPlayer();
+  final AudioPlayer _player;
+
+  @override
+  Stream<PlayerState> get playerStateStream => _player.playerStateStream;
+  @override
+  bool get prepared => _player.audioSource != null;
+  @override
+  Future<void> prepare(String url) => _player.setUrl(url);
+  @override
+  Future<void> play() => _player.play();
+  @override
+  Future<void> pause() => _player.pause();
+  @override
+  Future<void> dispose() => _player.dispose();
+}
+
+final adminCultureAudioPlayerFactoryProvider =
+    Provider<AdminCultureAudioPlayer Function()>(
+      (_) => JustAudioAdminCulturePlayer.new,
+    );
 
 class AdminCultureScreen extends ConsumerStatefulWidget {
   const AdminCultureScreen({super.key});
@@ -277,10 +320,11 @@ class AdminCultureDetailScreen extends ConsumerWidget {
         .watch(adminCultureDetailProvider(id))
         .when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, _) => const FriendlyState(
+          error: (_, _) => FriendlyState(
             icon: Icons.error_outline,
             title: 'Konten Belum Bisa Dimuat',
             message: 'Silakan coba lagi.',
+            onRetry: () => ref.invalidate(adminCultureDetailProvider(id)),
           ),
           data: (item) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
@@ -306,16 +350,9 @@ class AdminCultureDetailScreen extends ConsumerWidget {
                 'Media atau Tautan',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-              if (item.contentType == 'image' && item.mediaUrl != null)
-                Image.network(
-                  item.mediaUrl!,
-                  errorBuilder: (_, _, _) =>
-                      const Text('Pratinjau gambar tidak tersedia.'),
-                ),
+              _AdminCultureMedia(item: item),
               if (item.mediaName != null)
                 Text('${item.mediaName} · ${_size(item.mediaSize)}'),
-              if (item.externalUrl != null)
-                const Text('Tautan eksternal tersedia.'),
               const SizedBox(height: EmiSpacing.lg),
               FilledButton(
                 onPressed: () => context.push('/admin/culture/${item.id}/edit'),
@@ -347,6 +384,161 @@ class AdminCultureDetailScreen extends ConsumerWidget {
           ),
         ),
   );
+}
+
+class _AdminCultureMedia extends ConsumerStatefulWidget {
+  const _AdminCultureMedia({required this.item});
+  final AdminCultureItem item;
+
+  @override
+  ConsumerState<_AdminCultureMedia> createState() => _AdminCultureMediaState();
+}
+
+class _AdminCultureMediaState extends ConsumerState<_AdminCultureMedia> {
+  late final AdminCultureAudioPlayer _player;
+  bool _loading = false;
+  bool _disposed = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _player = ref.read(adminCultureAudioPlayerFactoryProvider)();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    unawaited(_player.dispose());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final item = widget.item;
+    final url = item.mediaUrl ?? item.externalUrl;
+    if (url == null) return const Text('Media belum tersedia.');
+    if (item.contentType == 'image') {
+      return Image.network(
+        url,
+        errorBuilder: (_, _, _) =>
+            const Text('Pratinjau gambar tidak tersedia.'),
+      );
+    }
+    if (item.contentType == 'audio') {
+      return StreamBuilder<PlayerState>(
+        stream: _player.playerStateStream,
+        builder: (context, snapshot) => ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: IconButton.filled(
+            key: const Key('adminCultureAudioToggle'),
+            onPressed: _loading
+                ? null
+                : () => _toggle(url, snapshot.data?.playing == true),
+            icon: _loading
+                ? const CircularProgressIndicator()
+                : Icon(
+                    snapshot.data?.playing == true
+                        ? Icons.pause
+                        : Icons.play_arrow,
+                  ),
+          ),
+          title: Text(_error ?? 'Putar audio'),
+        ),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FilledButton.icon(
+          key: const Key('adminCultureOpenMedia'),
+          onPressed: _loading ? null : () => _open(url),
+          icon: Icon(
+            item.contentType == 'pdf'
+                ? Icons.picture_as_pdf
+                : item.contentType == 'video' || item.contentType == 'youtube'
+                ? Icons.play_circle_outline
+                : Icons.open_in_new,
+          ),
+          label: Text(
+            item.contentType == 'pdf'
+                ? 'Buka PDF'
+                : item.contentType == 'video' || item.contentType == 'youtube'
+                ? 'Putar video'
+                : 'Buka tautan',
+          ),
+        ),
+        if (_error != null) Text(_error!),
+      ],
+    );
+  }
+
+  Future<void> _toggle(String url, bool playing) async {
+    if (playing) {
+      try {
+        await _player.pause();
+      } catch (_) {
+        _fail('Audio belum bisa dijeda.');
+      }
+      return;
+    }
+    if (!_validUrl(url)) return _fail('Alamat media tidak valid.');
+    if (!_player.prepared) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+      try {
+        await _player.prepare(url);
+      } catch (_) {
+        _fail('Audio belum bisa diputar.');
+        return;
+      } finally {
+        if (!_disposed && mounted) setState(() => _loading = false);
+      }
+    }
+    if (_disposed) return;
+    unawaited(
+      _player.play().catchError((_) {
+        _fail('Audio belum bisa diputar.');
+      }),
+    );
+  }
+
+  Future<void> _open(String url) async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      if (!await ref.read(adminCultureMediaOpenerProvider).open(url)) {
+        _fail(
+          _validUrl(url)
+              ? 'Konten belum bisa dibuka.'
+              : 'Alamat media tidak valid.',
+        );
+      }
+    } catch (_) {
+      _fail('Konten belum bisa dibuka.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _fail(String message) {
+    if (!mounted) return;
+    setState(() => _error = message);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+bool _validUrl(String value) {
+  final uri = Uri.tryParse(value.trim());
+  return uri != null &&
+      uri.hasAuthority &&
+      {'http', 'https'}.contains(uri.scheme);
 }
 
 class _Field extends StatelessWidget {
@@ -446,7 +638,7 @@ class _AdminCultureFormScreenState
       _fileSize = item.mediaSize;
       _hydrated = true;
     }
-    final fileType = const {'image', 'audio', 'pdf'}.contains(_type);
+    final fileType = const {'image', 'audio', 'video', 'pdf'}.contains(_type);
     return Form(
       key: _form,
       onChanged: () {
@@ -523,11 +715,9 @@ class _AdminCultureFormScreenState
               controller: _url,
               keyboardType: TextInputType.url,
               decoration: const InputDecoration(labelText: 'URL eksternal'),
-              validator: (value) =>
-                  Uri.tryParse(value ?? '')?.hasAbsolutePath == true &&
-                      Uri.tryParse(value ?? '')?.hasScheme == true
+              validator: (value) => _validUrl(value ?? '')
                   ? null
-                  : 'Masukkan URL lengkap.',
+                  : 'Masukkan URL HTTP/HTTPS yang valid.',
             ),
           const SizedBox(height: EmiSpacing.lg),
           Text('Publikasi', style: Theme.of(context).textTheme.titleLarge),
@@ -581,6 +771,7 @@ class _AdminCultureFormScreenState
     final allowed = switch (_type) {
       'image' => {'jpg', 'jpeg', 'png', 'webp'},
       'audio' => {'mp3', 'm4a', 'wav', 'ogg'},
+      'video' => {'mp4', 'webm'},
       _ => {'pdf'},
     };
     if (!allowed.contains(file!.extension?.toLowerCase())) {
@@ -599,7 +790,7 @@ class _AdminCultureFormScreenState
 
   Future<void> _save() async {
     if (_saving || !_form.currentState!.validate()) return;
-    if (const {'image', 'audio', 'pdf'}.contains(_type) &&
+    if (const {'image', 'audio', 'video', 'pdf'}.contains(_type) &&
         _filePath == null &&
         _oldMediaId == null) {
       return _error('Pilih media terlebih dahulu.');
@@ -620,7 +811,7 @@ class _AdminCultureFormScreenState
               title: _title.text.trim(),
               description: _description.text.trim(),
               contentType: _type,
-              mediaId: const {'image', 'audio', 'pdf'}.contains(_type)
+              mediaId: const {'image', 'audio', 'video', 'pdf'}.contains(_type)
                   ? mediaId
                   : null,
               externalUrl: const {'youtube', 'article', 'link'}.contains(_type)
@@ -739,10 +930,11 @@ Future<void> _action(
   }
 }
 
-const _types = ['image', 'audio', 'pdf', 'youtube', 'article', 'link'];
+const _types = ['image', 'audio', 'video', 'pdf', 'youtube', 'article', 'link'];
 String _category(String value) => switch (value) {
   'image' => 'Gambar',
   'audio' => 'Audio',
+  'video' => 'Video',
   'pdf' => 'Dokumen PDF',
   'youtube' => 'YouTube',
   'article' => 'Artikel',
@@ -755,6 +947,7 @@ String _status(String value) => switch (value) {
 };
 IconData _contentIcon(String value) => switch (value) {
   'audio' => Icons.audiotrack,
+  'video' => Icons.play_circle_outline,
   'pdf' => Icons.picture_as_pdf,
   'youtube' => Icons.play_circle_outline,
   'article' => Icons.article_outlined,

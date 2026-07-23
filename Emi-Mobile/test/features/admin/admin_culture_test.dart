@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:emi_mobile/app/theme/emi_theme.dart';
 import 'package:emi_mobile/core/errors/app_error.dart';
 import 'package:emi_mobile/core/errors/dio_error_mapper.dart';
@@ -7,6 +10,7 @@ import 'package:emi_mobile/features/admin/data/admin_culture_repository.dart';
 import 'package:emi_mobile/features/admin/data/admin_providers.dart';
 import 'package:emi_mobile/features/admin/presentation/admin_culture_screens.dart';
 import 'package:emi_mobile/features/auth/domain/session_user.dart';
+import 'package:emi_mobile/shared/media/media_opener.dart';
 import 'package:emi_mobile/features/auth/presentation/auth_controller.dart';
 import 'package:emi_mobile/features/auth/presentation/auth_state.dart';
 import 'package:file_picker/file_picker.dart';
@@ -136,6 +140,13 @@ void main() {
       ),
     );
   });
+  test('media opener rejects non-http URLs without launching', () async {
+    expect(
+      await const ExternalMediaOpener().open('file:///secret/media.mp4'),
+      isFalse,
+    );
+    expect(await const ExternalMediaOpener().open('not a url'), isFalse);
+  });
   test('menu label route and prefix active', () {
     expect(AdminFeature.culture.label, 'Budaya Mekongga');
     expect(AdminFeature.culture.isMobileImplemented, isTrue);
@@ -179,6 +190,33 @@ void main() {
     expect(find.text('media-secret'), findsNothing);
     expect(find.text('image'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+  testWidgets('audio enables pause while playback future remains active', (
+    tester,
+  ) async {
+    final player = _FakeCultureAudioPlayer();
+    await _pump(
+      tester,
+      '/admin/culture/c1',
+      playerFactory: () => player,
+      item: _item()
+        ..['content_type'] = 'audio'
+        ..['media'] = {
+          'url': 'https://example.test/audio.mp3',
+          'original_name': 'audio.mp3',
+        },
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('adminCultureAudioToggle')));
+    await tester.pump();
+    expect(player.prepared, isTrue);
+    expect(player.playCalls, 1);
+    expect(find.byIcon(Icons.pause), findsOneWidget);
+    await tester.tap(find.byKey(const Key('adminCultureAudioToggle')));
+    await tester.pump();
+    expect(player.pauseCalls, 1);
+    await tester.pumpWidget(const SizedBox());
+    expect(player.disposed, isTrue);
   });
   testWidgets('picker injection cancel preserves form', (tester) async {
     await _pump(tester, '/admin/culture/create', picker: (_) async => null);
@@ -230,6 +268,30 @@ void main() {
     await tester.pump();
     expect(find.text('Format media tidak didukung.'), findsOneWidget);
   });
+  testWidgets('video picker accepts canonical safe formats', (tester) async {
+    await _pump(
+      tester,
+      '/admin/culture/create',
+      picker: (_) async => PlatformFile(
+        name: 'budaya.mp4',
+        size: 2048,
+        path: 'missing/budaya.mp4',
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Video').last);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Pilih Media'),
+      300,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('Pilih Media'));
+    await tester.pump();
+    expect(find.text('budaya.mp4 · 2.0 KB'), findsOneWidget);
+  });
   testWidgets('dirty back asks before discarding', (tester) async {
     await _pump(tester, '/admin/culture/create');
     await tester.pumpAndSettle();
@@ -280,6 +342,8 @@ Future<void> _pump(
   String initial, {
   List<RequestOptions>? requests,
   AdminCultureFilePicker? picker,
+  AdminCultureAudioPlayer Function()? playerFactory,
+  Map<String, dynamic>? item,
   double scale = 1,
 }) async {
   final router = GoRouter(
@@ -308,11 +372,15 @@ Future<void> _pump(
     ProviderScope(
       overrides: [
         adminCultureRepositoryProvider.overrideWithValue(
-          _repository(requests ?? []),
+          _repository(requests ?? [], item: item),
         ),
         authControllerProvider.overrideWith((_) => _FakeAuth()),
         if (picker != null)
           adminCultureFilePickerProvider.overrideWithValue(picker),
+        if (playerFactory != null)
+          adminCultureAudioPlayerFactoryProvider.overrideWithValue(
+            playerFactory,
+          ),
       ],
       child: MediaQuery(
         data: MediaQueryData(textScaler: TextScaler.linear(scale)),
@@ -328,6 +396,7 @@ Future<void> _pump(
 AdminCultureRepository _repository(
   List<RequestOptions> requests, {
   bool error = false,
+  Map<String, dynamic>? item,
 }) => AdminCultureRepository(
   Dio(BaseOptions(baseUrl: 'https://example.test'))
     ..interceptors.add(
@@ -363,10 +432,10 @@ AdminCultureRepository _repository(
               requestOptions: options,
               data: list
                   ? {
-                      'data': [_item()],
+                      'data': [item ?? _item()],
                       'meta': {'current_page': 1, 'last_page': 1, 'total': 1},
                     }
-                  : {'data': _item()},
+                  : {'data': item ?? _item()},
             ),
           );
         },
@@ -400,6 +469,39 @@ Map<String, dynamic> _item() => {
   'status': 'published',
   'updated_at': '2026-07-15T00:00:00Z',
 };
+
+class _FakeCultureAudioPlayer implements AdminCultureAudioPlayer {
+  final _states = StreamController<PlayerState>.broadcast();
+  bool _prepared = false;
+  bool disposed = false;
+  int playCalls = 0;
+  int pauseCalls = 0;
+
+  @override
+  Stream<PlayerState> get playerStateStream => _states.stream;
+  @override
+  bool get prepared => _prepared;
+  @override
+  Future<void> prepare(String url) async => _prepared = true;
+  @override
+  Future<void> play() {
+    playCalls++;
+    _states.add(PlayerState(true, ProcessingState.ready));
+    return Completer<void>().future;
+  }
+
+  @override
+  Future<void> pause() async {
+    pauseCalls++;
+    _states.add(PlayerState(false, ProcessingState.ready));
+  }
+
+  @override
+  Future<void> dispose() async {
+    disposed = true;
+    await _states.close();
+  }
+}
 
 class _FakeAuth extends StateNotifier<AuthState> implements AuthController {
   _FakeAuth()
