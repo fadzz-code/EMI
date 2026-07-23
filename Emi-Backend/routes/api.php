@@ -274,6 +274,7 @@ Route::prefix('v1')->group(function () {
         Route::post('chatbot/messages', [StudentChatbotController::class, 'store']);
         Route::get('quizzes', [StudentQuizController::class, 'index']);
         Route::get('quizzes/{id}', [StudentQuizController::class, 'show']);
+        Route::get('quizzes/{id}/attempts', [StudentQuizController::class, 'attempts']);
         Route::get('speaking/exercises', [StudentSpeakingController::class, 'exercises']);
         Route::get('speaking/exercises/{exercise}', [StudentSpeakingController::class, 'showExercise']);
         Route::get('speaking/attempts', [StudentSpeakingController::class, 'attempts']);

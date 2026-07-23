@@ -212,8 +212,14 @@ class Phase7QuizzesAssessmentTest extends TestCase
             ->assertCreated()
             ->json('data.id');
         QuizAttempt::query()->whereKey($attemptId)->update(['expires_at' => '2099-01-01 00:00:00']);
+        $this->withToken($this->tokenFor($studentA))->getJson("/api/v1/student/quizzes/{$quizId}")
+            ->assertOk()
+            ->assertJsonPath('data.has_active_attempt', true)
+            ->assertJsonPath('data.can_start', true)
+            ->assertJsonPath('data.attempt_limit_reached', false);
         $secondStart = $this->withToken($this->tokenFor($studentA))->postJson("/api/v1/class-quizzes/{$quizId}/attempts")->assertCreated();
         $this->assertSame($attemptId, $secondStart->json('data.id'));
+        $this->assertSame(1, QuizAttempt::query()->where('class_quiz_id', $quizId)->where('student_id', $studentA->id)->count());
 
         $this->withToken($this->tokenFor($teacherA))->putJson("/api/v1/class-quizzes/{$quizId}", ['duration_minutes' => 30])
             ->assertConflict()
@@ -307,6 +313,18 @@ class Phase7QuizzesAssessmentTest extends TestCase
             ->assertJsonPath('data.status', 'in_progress');
         $attemptId = $attempt->json('data.id');
 
+        $this->withToken($this->tokenFor($student))->getJson("/api/v1/student/quizzes/{$quiz->id}")
+            ->assertOk()
+            ->assertJsonPath('data.used_attempts', 1)
+            ->assertJsonPath('data.remaining_attempts', 0)
+            ->assertJsonPath('data.has_active_attempt', true)
+            ->assertJsonPath('data.attempt_limit_reached', false)
+            ->assertJsonPath('data.can_start', true);
+        $resumedAttempt = $this->withToken($this->tokenFor($student))->postJson("/api/v1/class-quizzes/{$quiz->id}/attempts")
+            ->assertCreated();
+        $this->assertSame($attemptId, $resumedAttempt->json('data.id'));
+        $this->assertSame(1, QuizAttempt::query()->where('class_quiz_id', $quiz->id)->where('student_id', $student->id)->count());
+
         $this->withToken($this->tokenFor($student))->putJson("/api/v1/quiz-attempts/{$attemptId}/answers/{$question->id}", [
             'selected_option_id' => $correctOption->id,
         ])->assertOk();
@@ -325,8 +343,15 @@ class Phase7QuizzesAssessmentTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.0.used_attempts', 1)
             ->assertJsonPath('data.0.submitted_attempts_count', 1)
+            ->assertJsonPath('data.0.finished_attempts_count', 1)
             ->assertJsonPath('data.0.attempt_limit_reached', true)
+            ->assertJsonPath('data.0.best_result.score_percent', 100)
+            ->assertJsonPath('data.0.latest_result.score_percent', 100)
             ->assertJsonPath('data.0.latest_score_normalized', 100);
+        $this->withToken($this->tokenFor($student))->getJson("/api/v1/student/quizzes/{$quiz->id}/attempts?per_page=1")
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.id', $attemptId);
         $this->withToken($this->tokenFor($student))->getJson("/api/v1/student/quizzes/{$quiz->id}")
             ->assertOk()
             ->assertJsonPath('data.used_attempts', 1)
@@ -397,6 +422,39 @@ class Phase7QuizzesAssessmentTest extends TestCase
         $this->withToken($this->tokenFor($student))->postJson("/api/v1/class-quizzes/{$quiz->id}/attempts")
             ->assertConflict()
             ->assertJsonPath('code', 'QUIZ_MAX_ATTEMPTS_REACHED');
+    }
+
+    public function test_class_quiz_lifecycle_deletes_only_unused_draft_and_archives_preserved_quiz(): void
+    {
+        $admin = User::factory()->admin()->create();
+        [$class] = $this->classes($admin, 1);
+        $teacher = $this->teacherFor($class, $admin);
+        $draft = ClassQuiz::factory()->create(['class_id' => $class->id, 'created_by' => $teacher->id, 'status' => 'draft']);
+        $published = ClassQuiz::factory()->published()->create(['class_id' => $class->id, 'created_by' => $teacher->id]);
+        $publishedWithoutAttempt = ClassQuiz::factory()->published()->create(['class_id' => $class->id, 'created_by' => $teacher->id]);
+        $student = $this->studentFor($class, $admin);
+        QuizAttempt::factory()->create(['class_quiz_id' => $published->id, 'student_id' => $student->id]);
+
+        $this->withToken($this->tokenFor($teacher))->deleteJson("/api/v1/class-quizzes/{$published->id}")
+            ->assertConflict()
+            ->assertJsonPath('code', 'QUIZ_HAS_ATTEMPTS');
+        $archived = $this->withToken($this->tokenFor($teacher))->postJson("/api/v1/class-quizzes/{$published->id}/archive")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'archived');
+        $archivedAt = $archived->json('data.archived_at');
+        $this->withToken($this->tokenFor($teacher))->postJson("/api/v1/class-quizzes/{$published->id}/archive")
+            ->assertOk()
+            ->assertJsonPath('data.archived_at', $archivedAt);
+        $this->withToken($this->tokenFor($teacher))->putJson("/api/v1/class-quizzes/{$published->id}", ['title' => 'Tidak boleh berubah'])
+            ->assertConflict()
+            ->assertJsonPath('code', 'QUIZ_ARCHIVED');
+        $this->assertDatabaseHas('quiz_attempts', ['class_quiz_id' => $published->id, 'student_id' => $student->id]);
+        $this->withToken($this->tokenFor($teacher))->deleteJson("/api/v1/class-quizzes/{$publishedWithoutAttempt->id}")
+            ->assertConflict()
+            ->assertJsonPath('code', 'QUIZ_MUST_BE_DRAFT');
+
+        $this->withToken($this->tokenFor($teacher))->deleteJson("/api/v1/class-quizzes/{$draft->id}")->assertOk();
+        $this->assertSoftDeleted('class_quizzes', ['id' => $draft->id]);
     }
 
     private function publishedQuiz(SchoolClass $class, User $admin, array $attributes = []): ClassQuiz

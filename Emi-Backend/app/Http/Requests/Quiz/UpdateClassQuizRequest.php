@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Quiz;
 
 use App\Http\Requests\ApiFormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateClassQuizRequest extends ApiFormRequest
 {
@@ -18,7 +17,6 @@ class UpdateClassQuizRequest extends ApiFormRequest
             'show_result' => ['sometimes', 'boolean'],
             'open_at' => ['sometimes', 'nullable', 'date'],
             'close_at' => ['sometimes', 'nullable', 'date', 'after:open_at'],
-            'status' => ['sometimes', Rule::in(['draft', 'published', 'archived'])],
         ];
     }
 }

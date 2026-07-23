@@ -41,6 +41,9 @@ class ClassQuizService
 
     public function update(ClassQuiz $quiz, array $data, User $actor, Request $request): ClassQuiz
     {
+        if ($quiz->status === 'archived') {
+            throw new ApiException('Kuis archived tidak dapat diubah.', 'QUIZ_ARCHIVED', 409);
+        }
         if ($quiz->status === 'published') {
             $data = collect($data)->only(['show_result'])->all();
             if ($data === []) {
@@ -50,18 +53,12 @@ class ClassQuizService
         if ($quiz->attempts()->exists() && array_intersect(array_keys($data), ['duration_minutes', 'max_attempts', 'open_at', 'close_at'])) {
             throw new ApiException('Kuis sudah memiliki attempt.', 'QUIZ_CONTENT_LOCKED', 409);
         }
-        if (($data['status'] ?? null) === 'published') {
-            return $this->publish($quiz, $actor, $request);
-        }
         $this->validateSettings(array_merge($quiz->only(['duration_minutes', 'max_attempts', 'open_at', 'close_at']), $data));
 
         return DB::transaction(function () use ($quiz, $data, $actor, $request) {
             $old = $quiz->only(['title', 'status']);
-            $quiz->fill(collect($data)->only(['title', 'description', 'instructions', 'duration_minutes', 'max_attempts', 'show_result', 'open_at', 'close_at', 'status'])->all());
+            $quiz->fill(collect($data)->only(['title', 'description', 'instructions', 'duration_minutes', 'max_attempts', 'show_result', 'open_at', 'close_at'])->all());
             $quiz->updated_by = $actor->id;
-            if ($quiz->status === 'archived') {
-                $quiz->archived_at = now();
-            }
             $quiz->save();
             $this->auditLogService->record('class_quiz.updated', $quiz, $actor, $old, $quiz->only(['title', 'status']), [], $request);
 
@@ -90,6 +87,9 @@ class ClassQuizService
 
     public function archive(ClassQuiz $quiz, User $actor, Request $request): ClassQuiz
     {
+        if ($quiz->status === 'archived') {
+            return $quiz;
+        }
         $quiz->forceFill(['status' => 'archived', 'archived_at' => now(), 'updated_by' => $actor->id])->save();
         $this->auditLogService->record('class_quiz.archived', $quiz, $actor, null, ['status' => 'archived'], [], $request);
 
@@ -98,8 +98,11 @@ class ClassQuizService
 
     public function delete(ClassQuiz $quiz, User $actor, Request $request): void
     {
-        if ($quiz->status !== 'draft' || $quiz->attempts()->exists()) {
+        if ($quiz->attempts()->exists()) {
             throw new ApiException('Kuis memiliki attempt dan harus diarsipkan.', 'QUIZ_HAS_ATTEMPTS', 409);
+        }
+        if ($quiz->status !== 'draft') {
+            throw new ApiException('Hanya draft kuis yang dapat dihapus.', 'QUIZ_MUST_BE_DRAFT', 409);
         }
         $quiz->delete();
         $this->auditLogService->record('class_quiz.deleted', $quiz, $actor, null, ['deleted_at' => now()->toISOString()], [], $request);

@@ -69,6 +69,17 @@ class QuizAttemptService
         });
     }
 
+    public function normalizeExpiredForStudent(User $student, ?ClassQuiz $quiz = null): void
+    {
+        QuizAttempt::query()
+            ->where('student_id', $student->id)
+            ->where('status', 'in_progress')
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<', now())
+            ->when($quiz, fn ($query) => $query->where('class_quiz_id', $quiz->id))
+            ->each(fn (QuizAttempt $attempt) => $this->gradingService->finalize($attempt, 'expired'));
+    }
+
     public function saveAnswer(QuizAttempt $attempt, QuizQuestion $question, array $data, User $student, Request $request): QuizAnswer
     {
         $attempt = $attempt->load('classQuiz');
