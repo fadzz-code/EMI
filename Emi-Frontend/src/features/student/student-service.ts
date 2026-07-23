@@ -120,10 +120,10 @@ export const studentService = {
     return response.data;
   },
 
-  async culture(token: string, classId?: string) {
+  async culture(token: string, page = 1, classId?: string) {
     const response = await apiClient.get<StudentCultureItem[]>("/student/culture", {
       token,
-      query: { class_id: classId, per_page: 100 },
+      query: { class_id: classId, page, per_page: 12 },
     });
 
     return paginated(response.data, response.meta);
@@ -147,8 +147,21 @@ export const studentService = {
   },
 
   async speakingAttempts(token: string) {
-    const response = await apiClient.get<SpeakingAttempt[]>("/student/speaking/attempts", { token });
-    return response.data ?? [];
+    const attempts: SpeakingAttempt[] = [];
+    let page = 1;
+    let lastPage = 1;
+
+    do {
+      const response = await apiClient.get<SpeakingAttempt[]>("/student/speaking/attempts", {
+        token,
+        query: { page, per_page: 100 },
+      });
+      attempts.push(...(response.data ?? []));
+      lastPage = Number(response.meta?.last_page ?? page);
+      page += 1;
+    } while (page <= lastPage);
+
+    return attempts;
   },
 
   async speakingAttemptDetail(token: string, attemptId: string) {
@@ -157,9 +170,11 @@ export const studentService = {
     return response.data;
   },
 
-  async submitSpeakingAttempt(token: string, exerciseId: string, file: File) {
+  async submitSpeakingAttempt(token: string, exerciseId: string, file: File, durationSeconds: number) {
     const formData = new FormData();
     formData.append("file", file, file.name);
+    formData.append("audio_duration_seconds", String(durationSeconds));
+    formData.append("capture_source", "web_microphone");
 
     const response = await apiClient.post<SpeakingAttempt>(
       `/student/speaking/exercises/${exerciseId}/attempts`,

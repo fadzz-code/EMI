@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { Alert, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState } from "@/components/ui";
+import { Alert, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
@@ -21,6 +21,9 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [shortAnswers, setShortAnswers] = useState<Record<string, string>>({});
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+  const activeInputRef = useRef<HTMLInputElement | null>(null);
+  const allowLeaveRef = useRef(false);
 
   const quizQuery = useQuery({
     queryKey: ["student", "quizzes", quizId],
@@ -48,9 +51,34 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
   const submitMutation = useMutation({
     mutationFn: () => studentQuizService.submitAttempt(token ?? "", attemptId ?? "", idempotencyKey),
     onSuccess: (attempt) => {
+      allowLeaveRef.current = true;
       router.replace(`/student/quizzes/${quizId}/result?attemptId=${attempt.id}`);
     },
   });
+
+  useEffect(() => {
+    const expiresAt = attemptQuery.data?.expires_at;
+    if (!expiresAt || attemptQuery.data?.status !== "in_progress") return;
+    const update = () => setRemainingSeconds(Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1000)));
+    update();
+    const interval = window.setInterval(update, 1000);
+    return () => window.clearInterval(interval);
+  }, [attemptQuery.data?.expires_at, attemptQuery.data?.status]);
+
+  useEffect(() => {
+    if (attemptQuery.data?.status !== "in_progress") return;
+    const warn = (event: BeforeUnloadEvent) => {
+      if (allowLeaveRef.current) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [attemptQuery.data?.status]);
+
+  useEffect(() => {
+    if (remainingSeconds === 0 && !submitMutation.isPending) submitMutation.mutate();
+  }, [remainingSeconds, submitMutation]);
 
   if (!attemptId) {
     return <ErrorState description="ID Attempt tidak ditemukan di URL." title="Data tidak lengkap" />;
@@ -92,6 +120,16 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
     }
   }
 
+  async function leaveAttempt() {
+    if (!window.confirm("Jawaban aktif akan disimpan. Yakin ingin meninggalkan kuis? Waktu tetap berjalan.")) return;
+    if (currentQuestion?.question_type !== "multiple_choice") {
+      const text = activeInputRef.current?.value ?? shortAnswer;
+      await studentQuizService.saveAnswer(token ?? "", attemptId ?? "", currentQuestion.id, { answer_text: text });
+    }
+    allowLeaveRef.current = true;
+    router.push(`/student/quizzes/${quizId}`);
+  }
+
   return (
     <div className="grid gap-6">
       {isLoading ? <LoadingState title="Memuat soal kuis" /> : null}
@@ -111,8 +149,10 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
             <div>
               <h1 className="text-xl font-black text-ink">{quiz.title}</h1>
               <p className="text-sm text-slate-600">Soal {currentQuestionIndex + 1} dari {questions.length}</p>
+              <p className="mt-1 font-black text-red-700">Sisa waktu: {remainingSeconds === null ? "-" : `${Math.floor(remainingSeconds / 60)}:${String(remainingSeconds % 60).padStart(2, "0")}`}</p>
             </div>
             {submitMutation.error ? <Alert tone="error">{getFirstApiError(submitMutation.error)}</Alert> : null}
+            <Button onClick={() => void leaveAttempt()} type="button" variant="secondary">Keluar Kuis</Button>
             <Button
               className="bg-green-600 hover:bg-green-700"
               disabled={submitMutation.isPending}
@@ -158,8 +198,10 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
               ) : (
                 <div className="grid gap-2">
                   <label className="text-sm font-bold text-ink">Jawaban Singkat</label>
-                  <Input
+                  <input
+                    className="min-h-11 w-full rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 py-2 text-sm text-ink outline-none focus:ring-4 focus:ring-accent/40"
                     defaultValue={shortAnswer}
+                    ref={activeInputRef}
                     onBlur={(e) => handleShortAnswerBlur(e.target.value)}
                     placeholder="Ketik jawaban Anda lalu klik di luar kotak untuk menyimpan"
                   />

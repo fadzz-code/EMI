@@ -50,6 +50,14 @@ export function statusLabel(status: string | null | undefined) {
     return "Tersedia";
   }
 
+  if (status === "submitted") {
+    return "Dikumpulkan";
+  }
+
+  if (status === "expired") {
+    return "Berakhir";
+  }
+
   return formatOptional(status);
 }
 

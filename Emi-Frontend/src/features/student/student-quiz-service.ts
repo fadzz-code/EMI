@@ -22,6 +22,15 @@ export const studentQuizService = {
     return paginated(response.data, response.meta);
   },
 
+  async attempts(token: string, quizId: string, filters: { page?: number; per_page?: number } = {}) {
+    const response = await apiClient.get<QuizAttempt[]>(`/student/quizzes/${quizId}/attempts`, {
+      token,
+      query: { page: filters.page ?? 1, per_page: filters.per_page ?? 5 },
+    });
+
+    return paginated(response.data, response.meta);
+  },
+
   async detail(token: string, quizId: string) {
     const response = await apiClient.get<StudentQuiz>(`/student/quizzes/${quizId}`, {
       token,

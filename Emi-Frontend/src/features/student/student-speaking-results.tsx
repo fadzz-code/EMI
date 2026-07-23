@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Bot, CheckCircle2, MessageSquareText, Mic } from "lucide-react";
 
-import { Alert, Badge, Card, CardContent, EmptyState } from "@/components/ui";
+import { Alert, Badge, Button, Card, CardContent, EmptyState } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
@@ -44,6 +44,19 @@ export function StudentSpeakingResults() {
   const [attempts, setAttempts] = useState<SpeakingAttempt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  async function loadAttempts() {
+    if (!token) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      setAttempts(await studentService.speakingAttempts(token));
+    } catch (err) {
+      setError(getFirstApiError(err));
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (!token) return;
@@ -140,7 +153,10 @@ export function StudentSpeakingResults() {
                 <h2 className="text-xl font-black text-ink">Riwayat percobaan</h2>
                 <p className="mt-1 text-sm font-semibold text-muted">Semua skor awal AI dan tinjauan guru.</p>
               </div>
-              <Link className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-border bg-surface px-4 py-2 text-sm font-black text-ink shadow-[2px_2px_0_var(--border)] hover:bg-accent/30" href="/student/speaking">Latihan lagi</Link>
+               <div className="flex flex-wrap gap-2">
+                 <Button disabled={isLoading} onClick={() => void loadAttempts()} type="button" variant="secondary">Refresh hasil</Button>
+                 <Link className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-border bg-surface px-4 py-2 text-sm font-black text-ink shadow-[2px_2px_0_var(--border)] hover:bg-accent/30" href="/student/speaking">Latihan lagi</Link>
+               </div>
             </div>
             <div className="grid gap-3">
               {attempts.map((attempt) => (

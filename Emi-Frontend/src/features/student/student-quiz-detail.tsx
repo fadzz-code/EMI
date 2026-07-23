@@ -2,22 +2,30 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, StatsCard } from "@/components/ui";
+import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, Pagination, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { studentQuizService } from "./student-quiz-service";
-import { formatCount, formatDate, formatOptional, formatScoreOutOf100 } from "./student-utils";
+import { formatCount, formatDate, formatOptional, formatScoreOutOf100, statusLabel } from "./student-utils";
 
 export function StudentQuizDetail({ quizId }: { quizId: string }) {
   const { token } = useAuth();
   const router = useRouter();
+  const [historyPage, setHistoryPage] = useState(1);
 
   const quizQuery = useQuery({
     queryKey: ["student", "quizzes", quizId],
     queryFn: () => studentQuizService.detail(token ?? "", quizId),
+    enabled: Boolean(token && quizId),
+  });
+
+  const historyQuery = useQuery({
+    queryKey: ["student", "quizzes", quizId, "attempts", historyPage],
+    queryFn: () => studentQuizService.attempts(token ?? "", quizId, { page: historyPage }),
     enabled: Boolean(token && quizId),
   });
 
@@ -35,7 +43,8 @@ export function StudentQuizDetail({ quizId }: { quizId: string }) {
 
   const quiz = quizQuery.data;
   const usedAttempts = quiz?.used_attempts ?? quiz?.attempts_count ?? 0;
-  const hasSubmittedScore = typeof quiz?.latest_score_normalized === "number";
+  const latestScore = quiz?.latest_result?.score_percent ?? quiz?.latest_score_normalized;
+  const hasSubmittedScore = typeof latestScore === "number";
 
   return (
     <div className="grid gap-6">
@@ -69,8 +78,8 @@ export function StudentQuizDetail({ quizId }: { quizId: string }) {
                 <p className="mt-2 text-sm leading-6 text-slate-700 whitespace-pre-wrap">{formatOptional(quiz.description)}</p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
-                <Button disabled={startMutation.isPending || quiz.attempt_limit_reached} onClick={() => startMutation.mutate()}>
-                  {quiz.attempt_limit_reached ? "Batas Percobaan Tercapai" : "Mulai Kerjakan"}
+                <Button disabled={startMutation.isPending || !quiz.can_start} onClick={() => startMutation.mutate()}>
+                  {quiz.has_active_attempt ? "Lanjutkan Kuis" : quiz.can_start ? "Mulai Kerjakan" : "Kuis Tidak Dapat Dimulai"}
                 </Button>
               </div>
             </div>
@@ -89,8 +98,31 @@ export function StudentQuizDetail({ quizId }: { quizId: string }) {
             <StatsCard helper="Total soal yang harus dijawab" label="Jumlah Soal" value={formatCount(quiz.questions_count)} />
             <StatsCard helper="Batas waktu pengerjaan" label="Durasi" value={quiz.duration_minutes ? `${quiz.duration_minutes} menit` : "Tidak dibatasi"} />
             <StatsCard helper="Percobaan terpakai" label="Percobaan" value={quiz.max_attempts ? `${usedAttempts} / ${quiz.max_attempts}` : formatCount(usedAttempts)} />
-            <StatsCard helper={hasSubmittedScore ? `Terakhir dikumpulkan: ${formatDate(quiz.latest_submitted_at)}` : "Belum ada percobaan yang selesai"} label="Nilai Terakhir" value={hasSubmittedScore ? formatScoreOutOf100(quiz.latest_score_normalized) : "Belum dikerjakan"} />
+            <StatsCard helper={hasSubmittedScore ? `Terakhir dikumpulkan: ${formatDate(quiz.latest_submitted_at)}` : "Belum ada percobaan yang selesai"} label="Nilai Terakhir" value={hasSubmittedScore ? formatScoreOutOf100(latestScore) : "Belum dikerjakan"} />
           </section>
+
+          <section className="grid gap-4 sm:grid-cols-3">
+            <StatsCard label="Selesai" value={formatCount(quiz.finished_attempts_count)} />
+            <StatsCard label="Nilai Terbaik" value={typeof quiz.best_result?.score_percent === "number" ? formatScoreOutOf100(quiz.best_result.score_percent) : "Belum tersedia"} />
+            <StatsCard label="Nilai Terakhir" value={hasSubmittedScore ? formatScoreOutOf100(latestScore) : "Belum tersedia"} />
+          </section>
+
+          <Card>
+            <CardHeader>
+              <h2 className="text-xl font-black text-ink">Riwayat Percobaan</h2>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3">
+                {(historyQuery.data?.items ?? []).map((attempt) => (
+                  <Link className="rounded-xl border-2 border-ink p-3 font-bold" href={`/student/quizzes/${quiz.id}/result?attemptId=${attempt.id}`} key={attempt.id}>
+                    Percobaan {attempt.attempt_number} · {statusLabel(attempt.status)} · {typeof attempt.score_percent === "number" ? formatScoreOutOf100(attempt.score_percent) : "Nilai disembunyikan"}
+                  </Link>
+                ))}
+                {!historyQuery.isLoading && !historyQuery.data?.items.length ? <p>Belum ada riwayat percobaan.</p> : null}
+                <Pagination onPageChange={setHistoryPage} page={historyQuery.data?.meta?.current_page ?? historyPage} totalPages={historyQuery.data?.meta?.last_page ?? 1} />
+              </div>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>

@@ -24,7 +24,7 @@ export function StudentQuizList() {
   const quizzes = quizzesQuery.data?.items ?? [];
   const meta = quizzesQuery.data?.meta;
   const completedCount = quizzes.filter((quiz) => typeof quiz.latest_score_normalized === "number").length;
-  const openCount = quizzes.filter((quiz) => !quiz.attempt_limit_reached).length;
+  const openCount = quizzes.filter((quiz) => quiz.can_start).length;
 
   return (
     <div className="grid gap-6">
@@ -63,7 +63,8 @@ export function StudentQuizList() {
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {quizzes.map((quiz) => {
                 const usedAttempts = quiz.used_attempts ?? quiz.attempts_count ?? 0;
-                const hasSubmittedScore = typeof quiz.latest_score_normalized === "number";
+                const hasSubmittedScore = typeof quiz.latest_result?.score_percent === "number" || typeof quiz.latest_score_normalized === "number";
+                const latestScore = quiz.latest_result?.score_percent ?? quiz.latest_score_normalized;
 
                 return (
                 <Card className="overflow-hidden" key={quiz.id}>
@@ -92,10 +93,10 @@ export function StudentQuizList() {
                       <div className="rounded-2xl border-2 border-ink bg-[var(--color-primary-muted)] p-3">
                         <p className="text-xs font-black uppercase text-slate-500">Status pengerjaan</p>
                         <p className="mt-1 text-2xl font-black text-ink">
-                          {hasSubmittedScore ? `Nilai: ${formatScoreOutOf100(quiz.latest_score_normalized)}` : "Belum dikerjakan"}
+                          {hasSubmittedScore ? `Nilai: ${formatScoreOutOf100(latestScore)}` : "Belum dikerjakan"}
                         </p>
                         <p className="mt-1 text-sm font-bold text-slate-600">
-                          {quiz.attempt_limit_reached ? "Percobaan sudah habis." : "Masih bisa dibuka dari halaman detail."}
+                          {quiz.has_active_attempt ? "Ada pengerjaan aktif." : quiz.can_start ? "Masih bisa dibuka dari halaman detail." : "Kuis tidak dapat dimulai."}
                         </p>
                       </div>
                       <Link className="inline-flex min-h-12 items-center justify-center rounded-xl border-2 border-ink bg-blue-600 px-4 py-2 text-sm font-black text-white shadow-brutal hover:bg-blue-700" href={`/student/quizzes/${quiz.id}`}>

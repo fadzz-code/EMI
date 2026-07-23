@@ -325,6 +325,13 @@ export type QuizQuestion = {
   } | null;
 };
 
+export type QuizResultSummary = {
+  score_points?: number | null;
+  max_points?: number | null;
+  score_percent: number;
+  submitted_at?: string | null;
+};
+
 export type StudentQuiz = {
   id: string;
   class_id?: string;
@@ -340,9 +347,15 @@ export type StudentQuiz = {
   attempts_count?: number;
   used_attempts?: number;
   submitted_attempts_count?: number;
+  expired_attempts_count?: number;
+  finished_attempts_count?: number;
   remaining_attempts?: number | null;
   attempt_limit_reached?: boolean;
+  has_active_attempt?: boolean;
+  active_attempt?: Pick<QuizAttempt, "id" | "attempt_number" | "status" | "started_at" | "expires_at"> | null;
   can_start?: boolean;
+  best_result?: QuizResultSummary | null;
+  latest_result?: QuizResultSummary | null;
   latest_score_points?: number | null;
   latest_max_points?: number | null;
   latest_score_normalized?: number | null;
