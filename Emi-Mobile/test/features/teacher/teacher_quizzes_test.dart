@@ -351,6 +351,13 @@ void main() {
             'average_best_score_percent': 72.5,
             'highest_best_score_percent': 95,
             'lowest_best_score_percent': 40,
+            'eligible_students': 30,
+            'participating_students': 20,
+            'finalized_students': 18,
+            'not_attempted_students': 10,
+            'submitted_attempts': 16,
+            'expired_attempts': 2,
+            'in_progress_attempts': 3,
           },
           'rows': [
             {
@@ -365,10 +372,58 @@ void main() {
       });
       expect(page.items, isEmpty);
       expect([parsed.average, parsed.highest, parsed.lowest], [72.5, 95, 40]);
+      expect(
+        [
+          parsed.eligibleStudents,
+          parsed.participatingStudents,
+          parsed.finalizedStudents,
+          parsed.notAttemptedStudents,
+          parsed.submittedAttempts,
+          parsed.expiredAttempts,
+          parsed.inProgressAttempts,
+        ],
+        [30, 20, 18, 10, 16, 2, 3],
+      );
       expect(parsed.items.single.studentName, 'Budi');
       expect(parsed.page, 2);
     },
   );
+
+  test('missing canonical result metrics stay unavailable', () {
+    final parsed = TeacherQuizResultPage.fromJson({
+      'data': {'summary': <String, dynamic>{}, 'rows': []},
+    });
+    expect([
+      parsed.average,
+      parsed.highest,
+      parsed.lowest,
+      parsed.eligibleStudents,
+      parsed.participatingStudents,
+      parsed.finalizedStudents,
+      parsed.notAttemptedStudents,
+      parsed.submittedAttempts,
+      parsed.expiredAttempts,
+      parsed.inProgressAttempts,
+    ], everyElement(isNull));
+  });
+
+  test('schedule converts local values to UTC and validates order', () {
+    final open = DateTime(2026, 7, 18, 8);
+    final close = DateTime(2026, 7, 18, 9, 30);
+    expect(teacherQuizSchedulePayload(open, close), {
+      'open_at': open.toUtc().toIso8601String(),
+      'close_at': close.toUtc().toIso8601String(),
+    });
+    expect(teacherQuizScheduleError(open, close), isNull);
+    expect(
+      teacherQuizScheduleError(close, open),
+      'Waktu tutup harus setelah waktu buka.',
+    );
+    expect(teacherQuizSchedulePayload(null, null), {
+      'open_at': null,
+      'close_at': null,
+    });
+  });
 
   test('raw numeric and boolean values remain typed', () {
     final item = TeacherQuizAttempt.fromJson({

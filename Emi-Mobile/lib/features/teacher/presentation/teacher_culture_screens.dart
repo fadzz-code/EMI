@@ -4,6 +4,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../core/errors/app_error.dart';
@@ -357,10 +359,8 @@ class _TeacherCultureDetailScreenState
                   errorBuilder: (_, _, _) =>
                       const Text('Pratinjau gambar tidak tersedia.'),
                 )
-              else if (item.contentUrl != null)
-                SelectableText(item.contentUrl!)
               else
-                const Text('Pratinjau tidak tersedia.'),
+                _CulturePlayback(item: item),
               const SizedBox(height: EmiSpacing.lg),
               FilledButton(
                 onPressed: () =>
@@ -371,6 +371,112 @@ class _TeacherCultureDetailScreenState
           ),
         ),
   );
+}
+
+class _CulturePlayback extends StatefulWidget {
+  const _CulturePlayback({required this.item});
+  final CultureItem item;
+
+  @override
+  State<_CulturePlayback> createState() => _CulturePlaybackState();
+}
+
+class _CulturePlaybackState extends State<_CulturePlayback> {
+  final player = AudioPlayer();
+  bool busy = false;
+  String? error;
+
+  @override
+  void dispose() {
+    player.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final url = widget.item.contentUrl;
+    if (url == null) return const Text('Pratinjau tidak tersedia.');
+    if (widget.item.contentType == 'audio') {
+      return StreamBuilder<PlayerState>(
+        stream: player.playerStateStream,
+        builder: (context, snapshot) => ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: IconButton.filled(
+            onPressed: busy
+                ? null
+                : () => _audio(snapshot.data?.playing == true),
+            icon: busy
+                ? const CircularProgressIndicator()
+                : Icon(
+                    snapshot.data?.playing == true
+                        ? Icons.pause
+                        : Icons.play_arrow,
+                  ),
+          ),
+          title: Text(error ?? 'Putar audio'),
+        ),
+      );
+    }
+    return FilledButton.icon(
+      onPressed: busy ? null : _open,
+      icon: Icon(
+        widget.item.contentType == 'pdf'
+            ? Icons.picture_as_pdf
+            : Icons.open_in_new,
+      ),
+      label: Text(
+        widget.item.contentType == 'video'
+            ? 'Putar video'
+            : widget.item.contentType == 'pdf'
+            ? 'Buka PDF'
+            : 'Buka tautan',
+      ),
+    );
+  }
+
+  Future<void> _audio(bool playing) async {
+    if (playing) return player.pause();
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final uri = _uri();
+      await player.setUrl(uri.toString());
+      await player.play();
+    } catch (_) {
+      if (mounted) setState(() => error = 'Audio gagal diputar.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> _open() async {
+    setState(() => busy = true);
+    try {
+      if (!await launchUrl(_uri(), mode: LaunchMode.externalApplication)) {
+        throw const FormatException();
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('URL konten tidak valid atau gagal dibuka.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Uri _uri() {
+    final uri = Uri.tryParse(widget.item.contentUrl ?? '');
+    if (uri == null || !{'http', 'https'}.contains(uri.scheme)) {
+      throw const FormatException();
+    }
+    return uri;
+  }
 }
 
 class TeacherCultureFormScreen extends ConsumerStatefulWidget {
@@ -390,7 +496,7 @@ class _FormState extends ConsumerState<TeacherCultureFormScreen> {
   String type = 'image', status = 'draft';
   String? mediaId, filePath, fileName, classId;
   bool hydrated = false, dirty = false, saving = false;
-  static const mediaTypes = {'image', 'audio', 'pdf', 'video'};
+  static const mediaTypes = {'image', 'audio', 'pdf'};
   @override
   void dispose() {
     title.dispose();

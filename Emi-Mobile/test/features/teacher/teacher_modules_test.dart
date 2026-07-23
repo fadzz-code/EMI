@@ -170,6 +170,25 @@ void main() {
     },
   );
 
+  test('creates lesson under module with canonical content payload', () async {
+    await repository.createLesson('module-1', {
+      'title': 'Sapaan',
+      'description': 'Dasar',
+      'content_type': 'text',
+      'content_body': 'Halo',
+      'sort_order': 1,
+    });
+    expect(requests.single.method, 'POST');
+    expect(requests.single.path, '/class-modules/module-1/lessons');
+    expect(requests.single.data, {
+      'title': 'Sapaan',
+      'description': 'Dasar',
+      'content_type': 'text',
+      'content_body': 'Halo',
+      'sort_order': 1,
+    });
+  });
+
   test('updates PDF lesson with uploaded media id and content type', () async {
     await repository.updateLesson('lesson-1', {
       'title': 'Dokumen Baru',

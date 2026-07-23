@@ -325,7 +325,22 @@ class _TeacherModuleEditScreenState
               child: const Text('Hapus Draft'),
             ),
           const SizedBox(height: EmiSpacing.lg),
-          Text('Daftar Materi', style: Theme.of(context).textTheme.titleMedium),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Daftar Materi',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: () =>
+                    context.push('/teacher/modules/${item.id}/lessons/create'),
+                icon: const Icon(Icons.add),
+                label: const Text('Tambah Materi'),
+              ),
+            ],
+          ),
           const SizedBox(height: EmiSpacing.sm),
           if (item.lessons.isEmpty)
             const Text('Modul ini belum memiliki materi.')
@@ -466,6 +481,195 @@ class _TeacherModuleEditScreenState
     'Batalkan perubahan?',
     'Perubahan yang belum disimpan akan hilang.',
   );
+  void _notice(String value) => ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(value)));
+}
+
+class TeacherLessonCreateScreen extends ConsumerStatefulWidget {
+  const TeacherLessonCreateScreen({super.key, required this.moduleId});
+  final String moduleId;
+
+  @override
+  ConsumerState<TeacherLessonCreateScreen> createState() =>
+      _TeacherLessonCreateScreenState();
+}
+
+class _TeacherLessonCreateScreenState
+    extends ConsumerState<TeacherLessonCreateScreen> {
+  final form = GlobalKey<FormState>();
+  final title = TextEditingController();
+  final description = TextEditingController();
+  final content = TextEditingController();
+  final url = TextEditingController();
+  final sort = TextEditingController(text: '1');
+  String type = 'text';
+  String? mediaId;
+  String? mediaName;
+  bool saving = false;
+
+  @override
+  void dispose() {
+    for (final controller in [title, description, content, url, sort]) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => TeacherShell(
+    title: 'Tambah Materi',
+    fallbackRoute: '/teacher/modules/${widget.moduleId}/edit',
+    child: Form(
+      key: form,
+      child: ListView(
+        padding: const EdgeInsets.all(EmiSpacing.md),
+        children: [
+          TextFormField(
+            controller: title,
+            decoration: const InputDecoration(labelText: 'Judul Materi'),
+            validator: (value) =>
+                value?.trim().isEmpty != false ? 'Judul wajib diisi.' : null,
+          ),
+          const SizedBox(height: EmiSpacing.md),
+          TextFormField(
+            controller: description,
+            decoration: const InputDecoration(labelText: 'Deskripsi Singkat'),
+            minLines: 2,
+            maxLines: 4,
+          ),
+          const SizedBox(height: EmiSpacing.md),
+          DropdownButtonFormField<String>(
+            initialValue: type,
+            decoration: const InputDecoration(labelText: 'Jenis Konten'),
+            items: const [
+              DropdownMenuItem(value: 'text', child: Text('Teks')),
+              DropdownMenuItem(value: 'image', child: Text('Gambar')),
+              DropdownMenuItem(value: 'audio', child: Text('Audio')),
+              DropdownMenuItem(value: 'pdf', child: Text('PDF')),
+              DropdownMenuItem(value: 'video', child: Text('Video URL')),
+              DropdownMenuItem(value: 'link', child: Text('Tautan')),
+            ],
+            onChanged: (value) => setState(() => type = value!),
+          ),
+          if (type == 'text') ...[
+            const SizedBox(height: EmiSpacing.md),
+            TextFormField(
+              controller: content,
+              decoration: const InputDecoration(labelText: 'Isi Materi'),
+              minLines: 5,
+              maxLines: 12,
+              validator: (value) => value?.trim().isEmpty != false
+                  ? 'Isi materi wajib diisi.'
+                  : null,
+            ),
+          ],
+          if (type == 'video' || type == 'link') ...[
+            const SizedBox(height: EmiSpacing.md),
+            TextFormField(
+              controller: url,
+              decoration: const InputDecoration(labelText: 'URL HTTPS'),
+              keyboardType: TextInputType.url,
+              validator: (value) {
+                final uri = Uri.tryParse(value ?? '');
+                return uri?.scheme == 'https'
+                    ? null
+                    : 'Masukkan URL HTTPS yang valid.';
+              },
+            ),
+          ],
+          if (type == 'image' || type == 'audio' || type == 'pdf') ...[
+            const SizedBox(height: EmiSpacing.md),
+            Text(mediaName ?? 'Media belum dipilih'),
+            FilledButton.icon(
+              onPressed: saving ? null : _pick,
+              icon: const Icon(Icons.upload_file),
+              label: const Text('Pilih dan Unggah Media'),
+            ),
+          ],
+          const SizedBox(height: EmiSpacing.md),
+          TextFormField(
+            controller: sort,
+            decoration: const InputDecoration(labelText: 'Urutan Tampil'),
+            keyboardType: TextInputType.number,
+            validator: (value) => (int.tryParse(value ?? '') ?? 0) < 1
+                ? 'Urutan minimal 1.'
+                : null,
+          ),
+          const SizedBox(height: EmiSpacing.lg),
+          FilledButton(
+            onPressed: saving ? null : _save,
+            child: Text(saving ? 'Menyimpan...' : 'Simpan Materi'),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Future<void> _pick() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: type == 'image'
+          ? const ['jpg', 'jpeg', 'png', 'webp']
+          : type == 'audio'
+          ? const ['mp3', 'wav', 'm4a']
+          : const ['pdf'],
+    );
+    final file = result?.files.single;
+    if (file?.path == null) return;
+    setState(() => saving = true);
+    try {
+      final media = await ref
+          .read(teacherRepositoryProvider)
+          .uploadMedia(
+            file!.path!,
+            file.name,
+            purpose: type == 'image'
+                ? 'lesson_image'
+                : type == 'audio'
+                ? 'audio'
+                : 'document',
+          );
+      if (mounted) {
+        setState(() {
+          mediaId = media.id;
+          mediaName = media.name;
+        });
+      }
+    } catch (error) {
+      if (mounted) _notice(_error(error));
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  Future<void> _save() async {
+    if (!form.currentState!.validate()) return;
+    if ({'image', 'audio', 'pdf'}.contains(type) && mediaId == null) {
+      return _notice('Pilih media terlebih dahulu.');
+    }
+    setState(() => saving = true);
+    try {
+      await ref.read(teacherRepositoryProvider).createLesson(widget.moduleId, {
+        'title': title.text.trim(),
+        'description': description.text.trim(),
+        'content_type': type,
+        if (type == 'text') 'content_body': content.text.trim(),
+        if (type == 'video' || type == 'link') 'external_url': url.text.trim(),
+        if ({'image', 'audio', 'pdf'}.contains(type)) 'media_id': mediaId,
+        'sort_order': int.parse(sort.text),
+      });
+      final _ = await ref.refresh(
+        teacherModuleDetailProvider(widget.moduleId).future,
+      );
+      if (mounted) context.go('/teacher/modules/${widget.moduleId}/edit');
+    } catch (error) {
+      if (mounted) _notice(_error(error));
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
   void _notice(String value) => ScaffoldMessenger.of(
     context,
   ).showSnackBar(SnackBar(content: Text(value)));

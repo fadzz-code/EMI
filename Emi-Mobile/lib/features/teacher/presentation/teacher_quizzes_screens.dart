@@ -574,6 +574,7 @@ class _TeacherQuizFormScreenState extends ConsumerState<TeacherQuizFormScreen> {
       open = TextEditingController(),
       close = TextEditingController();
   bool showResult = true, filled = false, saving = false, dirty = false;
+  DateTime? openAt, closeAt;
   @override
   void dispose() {
     for (final c in [
@@ -618,8 +619,10 @@ class _TeacherQuizFormScreenState extends ConsumerState<TeacherQuizFormScreen> {
               instructions.text = quiz.instructions;
               duration.text = '${quiz.durationMinutes}';
               attempts.text = '${quiz.maxAttempts}';
-              open.text = quiz.openAt?.toIso8601String() ?? '';
-              close.text = quiz.closeAt?.toIso8601String() ?? '';
+              openAt = quiz.openAt?.toLocal();
+              closeAt = quiz.closeAt?.toLocal();
+              open.text = _dateTime(openAt);
+              close.text = _dateTime(closeAt);
               showResult = quiz.showResult;
               filled = true;
             }
@@ -691,8 +694,14 @@ class _TeacherQuizFormScreenState extends ConsumerState<TeacherQuizFormScreen> {
                 ),
                 const SizedBox(height: EmiSpacing.sm),
                 _section(context, 'Jadwal', Icons.calendar_today_outlined),
-                _field(open, 'Buka pada (ISO 8601, opsional)', date: true),
-                _field(close, 'Tutup pada (ISO 8601, opsional)', date: true),
+                _scheduleField(open, 'Buka pada', openAt, (value) {
+                  openAt = value;
+                  open.text = _dateTime(value);
+                }),
+                _scheduleField(close, 'Tutup pada', closeAt, (value) {
+                  closeAt = value;
+                  close.text = _dateTime(value);
+                }),
                 const SizedBox(height: EmiSpacing.sm),
                 _section(context, 'Status', Icons.visibility_outlined),
                 SwitchListTile(
@@ -781,6 +790,54 @@ class _TeacherQuizFormScreenState extends ConsumerState<TeacherQuizFormScreen> {
       },
     ),
   );
+  Widget _scheduleField(
+    TextEditingController controller,
+    String label,
+    DateTime? value,
+    ValueChanged<DateTime?> update,
+  ) => Padding(
+    padding: const EdgeInsets.only(bottom: EmiSpacing.md),
+    child: TextFormField(
+      key: ValueKey(label),
+      controller: controller,
+      readOnly: true,
+      decoration: InputDecoration(
+        labelText: '$label (opsional)',
+        suffixIcon: value == null
+            ? const Icon(Icons.calendar_today_outlined)
+            : IconButton(
+                tooltip: 'Hapus $label',
+                onPressed: () => setState(() {
+                  update(null);
+                  dirty = true;
+                }),
+                icon: const Icon(Icons.clear),
+              ),
+      ),
+      onTap: () async {
+        final initial = value ?? DateTime.now();
+        final date = await showDatePicker(
+          context: context,
+          initialDate: initial,
+          firstDate: DateTime(2020),
+          lastDate: DateTime(2100),
+        );
+        if (date == null || !mounted) return;
+        final time = await showTimePicker(
+          context: context,
+          initialTime: TimeOfDay.fromDateTime(initial),
+        );
+        if (time == null) return;
+        setState(() {
+          update(
+            DateTime(date.year, date.month, date.day, time.hour, time.minute),
+          );
+          dirty = true;
+        });
+      },
+    ),
+  );
+
   Future<void> _save(TeacherQuiz? quiz) async {
     if (!form.currentState!.validate()) return;
     final dashboard = await ref.read(teacherDashboardProvider.future);
@@ -789,10 +846,9 @@ class _TeacherQuizFormScreenState extends ConsumerState<TeacherQuizFormScreen> {
       _notice(context, 'Belum ada kelas aktif.');
       return;
     }
-    if (open.text.isNotEmpty &&
-        close.text.isNotEmpty &&
-        !DateTime.parse(close.text).isAfter(DateTime.parse(open.text))) {
-      _notice(context, 'Waktu tutup harus setelah waktu buka.');
+    final scheduleError = teacherQuizScheduleError(openAt, closeAt);
+    if (scheduleError != null) {
+      _notice(context, scheduleError);
       return;
     }
     setState(() => saving = true);
@@ -805,8 +861,7 @@ class _TeacherQuizFormScreenState extends ConsumerState<TeacherQuizFormScreen> {
         'duration_minutes': int.parse(duration.text),
         'max_attempts': int.parse(attempts.text),
         'show_result': showResult,
-        'open_at': open.text.isEmpty ? null : open.text,
-        'close_at': close.text.isEmpty ? null : close.text,
+        ...teacherQuizSchedulePayload(openAt, closeAt),
       };
       final repository = ref.read(teacherQuizRepositoryProvider);
       final saved = quiz == null
@@ -1216,11 +1271,20 @@ class _TeacherQuizResultsScreenState
                 EmiSpacing.md,
                 0,
               ),
-              child: Row(
+              child: Wrap(
+                spacing: EmiSpacing.md,
+                runSpacing: EmiSpacing.sm,
                 children: [
-                  Expanded(child: _ResultMetric('Rata-rata', data.average)),
-                  Expanded(child: _ResultMetric('Tertinggi', data.highest)),
-                  Expanded(child: _ResultMetric('Terendah', data.lowest)),
+                  _ResultMetric('Rata-rata', data.average, percent: true),
+                  _ResultMetric('Tertinggi', data.highest, percent: true),
+                  _ResultMetric('Terendah', data.lowest, percent: true),
+                  _ResultMetric('Siswa berhak', data.eligibleStudents),
+                  _ResultMetric('Berpartisipasi', data.participatingStudents),
+                  _ResultMetric('Hasil final', data.finalizedStudents),
+                  _ResultMetric('Belum mencoba', data.notAttemptedStudents),
+                  _ResultMetric('Attempt dikumpulkan', data.submittedAttempts),
+                  _ResultMetric('Attempt berakhir', data.expiredAttempts),
+                  _ResultMetric('Sedang dikerjakan', data.inProgressAttempts),
                 ],
               ),
             ),
@@ -1308,15 +1372,26 @@ class _TeacherQuizResultsScreenState
 }
 
 class _ResultMetric extends StatelessWidget {
-  const _ResultMetric(this.label, this.value);
+  const _ResultMetric(this.label, this.value, {this.percent = false});
   final String label;
   final num? value;
+  final bool percent;
   @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      Text(value == null ? '-' : '${value!.toStringAsFixed(1)}%'),
-      Text(label),
-    ],
+  Widget build(BuildContext context) => SizedBox(
+    width: 104,
+    child: Column(
+      children: [
+        Text(
+          value == null
+              ? 'Belum tersedia'
+              : percent
+              ? '${value!.toStringAsFixed(1)}%'
+              : '$value',
+          textAlign: TextAlign.center,
+        ),
+        Text(label, textAlign: TextAlign.center),
+      ],
+    ),
   );
 }
 
@@ -1427,7 +1502,23 @@ class _State extends StatelessWidget {
   );
 }
 
-String _date(DateTime? value) => value?.toLocal().toString() ?? '-';
+String? teacherQuizScheduleError(DateTime? openAt, DateTime? closeAt) =>
+    openAt != null && closeAt != null && !closeAt.isAfter(openAt)
+    ? 'Waktu tutup harus setelah waktu buka.'
+    : null;
+Map<String, String?> teacherQuizSchedulePayload(
+  DateTime? openAt,
+  DateTime? closeAt,
+) => {
+  'open_at': openAt?.toUtc().toIso8601String(),
+  'close_at': closeAt?.toUtc().toIso8601String(),
+};
+
+String _date(DateTime? value) =>
+    value == null ? 'Belum tersedia' : _dateTime(value.toLocal());
+String _dateTime(DateTime? value) => value == null
+    ? ''
+    : '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year} ${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
 String _attemptStatus(String value) => switch (value) {
   'submitted' => 'Dikumpulkan',
   'expired' => 'Berakhir',

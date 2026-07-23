@@ -201,13 +201,14 @@ void main() {
     expect(requests.single.path, '/classes/class-1/students');
   });
 
-  test('class students sends audited fixed query', () async {
-    await repository.classStudents('class-1');
+  test('class students sends paginated search query', () async {
+    await repository.classStudents('class-1', page: 2, search: ' Ayu ');
     expect(requests.single.queryParameters, {
-      'page': 1,
-      'per_page': 100,
+      'page': 2,
+      'per_page': 20,
       'sort_by': 'full_name',
       'sort_direction': 'asc',
+      'search': 'Ayu',
     });
   });
 

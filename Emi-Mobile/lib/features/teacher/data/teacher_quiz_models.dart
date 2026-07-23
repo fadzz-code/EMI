@@ -176,6 +176,13 @@ class TeacherQuizResultPage {
     required this.average,
     required this.highest,
     required this.lowest,
+    required this.eligibleStudents,
+    required this.participatingStudents,
+    required this.finalizedStudents,
+    required this.notAttemptedStudents,
+    required this.submittedAttempts,
+    required this.expiredAttempts,
+    required this.inProgressAttempts,
   });
   final List<TeacherQuizAttempt> items;
   final int page;
@@ -183,6 +190,13 @@ class TeacherQuizResultPage {
   final num? average;
   final num? highest;
   final num? lowest;
+  final int? eligibleStudents;
+  final int? participatingStudents;
+  final int? finalizedStudents;
+  final int? notAttemptedStudents;
+  final int? submittedAttempts;
+  final int? expiredAttempts;
+  final int? inProgressAttempts;
 
   factory TeacherQuizResultPage.fromJson(Map<String, dynamic>? json) {
     final data = _map(json?['data']);
@@ -208,6 +222,15 @@ class TeacherQuizResultPage {
       average: summary['average_best_score_percent'] as num?,
       highest: summary['highest_best_score_percent'] as num?,
       lowest: summary['lowest_best_score_percent'] as num?,
+      eligibleStudents: _nullableInteger(summary['eligible_students']),
+      participatingStudents: _nullableInteger(
+        summary['participating_students'],
+      ),
+      finalizedStudents: _nullableInteger(summary['finalized_students']),
+      notAttemptedStudents: _nullableInteger(summary['not_attempted_students']),
+      submittedAttempts: _nullableInteger(summary['submitted_attempts']),
+      expiredAttempts: _nullableInteger(summary['expired_attempts']),
+      inProgressAttempts: _nullableInteger(summary['in_progress_attempts']),
     );
   }
 }
@@ -325,3 +348,8 @@ String _text(Object? value, [String fallback = '']) =>
     value is String && value.trim().isNotEmpty ? value.trim() : fallback;
 int _integer(Object? value, [int fallback = 0]) =>
     value is num ? value.toInt() : int.tryParse('$value') ?? fallback;
+int? _nullableInteger(Object? value) => value == null
+    ? null
+    : value is num
+    ? value.toInt()
+    : int.tryParse('$value');

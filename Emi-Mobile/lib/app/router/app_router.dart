@@ -181,6 +181,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             TeacherModuleEditScreen(id: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
+        path: '/teacher/modules/:moduleId/lessons/create',
+        builder: (_, state) => TeacherLessonCreateScreen(
+          moduleId: state.pathParameters['moduleId'] ?? '',
+        ),
+      ),
+      GoRoute(
         path: '/teacher/modules/:moduleId/lessons/:id/edit',
         builder: (_, state) => TeacherLessonEditScreen(
           moduleId: state.pathParameters['moduleId'] ?? '',

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -146,7 +148,9 @@ class _TeacherClassDetailScreenState
       child: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(teacherClassDetailProvider(id));
-          ref.invalidate(teacherClassStudentsProvider(id));
+          ref.invalidate(
+            teacherClassStudentsProvider((classId: id, page: 1, search: '')),
+          );
           ref.invalidate(teacherModulesProvider(id));
           ref.invalidate(teacherClassQuizzesProvider(id));
           ref.invalidate(
@@ -256,7 +260,9 @@ class _DetailStats extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final students = ref.watch(teacherClassStudentsProvider(id)).valueOrNull;
+    final students = ref
+        .watch(teacherClassStudentsProvider((classId: id, page: 1, search: '')))
+        .valueOrNull;
     final modules = ref.watch(teacherModulesProvider(id)).valueOrNull;
     return _Stats(
       items: [
@@ -343,48 +349,115 @@ class _Summary extends ConsumerWidget {
   );
 }
 
-class _Students extends ConsumerWidget {
+class _Students extends ConsumerStatefulWidget {
   const _Students({required this.id});
   final String id;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final students = ref.watch(teacherClassStudentsProvider(id));
-    final progress =
-        ref
-            .watch(
-              teacherClassProgressProvider((classId: id, page: 1, search: '')),
-            )
-            .valueOrNull
-            ?.items ??
-        const [];
-    return students.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, _) => FriendlyState(
-        icon: Icons.people_outline,
-        title: 'Gagal memuat siswa',
-        message: 'Coba muat kembali daftar siswa.',
-        onRetry: () => ref.invalidate(teacherClassStudentsProvider(id)),
-      ),
-      data: (page) => page.items.isEmpty
-          ? const FriendlyState(
-              icon: Icons.people_outline,
-              title: 'Siswa kosong',
-              message: 'Belum ada siswa aktif pada kelas ini.',
-            )
-          : Column(
-              children: [
-                _Stats(
-                  items: [
-                    ('Total siswa', '${page.items.length}'),
-                    ('Progress tersedia', '${progress.length}'),
-                    ('Catatan', 'Belum tersedia'),
+  ConsumerState<_Students> createState() => _StudentsState();
+}
+
+class _StudentsState extends ConsumerState<_Students> {
+  final controller = TextEditingController();
+  Timer? debounce;
+  int page = 1;
+  String search = '';
+
+  @override
+  void dispose() {
+    debounce?.cancel();
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = (classId: widget.id, page: page, search: search);
+    final students = ref.watch(teacherClassStudentsProvider(query));
+    return Column(
+      children: [
+        TextField(
+          key: const Key('teacherClassStudentSearch'),
+          controller: controller,
+          decoration: InputDecoration(
+            labelText: 'Cari siswa di kelas ini',
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: controller.text.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Hapus pencarian',
+                    onPressed: () {
+                      controller.clear();
+                      setState(() {
+                        search = '';
+                        page = 1;
+                      });
+                    },
+                    icon: const Icon(Icons.clear),
+                  ),
+          ),
+          onChanged: (value) {
+            setState(() {});
+            debounce?.cancel();
+            debounce = Timer(const Duration(milliseconds: 350), () {
+              if (mounted) {
+                setState(() {
+                  search = value.trim();
+                  page = 1;
+                });
+              }
+            });
+          },
+        ),
+        const SizedBox(height: EmiSpacing.md),
+        students.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, _) => FriendlyState(
+            icon: Icons.people_outline,
+            title: 'Gagal memuat siswa',
+            message: 'Coba muat kembali daftar siswa.',
+            onRetry: () => ref.invalidate(teacherClassStudentsProvider(query)),
+          ),
+          data: (result) => result.items.isEmpty
+              ? FriendlyState(
+                  icon: Icons.people_outline,
+                  title: search.isEmpty
+                      ? 'Siswa kosong'
+                      : 'Siswa tidak ditemukan',
+                  message: search.isEmpty
+                      ? 'Belum ada siswa aktif pada kelas ini.'
+                      : 'Coba kata pencarian lain.',
+                )
+              : Column(
+                  children: [
+                    _Stats(items: [('Total siswa', '${result.total}')]),
+                    const SizedBox(height: EmiSpacing.md),
+                    _StudentCards(students: result.items, progress: const []),
+                    if (result.lastPage > 1)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          IconButton(
+                            onPressed: result.currentPage > 1
+                                ? () => setState(() => page--)
+                                : null,
+                            icon: const Icon(Icons.chevron_left),
+                          ),
+                          Text(
+                            'Halaman ${result.currentPage} dari ${result.lastPage}',
+                          ),
+                          IconButton(
+                            onPressed: result.currentPage < result.lastPage
+                                ? () => setState(() => page++)
+                                : null,
+                            icon: const Icon(Icons.chevron_right),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
-                const SizedBox(height: EmiSpacing.md),
-                _StudentCards(students: page.items, progress: progress),
-              ],
-            ),
+        ),
+      ],
     );
   }
 }
@@ -396,7 +469,9 @@ class _StudentList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final value = ref.watch(teacherClassStudentsProvider(id));
+    final value = ref.watch(
+      teacherClassStudentsProvider((classId: id, page: 1, search: '')),
+    );
     return value.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, _) => const Text('Siswa belum bisa dimuat.'),

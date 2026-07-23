@@ -201,19 +201,32 @@ class TeacherClassStudent {
 }
 
 class TeacherClassStudentPage {
-  const TeacherClassStudentPage({required this.items});
+  const TeacherClassStudentPage({
+    required this.items,
+    required this.currentPage,
+    required this.lastPage,
+    required this.total,
+  });
 
   final List<TeacherClassStudent> items;
+  final int currentPage;
+  final int lastPage;
+  final int total;
 
   factory TeacherClassStudentPage.fromJson(Map<String, dynamic>? json) {
     final rows = json?['data'];
+    final meta = _map(json?['meta']);
+    final items = rows is List
+        ? rows
+              .whereType<Map<String, dynamic>>()
+              .map(TeacherClassStudent.fromJson)
+              .toList()
+        : <TeacherClassStudent>[];
     return TeacherClassStudentPage(
-      items: rows is List
-          ? rows
-                .whereType<Map<String, dynamic>>()
-                .map(TeacherClassStudent.fromJson)
-                .toList()
-          : const [],
+      items: items,
+      currentPage: _int(meta['current_page'], fallback: 1),
+      lastPage: _int(meta['last_page'], fallback: 1),
+      total: _int(meta['total'], fallback: items.length),
     );
   }
 }
@@ -709,6 +722,17 @@ class TeacherRepository {
     (json) => TeacherLesson.fromJson(_data(json, 'Detail materi')),
   );
 
+  Future<TeacherLesson> createLesson(
+    String moduleId,
+    Map<String, dynamic> data,
+  ) => _request(
+    () => _dio.post<Map<String, dynamic>>(
+      '/class-modules/$moduleId/lessons',
+      data: data,
+    ),
+    (json) => TeacherLesson.fromJson(_data(json, 'Materi')),
+  );
+
   Future<TeacherLesson> updateLesson(String id, Map<String, dynamic> data) =>
       _request(
         () => _dio.put<Map<String, dynamic>>('/class-lessons/$id', data: data),
@@ -839,7 +863,7 @@ class TeacherRepository {
       '/classes/$id/students',
       queryParameters: {
         'page': page,
-        'per_page': 100,
+        'per_page': 20,
         'sort_by': 'full_name',
         'sort_direction': 'asc',
         if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
