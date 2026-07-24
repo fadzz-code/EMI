@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Teacher\ApproveRegistrationRequest;
 use App\Http\Requests\Teacher\ListRegistrationRequestsRequest;
@@ -9,7 +10,6 @@ use App\Models\RegistrationRequest;
 use App\Services\RegistrationApprovalService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
-use App\Helpers\ApiResponse;
 
 class TeacherRegistrationRequestController extends Controller
 {
