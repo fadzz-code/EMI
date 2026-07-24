@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
 import { ListChecks, Pencil, Plus, Archive } from "lucide-react";
 
 import { Alert, AudioPlayer, Badge, Button, Card, CardContent, EmptyState, ErrorState, FormField, Input, LoadingState, Modal, Select, Textarea } from "@/components/ui";
@@ -19,6 +19,7 @@ type FormState = {
   prompt_text: string;
   difficulty: string;
   status: "draft" | "published";
+  reference_audio_media_id: string;
 };
 
 const defaultForm: FormState = {
@@ -30,6 +31,7 @@ const defaultForm: FormState = {
   prompt_text: "",
   difficulty: "beginner",
   status: "draft",
+  reference_audio_media_id: "",
 };
 
 function statusTone(status?: string | null): "yellow" | "blue" | "orange" {
@@ -56,6 +58,7 @@ function toForm(exercise: TeacherSpeakingExercise, fallbackClassId: string): For
     prompt_text: exercise.prompt_text ?? "",
     difficulty: exercise.difficulty ?? "beginner",
     status: exercise.status === "published" ? "published" : "draft",
+    reference_audio_media_id: exercise.reference_audio_media_id ?? "",
   };
 }
 
@@ -67,6 +70,7 @@ function toPayload(form: FormState, includeTemplate = false): TeacherSpeakingExe
     target_text: form.target_text.trim(),
     target_translation: form.target_translation.trim() || null,
     prompt_text: form.prompt_text.trim() || null,
+    reference_audio_media_id: form.reference_audio_media_id || null,
     difficulty: form.difficulty || null,
     language_code: "mekongga",
     status: form.status,
@@ -82,9 +86,13 @@ export function TeacherSpeakingExercises() {
   const [statusFilter, setStatusFilter] = useState("");
   const [editingExercise, setEditingExercise] = useState<TeacherSpeakingExercise | null>(null);
   const [form, setForm] = useState<FormState>(defaultForm);
+  const [audioName, setAudioName] = useState("");
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [audioError, setAudioError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isTemplateLoading, setIsTemplateLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [templateError, setTemplateError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -173,12 +181,18 @@ export function TeacherSpeakingExercises() {
   function openCreate() {
     setEditingExercise(null);
     setForm({ ...defaultForm, classroom_id: selectedClassId || classes[0]?.id || "" });
+    setAudioName("");
+    setAudioFile(null);
+    setAudioError(null);
     setModalOpen(true);
   }
 
   function openEdit(exercise: TeacherSpeakingExercise) {
     setEditingExercise(exercise);
     setForm(toForm(exercise, selectedClassId || classes[0]?.id || ""));
+    setAudioName(exercise.reference_audio?.original_name ?? "");
+    setAudioFile(null);
+    setAudioError(null);
     setModalOpen(true);
   }
 
@@ -202,16 +216,39 @@ export function TeacherSpeakingExercises() {
     }));
   }
 
+  function chooseAudio(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    setAudioFile(file);
+    setAudioName(file?.name ?? editingExercise?.reference_audio?.original_name ?? "");
+    setAudioError(null);
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!token) return;
     setIsSubmitting(true);
+    setAudioError(null);
     try {
+      let payload = toPayload(form, true);
+      if (audioFile) {
+        setIsUploading(true);
+        try {
+          const media = await teacherService.uploadSpeakingReferenceAudio(token, audioFile);
+          payload = { ...payload, reference_audio_media_id: media.id };
+        } catch (err) {
+          setAudioError(getFirstApiError(err));
+          setError("Audio penutur asli gagal diunggah. Target belum disimpan.");
+          return;
+        } finally {
+          setIsUploading(false);
+        }
+      }
+
       if (editingExercise) {
-        await teacherService.updateSpeakingExercise(token, editingExercise.id, toPayload(form));
+        await teacherService.updateSpeakingExercise(token, editingExercise.id, payload);
         setMessage("Target speaking berhasil diperbarui.");
       } else {
-        await teacherService.createSpeakingExercise(token, toPayload(form, true));
+        await teacherService.createSpeakingExercise(token, payload);
         setMessage("Target speaking berhasil dibuat.");
       }
       setModalOpen(false);
@@ -372,12 +409,24 @@ export function TeacherSpeakingExercises() {
               ) : null}
             </section>
           ) : null}
-          {previewAudio ? (
+          {previewAudio && !audioFile ? (
             <section className="rounded-2xl border-2 border-border bg-surface-muted p-4">
               <p className="text-sm font-black text-ink">Suara Asli tersedia dari {selectedTemplate ? "template admin" : "target speaking ini"}.</p>
               {previewAudio.url ? <div className="mt-3"><AudioPlayer src={previewAudio.url} title="Suara Asli" /></div> : null}
             </section>
           ) : null}
+          <FormField label="Upload audio Suara Asli (opsional)">
+            <Input accept="audio/*" disabled={isUploading || isSubmitting} onChange={chooseAudio} type="file" />
+            <p className="mt-2 text-xs font-bold text-muted">Guru juga bisa mengunggah audio penutur sendiri sebagai contoh untuk siswa.</p>
+            {audioName ? (
+              <div className="mt-3 rounded-xl border-2 border-border bg-surface-muted p-3">
+                <p className="text-sm font-black text-ink">{audioName}</p>
+                <p className="mt-1 text-xs font-bold text-muted">Boleh unggah ulang untuk mengganti audio.</p>
+              </div>
+            ) : null}
+            {audioError ? <p className="mt-2 text-sm font-black text-danger">{audioError}</p> : null}
+            {isUploading ? <p className="mt-2 text-sm font-bold text-muted">Mengunggah audio...</p> : null}
+          </FormField>
           <FormField label="Judul latihan">
             <Input onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} required value={form.title} />
           </FormField>
@@ -406,7 +455,7 @@ export function TeacherSpeakingExercises() {
             </FormField>
           </div>
           <div className="sticky bottom-0 mt-2 bg-surface pt-2">
-            <Button className="w-full" disabled={isSubmitting} type="submit">{isSubmitting ? "Menyimpan..." : editingExercise ? "Simpan Perubahan" : "Buat Target"}</Button>
+            <Button className="w-full" disabled={isSubmitting || isUploading} type="submit">{isSubmitting ? "Menyimpan..." : editingExercise ? "Simpan Perubahan" : "Buat Target"}</Button>
           </div>
         </form>
       </Modal>
