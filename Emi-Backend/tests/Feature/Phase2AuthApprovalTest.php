@@ -12,7 +12,6 @@ use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Password;
 use Tests\TestCase;
 
 class Phase2AuthApprovalTest extends TestCase
@@ -304,40 +303,42 @@ class Phase2AuthApprovalTest extends TestCase
         ])->assertConflict()->assertJsonPath('code', 'LAST_ADMIN_ACCOUNT');
     }
 
-    public function test_forgot_password_uses_safe_response_and_sends_reset_notification(): void
+    public function test_forgot_password_for_admin_returns_guidance_message_without_sending_email(): void
     {
         Notification::fake();
-        $user = User::factory()->student()->approved()->create(['email' => 'reset@example.test']);
+        $admin = User::factory()->admin()->approved()->create(['email' => 'admin-reset@example.test']);
 
         $this->postJson('/api/v1/auth/forgot-password', [
-            'email' => 'reset@example.test',
-        ])->assertOk()->assertJsonPath('message', 'Jika email terdaftar, petunjuk akan dikirim.');
+            'email' => 'admin-reset@example.test',
+        ])->assertOk()->assertJsonPath(
+            'message',
+            'Reset password admin tidak dapat dilakukan lewat email. Minta admin lain untuk mereset password Anda dari menu Guru & Siswa, atau hubungi tim teknis untuk reset via server jika tidak ada admin lain yang bisa login.'
+        );
 
         $this->postJson('/api/v1/auth/forgot-password', [
             'email' => 'missing@example.test',
-        ])->assertOk()->assertJsonPath('message', 'Jika email terdaftar, petunjuk akan dikirim.');
+        ])->assertOk()->assertJsonPath('message', 'Jika email terdaftar, permintaan reset password akan diproses.');
 
-        Notification::assertSentTo($user, ResetPassword::class);
+        Notification::assertNotSentTo($admin, ResetPassword::class);
+        $this->assertDatabaseMissing('password_reset_requests', ['user_id' => $admin->id]);
     }
 
-    public function test_reset_password_changes_password_and_revokes_tokens(): void
+    public function test_forgot_password_for_student_or_teacher_creates_approval_request_instead_of_email(): void
     {
-        $user = User::factory()->student()->approved()->create([
-            'email' => 'reset@example.test',
-            'password' => 'Password123',
+        Notification::fake();
+        $student = User::factory()->student()->approved()->create(['email' => 'student-reset@example.test']);
+
+        $this->postJson('/api/v1/auth/forgot-password', [
+            'email' => 'student-reset@example.test',
+        ])->assertOk()->assertJsonPath('message', 'Jika email terdaftar, permintaan reset password akan diproses.');
+
+        $this->assertDatabaseHas('password_reset_requests', [
+            'user_id' => $student->id,
+            'requested_by' => $student->id,
+            'status' => 'pending',
         ]);
-        $token = Password::broker()->createToken($user);
-        $accessToken = $this->tokenFor($user);
 
-        $this->postJson('/api/v1/auth/reset-password', [
-            'email' => 'reset@example.test',
-            'token' => $token,
-            'password' => 'PasswordBaru123',
-            'password_confirmation' => 'PasswordBaru123',
-        ])->assertOk()->assertJsonPath('message', 'Kata sandi berhasil diubah.');
-
-        $this->assertTrue(Hash::check('PasswordBaru123', $user->refresh()->password));
-        $this->withToken($accessToken)->getJson('/api/v1/auth/me')->assertUnauthorized();
+        Notification::assertNotSentTo($student, ResetPassword::class);
     }
 
     public function test_logout_revokes_current_token(): void

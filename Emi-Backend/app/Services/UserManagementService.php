@@ -6,6 +6,7 @@ use App\Exceptions\ApiException;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class UserManagementService
 {
@@ -78,6 +79,23 @@ class UserManagementService
                 [],
                 $request,
             );
+
+            return $target;
+        });
+    }
+
+    public function forcePasswordReset(User $target, string $newPassword, User $admin, Request $request): User
+    {
+        return DB::transaction(function () use ($target, $newPassword, $admin, $request) {
+            $target = User::query()->whereKey($target->id)->lockForUpdate()->firstOrFail();
+
+            $target->forceFill([
+                'password' => Hash::make($newPassword),
+                'password_must_change' => true,
+            ])->save();
+            $target->tokens()->delete();
+
+            $this->auditLogService->record('user.password_force_reset', $target, $admin, [], ['reset_by' => $admin->id], [], $request);
 
             return $target;
         });

@@ -68,7 +68,10 @@ class AuthService
             ]);
         }
 
-        $user->forceFill(['password' => $data['password']])->save();
+        $user->forceFill([
+            'password' => $data['password'],
+            'password_must_change' => false,
+        ])->save();
 
         return $user->refresh();
     }

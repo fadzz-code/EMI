@@ -33,4 +33,9 @@ class UserPolicy
     {
         return $user->role === 'admin';
     }
+
+    public function forcePasswordReset(User $user, User $target): bool
+    {
+        return $user->role === 'admin';
+    }
 }

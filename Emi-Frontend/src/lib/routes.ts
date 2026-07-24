@@ -15,6 +15,7 @@ import {
   User,
   TrendingUp,
   CheckCircle,
+  KeyRound,
 } from "lucide-react";
 
 import type { UserRole } from "./roles";
@@ -40,6 +41,7 @@ export const publicRoutes = {
 export const teacherRoutes = {
   dashboard: "/teacher/dashboard",
   approvals: "/teacher/approvals",
+  passwordResets: "/teacher/password-resets",
   classes: "/teacher/classes",
   students: "/teacher/students",
   studentDetail: (studentId: string) => `/teacher/students/${studentId}`,
@@ -76,6 +78,7 @@ export const roleNavItems: Record<UserRole, NavItem[]> = {
     { label: "Budaya Mekongga", href: "/admin/culture/templates", status: "ready", icon: Globe },
     { label: "Progress", href: "/admin/progress", status: "ready", icon: TrendingUp },
     { label: "Pengaturan", href: "/admin/settings", status: "ready", icon: Settings },
+    { label: "Reset Password", href: "/admin/password-resets", status: "ready", icon: KeyRound },
   ],
   teacher: [
     { label: "Beranda", href: teacherRoutes.dashboard, shortLabel: "Beranda", status: "ready", icon: LayoutDashboard },
@@ -88,6 +91,7 @@ export const roleNavItems: Record<UserRole, NavItem[]> = {
     { label: "Budaya Mekongga", href: teacherRoutes.culture, status: "ready", icon: Globe },
     { label: "Target Speaking", href: teacherRoutes.speakingExercises, shortLabel: "Target", status: "ready", icon: ListChecks },
     { label: "Hasil Speaking", href: teacherRoutes.speakingResults, shortLabel: "Speaking", status: "ready", icon: Mic },
+    { label: "Reset Password", href: teacherRoutes.passwordResets, status: "ready", icon: KeyRound },
     { label: "Profil", href: teacherRoutes.profile, status: "ready", icon: User },
   ],
   student: [

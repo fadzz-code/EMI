@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\AdminDictionaryCategoryController;
 use App\Http\Controllers\Api\AdminDictionaryEntryController;
 use App\Http\Controllers\Api\AdminLessonTemplateController;
 use App\Http\Controllers\Api\AdminModuleTemplateController;
+use App\Http\Controllers\Api\AdminPasswordResetRequestController;
 use App\Http\Controllers\Api\AdminProgressReportController;
 use App\Http\Controllers\Api\AdminQuizResultReportController;
 use App\Http\Controllers\Api\AdminQuizTemplateController;
@@ -47,6 +48,7 @@ use App\Http\Controllers\Api\StudentQuizController;
 use App\Http\Controllers\Api\StudentQuizResultReportController;
 use App\Http\Controllers\Api\StudentSpeakingController;
 use App\Http\Controllers\Api\TeacherDashboardController;
+use App\Http\Controllers\Api\TeacherPasswordResetRequestController;
 use App\Http\Controllers\Api\TeacherProgressReportController;
 use App\Http\Controllers\Api\TeacherQuizResultReportController;
 use App\Http\Controllers\Api\TeacherRegistrationRequestController;
@@ -67,13 +69,13 @@ Route::prefix('v1')->group(function () {
         Route::post('register', [AuthController::class, 'register'])->middleware('throttle:emi-register');
         Route::post('login', [AuthController::class, 'login'])->middleware('throttle:emi-login');
         Route::post('forgot-password', [PasswordResetController::class, 'forgot'])->middleware('throttle:emi-login');
-        Route::post('reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:emi-login');
 
         Route::middleware('auth:sanctum')->group(function () {
             Route::post('logout', [AuthController::class, 'logout']);
             Route::get('me', [AuthController::class, 'me']);
             Route::patch('me', [AuthController::class, 'updateProfile']);
             Route::put('password', [AuthController::class, 'updatePassword']);
+            Route::post('password/request-reset-approval', [AuthController::class, 'requestPasswordResetApproval']);
             Route::delete('account', [AuthController::class, 'deleteAccount']);
             Route::post('me/avatar', [AvatarController::class, 'store']);
             Route::delete('me/avatar', [AvatarController::class, 'destroy']);
@@ -93,6 +95,11 @@ Route::prefix('v1')->group(function () {
         Route::get('registration-requests/{id}', [AdminRegistrationRequestController::class, 'show']);
         Route::post('registration-requests/{id}/approve', [AdminRegistrationRequestController::class, 'approve']);
         Route::post('registration-requests/{id}/reject', [AdminRegistrationRequestController::class, 'reject']);
+
+        Route::get('password-reset-requests', [AdminPasswordResetRequestController::class, 'index']);
+        Route::get('password-reset-requests/{id}', [AdminPasswordResetRequestController::class, 'show']);
+        Route::post('password-reset-requests/{id}/approve', [AdminPasswordResetRequestController::class, 'approve']);
+        Route::post('password-reset-requests/{id}/reject', [AdminPasswordResetRequestController::class, 'reject']);
 
         Route::get('speaking/exercises', [AdminSpeakingExerciseController::class, 'index']);
         Route::post('speaking/exercises', [AdminSpeakingExerciseController::class, 'store']);
@@ -201,11 +208,13 @@ Route::prefix('v1')->group(function () {
         Route::get('schools/{id}', [SchoolController::class, 'show']);
         Route::put('schools/{id}', [SchoolController::class, 'update']);
         Route::delete('schools/{id}', [SchoolController::class, 'destroy']);
+        Route::delete('schools/{id}/force', [SchoolController::class, 'forceDestroy']);
         Route::get('classes', [SchoolClassController::class, 'index']);
         Route::post('classes', [SchoolClassController::class, 'store']);
         Route::get('classes/{id}', [SchoolClassController::class, 'show']);
         Route::put('classes/{id}', [SchoolClassController::class, 'update']);
         Route::delete('classes/{id}', [SchoolClassController::class, 'destroy']);
+        Route::delete('classes/{id}/force', [SchoolClassController::class, 'forceDestroy']);
         Route::post('classes/{id}/assign-teacher', [ClassAssignmentController::class, 'assignTeacher']);
         Route::post('classes/{id}/assign-student', [ClassAssignmentController::class, 'assignStudent']);
         Route::get('classes/{id}/students', [SchoolClassController::class, 'students']);
@@ -213,6 +222,7 @@ Route::prefix('v1')->group(function () {
         Route::get('users/{id}', [UserController::class, 'show']);
         Route::put('users/{id}', [UserController::class, 'update']);
         Route::patch('users/{id}/status', [UserController::class, 'updateStatus']);
+        Route::post('users/{id}/force-password-reset', [UserController::class, 'forcePasswordReset']);
         Route::post('media', [MediaController::class, 'store']);
         Route::get('media/{id}', [MediaController::class, 'show']);
         Route::post('media/{id}/temporary-url', [MediaController::class, 'temporaryUrl']);
@@ -305,5 +315,10 @@ Route::prefix('v1')->group(function () {
         Route::get('registration-requests', [TeacherRegistrationRequestController::class, 'index']);
         Route::get('registration-requests/{id}', [TeacherRegistrationRequestController::class, 'show']);
         Route::post('registration-requests/{id}/approve', [TeacherRegistrationRequestController::class, 'approve']);
+
+        Route::get('password-reset-requests', [TeacherPasswordResetRequestController::class, 'index']);
+        Route::get('password-reset-requests/{id}', [TeacherPasswordResetRequestController::class, 'show']);
+        Route::post('password-reset-requests/{id}/approve', [TeacherPasswordResetRequestController::class, 'approve']);
+        Route::post('password-reset-requests/{id}/reject', [TeacherPasswordResetRequestController::class, 'reject']);
     });
 });

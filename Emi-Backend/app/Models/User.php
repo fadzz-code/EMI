@@ -28,6 +28,7 @@ class User extends Authenticatable
         'email',
         'email_verified_at',
         'password',
+        'password_must_change',
         'role',
         'status',
         'phone',
@@ -58,6 +59,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'password_must_change' => 'boolean',
             'approved_at' => 'datetime',
             'last_login_at' => 'datetime',
         ];
@@ -86,6 +88,11 @@ class User extends Authenticatable
     public function registrationRequest(): HasOne
     {
         return $this->hasOne(RegistrationRequest::class);
+    }
+
+    public function passwordResetRequests(): HasMany
+    {
+        return $this->hasMany(PasswordResetRequest::class);
     }
 
     public function teacherClassAssignments(): HasMany

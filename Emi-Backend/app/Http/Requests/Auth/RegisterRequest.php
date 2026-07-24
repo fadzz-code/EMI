@@ -3,12 +3,15 @@
 namespace App\Http\Requests\Auth;
 
 use App\Http\Requests\ApiFormRequest;
+use App\Http\Requests\Concerns\HasFriendlyPasswordMessages;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
 class RegisterRequest extends ApiFormRequest
 {
+    use HasFriendlyPasswordMessages;
+
     protected function prepareForValidation(): void
     {
         if ($this->filled('email')) {

@@ -1,20 +1,25 @@
 <?php
 
-namespace App\Http\Requests\Auth;
+namespace App\Http\Requests\PasswordReset;
 
 use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\HasFriendlyPasswordMessages;
 use Illuminate\Validation\Rules\Password;
 
-class UpdatePasswordRequest extends ApiFormRequest
+class ApprovePasswordResetRequest extends ApiFormRequest
 {
     use HasFriendlyPasswordMessages;
+
+    public function authorize(): bool
+    {
+        return true;
+    }
 
     public function rules(): array
     {
         return [
-            'current_password' => ['required', 'string'],
             'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
+            'review_note' => ['sometimes', 'nullable', 'string', 'max:1000'],
         ];
     }
 }
