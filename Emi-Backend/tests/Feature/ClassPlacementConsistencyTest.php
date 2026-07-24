@@ -19,12 +19,12 @@ class ClassPlacementConsistencyTest extends TestCase
     {
         $admin = User::factory()->admin()->create();
         Sanctum::actingAs($admin, ['*']);
-        
+
         $school = School::factory()->create();
         $class1 = SchoolClass::factory()->create(['school_id' => $school->id]);
         $teacher = User::factory()->teacher()->approved()->create();
         $student = User::factory()->student()->approved()->create();
-        
+
         TeacherClassAssignment::factory()->create(['teacher_id' => $teacher->id, 'class_id' => $class1->id, 'is_active' => true]);
         StudentClassMembership::factory()->create(['student_id' => $student->id, 'class_id' => $class1->id, 'is_active' => true]);
 
@@ -53,7 +53,7 @@ class ClassPlacementConsistencyTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.active_teacher_assignment', null)
             ->assertJsonPath('data.active_students_count', 0);
-        
+
         $this->getJson("/api/v1/classes/{$class1->id}/students")
             ->assertOk()
             ->assertJsonCount(0, 'data');
@@ -67,16 +67,19 @@ class ClassPlacementConsistencyTest extends TestCase
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.student.id', $student->id);
-            
-        // Test deactivate
+
+        // Test deactivate: releases active teacher/student instead of blocking
         $this->deleteJson("/api/v1/classes/{$class2->id}")
-            ->assertConflict()
-            ->assertJsonPath('code', 'CLASS_HAS_ACTIVE_TEACHER');
-            
+            ->assertOk()
+            ->assertJsonPath('data.status', 'inactive');
+
+        $this->assertDatabaseHas('teacher_class_assignments', ['teacher_id' => $teacher->id, 'class_id' => $class2->id, 'is_active' => false]);
+        $this->assertDatabaseHas('student_class_memberships', ['student_id' => $student->id, 'class_id' => $class2->id, 'is_active' => false]);
+
         $this->deleteJson("/api/v1/classes/{$class1->id}")
             ->assertOk()
             ->assertJsonPath('data.status', 'inactive');
-            
+
         $this->postJson("/api/v1/classes/{$class1->id}/assign-teacher", ['teacher_id' => $teacher->id])
             ->assertConflict();
     }

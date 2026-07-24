@@ -3,8 +3,17 @@
 namespace App\Services;
 
 use App\Exceptions\ApiException;
+use App\Models\ClassModule;
+use App\Models\ClassQuiz;
+use App\Models\LessonProgress;
+use App\Models\ModuleProgress;
+use App\Models\QuizAttempt;
+use App\Models\RegistrationRequest;
 use App\Models\School;
 use App\Models\SchoolClass;
+use App\Models\SpeakingExercise;
+use App\Models\StudentClassMembership;
+use App\Models\TeacherClassAssignment;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -54,8 +63,8 @@ class SchoolClassService
                     throw new ApiException('Kelas tidak dapat diaktifkan pada sekolah inactive.', 'SCHOOL_INACTIVE', 409);
                 }
 
-                if (($data['status'] ?? $schoolClass->status) === 'inactive') {
-                    $this->ensureNoActiveRelations($schoolClass);
+                if (($data['status'] ?? $schoolClass->status) === 'inactive' && $schoolClass->status !== 'inactive') {
+                    $this->releaseActiveRelations($schoolClass, $admin, $request);
                 }
 
                 $schoolClass->fill([
@@ -87,7 +96,7 @@ class SchoolClassService
                 return $schoolClass;
             }
 
-            $this->ensureNoActiveRelations($schoolClass);
+            $this->releaseActiveRelations($schoolClass, $admin, $request);
 
             $oldValues = $schoolClass->only(['status']);
             $schoolClass->forceFill(['status' => 'inactive'])->save();
@@ -98,14 +107,100 @@ class SchoolClassService
         });
     }
 
-    private function ensureNoActiveRelations(SchoolClass $schoolClass): void
+    private function releaseActiveRelations(SchoolClass $schoolClass, User $admin, Request $request): void
     {
-        if ($schoolClass->activeTeacherAssignment()->exists()) {
-            throw new ApiException('Kelas masih memiliki guru aktif.', 'CLASS_HAS_ACTIVE_TEACHER', 409);
+        $releasedTeachers = TeacherClassAssignment::query()
+            ->where('class_id', $schoolClass->id)
+            ->where('is_active', true)
+            ->pluck('id');
+
+        if ($releasedTeachers->isNotEmpty()) {
+            TeacherClassAssignment::query()
+                ->whereIn('id', $releasedTeachers)
+                ->update(['is_active' => false, 'ended_at' => now()]);
+
+            $this->auditLogService->record(
+                'class.teacher_released',
+                $schoolClass,
+                $admin,
+                null,
+                ['assignment_ids' => $releasedTeachers->all()],
+                [],
+                $request,
+            );
         }
 
-        if ($schoolClass->activeStudentMemberships()->exists()) {
-            throw new ApiException('Kelas masih memiliki siswa aktif.', 'CLASS_HAS_ACTIVE_STUDENTS', 409);
+        $releasedStudents = StudentClassMembership::query()
+            ->where('class_id', $schoolClass->id)
+            ->where('is_active', true)
+            ->pluck('id');
+
+        if ($releasedStudents->isNotEmpty()) {
+            StudentClassMembership::query()
+                ->whereIn('id', $releasedStudents)
+                ->update(['is_active' => false, 'ended_at' => now()]);
+
+            $this->auditLogService->record(
+                'class.students_released',
+                $schoolClass,
+                $admin,
+                null,
+                ['membership_ids' => $releasedStudents->all()],
+                [],
+                $request,
+            );
+        }
+    }
+
+    public function forceDelete(SchoolClass $schoolClass, User $admin, Request $request): void
+    {
+        DB::transaction(function () use ($schoolClass, $admin, $request) {
+            $schoolClass = SchoolClass::query()->whereKey($schoolClass->id)->lockForUpdate()->firstOrFail();
+            $oldValues = $schoolClass->only(['id', 'school_id', 'name', 'grade_level', 'academic_year', 'status']);
+
+            $this->purgeSpeakingData($schoolClass->id);
+            $this->purgeLearningData($schoolClass->id);
+
+            TeacherClassAssignment::query()->where('class_id', $schoolClass->id)->delete();
+            StudentClassMembership::query()->where('class_id', $schoolClass->id)->delete();
+            RegistrationRequest::query()->where('class_id', $schoolClass->id)->delete();
+
+            $this->auditLogService->record('class.deleted', $schoolClass, $admin, $oldValues, null, [], $request);
+
+            $schoolClass->delete();
+        });
+    }
+
+    private function purgeSpeakingData(string $classId): void
+    {
+        // speaking_attempts.speaking_exercise_id has an onDelete('cascade') DB
+        // constraint, so a hard delete of the exercise also removes its attempts.
+        SpeakingExercise::withTrashed()
+            ->where('classroom_id', $classId)
+            ->get()
+            ->each(fn (SpeakingExercise $exercise) => $exercise->forceDelete());
+    }
+
+    private function purgeLearningData(string $classId): void
+    {
+        $quizIds = ClassQuiz::withTrashed()->where('class_id', $classId)->pluck('id');
+
+        if ($quizIds->isNotEmpty()) {
+            QuizAttempt::query()->whereIn('class_quiz_id', $quizIds)->delete();
+            ClassQuiz::withTrashed()->whereIn('id', $quizIds)->forceDelete();
+        }
+
+        $moduleIds = ClassModule::withTrashed()->where('class_id', $classId)->pluck('id');
+
+        if ($moduleIds->isNotEmpty()) {
+            $lessonIds = DB::table('class_lessons')->whereIn('class_module_id', $moduleIds)->pluck('id');
+
+            if ($lessonIds->isNotEmpty()) {
+                LessonProgress::query()->whereIn('class_lesson_id', $lessonIds)->delete();
+            }
+
+            ModuleProgress::query()->whereIn('class_module_id', $moduleIds)->delete();
+            ClassModule::withTrashed()->whereIn('id', $moduleIds)->forceDelete();
         }
     }
 }

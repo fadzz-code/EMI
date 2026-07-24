@@ -35,4 +35,9 @@ class SchoolPolicy
     {
         return $user->role === 'admin';
     }
+
+    public function forceDelete(User $user, School $school): bool
+    {
+        return $user->role === 'admin';
+    }
 }

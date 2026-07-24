@@ -81,4 +81,14 @@ class SchoolController extends Controller
 
         return ApiResponse::success('Sekolah berhasil dinonaktifkan.', new SchoolResource($school));
     }
+
+    public function forceDestroy(Request $request, string $id): JsonResponse
+    {
+        $school = School::query()->findOrFail($id);
+        Gate::authorize('forceDelete', $school);
+
+        $this->schoolService->forceDelete($school, $request->user(), $request);
+
+        return ApiResponse::success('Sekolah berhasil dihapus permanen.');
+    }
 }

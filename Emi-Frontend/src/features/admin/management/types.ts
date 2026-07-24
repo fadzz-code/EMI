@@ -73,6 +73,7 @@ export type ManagedUser = {
   } | null;
   role: UserRole;
   status: UserStatus | string;
+  password_must_change?: boolean;
   active_school?: Pick<School, "id" | "name" | "status"> | null;
   active_class?: Pick<SchoolClass, "id" | "name" | "grade_level" | "academic_year" | "status"> | null;
   active_assignment?: TeacherAssignment | null;

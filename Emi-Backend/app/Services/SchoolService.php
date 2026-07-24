@@ -2,15 +2,18 @@
 
 namespace App\Services;
 
-use App\Exceptions\ApiException;
 use App\Models\School;
+use App\Models\SchoolClass;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class SchoolService
 {
-    public function __construct(private readonly AuditLogService $auditLogService) {}
+    public function __construct(
+        private readonly AuditLogService $auditLogService,
+        private readonly SchoolClassService $schoolClassService,
+    ) {}
 
     public function create(array $data, User $admin, Request $request): School
     {
@@ -35,8 +38,8 @@ class SchoolService
             $school = School::query()->whereKey($school->id)->lockForUpdate()->firstOrFail();
             $oldValues = $school->only(['name', 'address', 'phone', 'status']);
 
-            if (($data['status'] ?? $school->status) === 'inactive') {
-                $this->ensureNoActiveClasses($school);
+            if (($data['status'] ?? $school->status) === 'inactive' && $school->status !== 'inactive') {
+                $this->deactivateAllClasses($school, $admin, $request);
             }
 
             $school->fill([
@@ -65,7 +68,7 @@ class SchoolService
                 return $school;
             }
 
-            $this->ensureNoActiveClasses($school);
+            $this->deactivateAllClasses($school, $admin, $request);
 
             $oldValues = $school->only(['status']);
             $school->forceFill(['status' => 'inactive'])->save();
@@ -76,10 +79,35 @@ class SchoolService
         });
     }
 
-    private function ensureNoActiveClasses(School $school): void
+    private function deactivateAllClasses(School $school, User $admin, Request $request): void
     {
-        if ($school->classes()->where('status', 'active')->exists()) {
-            throw new ApiException('Sekolah masih memiliki kelas aktif. Nonaktifkan atau selesaikan kelas aktif terlebih dahulu.', 'SCHOOL_HAS_ACTIVE_CLASSES', 409);
+        $classIds = SchoolClass::query()
+            ->where('school_id', $school->id)
+            ->where('status', 'active')
+            ->pluck('id');
+
+        foreach ($classIds as $classId) {
+            $schoolClass = SchoolClass::query()->whereKey($classId)->lockForUpdate()->firstOrFail();
+            $this->schoolClassService->deactivate($schoolClass, $admin, $request);
         }
+    }
+
+    public function forceDelete(School $school, User $admin, Request $request): void
+    {
+        DB::transaction(function () use ($school, $admin, $request) {
+            $school = School::query()->whereKey($school->id)->lockForUpdate()->firstOrFail();
+            $oldValues = $school->only(['id', 'name', 'address', 'phone', 'status']);
+
+            $classIds = SchoolClass::query()->where('school_id', $school->id)->pluck('id');
+
+            foreach ($classIds as $classId) {
+                $schoolClass = SchoolClass::query()->whereKey($classId)->lockForUpdate()->firstOrFail();
+                $this->schoolClassService->forceDelete($schoolClass, $admin, $request);
+            }
+
+            $this->auditLogService->record('school.deleted', $school, $admin, $oldValues, null, [], $request);
+
+            $school->delete();
+        });
     }
 }
