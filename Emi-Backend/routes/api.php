@@ -48,6 +48,7 @@ use App\Http\Controllers\Api\StudentSpeakingController;
 use App\Http\Controllers\Api\TeacherDashboardController;
 use App\Http\Controllers\Api\TeacherProgressReportController;
 use App\Http\Controllers\Api\TeacherQuizResultReportController;
+use App\Http\Controllers\Api\TeacherRegistrationRequestController;
 use App\Http\Controllers\Api\TeacherSpeakingController;
 use App\Http\Controllers\Api\TeacherSpeakingExerciseController;
 use App\Http\Controllers\Api\UserController;
@@ -285,5 +286,8 @@ Route::prefix('v1')->group(function () {
         Route::patch('speaking/attempts/{attempt}/feedback', [TeacherSpeakingController::class, 'feedback']);
         Route::get('reports/progress/students/export', [ReportExportController::class, 'teacherStudents']);
         Route::get('reports/quiz-results/export', [ReportExportController::class, 'teacherQuizResults']);
+        Route::get('registration-requests', [TeacherRegistrationRequestController::class, 'index']);
+        Route::get('registration-requests/{id}', [TeacherRegistrationRequestController::class, 'show']);
+        Route::post('registration-requests/{id}/approve', [TeacherRegistrationRequestController::class, 'approve']);
     });
 });
