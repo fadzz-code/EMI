@@ -4,6 +4,7 @@ export * from "./badge";
 export * from "./button";
 export * from "./card";
 export * from "./confirm-dialog";
+export * from "./dropdown-menu";
 export * from "./file-preview";
 export * from "./filter-panel";
 export * from "./form-field";
