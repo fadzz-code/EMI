@@ -2,7 +2,7 @@ import type { HTMLAttributes } from "react";
 
 import { cn } from "@/lib/utils";
 
-type BadgeTone = "blue" | "yellow" | "orange" | "green" | "danger" | "neutral";
+export type BadgeTone = "blue" | "yellow" | "orange" | "green" | "danger" | "neutral";
 
 const tones: Record<BadgeTone, string> = {
   blue: "border-info-foreground bg-blue-100 text-info-foreground",

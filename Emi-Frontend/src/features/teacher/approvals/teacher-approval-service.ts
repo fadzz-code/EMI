@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiClient } from "@/lib/api-client";
-import { type RegistrationRequest } from "@/features/admin/approvals/types";
+import {
+  type RegistrationRequest,
+  type RegistrationRequestStatus,
+} from "@/features/admin/approvals/types";
 
 interface TeacherRegistrationRequestsResponse {
   data: RegistrationRequest[];
@@ -11,17 +14,26 @@ interface TeacherRegistrationRequestsResponse {
   per_page: number;
 }
 
-export const getTeacherRegistrationRequests = async (params?: {
-  status?: string;
+interface TeacherRegistrationRequestsParams {
+  status?: RegistrationRequestStatus;
   search?: string;
   page?: number;
   per_page?: number;
-}) => {
-  const token = ""; // apiClient handles token automatically if using the wrapper correctly, but if it expects token in options:
-  // Using query instead of params based on approvalService example
+}
+
+export const getTeacherRegistrationRequests = async (
+  params?: TeacherRegistrationRequestsParams
+) => {
   const response = await apiClient.get<TeacherRegistrationRequestsResponse>(
     "/teacher/registration-requests",
-    { query: params as any }
+    {
+      query: {
+        status: params?.status,
+        search: params?.search,
+        page: params?.page,
+        per_page: params?.per_page,
+      },
+    }
   );
   return response.data;
 };
@@ -37,12 +49,7 @@ export const approveTeacherRegistrationRequest = async (data: {
   return response.data;
 };
 
-export const useTeacherApprovals = (params?: {
-  status?: string;
-  search?: string;
-  page?: number;
-  per_page?: number;
-}) => {
+export const useTeacherApprovals = (params?: TeacherRegistrationRequestsParams) => {
   return useQuery({
     queryKey: ["teacher", "registration-requests", params],
     queryFn: () => getTeacherRegistrationRequests(params),

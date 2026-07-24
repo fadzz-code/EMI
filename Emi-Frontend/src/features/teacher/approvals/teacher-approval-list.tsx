@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Check, Search, ShieldCheck } from "lucide-react";
+import { Check, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -25,16 +25,17 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/states";
+import { getFirstApiError } from "@/lib/api-client";
 
 import {
   useApproveTeacherRequest,
   useTeacherApprovals,
 } from "./teacher-approval-service";
-import { type RegistrationRequest } from "@/features/admin/approvals/types";
+import { type RegistrationRequest, type RegistrationRequestStatus } from "@/features/admin/approvals/types";
 
 export function TeacherApprovalList() {
   const [page, setPage] = useState(1);
-  const [status, setStatus] = useState<string>("pending");
+  const [status, setStatus] = useState<RegistrationRequestStatus>("pending");
 
   const [search, setSearch] = useState("");
   const { data, isLoading, isError } = useTeacherApprovals({
@@ -57,10 +58,8 @@ export function TeacherApprovalList() {
           setSelectedRequest(null);
           setReviewNote("");
         },
-        onError: (error: any) => {
-          toast.error(
-            error.response?.data?.message || "Gagal menyetujui pendaftaran"
-          );
+        onError: (error: unknown) => {
+          toast.error(getFirstApiError(error));
         },
       }
     );
@@ -83,7 +82,7 @@ export function TeacherApprovalList() {
                 placeholder="Cari nama atau email..."
                 className="pl-8"
                 value={search}
-                onChange={(e: any) => {
+                onChange={(e: ChangeEvent<HTMLInputElement>) => {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
@@ -92,8 +91,8 @@ export function TeacherApprovalList() {
             <div className="w-full sm:w-48">
               <Select
                 value={status}
-                onChange={(e: any) => {
-                  setStatus(e.target.value);
+                onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+                  setStatus(e.target.value as RegistrationRequestStatus);
                   setPage(1);
                 }}
               >
@@ -141,14 +140,14 @@ export function TeacherApprovalList() {
                   </tr>
                 ) : data.data.map(req => (
                   <tr key={req.id}>
-                    <TableCell className="font-medium">{(req.user as any)?.name}</TableCell>
+                    <TableCell className="font-medium">{req.user?.full_name}</TableCell>
                     <TableCell>{req.user?.email}</TableCell>
                     <TableCell>{req.school_class?.name}</TableCell>
                     <TableCell>{req.created_at ? format(new Date(req.created_at), "dd MMM yyyy", { locale: id }) : "-"}</TableCell>
                     <TableCell>
                       <Badge
                         tone={
-                          (req.status === "approved" ? "success" : req.status === "rejected" ? "destructive" : "neutral") as any
+                          req.status === "approved" ? "blue" : req.status === "rejected" ? "orange" : "neutral"
                         }
                       >
                         {req.status === "approved" ? "Disetujui" : req.status === "rejected" ? "Ditolak" : "Menunggu"}
@@ -194,7 +193,7 @@ export function TeacherApprovalList() {
           <div className="text-sm text-muted-foreground mb-4">
             Apakah Anda yakin ingin menyetujui siswa{" "}
             <span className="font-semibold text-foreground">
-              {(selectedRequest?.user as any)?.name}
+              {selectedRequest?.user?.full_name}
             </span>
             ? Siswa akan otomatis dimasukkan ke kelas Anda.
           </div>
@@ -204,7 +203,7 @@ export function TeacherApprovalList() {
               id="note"
               placeholder="Tambahkan pesan sambutan atau catatan..."
               value={reviewNote}
-              onChange={(e: any) => setReviewNote(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setReviewNote(e.target.value)}
             />
           </div>
           <div className="flex justify-end gap-2 mt-4">
