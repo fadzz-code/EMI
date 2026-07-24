@@ -48,6 +48,7 @@ class _HeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return EmiCard(
+      elevated: true,
       padding: const EdgeInsets.all(EmiSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

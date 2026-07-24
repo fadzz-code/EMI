@@ -44,6 +44,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(EmiSpacing.lg),
           child: EmiCard(
+            elevated: true,
             padding: const EdgeInsets.all(EmiSpacing.lg),
             child: Form(
               key: _formKey,

@@ -45,6 +45,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 child: Center(
                   child: EmiCard(
+                    elevated: true,
                     padding: const EdgeInsets.all(EmiSpacing.lg),
                     child: Form(
                       key: _formKey,

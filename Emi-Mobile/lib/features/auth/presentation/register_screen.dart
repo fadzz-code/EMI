@@ -56,6 +56,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(EmiSpacing.lg),
             child: EmiCard(
+              elevated: true,
               child: Form(
                 key: _formKey,
                 child: Column(
