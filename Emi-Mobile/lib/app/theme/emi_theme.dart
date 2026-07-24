@@ -88,8 +88,8 @@ class EmiTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: EmiColors.surface,
-        border: _inputBorder(),
-        enabledBorder: _inputBorder(),
+        border: _inputBorder(color: EmiColors.divider),
+        enabledBorder: _inputBorder(color: EmiColors.divider),
         focusedBorder: _inputBorder(color: EmiColors.primary),
         errorBorder: _inputBorder(color: EmiColors.error),
         focusedErrorBorder: _inputBorder(color: EmiColors.error),
