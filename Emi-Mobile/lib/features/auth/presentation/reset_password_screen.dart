@@ -54,7 +54,6 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                   const AuthBrandMark(icon: Icons.key_outlined),
                   const SizedBox(height: EmiSpacing.xl),
                   EmiCard(
-                    hero: true,
                     padding: const EdgeInsets.all(EmiSpacing.lg),
                     child: Form(
                       key: _formKey,

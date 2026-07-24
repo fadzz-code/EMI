@@ -48,7 +48,6 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   const AuthBrandMark(icon: Icons.lock_reset_outlined),
                   const SizedBox(height: EmiSpacing.xl),
                   EmiCard(
-                    hero: true,
                     padding: const EdgeInsets.all(EmiSpacing.lg),
                     child: Form(
                       key: _formKey,

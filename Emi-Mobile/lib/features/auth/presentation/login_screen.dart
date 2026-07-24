@@ -54,7 +54,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         const AuthBrandMark(),
                         const SizedBox(height: EmiSpacing.xl),
                         EmiCard(
-                          hero: true,
                           padding: const EdgeInsets.all(EmiSpacing.lg),
                           child: Form(
                             key: _formKey,

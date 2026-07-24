@@ -66,7 +66,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   const AuthBrandMark(icon: Icons.person_add_alt_outlined),
                   const SizedBox(height: EmiSpacing.xl),
                   EmiCard(
-                    hero: true,
                     padding: const EdgeInsets.all(EmiSpacing.lg),
                     child: Form(
                       key: _formKey,
