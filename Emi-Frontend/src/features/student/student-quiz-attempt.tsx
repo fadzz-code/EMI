@@ -3,12 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ClipboardCheck } from "lucide-react";
 
-import { Alert, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState } from "@/components/ui";
+import { Alert, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
+import { AnswerSaveQueue, createAttemptFinalizer, type QueuedAnswer } from "./student-quiz-attempt-flow";
 import { studentQuizService } from "./student-quiz-service";
+
+function millisecondsUntil(value: string) {
+  return new Date(value).getTime() - Date.now();
+}
 
 export function StudentQuizAttempt({ quizId }: { quizId: string }) {
   const { token } = useAuth();
@@ -21,9 +27,13 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [shortAnswers, setShortAnswers] = useState<Record<string, string>>({});
-  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
-  const activeInputRef = useRef<HTMLInputElement | null>(null);
-  const allowLeaveRef = useRef(false);
+  const [finalizeError, setFinalizeError] = useState<unknown>();
+  const [isFinalizing, setIsFinalizing] = useState(false);
+  const shortAnswerRef = useRef("");
+  const dirtyQuestionIdRef = useRef<string | undefined>(undefined);
+  const finalizingRef = useRef(false);
+  const saveQueueRef = useRef(new AnswerSaveQueue());
+  const finalizerRef = useRef<ReturnType<typeof createAttemptFinalizer> | undefined>(undefined);
 
   const quizQuery = useQuery({
     queryKey: ["student", "quizzes", quizId],
@@ -51,38 +61,9 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
   const submitMutation = useMutation({
     mutationFn: () => studentQuizService.submitAttempt(token ?? "", attemptId ?? "", idempotencyKey),
     onSuccess: (attempt) => {
-      allowLeaveRef.current = true;
       router.replace(`/student/quizzes/${quizId}/result?attemptId=${attempt.id}`);
     },
   });
-
-  useEffect(() => {
-    const expiresAt = attemptQuery.data?.expires_at;
-    if (!expiresAt || attemptQuery.data?.status !== "in_progress") return;
-    const update = () => setRemainingSeconds(Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1000)));
-    update();
-    const interval = window.setInterval(update, 1000);
-    return () => window.clearInterval(interval);
-  }, [attemptQuery.data?.expires_at, attemptQuery.data?.status]);
-
-  useEffect(() => {
-    if (attemptQuery.data?.status !== "in_progress") return;
-    const warn = (event: BeforeUnloadEvent) => {
-      if (allowLeaveRef.current) return;
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [attemptQuery.data?.status]);
-
-  useEffect(() => {
-    if (remainingSeconds === 0 && !submitMutation.isPending) submitMutation.mutate();
-  }, [remainingSeconds, submitMutation]);
-
-  if (!attemptId) {
-    return <ErrorState description="ID Attempt tidak ditemukan di URL." title="Data tidak lengkap" />;
-  }
 
   const isLoading = quizQuery.isLoading || attemptQuery.isLoading;
   const isError = quizQuery.isError || attemptQuery.isError;
@@ -96,16 +77,52 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
   const selectedOptionId = currentQuestion ? selectedOptions[currentQuestion.id] ?? existingAnswer?.selected_option_id : undefined;
   const shortAnswer = currentQuestion ? shortAnswers[currentQuestion.id] ?? existingAnswer?.answer_text ?? "" : "";
 
-  function handleOptionSelect(optionId: string) {
-    if (!currentQuestion || attempt?.status !== "in_progress") return;
-    setSelectedOptions((current) => ({ ...current, [currentQuestion.id]: optionId }));
-    saveAnswerMutation.mutate({ questionId: currentQuestion.id, optionId });
+  async function saveAnswer(answer: QueuedAnswer) {
+    await saveAnswerMutation.mutateAsync(answer);
+    if (answer.answerText !== undefined && dirtyQuestionIdRef.current === answer.questionId && shortAnswerRef.current === answer.answerText) dirtyQuestionIdRef.current = undefined;
   }
 
-  function handleShortAnswerBlur(text: string) {
-    if (!currentQuestion || attempt?.status !== "in_progress") return;
-    setShortAnswers((current) => ({ ...current, [currentQuestion.id]: text }));
-    saveAnswerMutation.mutate({ questionId: currentQuestion.id, answerText: text });
+  function queueAnswer(answer: QueuedAnswer) {
+    return saveQueueRef.current.enqueue(answer, saveAnswer);
+  }
+
+  function handleOptionSelect(optionId: string) {
+    if (!currentQuestion || attempt?.status !== "in_progress" || finalizingRef.current) return;
+    setSelectedOptions((current) => ({ ...current, [currentQuestion.id]: optionId }));
+    void queueAnswer({ questionId: currentQuestion.id, optionId }).catch(() => undefined);
+  }
+
+  function handleShortAnswerBlur() {
+    const questionId = dirtyQuestionIdRef.current;
+    if (!questionId || finalizingRef.current) return;
+    void queueAnswer({ questionId, answerText: shortAnswerRef.current }).catch(() => undefined);
+  }
+
+  async function finalize() {
+    if (finalizingRef.current || attempt?.status !== "in_progress") return;
+    finalizingRef.current = true;
+    setIsFinalizing(true);
+    setFinalizeError(undefined);
+    try {
+      const questionId = dirtyQuestionIdRef.current;
+      finalizerRef.current ??= createAttemptFinalizer(saveQueueRef.current, () => submitMutation.mutateAsync());
+      await finalizerRef.current(questionId ? { questionId, answerText: shortAnswerRef.current } : undefined, saveAnswer);
+    } catch (error) {
+      setFinalizeError(error);
+      finalizingRef.current = false;
+      setIsFinalizing(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!attempt?.expires_at || attempt.status !== "in_progress") return;
+    const delay = millisecondsUntil(attempt.expires_at);
+    const timer = window.setTimeout(() => void finalize(), Math.max(0, delay));
+    return () => window.clearTimeout(timer);
+  });
+
+  if (!attemptId) {
+    return <ErrorState description="ID Attempt tidak ditemukan di URL." title="Data tidak lengkap" />;
   }
 
   function handleNext() {
@@ -120,18 +137,8 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
     }
   }
 
-  async function leaveAttempt() {
-    if (!window.confirm("Jawaban aktif akan disimpan. Yakin ingin meninggalkan kuis? Waktu tetap berjalan.")) return;
-    if (currentQuestion?.question_type !== "multiple_choice") {
-      const text = activeInputRef.current?.value ?? shortAnswer;
-      await studentQuizService.saveAnswer(token ?? "", attemptId ?? "", currentQuestion.id, { answer_text: text });
-    }
-    allowLeaveRef.current = true;
-    router.push(`/student/quizzes/${quizId}`);
-  }
-
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       {isLoading ? <LoadingState title="Memuat soal kuis" /> : null}
       {isError ? <ErrorState description={getFirstApiError(error)} onRetry={() => { quizQuery.refetch(); attemptQuery.refetch(); }} title="Gagal memuat soal" /> : null}
 
@@ -145,37 +152,38 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
 
       {!isLoading && !isError && quiz && attempt?.status === "in_progress" && currentQuestion ? (
         <>
-          <header className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border-2 border-ink bg-white p-5 shadow-brutal">
-            <div>
-              <h1 className="text-xl font-black text-ink">{quiz.title}</h1>
-              <p className="text-sm text-slate-600">Soal {currentQuestionIndex + 1} dari {questions.length}</p>
-              <p className="mt-1 font-black text-red-700">Sisa waktu: {remainingSeconds === null ? "-" : `${Math.floor(remainingSeconds / 60)}:${String(remainingSeconds % 60).padStart(2, "0")}`}</p>
+          <header className="flex flex-col gap-4 rounded-3xl border-2 border-border bg-surface p-5 shadow-emi sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div className="flex items-center gap-4">
+              <div className="inline-flex size-12 shrink-0 items-center justify-center rounded-xl border-2 border-border bg-surface-muted text-primary">
+                <ClipboardCheck className="size-6" strokeWidth={2.5} />
+              </div>
+              <div>
+                <h1 className="text-xl font-black text-ink">{quiz.title}</h1>
+                <p className="text-sm font-semibold text-muted">Soal {currentQuestionIndex + 1} dari {questions.length}</p>
+              </div>
             </div>
-            {submitMutation.error ? <Alert tone="error">{getFirstApiError(submitMutation.error)}</Alert> : null}
-            <Button onClick={() => void leaveAttempt()} type="button" variant="secondary">Keluar Kuis</Button>
+            {finalizeError ? <Alert tone="error">Jawaban belum berhasil disimpan. Coba kumpulkan kembali.</Alert> : null}
             <Button
-              className="bg-green-600 hover:bg-green-700"
-              disabled={submitMutation.isPending}
+              className="w-full sm:w-auto"
+              disabled={saveAnswerMutation.isPending || submitMutation.isPending || isFinalizing}
               onClick={() => {
-                if (window.confirm("Apakah Anda yakin ingin mengumpulkan kuis ini sekarang?")) {
-                  submitMutation.mutate();
-                }
+                if (window.confirm("Apakah Anda yakin ingin mengumpulkan kuis ini sekarang?")) void finalize();
               }}
             >
               Kumpulkan Kuis
             </Button>
           </header>
 
-          <Card>
+          <Card className="border-2 border-border bg-surface shadow-emi">
             <CardHeader>
               <h2 className="text-lg font-black text-ink">{currentQuestion.question_text}</h2>
               {currentQuestion.image_media?.url ? (
-                <img alt="Soal" className="mt-4 max-h-64 rounded-xl border-2 border-ink object-cover" src={currentQuestion.image_media.url} />
+                <img alt="Soal" className="mt-4 max-h-64 rounded-xl border-2 border-border object-cover" src={currentQuestion.image_media.url} />
               ) : null}
             </CardHeader>
             <CardContent>
               {saveAnswerMutation.isError ? <Alert className="mb-4" tone="error">{getFirstApiError(saveAnswerMutation.error)}</Alert> : null}
-              {saveAnswerMutation.isPending ? <p className="mb-4 text-sm font-bold text-yellow-600">Menyimpan jawaban...</p> : null}
+              {saveAnswerMutation.isPending ? <p className="mb-4 text-sm font-bold text-muted">Menyimpan jawaban...</p> : null}
               
               {currentQuestion.question_type === "multiple_choice" ? (
                 <div className="grid gap-3">
@@ -184,8 +192,9 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
                     return (
                       <button
                         className={`flex min-h-12 w-full items-center rounded-xl border-2 px-4 py-2 text-left font-bold transition-colors ${
-                          isSelected ? "border-blue-600 bg-blue-50 text-blue-900 shadow-[4px_4px_0_#2563eb]" : "border-ink bg-white text-ink hover:bg-slate-50"
+                          isSelected ? "border-primary bg-[var(--color-primary-muted)] text-ink shadow-emi" : "border-border bg-surface text-ink hover:bg-surface-muted"
                         }`}
+                        disabled={saveAnswerMutation.isPending || submitMutation.isPending || isFinalizing}
                         key={option.id}
                         onClick={() => handleOptionSelect(option.id)}
                         type="button"
@@ -198,11 +207,15 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
               ) : (
                 <div className="grid gap-2">
                   <label className="text-sm font-bold text-ink">Jawaban Singkat</label>
-                  <input
-                    className="min-h-11 w-full rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 py-2 text-sm text-ink outline-none focus:ring-4 focus:ring-accent/40"
+                  <Input
                     defaultValue={shortAnswer}
-                    ref={activeInputRef}
-                    onBlur={(e) => handleShortAnswerBlur(e.target.value)}
+                    disabled={saveAnswerMutation.isPending || submitMutation.isPending || isFinalizing}
+                    onBlur={handleShortAnswerBlur}
+                    onChange={(event) => {
+                      shortAnswerRef.current = event.target.value;
+                      dirtyQuestionIdRef.current = currentQuestion.id;
+                      setShortAnswers((current) => ({ ...current, [currentQuestion.id]: event.target.value }));
+                    }}
                     placeholder="Ketik jawaban Anda lalu klik di luar kotak untuk menyimpan"
                   />
                 </div>
@@ -210,7 +223,7 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
             </CardContent>
           </Card>
 
-          <div className="flex justify-between">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Button disabled={currentQuestionIndex === 0} onClick={handlePrev} variant="secondary">
               Soal Sebelumnya
             </Button>

@@ -34,30 +34,6 @@ export const knowledgeBaseService = {
     return paginated(response.data, response.meta);
   },
 
-  async detail(token: string, itemId: string) {
-    const response = await apiClient.get<AiKnowledgeItem>(`/admin/ai/knowledge/${itemId}`, { token });
-
-    if (!response.data) {
-      throw new Error("Detail Basis AI tidak tersedia.");
-    }
-
-    return response.data;
-  },
-
-  async retryProcessing(token: string, itemId: string) {
-    const response = await apiClient.post<AiKnowledgeItem>(
-      `/admin/ai/knowledge/${itemId}/retry-processing`,
-      undefined,
-      { token },
-    );
-
-    if (!response.data) {
-      throw new Error("Response proses ulang Basis AI tidak tersedia.");
-    }
-
-    return response.data;
-  },
-
   async create(token: string, payload: AiKnowledgePayload) {
     const response = await apiClient.post<AiKnowledgeItem>("/admin/ai/knowledge", payload, { token });
 

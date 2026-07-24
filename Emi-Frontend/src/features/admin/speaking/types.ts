@@ -28,6 +28,36 @@ export type AdminSpeakingExercisePayload = {
   reference_audio_media_id?: string | null;
 };
 
+export type SpeakingReportFilters = {
+  school_id?: string;
+  class_id?: string;
+  analysis_status?: string;
+  review_status?: string;
+  page?: number;
+  per_page?: number;
+};
+
+export type SpeakingStudentReportRow = {
+  student_id: string;
+  full_name: string;
+  attempt_count: number;
+  analyzed_attempts: number;
+  reviewed_attempts: number;
+  average_ai_score: number | null;
+  average_teacher_score: number | null;
+};
+
+export type SpeakingClassReportRow = {
+  class_id: string;
+  class_name: string;
+  school_id: string;
+  school_name: string;
+  attempt_count: number;
+  participating_students: number;
+  average_ai_score: number | null;
+  average_teacher_score: number | null;
+};
+
 export type PaginatedResult<T> = {
   items: T[];
   meta?: ApiPaginationMeta;

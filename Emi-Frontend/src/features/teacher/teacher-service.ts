@@ -1,5 +1,6 @@
 import { apiClient } from "@/lib/api-client";
 
+import { teacherProgressRequestQuery } from "./teacher-workflow";
 import type {
   PaginatedResult,
   TeacherClass,
@@ -10,8 +11,12 @@ import type {
   TeacherCulturePayload,
   TeacherClassStudent,
   TeacherDashboardSummary,
+  TeacherProgressClassSummary,
   TeacherProgressStudentRow,
   TeacherMediaFile,
+  TeacherLessonPayload,
+  TeacherMediaPurpose,
+  TeacherMediaVisibility,
   TeacherQuizAttempt,
   TeacherQuizQuestion,
   TeacherQuizReport,
@@ -43,13 +48,11 @@ export const teacherService = {
     return response.data;
   },
 
-  async classes(token: string, options: { page?: number; perPage?: number; search?: string } = {}) {
+  async classes(token: string) {
     const response = await apiClient.get<TeacherClass[]>("/classes", {
       token,
       query: {
-        page: options.page ?? 1,
-        per_page: options.perPage ?? 10,
-        search: options.search || undefined,
+        per_page: 10,
         sort_by: "name",
         sort_direction: "asc",
       },
@@ -68,13 +71,13 @@ export const teacherService = {
     return response.data;
   },
 
-  async classStudents(token: string, classId: string, options: { page?: number; perPage?: number; search?: string } = {}) {
+  async classStudents(token: string, classId: string, query: { page?: number; per_page?: number; search?: string } = {}) {
     const response = await apiClient.get<TeacherClassStudent[]>(`/classes/${classId}/students`, {
       token,
       query: {
-        page: options.page ?? 1,
-        per_page: options.perPage ?? 10,
-        search: options.search || undefined,
+        page: query.page,
+        per_page: query.per_page ?? 12,
+        search: query.search,
         sort_by: "full_name",
         sort_direction: "asc",
       },
@@ -136,7 +139,7 @@ export const teacherService = {
     return response.data;
   },
 
-  async updateClassLesson(token: string, lessonId: string, payload: Partial<TeacherClassLesson>) {
+  async updateClassLesson(token: string, lessonId: string, payload: TeacherLessonPayload) {
     const response = await apiClient.put<TeacherClassLesson>(`/class-lessons/${lessonId}`, payload, { token });
 
     if (!response.data) {
@@ -156,13 +159,12 @@ export const teacherService = {
     return response.data;
   },
 
-  async classQuizzes(token: string, classId: string, options: { page?: number; perPage?: number } = {}) {
+  async classQuizzes(token: string, classId: string) {
     const response = await apiClient.get<TeacherClassQuiz[]>("/class-quizzes", {
       token,
       query: {
         class_id: classId,
-        page: options.page ?? 1,
-        per_page: options.perPage ?? 10,
+        per_page: 100,
       },
     });
 
@@ -210,14 +212,11 @@ export const teacherService = {
     return this.uploadMedia(token, file, "culture_media", "public");
   },
 
-  async quizzes(token: string, options: { page?: number; perPage?: number; search?: string; status?: string } = {}) {
+  async quizzes(token: string) {
     const response = await apiClient.get<TeacherClassQuiz[]>("/class-quizzes", {
       token,
       query: {
-        page: options.page ?? 1,
-        per_page: options.perPage ?? 10,
-        search: options.search || undefined,
-        status: options.status || undefined,
+        per_page: 100,
         sort_by: "created_at",
         sort_direction: "desc",
       },
@@ -256,14 +255,8 @@ export const teacherService = {
     return response.data;
   },
 
-  async publishQuiz(token: string, quizId: string) {
-    const response = await apiClient.post<TeacherClassQuiz>(`/class-quizzes/${quizId}/publish`, {}, { token });
-
-    if (!response.data) {
-      throw new Error("Gagal mempublikasikan kuis.");
-    }
-
-    return response.data;
+  async deleteQuiz(token: string, quizId: string) {
+    await apiClient.delete(`/class-quizzes/${quizId}`, { token });
   },
 
   async archiveQuiz(token: string, quizId: string) {
@@ -272,8 +265,14 @@ export const teacherService = {
     return response.data;
   },
 
-  async deleteQuiz(token: string, quizId: string) {
-    await apiClient.delete(`/class-quizzes/${quizId}`, { token });
+  async publishQuiz(token: string, quizId: string) {
+    const response = await apiClient.post<TeacherClassQuiz>(`/class-quizzes/${quizId}/publish`, {}, { token });
+
+    if (!response.data) {
+      throw new Error("Gagal mempublikasikan kuis.");
+    }
+
+    return response.data;
   },
 
   async createQuizQuestion(token: string, quizId: string, payload: Partial<TeacherQuizQuestion>) {
@@ -333,40 +332,25 @@ export const teacherService = {
     return response.data;
   },
 
-  async studentProgress(token: string, options: { classId: string; page?: number; perPage?: number; search?: string; learningStatus?: string; quizStatus?: string }) {
+  async classProgress(token: string, classId: string) {
+    const response = await apiClient.get<{ class: { id: string; name: string }; summary: TeacherProgressClassSummary }>(
+      "/teacher/reports/progress/class",
+      { token, query: { class_id: classId } },
+    );
+    if (!response.data) throw new Error("Ringkasan progress kelas tidak tersedia.");
+    return response.data;
+  },
+
+  async studentProgress(token: string, query: { class_id: string; page?: number; per_page?: number; search?: string } ) {
     const response = await apiClient.get<TeacherProgressStudentRow[]>(
       "/teacher/reports/progress/students",
       {
         token,
-        query: {
-          class_id: options.classId,
-          page: options.page ?? 1,
-          per_page: options.perPage ?? 25,
-          search: options.search || undefined,
-          learning_status: options.learningStatus || undefined,
-          quiz_status: options.quizStatus || undefined,
-          sort_by: "full_name",
-          sort_direction: "asc",
-        },
+        query: teacherProgressRequestQuery(query),
       },
     );
 
     return paginated(response.data, response.meta);
-  },
-
-  async allStudentProgress(token: string, classId: string, filters: { search?: string; learningStatus?: string; quizStatus?: string } = {}) {
-    const firstPage = await this.studentProgress(token, { classId, page: 1, perPage: 25, ...filters });
-    const lastPage = firstPage.meta?.last_page ?? 1;
-
-    if (lastPage <= 1) return firstPage.items;
-
-    const remainingPages = await Promise.all(
-      Array.from({ length: lastPage - 1 }, (_, index) =>
-        this.studentProgress(token, { classId, page: index + 2, perPage: 25, ...filters }),
-      ),
-    );
-
-    return [firstPage, ...remainingPages].flatMap((result) => result.items);
   },
 
   async studentDetail(token: string, studentId: string, classId: string) {
@@ -390,7 +374,7 @@ export const teacherService = {
     return student;
   },
 
-  async uploadMedia(token: string, file: File, purpose: string, visibility: "public" | "private" = "private") {
+  async uploadMedia(token: string, file: File, purpose: TeacherMediaPurpose, visibility: TeacherMediaVisibility = "private") {
     const formData = new FormData();
     formData.append("file", file, file.name);
     formData.append("purpose", purpose);
@@ -469,10 +453,6 @@ export const teacherService = {
     const response = await apiClient.patch<TeacherSpeakingExercise>(`/teacher/speaking/exercises/${exerciseId}`, payload, { token });
     if (!response.data) throw new Error("Target speaking tidak tersedia.");
     return response.data;
-  },
-
-  async deleteSpeakingExercise(token: string, exerciseId: string) {
-    await apiClient.delete(`/teacher/speaking/exercises/${exerciseId}`, { token });
   },
 
   async archiveSpeakingExercise(token: string, exerciseId: string) {

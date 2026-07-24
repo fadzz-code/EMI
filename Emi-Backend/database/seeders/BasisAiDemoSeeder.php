@@ -18,7 +18,7 @@ class BasisAiDemoSeeder extends Seeder
             $knowledge = AiKnowledgeItem::withTrashed()->where('title', $item['title'])->first();
 
             if (! $knowledge) {
-                $knowledge = new AiKnowledgeItem();
+                $knowledge = new AiKnowledgeItem;
                 $knowledge->id = (string) Str::uuid();
                 $knowledge->title = $item['title'];
                 $knowledge->created_by = $adminId;

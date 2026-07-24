@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Bot, CheckCircle2, MessageSquareText, Mic } from "lucide-react";
 
-import { Alert, Badge, Button, Card, CardContent, EmptyState } from "@/components/ui";
+import { Alert, Badge, Card, CardContent, EmptyState } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
+import { latestSpeakingAttempt } from "./speaking-result";
 import { studentService } from "./student-service";
 import type { SpeakingAttempt } from "./types";
 
@@ -45,19 +46,6 @@ export function StudentSpeakingResults() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  async function loadAttempts() {
-    if (!token) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      setAttempts(await studentService.speakingAttempts(token));
-    } catch (err) {
-      setError(getFirstApiError(err));
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
   useEffect(() => {
     if (!token) return;
     let ignore = false;
@@ -71,10 +59,10 @@ export function StudentSpeakingResults() {
   }, [token]);
 
   const reviewedCount = attempts.filter((attempt) => attempt.status === "reviewed").length;
-  const latest = attempts[0];
+  const latest = latestSpeakingAttempt(attempts);
 
   return (
-    <div className="mx-auto grid max-w-5xl gap-6 pb-24 lg:pb-0">
+    <div className="mx-auto grid max-w-5xl gap-8 pb-24 lg:pb-0">
       <section className="flex flex-col gap-2">
         <p className="text-sm font-black uppercase tracking-[0.08em] text-muted">Hasil Speaking</p>
         <h1 className="text-3xl font-black leading-tight text-ink md:text-4xl">Lihat hasil latihanmu</h1>
@@ -110,8 +98,8 @@ export function StudentSpeakingResults() {
 
               <div className="grid gap-4">
                 <div className="rounded-[var(--radius-card)] border-2 border-transparent bg-surface p-4">
-                  <div className="mb-3 flex items-center gap-2">
-                    <Bot className="size-5 text-primary" strokeWidth={3} />
+                  <div className="mb-3 flex items-center gap-3">
+                    <span className="inline-flex size-10 items-center justify-center rounded-xl border-2 border-border bg-surface-muted text-primary"><Bot className="size-5" strokeWidth={3} /></span>
                     <h2 className="font-black text-ink">Analisis AI</h2>
                   </div>
                   <p className="text-sm leading-6 text-muted"><span className="font-black text-ink">Skor awal AI:</span> {score(latest.ai_score)}</p>
@@ -120,15 +108,15 @@ export function StudentSpeakingResults() {
                 </div>
 
                 <div className="rounded-[var(--radius-card)] border-2 border-border bg-surface p-4 shadow-[2px_2px_0_var(--border)]">
-                  <div className="mb-3 flex items-center gap-2">
-                    <CheckCircle2 className="size-5 text-primary" strokeWidth={3} />
+                  <div className="mb-3 flex items-center gap-3">
+                    <span className="inline-flex size-10 items-center justify-center rounded-xl border-2 border-border bg-surface-muted text-primary"><CheckCircle2 className="size-5" strokeWidth={3} /></span>
                     <h2 className="font-black text-ink">Tinjauan Guru</h2>
                   </div>
                   <p className="text-sm leading-6 text-muted"><span className="font-black text-ink">Skor guru:</span> {score(latest.teacher_score)}</p>
                   {latest.teacher_feedback ? (
                     <p className="mt-2 text-sm leading-6 text-muted"><span className="font-black text-ink">Feedback:</span> {latest.teacher_feedback}</p>
                   ) : (
-                    <p className="mt-2 rounded-xl bg-yellow-50 p-3 text-sm font-bold leading-6 text-muted">Menunggu tinjauan guru.</p>
+                    <p className="mt-2 rounded-xl bg-surface-muted p-3 text-sm font-bold leading-6 text-muted">Menunggu tinjauan guru.</p>
                   )}
                 </div>
               </div>
@@ -153,10 +141,7 @@ export function StudentSpeakingResults() {
                 <h2 className="text-xl font-black text-ink">Riwayat percobaan</h2>
                 <p className="mt-1 text-sm font-semibold text-muted">Semua skor awal AI dan tinjauan guru.</p>
               </div>
-               <div className="flex flex-wrap gap-2">
-                 <Button disabled={isLoading} onClick={() => void loadAttempts()} type="button" variant="secondary">Refresh hasil</Button>
-                 <Link className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-border bg-surface px-4 py-2 text-sm font-black text-ink shadow-[2px_2px_0_var(--border)] hover:bg-accent/30" href="/student/speaking">Latihan lagi</Link>
-               </div>
+              <Link className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-border bg-surface px-4 py-2 text-sm font-black text-ink shadow-[2px_2px_0_var(--border)] hover:bg-accent/30" href="/student/speaking">Latihan lagi</Link>
             </div>
             <div className="grid gap-3">
               {attempts.map((attempt) => (

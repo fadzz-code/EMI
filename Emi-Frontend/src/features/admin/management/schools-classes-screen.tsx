@@ -3,6 +3,7 @@
 import { type FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { School as SchoolIcon, UsersRound } from "lucide-react";
 
 import {
   Alert,
@@ -110,6 +111,7 @@ function classPayload(form: ClassFormState): ClassPayload {
 
 export function SchoolsClassesScreen() {
   const { token } = useAuth();
+  const [activeTable, setActiveTable] = useState<"schools" | "classes">("schools");
   const queryClient = useQueryClient();
   const [schoolPage, setSchoolPage] = useState(1);
   const [classPage, setClassPage] = useState(1);
@@ -294,53 +296,64 @@ export function SchoolsClassesScreen() {
     <div className="grid gap-6">
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <Badge tone="yellow">Admin</Badge>
+          <Badge tone="blue">Admin</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">Sekolah & Kelas</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
             Kelola data master sekolah, kelas, guru pengampu, dan status aktif untuk
             kebutuhan registrasi serta pembelajaran.
           </p>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Button onClick={openCreateSchool} variant="secondary">
-            Tambah Sekolah
-          </Button>
-          <Button onClick={openCreateClass}>Tambah Kelas</Button>
-        </div>
+        <Button onClick={activeTable === "schools" ? openCreateSchool : openCreateClass}>
+          {activeTable === "schools" ? "Tambah Sekolah" : "Tambah Kelas"}
+        </Button>
       </header>
 
       {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
       {actionError ? <Alert tone="error">{getFirstApiError(actionError)}</Alert> : null}
 
-      <FilterPanel className="md:grid-cols-4">
-        <label className="grid gap-2 text-sm font-bold text-ink">
-          <span>Cari sekolah</span>
-          <Input
-            onChange={(event) => setSchoolSearchInput(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                setSchoolPage(1);
-                setSchoolSearch(schoolSearchInput.trim());
-              }
-            }}
-            placeholder="Nama sekolah"
-            value={schoolSearchInput}
-          />
-        </label>
-        <label className="grid gap-2 text-sm font-bold text-ink">
-          <span>Cari kelas</span>
-          <Input
-            onChange={(event) => setClassSearchInput(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                setClassPage(1);
-                setClassSearch(classSearchInput.trim());
-              }
-            }}
-            placeholder="Nama kelas"
-            value={classSearchInput}
-          />
-        </label>
+      <div className="grid grid-cols-2 gap-2 rounded-xl border-2 border-ink bg-white p-2 sm:w-fit">
+        <Button onClick={() => setActiveTable("schools")} variant={activeTable === "schools" ? "primary" : "ghost"}>
+          <SchoolIcon className="size-5" strokeWidth={2.5} />
+          Sekolah
+        </Button>
+        <Button onClick={() => setActiveTable("classes")} variant={activeTable === "classes" ? "primary" : "ghost"}>
+          <UsersRound className="size-5" strokeWidth={2.5} />
+          Kelas
+        </Button>
+      </div>
+
+      <FilterPanel className="md:grid-cols-3">
+        {activeTable === "schools" ? (
+          <label className="grid gap-2 text-sm font-bold text-ink">
+            <span>Cari sekolah</span>
+            <Input
+              onChange={(event) => setSchoolSearchInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  setSchoolPage(1);
+                  setSchoolSearch(schoolSearchInput.trim());
+                }
+              }}
+              placeholder="Nama sekolah"
+              value={schoolSearchInput}
+            />
+          </label>
+        ) : (
+          <label className="grid gap-2 text-sm font-bold text-ink">
+            <span>Cari kelas</span>
+            <Input
+              onChange={(event) => setClassSearchInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  setClassPage(1);
+                  setClassSearch(classSearchInput.trim());
+                }
+              }}
+              placeholder="Nama kelas"
+              value={classSearchInput}
+            />
+          </label>
+        )}
         <label className="grid gap-2 text-sm font-bold text-ink">
           <span>Status</span>
           <Select
@@ -372,13 +385,13 @@ export function SchoolsClassesScreen() {
         </div>
       </FilterPanel>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <Card>
+<div className="grid gap-8">
+        {activeTable === "schools" ? <Card>
           <CardHeader>
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-xl font-black text-ink">Daftar Sekolah</h2>
-                <p className="mt-1 text-sm text-slate-600">
+                <p className="mt-1 text-sm text-muted">
                   Data sekolah dipakai saat pendaftaran akun dan pengelompokan kelas.
                 </p>
               </div>
@@ -416,7 +429,7 @@ export function SchoolsClassesScreen() {
                         <tr key={school.id}>
                           <TableCell>
                             <p className="font-black text-ink">{school.name}</p>
-                            <p className="mt-1 text-xs text-slate-600">{school.address ?? "-"}</p>
+                            <p className="mt-1 text-xs text-muted">{school.address ?? "-"}</p>
                           </TableCell>
                           <TableCell>{school.phone ?? "-"}</TableCell>
                           <TableCell>
@@ -431,6 +444,7 @@ export function SchoolsClassesScreen() {
                                 onClick={() => {
                                   setClassSchoolFilter(school.id);
                                   setClassPage(1);
+                                  setActiveTable("classes");
                                 }}
                                 variant="ghost"
                               >
@@ -468,14 +482,14 @@ export function SchoolsClassesScreen() {
               )
             ) : null}
           </CardContent>
-        </Card>
+        </Card> : null}
 
-        <Card>
+        {activeTable === "classes" ? <Card>
           <CardHeader>
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-xl font-black text-ink">Daftar Kelas</h2>
-                <p className="mt-1 text-sm text-slate-600">
+                <p className="mt-1 text-sm text-muted">
                   Pilih sekolah untuk melihat kelas terkait dan mengelola relasi gurunya.
                 </p>
               </div>
@@ -532,7 +546,7 @@ export function SchoolsClassesScreen() {
                         <tr key={schoolClass.id}>
                           <TableCell>
                             <p className="font-black text-ink">{schoolClass.name}</p>
-                            <p className="mt-1 text-xs text-slate-600">
+                            <p className="mt-1 text-xs text-muted">
                               {schoolClass.grade_level ?? "-"} | {schoolClass.academic_year}
                             </p>
                           </TableCell>
@@ -548,7 +562,7 @@ export function SchoolsClassesScreen() {
                           <TableCell>
                             <div className="flex flex-wrap gap-2">
                               <Link
-                                className="inline-flex min-h-9 items-center rounded-lg border-2 border-ink bg-white px-3 py-1 text-xs font-black text-ink hover:bg-yellow-100"
+                                className="inline-flex min-h-9 items-center rounded-lg border-2 border-border bg-surface px-3 py-1 text-xs font-black text-ink transition-colors hover:bg-primary hover:text-primary-foreground"
                                 href={`/admin/classes/${schoolClass.id}`}
                               >
                                 Detail
@@ -585,7 +599,7 @@ export function SchoolsClassesScreen() {
               )
             ) : null}
           </CardContent>
-        </Card>
+        </Card> : null}
       </div>
 
       <Modal

@@ -37,7 +37,7 @@ const quickActions = [
     href: "/admin/approvals",
     label: "Persetujuan Akun",
     icon: UserCheck,
-    tone: "primary",
+    tone: "surface",
     description: "Tinjau pendaftaran guru dan siswa.",
   },
   {
@@ -107,7 +107,7 @@ function DashboardStat({
       className={cn(
         "rounded-[var(--radius-card)] border-2 border-border bg-surface p-4 shadow-emi flex flex-col justify-between",
         tone === "warning" && "bg-danger-muted text-danger border-danger/20",
-        tone === "success" && "bg-green-50 border-green-200",
+        tone === "success" && "border-success/30 bg-success/10",
       )}
     >
       <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">{label}</p>
@@ -126,20 +126,16 @@ function QuickActionCard({
   return (
     <Link
       className={cn(
-        "group flex min-h-32 flex-col justify-between rounded-[var(--radius-card)] border-2 border-border p-4 transition-all hover:-translate-y-1 hover:shadow-emi",
-        action.tone === "primary" && "bg-primary text-primary-foreground",
+        "group flex h-full min-h-32 flex-col justify-between rounded-2xl border-2 border-border bg-surface p-5 text-ink transition hover:-translate-y-1 hover:shadow-emi",
         action.tone === "surface" && "bg-surface text-ink",
-        action.tone === "dark" && "bg-ink text-paper",
       )}
       href={action.href}
     >
       <span
         aria-hidden="true"
         className={cn(
-          "flex size-11 items-center justify-center rounded-full border-2 border-transparent transition-colors",
-          action.tone === "primary" && "bg-primary-foreground/20 text-primary-foreground",
-          action.tone === "surface" && "bg-accent/50 text-accent-foreground group-hover:bg-accent",
-          action.tone === "dark" && "bg-paper/20 text-paper",
+          "flex size-12 items-center justify-center rounded-xl border-2 border-border bg-surface-muted text-ink transition-colors group-hover:bg-primary group-hover:text-primary-foreground",
+          action.tone === "surface" && "bg-surface-muted text-ink",
         )}
       >
         <Icon className="size-5" strokeWidth={2.5} />
@@ -147,11 +143,7 @@ function QuickActionCard({
       <span className="mt-4">
         <span className="block text-sm font-black">{action.label}</span>
         <span
-          className={cn(
-            "mt-1 block text-xs font-semibold leading-5",
-            action.tone === "dark" ? "text-paper/80" : "text-muted",
-            action.tone === "primary" && "text-primary-foreground/80",
-          )}
+          className="mt-1 block text-xs font-semibold leading-5 text-muted"
         >
           {action.description}
         </span>
@@ -178,7 +170,7 @@ function OperationalSignal({
       className={cn(
         "group rounded-[var(--radius-control)] border-2 p-4 transition-colors",
         tone === "warning" ? "border-danger/20 bg-danger-muted" : 
-        tone === "success" ? "border-green-200 bg-green-50" : 
+        tone === "success" ? "border-success/30 bg-success/10" :
         "border-transparent bg-surface-muted",
         href && "hover:border-border hover:shadow-[2px_2px_0px_0px_var(--border)]"
       )}
@@ -186,7 +178,7 @@ function OperationalSignal({
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           {tone === "warning" && <AlertCircle className="size-5 shrink-0 text-danger mt-0.5" />}
-          {tone === "success" && <CheckCircle2 className="size-5 shrink-0 text-green-600 mt-0.5" />}
+          {tone === "success" && <CheckCircle2 className="size-5 shrink-0 text-success-foreground mt-0.5" />}
           {tone === "neutral" && <Activity className="size-5 shrink-0 text-muted mt-0.5" />}
           <div>
             <p className="text-sm font-black text-ink">{label}</p>
@@ -196,7 +188,7 @@ function OperationalSignal({
         <span className={cn(
           "shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider",
           tone === "warning" ? "border-danger/30 bg-danger/10 text-danger" : 
-          tone === "success" ? "border-green-300 bg-green-100 text-green-800" : 
+          tone === "success" ? "border-success/40 bg-success/20 text-success-foreground" :
           "border-border bg-surface text-ink"
         )}>
           {status}
@@ -227,7 +219,7 @@ export function AdminDashboard() {
   const summary = summaryQuery.data;
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       <section className="flex flex-col gap-2">
         <p className="text-sm font-black uppercase tracking-[0.08em] text-muted">
           Beranda Admin

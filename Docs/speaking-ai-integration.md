@@ -1,23 +1,25 @@
 # Speaking AI Integration
 
-This is AI-assisted initial scoring. Teacher review remains available. The current AI engine is not a final authoritative Mekongga phonetic assessment.
+Batch 1 provides AI-assisted initial scoring. Teacher review remains available and authoritative; current Indonesian STT model is not a final Mekongga phonetic assessment.
 
-## Architecture
+## Actual End-to-End Flow
 
 ```text
-Web/Mobile
-→ Laravel API
-→ Laravel stores speaking attempt + private audio media
-→ Laravel queue job calls Python AI service
-→ Python returns transcription/score/alignment
-→ Laravel stores AI result
-→ Student sees result/status
-→ Teacher reviews original audio and gives manual feedback/score
+Browser/mobile/ESP32 capture
+→ client uploads multipart audio to authenticated Laravel student API
+→ Laravel validates exercise, ownership, capture source, format, size, and supplied duration
+→ Laravel stores attempt metadata and private audio media
+→ AnalyzeSpeakingAttemptJob reads private audio server-side
+→ Laravel sends target text + audio to internal FastAPI with bearer token
+→ FastAPI validates, normalizes audio with FFmpeg, transcribes, and scores
+→ Laravel stores result and completed/failed status
+→ student reads status/result through Laravel
+→ teacher plays authorized private audio and submits manual score/feedback through Laravel
 ```
 
-Web/mobile must call Laravel only. The Python service is an internal analysis engine.
+Browser, mobile, and ESP32 integrations call Laravel only. They never call FastAPI directly and never contain FastAPI URL, service token, or fixed credential. ESP32 is a capture source transported through web serial or mobile Bluetooth, not a direct FastAPI client.
 
-## Laravel Endpoints
+## Laravel API
 
 Student:
 
@@ -28,6 +30,13 @@ GET /api/v1/student/speaking/attempts
 GET /api/v1/student/speaking/attempts/{attempt}
 POST /api/v1/student/speaking/exercises/{exercise}/attempts
 ```
+
+Attempt submission uses multipart field `file`; optional `audio_duration_seconds` accepts integer `1`–`SPEAKING_MAX_DURATION_SECONDS` (default `30`). Optional `capture_source` accepts:
+
+- `web_microphone` (default)
+- `web_esp32_serial`
+- `mobile_microphone`
+- `mobile_esp32_bluetooth`
 
 Teacher:
 
@@ -43,9 +52,9 @@ GET /api/v1/teacher/speaking/attempts/{attempt}
 PATCH /api/v1/teacher/speaking/attempts/{attempt}/feedback
 ```
 
-Teacher-created speaking exercises are class-scoped. The teacher must be actively assigned to the selected class, `created_by_id` is set server-side, and archive changes status to `archived` instead of deleting the row. Teachers can list published admin/global templates with `GET /api/v1/teacher/speaking/templates` and can pass `template_exercise_id` when creating a class exercise. The backend copies template fields and `reference_audio_media_id`, while allowing overrides for `title`, `target_text`, `target_translation`, `prompt_text`, `difficulty`, and `status`. Teachers cannot upload or directly set reference audio; it is only copied from the selected published global template. The teacher web UI exposes target management at `/teacher/speaking/exercises`; its create form can select a published admin template, auto-fill editable fields, keep class selection scoped to assigned classes, and preview "Suara Asli" when the selected template has public reference audio. Students still see published global exercises plus published exercises for their assigned class, including copied reference audio when present.
+Teacher-created exercises are class-scoped and require an active class assignment. `created_by_id` is server-set; archive changes status instead of deleting. A teacher may copy a published global admin template and its public reference audio, then override editable text fields. Teachers cannot directly set or upload reference audio.
 
-Admin-created speaking exercises are global (template). Admin can optionally include a `reference_audio_media_id` referencing a `media_files` upload with `purpose=speaking_reference_audio` and `visibility=public`. Reference audio accepts common browser-playable audio types such as MP3, WAV, M4A/MP4 audio, OGG, and WebM audio. The admin web UI at `/admin/speaking/exercises` can list, create, edit, archive via Hapus, and replace reference audio for global templates. If audio upload fails, template save is stopped and the error is shown inside the modal. If available, the `reference_audio` metadata includes a stable public `url` in the student and teacher endpoints; the student web practice UI shows it as "Suara Asli" before recording, with a friendly no-audio fallback when no reference audio exists.
+Admin global templates may reference public `media_files` with purpose `speaking_reference_audio`. Student and teacher responses include stable public reference-audio metadata when present.
 
 Teacher feedback payload:
 
@@ -56,23 +65,69 @@ Teacher feedback payload:
 }
 ```
 
-## Python Service Endpoints
+## Accepted Audio and Storage
+
+Laravel accepts MIME types `audio/webm`, `video/webm`, `audio/wav`, `audio/x-wav`, `audio/mpeg`, `audio/mp4`, `audio/m4a`, and `audio/ogg`. `application/octet-stream` is accepted only with safe extension `webm`, `wav`, `mp3`, `m4a`, `mp4`, `mpeg`, `mpga`, `ogg`, or `oga`.
+
+Laravel upload size defaults to `5 MB` through `SPEAKING_MAX_AUDIO_MB`. Supplied duration metadata is optional and, when present, defaults to maximum `30` seconds. FastAPI independently limits uploaded bytes to `5 MB` by default and validates normalized audio duration from `0.1` through `60` seconds by default.
+
+Attempt audio uses existing media storage with purpose `speaking_recording` and private visibility. Binary audio is not stored in DB. Attempt records keep media ID, disk/path, MIME, size, duration metadata, capture source, and review/AI fields. API responses expose authorized `/api/v1/media/{id}` references, not raw storage paths.
+
+No `/audio-list` endpoint exists. No `MediaFile::created` converter was found; Batch 1 rejects unsupported uploads instead of relying on a post-create converter.
+
+## Laravel to FastAPI Contract
+
+FastAPI endpoints:
 
 ```text
 GET /health
+GET /health/live
 POST /predict
 ```
 
-`POST /predict` uses multipart form fields:
+Health endpoints are unauthenticated liveness checks. `POST /predict` requires `Authorization: Bearer <SPEAKING_AI_SERVICE_TOKEN>` and multipart fields `target_text` and `file`. Laravel reads token from server environment `SPEAKING_AI_SERVICE_TOKEN`; blank token configuration does not authorize requests.
 
-- `target_text`
-- `file`
+Laravel client defaults:
 
-Stable success includes `engine`, `model`, `target`, `transcription`, `score`, `alignment`, and `warnings`.
+```env
+SPEAKING_AI_ENABLED=false
+SPEAKING_AI_BASE_URL=http://127.0.0.1:8001
+SPEAKING_AI_SERVICE_TOKEN=
+SPEAKING_AI_CONNECT_TIMEOUT_SECONDS=5
+SPEAKING_AI_TIMEOUT_SECONDS=60
+SPEAKING_MAX_AUDIO_MB=5
+SPEAKING_MAX_DURATION_SECONDS=30
+```
 
-Safe browser uploads include `audio/webm`, `video/webm`, WebM/Opus content type parameters, WAV, MP3, MP4/M4A, OGG, and `application/octet-stream` only with a safe audio extension.
+Connect timeout defaults to 5 seconds; whole request timeout defaults to 60 seconds. Laravel retries twice after initial failure, waiting 100 ms each time, only for connection failures or HTTP 5xx responses. It does not retry validation/authentication 4xx responses.
 
-Stable error:
+`AnalyzeSpeakingAttemptJob` leaves status `pending` when AI is disabled. When enabled it sets `processing`, stores validated success as `completed`, and stores stable public `Analisis speaking AI gagal.` with status `failed` on failure. Sync queue can complete submission inline in local/test environments.
+
+## FastAPI Processing and Scoring
+
+Run FastAPI on an internal interface, for example loopback:
+
+```cmd
+python -m uvicorn main:app --host 127.0.0.1 --port 8001
+```
+
+Every accepted format, including WAV, passes through FFmpeg. FFmpeg selects first audio stream and creates temporary mono, 16 kHz, signed 16-bit PCM WAV before transcription. Output structure and normalized duration are validated; temporary input/output files are removed after processing.
+
+FastAPI defaults:
+
+```env
+SPEAKING_AI_SERVICE_TOKEN=
+SPEAKING_AI_MODEL=indonesian-nlp/wav2vec2-large-xlsr-indonesian
+SPEAKING_AI_MAX_FILE_SIZE_MB=5
+SPEAKING_AI_MIN_DURATION_SECONDS=0.1
+SPEAKING_AI_MAX_DURATION_SECONDS=60
+SPEAKING_AI_FFMPEG_TIMEOUT_SECONDS=30
+SPEAKING_AI_FFMPEG_PATH=ffmpeg
+```
+
+Success includes `engine`, `model`, `target`, `transcription`, `score`, `alignment`, `warnings`, and `scoring_version`. Scoring version `word-levenshtein-v1` normalizes text into lowercase Unicode words, computes word-level Levenshtein insertions/deletions/substitutions, and returns a 0–100 score plus alignment operations. Every result warns: `Model is Indonesian STT; Mekongga pronunciation scoring is approximate.`
+
+Stable FastAPI error envelope:
 
 ```json
 {
@@ -81,51 +136,15 @@ Stable error:
 }
 ```
 
-## Queue Behavior
+Stable codes are:
 
-`AnalyzeSpeakingAttemptJob` receives a speaking attempt ID.
+- `SPEAKING_AI_UNAUTHORIZED` — missing, blank-configured, or incorrect bearer token (`401`)
+- `SPEAKING_AI_VALIDATION_ERROR` — invalid request, format, size, audio, or duration (`422`)
+- `SPEAKING_AI_TIMEOUT` — FFmpeg processing timeout (`503`)
+- `SPEAKING_AI_UNAVAILABLE` — FFmpeg/model unavailable (`503`)
+- `SPEAKING_AI_ERROR` — other internal processing failure (`500`)
 
-- If `SPEAKING_AI_ENABLED=false`, the attempt remains `pending` for teacher/manual review.
-- If enabled, the job sets status `processing`, calls Python `/predict`, then stores AI result and sets status `completed`.
-- If the AI call fails, status becomes `failed` and `ai_error` is stored.
-
-Local test/dev may use sync queue, so a submitted attempt can complete immediately when a fake/enabled client is used.
-
-## Storage Behavior
-
-Audio is stored through the existing media system as purpose `speaking_recording` with private visibility. Raw audio binary is not stored in the database.
-
-Speaking attempts store:
-
-- `audio_media_id`
-- `audio_path`
-- `audio_disk`
-- MIME/type/size metadata
-- AI and teacher review fields
-
-API responses expose `audio_media_id` and `/api/v1/media/{id}` style media reference, not raw storage paths.
-
-## Privacy / Security Notes
-
-- Python service has no authentication in this batch and must remain private/internal.
-- Mobile/web clients must never call Python directly.
-- Speaking recordings are private media.
-- Teachers can only access attempts for classes they actively teach.
-- Students can only access their own attempts.
-
-## Local Setup
-
-Laravel `.env.example` keys:
-
-```env
-SPEAKING_AI_ENABLED=false
-SPEAKING_AI_BASE_URL=http://127.0.0.1:8001
-SPEAKING_AI_TIMEOUT_SECONDS=60
-SPEAKING_MAX_AUDIO_MB=5
-SPEAKING_MAX_DURATION_SECONDS=30
-```
-
-Python service:
+## FFmpeg Local Setup
 
 ```cmd
 cd Emi-Speaking-AI
@@ -137,64 +156,56 @@ ffmpeg -version
 python -m uvicorn main:app --host 127.0.0.1 --port 8001
 ```
 
-The Hugging Face model may download on first run. Browser WebM/Opus conversion requires `ffmpeg` available on PATH or `SPEAKING_AI_FFMPEG_PATH` pointing to `ffmpeg.exe`. Conversion produces a temporary mono 16 kHz WAV and fails clearly if `ffmpeg` is unavailable or outputs an empty file.
-
-If Python cannot find FFmpeg after install, find it in PowerShell:
+If PATH lookup fails, locate FFmpeg:
 
 ```powershell
 Get-ChildItem -Path "$env:LOCALAPPDATA\Microsoft\WinGet" -Recurse -Filter ffmpeg.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
 ```
 
-Then set the path in the same terminal before running Uvicorn. Replace this example path with your own path:
+Then set `SPEAKING_AI_FFMPEG_PATH` to found executable path in same terminal before Uvicorn. First inference can be slow while model loads or downloads.
 
-```cmd
-set SPEAKING_AI_FFMPEG_PATH=C:\Users\Tulo\AppData\Local\Microsoft\WinGet\Links\ffmpeg.exe
-python -m uvicorn main:app --host 127.0.0.1 --port 8001
+## ESP32 Web Serial (Batch 2)
+
+Student speaking page keeps browser microphone as default and adds an optional **Perangkat ESP32** source. Web Serial works only in a secure context (HTTPS or localhost) on a supporting desktop browser such as current Chrome or Edge. Port chooser opens only after **Pilih perangkat** is clicked. On page load, reconnect only considers ports previously permitted by the user.
+
+Serial settings and protocol assumptions:
+
+```text
+Baud: 921600
+Packet: AA 55 | TYPE | LENGTH_BE (2 bytes) | PAYLOAD | EE
+TYPE 0x01: raw PCM signed 16-bit little-endian, mono, 16000 Hz
+Incoming TYPE 0x02, payload 0x01: PTT pressed, start capture
+Incoming TYPE 0x02, payload 0x00: PTT released, finish capture
+Outgoing TYPE 0x02, payload 0x02: stop playback and flush DMA
 ```
 
-Recent manual QA evidence: full siswa + guru speaking flow passed. Student browser recording submission completed AI analysis locally after `SPEAKING_AI_FFMPEG_PATH` pointed to the WinGet FFmpeg executable; teacher could play the audio and submit score/feedback; student could see teacher feedback.
+Outgoing `0x02/0x02` never means stop recording. Parser accepts only types `0x01` and `0x02`, discards unknown types, accepts fragmented and adjacent packets, skips noise, and resynchronizes after bad framing/footer. Although length uses an unsigned 16-bit field, firmware packet payload is capped at `32768` bytes. At `921600` baud this limits one packet to roughly 0.36 seconds of wire time, keeps browser latency responsive, and still carries over one second of 16 kHz mono s16le audio. Internal parser storage is capped at `32774` bytes, exactly one maximum framed packet; larger declared lengths are rejected immediately and incoming noise cannot cause unbounded allocation.
 
-Recent Speaking Template + Reference Audio E2E manual QA also passed:
+ESP32 PCM is accepted only when byte count is even, then wrapped as mono 16 kHz signed 16-bit WAV. Effective PCM maximum is `min(5 MiB - 44-byte WAV header, 30 seconds × 32000 bytes/second) = 960000 bytes`. Minimum is `0.1` second (`3200` PCM bytes), matching FastAPI normalized minimum. Upload uses Laravel student endpoint with `capture_source=web_esp32_serial`; microphone uses `capture_source=web_microphone`. Integer duration metadata is included only for captures of at least one second because Laravel accepts integers from `1`.
 
-1. Admin created and published a global speaking template with Suara Asli reference audio.
-2. Teacher selected the admin template, the form auto-filled, teacher customized fields, and published it to the teacher's assigned class.
-3. Student opened the class target, played Suara Asli, recorded audio, and submitted the attempt.
-4. AI-assisted analysis appeared for the attempt.
-5. Teacher reviewed the attempt and submitted manual feedback.
-6. Student saw the teacher feedback.
+Troubleshooting:
 
-This remains AI-assisted initial scoring only. Teacher review is final feedback; do not treat the current AI as authoritative Mekongga phonetic assessment.
+- **Web Serial tidak didukung**: use current Chrome/Edge desktop over HTTPS or localhost; embedded browsers and many mobile browsers do not expose Web Serial.
+- **No device in chooser**: connect ESP32 by data-capable USB cable, close serial monitor, verify driver, then click **Pilih perangkat**.
+- **Cannot open port**: close Arduino IDE/other process holding port, disconnect in page, then reconnect.
+- **No recording after PTT**: verify baud `921600`, exact framing, control direction/value, PCM type, and footer `EE`.
+- **Audio distorted or too fast/slow**: firmware must send raw mono `s16le` at exactly `16000 Hz`, without WAV headers inside type `0x01` payloads.
+- **Recording rejected**: capture must be `0.1`–`30` seconds, even-byte PCM, and no more than `960000` PCM bytes.
 
-## Troubleshooting
+Automated tests mock browser boundaries and cover framing, fragmentation, multiple packets, noise/footer resync, bounds, WAV headers/validation, secure-context feature detection, and upload metadata. Reconnect uses only `getPorts()` and never opens chooser; **Pilih alat lain** is the only action calling `requestPort()`. Permission knowledge remains after EOF, power-off, or disconnect while connected session is cleared. Result polling is non-overlapping, bounded after repeated failures, guards stale attempts, and stops at `completed`, `failed`, or `reviewed`.
 
-- `ffmpeg tidak ditemukan untuk konversi audio browser`: set `SPEAKING_AI_FFMPEG_PATH` in the same terminal before running Uvicorn.
-- `Jenis audio tidak didukung`: confirm the upload is WAV, WebM/Opus, MP3, MP4, M4A, OGG, or safe octet-stream with an audio extension.
-- First inference can be slow because the Wav2Vec2 model may load or download on first use.
-- If attempts stay pending, confirm Laravel queue worker is running when `QUEUE_CONNECTION=database`.
+Hardware playback is blocked because firmware has no browser-to-ESP32 audio packet protocol. Repository audit for Batch 2.4 found no `emi_flutter(1).zip`, `converter wav.zip`, Flutter Bluetooth prototype, `.ino`, `.cpp`, `.h`, or `platformio.ini`. Laptop `<audio>` playback remains active. Required input to continue: actual Flutter reference archive and firmware source defining outgoing audio framing/type, PCM format/rate, chunk sizing, flow control or acknowledgements, buffering limits, playback-complete/error controls, and stop/flush behavior.
 
-## Production Notes
+Physical ESP32 port selection, PTT timing, PCM electrical/audio quality, reconnect behavior, and playback DMA flush remain manual hardware checks.
 
-- Run Python behind private networking, not public internet.
-- Add process supervision and resource limits for model inference.
-- Consider a separate queue for speech analysis if inference is slow.
-- Monitor failed attempts and `ai_error` values.
-- Do not embed Python service URLs/secrets in mobile apps.
+Local database queue requires migrated `cache`, `cache_locks`, `jobs`, and `failed_jobs` tables. The speaking stack launcher runs migrations before startup and fails readiness when the queue worker exits. Hardware WAV regression coverage verifies the same persisted private file reaches the Laravel AI client before polling returns score and transcription.
 
-## Current Limitations
+Firmware source is not present in this repository. Hardware playback remains blocked until firmware provides speaker/I2S/DAC output plus explicit `PLAYBACK_START`, bounded `PLAYBACK_CHUNK`, `PLAYBACK_END`, `PLAYBACK_STOP`, ACK/error, buffer-capacity, completion, and DMA flush handling. Message type values must come from actual firmware; web code must not invent them.
 
-- The AI model is Indonesian STT, not a true Mekongga phonetic scorer.
-- Duration validation uses client-provided metadata for now; deeper server-side duration probing can be added later.
-- Teacher review is the authoritative correction path.
+## Security and Current Limits
 
-## Current QA Status
-
-- Student submit + AI analysis: passed.
-- Teacher playback and review submission: passed.
-- Student feedback display after teacher review: passed.
-- Speaking Template + Reference Audio + Teacher Customization + Student Practice E2E: passed.
-- Speaking remains AI-assisted initial scoring plus teacher manual review, not final authoritative Mekongga phonetic assessment.
-
-## Recommended Next Batch
-
-- Start Mobile MVP planning from the Laravel API docs.
-- Keep FFmpeg/WebM setup documented for local and production Python service deployment.
+- FastAPI remains internal/private and bearer-authenticated.
+- Service token stays in Laravel and FastAPI server environments; examples intentionally leave it blank.
+- Speaking recordings remain private and authorization-scoped to owning student or actively assigned teacher.
+- Current score measures target/transcription word edit distance, not phoneme-level Mekongga pronunciation.
+- Teacher review remains authoritative.

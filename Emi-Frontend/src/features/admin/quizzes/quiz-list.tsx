@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Archive, Hammer, Pencil, Send, Share2, Trash2 } from "lucide-react";
 
 import {
   Alert,
@@ -34,12 +36,12 @@ import type { QuizTemplate, QuizTemplatePayload, QuizTemplateStatus } from "./ty
 
 export function QuizList() {
   const { token } = useAuth();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<QuizTemplateStatus | "">("");
-  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editingQuiz, setEditingQuiz] = useState<QuizTemplate | null>(null);
   const [applyTarget, setApplyTarget] = useState<QuizTemplate | null>(null);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
@@ -70,13 +72,15 @@ export function QuizList() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (payload: QuizTemplatePayload) =>
-      quizTemplateService.create(token ?? "", payload),
-    onSuccess: async (quiz) => {
-      setSuccessMessage(`Kuis ${quiz.title} berhasil dibuat.`);
-      setCreateModalOpen(false);
-      await queryClient.invalidateQueries({ queryKey: ["admin", "quiz-templates"] });
-    },
+    mutationFn: () =>
+      quizTemplateService.create(token ?? "", {
+        title: "Kuis Baru",
+        duration_minutes: 30,
+        max_attempts: 1,
+        show_result: true,
+        status: "draft",
+      }),
+    onSuccess: (quiz) => router.push(`/admin/quizzes/${quiz.id}/builder`),
   });
 
   const updateMutation = useMutation({
@@ -187,16 +191,18 @@ export function QuizList() {
   }
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <Badge tone="yellow">ADMIN-15</Badge>
+          <Badge tone="blue">ADMIN-15</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">Kuis & LKPD Default</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+          <p className="mt-2 max-w-3xl text-sm leading-6 font-semibold text-muted">
             Kelola template kuis, metadata LKPD, soal, status terbit, dan distribusi kuis ke kelas aktif.
           </p>
         </div>
-        <Button onClick={() => setCreateModalOpen(true)}>Tambah Kuis</Button>
+        <Button disabled={createMutation.isPending} onClick={() => createMutation.mutate()}>
+          {createMutation.isPending ? "Membuat Kuis..." : "Tambah Kuis"}
+        </Button>
       </header>
 
       <Alert tone="info">
@@ -259,8 +265,17 @@ export function QuizList() {
               />
             ) : (
               <div className="grid gap-4">
-                <Table>
-                  <TableHeader>
+                <Table className="min-w-0 table-fixed border-separate border-spacing-y-3 px-3 md:border-collapse md:border-spacing-0 md:px-0 [&_tbody]:grid [&_tbody]:auto-rows-fr [&_tbody]:gap-4 md:[&_tbody]:table-row-group [&_tr]:grid [&_tr]:h-full [&_tr]:grid-cols-3 [&_tr]:rounded-xl [&_tr]:border-2 [&_tr]:border-border [&_tr]:bg-surface md:[&_tr]:table-row md:[&_tr]:h-auto md:[&_tr]:border-0">
+                  <colgroup>
+                    <col className="w-auto" />
+                    <col className="w-24" />
+                    <col className="w-24" />
+                    <col className="w-20" />
+                    <col className="w-28" />
+                    <col className="w-32" />
+                    <col className="w-[15.5rem]" />
+                  </colgroup>
+                  <TableHeader className="hidden bg-surface-muted text-ink md:table-header-group">
                     <tr>
                       <th className="px-4 py-3">Kuis</th>
                       <th className="px-4 py-3">Durasi</th>
@@ -274,75 +289,50 @@ export function QuizList() {
                   <tbody>
                     {quizzes.map((quiz) => (
                       <tr key={quiz.id}>
-                        <TableCell>
-                          <p className="font-black text-ink">{quiz.title}</p>
-                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">
+                        <TableCell className="col-span-3 min-w-0 border-t-0 md:table-cell md:border-t">
+                          <p className="break-words font-black text-ink">{quiz.title}</p>
+                          <p className="mt-1 line-clamp-2 text-xs leading-5 font-semibold text-muted">
                             {quiz.description ?? "Tanpa deskripsi."}
                           </p>
                         </TableCell>
-                        <TableCell>{quiz.duration_minutes} menit</TableCell>
-                        <TableCell>{quiz.max_attempts}x</TableCell>
-                        <TableCell>{quiz.questions_count ?? quiz.questions?.length ?? "-"}</TableCell>
-                        <TableCell>
+                        <TableCell className="border-t-0 md:border-t">{quiz.duration_minutes} menit</TableCell>
+                        <TableCell className="border-t-0 md:border-t">{quiz.max_attempts}x</TableCell>
+                        <TableCell className="border-t-0 md:border-t">{quiz.questions_count ?? quiz.questions?.length ?? "-"}</TableCell>
+                        <TableCell className="border-t-0 md:border-t">
                           <Badge tone={statusTone(quiz.status)}>{statusLabel(quiz.status)}</Badge>
                         </TableCell>
-                        <TableCell>{formatDate(quiz.created_at)}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-2">
-                            <Link
-                              className="inline-flex min-h-9 items-center rounded-lg border-2 border-ink bg-white px-3 py-1 text-xs font-black text-ink hover:bg-yellow-100"
-                              href={`/admin/quizzes/${quiz.id}/builder`}
-                            >
-                              Builder
-                            </Link>
-                            <Button
-                              className="min-h-9 px-3 py-1 text-xs"
-                              onClick={() => setEditingQuiz(quiz)}
-                              variant="secondary"
-                            >
-                              Edit
-                            </Button>
-                            {quiz.status !== "published" ? (
-                              <Button
-                                className="min-h-9 px-3 py-1 text-xs"
-                                disabled={publishMutation.isPending}
-                                onClick={() => publishMutation.mutate(quiz.id)}
-                                variant="secondary"
-                              >
-                                Terbitkan
+                        <TableCell className="col-span-2 border-t-0 md:table-cell md:border-t">{formatDate(quiz.created_at)}</TableCell>
+                        <TableCell className="col-span-3 border-t-0 md:table-cell md:border-t">
+                          <div className="grid justify-center gap-2">
+                            <div className="flex justify-center">
+                              <Link className="inline-flex h-9 w-28 items-center justify-center gap-1.5 rounded-lg border-2 border-border bg-surface px-2 text-xs font-black text-ink hover:bg-surface-muted" href={`/admin/quizzes/${quiz.id}/builder`}>
+                                <Hammer aria-hidden="true" className="size-4 shrink-0" /> Builder
+                              </Link>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Button className="h-9 w-28 gap-1.5 px-2 py-0 text-xs" onClick={() => setEditingQuiz(quiz)} variant="secondary">
+                                <Pencil aria-hidden="true" className="size-4 shrink-0" /> Edit
                               </Button>
-                            ) : null}
-                            {quiz.status === "published" ? (
-                              <Button
-                                className="min-h-9 px-3 py-1 text-xs"
-                                onClick={() => {
-                                  setApplyTarget(quiz);
-                                  setSelectedClassIds([]);
-                                  setPublishAfterApply(true);
-                                }}
-                                variant="secondary"
-                              >
-                                Terapkan ke Kelas
+                              <Button className="h-9 w-28 gap-1.5 px-2 py-0 text-xs" disabled={deleteMutation.isPending} onClick={() => setDeleteTarget(quiz)} variant="danger">
+                                <Trash2 aria-hidden="true" className="size-4 shrink-0" /> Hapus
                               </Button>
-                            ) : null}
-                            {quiz.status !== "archived" ? (
-                              <Button
-                                className="min-h-9 px-3 py-1 text-xs"
-                                disabled={archiveMutation.isPending}
-                                onClick={() => { if (confirm(`Arsipkan kuis "${quiz.title}"?`)) archiveMutation.mutate(quiz.id); }}
-                                variant="ghost"
-                              >
-                                Arsipkan
-                              </Button>
-                            ) : null}
-                            <Button
-                              className="min-h-9 px-3 py-1 text-xs"
-                              disabled={deleteMutation.isPending}
-                              onClick={() => setDeleteTarget(quiz)}
-                              variant="danger"
-                            >
-                              Hapus
-                            </Button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              {quiz.status === "published" ? (
+                                <Button className="h-9 w-28 gap-1.5 px-2 py-0 text-xs" onClick={() => { setApplyTarget(quiz); setSelectedClassIds([]); setPublishAfterApply(true); }} variant="secondary">
+                                  <Share2 aria-hidden="true" className="size-4 shrink-0" /> Terapkan
+                                </Button>
+                              ) : (
+                                <Button className="h-9 w-28 gap-1.5 px-2 py-0 text-xs" disabled={publishMutation.isPending || quiz.status === "archived"} onClick={() => publishMutation.mutate(quiz.id)} variant="secondary">
+                                  <Send aria-hidden="true" className="size-4 shrink-0" /> Terbitkan
+                                </Button>
+                              )}
+                              {quiz.status !== "archived" ? (
+                                <Button className="h-9 w-28 gap-1.5 px-2 py-0 text-xs" disabled={archiveMutation.isPending} onClick={() => archiveMutation.mutate(quiz.id)} variant="ghost">
+                                  <Archive aria-hidden="true" className="size-4 shrink-0" /> Arsipkan
+                                </Button>
+                              ) : <span className="h-9 w-28" />}
+                            </div>
                           </div>
                         </TableCell>
                       </tr>
@@ -359,18 +349,6 @@ export function QuizList() {
           ) : null}
         </CardContent>
       </Card>
-
-      <Modal
-        onClose={() => setCreateModalOpen(false)}
-        open={createModalOpen}
-        title="Tambah Kuis Default"
-      >
-        <QuizTemplateForm
-          isSubmitting={createMutation.isPending}
-          onCancel={() => setCreateModalOpen(false)}
-          onSubmit={(payload) => createMutation.mutate({ ...payload, status: "draft" })}
-        />
-      </Modal>
 
       <Modal
         onClose={() => setEditingQuiz(null)}
@@ -404,9 +382,9 @@ export function QuizList() {
             classes.length === 0 ? (
               <EmptyState description="Belum ada kelas aktif untuk menerima template kuis." title="Kelas aktif kosong" />
             ) : (
-              <div className="grid max-h-80 gap-2 overflow-auto rounded-xl border border-slate-200 p-3">
+              <div className="grid max-h-80 gap-2 overflow-auto rounded-xl border border-border p-3">
                 {classes.map((schoolClass) => (
-                  <label className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm font-bold text-ink" key={schoolClass.id}>
+                  <label className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3 text-sm font-bold text-ink" key={schoolClass.id}>
                     <input
                       checked={selectedClassIds.includes(schoolClass.id)}
                       onChange={() => toggleClass(schoolClass.id)}
@@ -418,7 +396,7 @@ export function QuizList() {
               </div>
             )
           ) : null}
-          <label className="flex items-start gap-3 rounded-xl border-2 border-ink bg-yellow-50 p-3 text-sm font-bold text-ink">
+          <label className="flex items-start gap-3 rounded-xl border-2 border-border bg-[var(--color-primary-muted)] p-3 text-sm font-bold text-ink">
             <input
               checked={publishAfterApply}
               className="mt-1"

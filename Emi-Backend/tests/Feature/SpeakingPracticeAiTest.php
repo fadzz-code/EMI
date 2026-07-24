@@ -221,6 +221,42 @@ class SpeakingPracticeAiTest extends TestCase
         ]);
     }
 
+    public function test_ai_completion_does_not_overwrite_reviewed_status(): void
+    {
+        [$student, $teacher, $class] = $this->classroomUsers();
+        $attempt = $this->attemptFor($student, $this->exercise($class));
+        $attempt->update(['analysis_status' => 'pending', 'review_status' => 'pending']);
+        $client = new class($teacher) extends SpeakingAiClient
+        {
+            public function __construct(private readonly User $teacher) {}
+
+            public function enabled(): bool
+            {
+                return true;
+            }
+
+            public function analyze(SpeakingAttempt $attempt): array
+            {
+                $attempt->newQuery()->whereKey($attempt->id)->update([
+                    'review_status' => 'reviewed',
+                    'teacher_score' => 90,
+                    'teacher_feedback' => 'Review selesai saat AI berjalan.',
+                    'reviewed_by_id' => $this->teacher->id,
+                    'reviewed_at' => now(),
+                ]);
+
+                return ['engine' => 'fake', 'model' => 'fake-model', 'transcription' => 'ari nggiro', 'score' => 82];
+            }
+        };
+
+        (new AnalyzeSpeakingAttemptJob($attempt->id))->handle($client);
+
+        $attempt->refresh();
+        $this->assertSame('reviewed', $attempt->review_status);
+        $this->assertSame('Review selesai saat AI berjalan.', $attempt->teacher_feedback);
+        $this->assertSame(90.0, (float) $attempt->teacher_score);
+    }
+
     public function test_teacher_cannot_access_unauthorized_attempt(): void
     {
         [$student, $teacher] = $this->classroomUsers();
@@ -288,6 +324,7 @@ class SpeakingPracticeAiTest extends TestCase
             'reviewed_by_id' => $teacher->id,
             'reviewed_at' => $reviewedAt,
             'review_status' => 'reviewed',
+            'analysis_status' => 'pending',
         ])->save();
         $reviewedAt = $attempt->refresh()->reviewed_at;
         $client = new class extends SpeakingAiClient
@@ -310,8 +347,8 @@ class SpeakingPracticeAiTest extends TestCase
         (new AnalyzeSpeakingAttemptJob($attempt->id))->handle($client);
 
         $attempt->refresh();
-        $this->assertTrue($client->called);
-        $this->assertSame('completed', $attempt->analysis_status);
+        $this->assertFalse($client->called); // Job bails early because review_status == 'reviewed'
+        $this->assertSame('pending', $attempt->analysis_status); // Remains pending because it bailed
         $this->assertSame('reviewed', $attempt->review_status);
         $this->assertSame(88.0, (float) $attempt->teacher_score);
         $this->assertSame('Pertahankan tempo.', $attempt->teacher_feedback);

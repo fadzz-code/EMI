@@ -1,8 +1,8 @@
 "use client";
 
 import { type FormEvent, useMemo, useState } from "react";
-import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Archive, Eye, FilePenLine, Plus, Send, Trash2 } from "lucide-react";
 
 import {
   Alert,
@@ -204,18 +204,57 @@ export function KnowledgeBaseList() {
     deleteMutation.mutate(itemToDelete.id);
   }
 
+  function renderActions(item: AiKnowledgeItem) {
+    return (
+      <div className="grid w-fit grid-cols-2 gap-2">
+        <Button className="h-9 w-28 gap-1.5 text-xs" onClick={() => setPreviewItem(item)} variant="ghost">
+          <Eye className="size-4" />Lihat
+        </Button>
+        <Button className="h-9 w-28 gap-1.5 text-xs" onClick={() => openEditForm(item)} variant="secondary">
+          <FilePenLine className="size-4" />Edit
+        </Button>
+        {item.status !== "published" ? (
+          <Button
+            className="h-9 w-28 gap-1.5 text-xs"
+            disabled={publishMutation.isPending}
+            onClick={() => publishMutation.mutate(item.id)}
+          >
+            <Send className="size-4" />Terbitkan
+          </Button>
+        ) : (
+          <Button
+            className="h-9 w-28 gap-1.5 text-xs"
+            disabled={archiveMutation.isPending}
+            onClick={() => archiveMutation.mutate(item.id)}
+            variant="ghost"
+          >
+            <Archive className="size-4" />Arsipkan
+          </Button>
+        )}
+        <Button
+          className="h-9 w-28 gap-1.5 text-xs"
+          disabled={deleteMutation.isPending}
+          onClick={() => setItemToDelete(item)}
+          variant="danger"
+        >
+          <Trash2 className="size-4" />Hapus
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-6">
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <Badge tone="yellow">ADMIN-11</Badge>
+          <Badge tone="blue">ADMIN-11</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">Basis AI</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+          <p className="mt-2 max-w-3xl text-sm leading-6 font-semibold text-muted">
             Kelola sumber pengetahuan Chatbot AI siswa. Hanya item berstatus terbit
             yang dipakai sebagai rujukan jawaban.
           </p>
         </div>
-        <Button onClick={openCreateForm}>Tambah Pengetahuan</Button>
+        <Button className="gap-2" onClick={openCreateForm}><Plus className="size-5" strokeWidth={2.5} />Tambah Pengetahuan</Button>
       </header>
 
       {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
@@ -224,25 +263,25 @@ export function KnowledgeBaseList() {
       <section className="grid gap-3 md:grid-cols-4">
         <Card>
           <CardContent>
-            <p className="text-xs font-black uppercase text-slate-500">Total</p>
+            <p className="text-xs font-black uppercase text-muted">Total</p>
             <p className="mt-2 text-2xl font-black text-ink">{meta?.total ?? items.length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent>
-            <p className="text-xs font-black uppercase text-slate-500">Draft</p>
+            <p className="text-xs font-black uppercase text-muted">Draft</p>
             <p className="mt-2 text-2xl font-black text-ink">{countByStatus(items, "draft")}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent>
-            <p className="text-xs font-black uppercase text-slate-500">Terbit</p>
+            <p className="text-xs font-black uppercase text-muted">Terbit</p>
             <p className="mt-2 text-2xl font-black text-ink">{countByStatus(items, "published")}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent>
-            <p className="text-xs font-black uppercase text-slate-500">Arsip</p>
+            <p className="text-xs font-black uppercase text-muted">Arsip</p>
             <p className="mt-2 text-2xl font-black text-ink">{countByStatus(items, "archived")}</p>
           </CardContent>
         </Card>
@@ -299,7 +338,7 @@ export function KnowledgeBaseList() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="text-xl font-black text-ink">Daftar Pengetahuan</h2>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
+              <p className="mt-1 text-sm leading-6 font-semibold text-muted">
                 Draft belum digunakan chatbot. Terbit digunakan chatbot siswa. Arsip tetap tersimpan, tetapi tidak digunakan.
               </p>
             </div>
@@ -323,74 +362,60 @@ export function KnowledgeBaseList() {
               />
             ) : (
               <div className="grid gap-4">
-                <Table>
+                <div className="grid grid-cols-1 gap-3 md:hidden">
+                  {items.map((item) => (
+                    <div className="min-w-0 rounded-[var(--radius-card)] border-2 border-border bg-surface p-4" key={item.id}>
+                      <div className="min-w-0">
+                        <p className="break-words font-black text-ink">{item.title}</p>
+                        <p className="mt-1 line-clamp-3 break-words text-xs leading-5 font-semibold text-muted">{item.content}</p>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                        <div className="min-w-0">
+                          <p className="text-xs font-black uppercase text-muted">Kategori</p>
+                          <p className="break-words font-semibold text-ink">{item.category ?? "-"}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-black uppercase text-muted">Sumber</p>
+                          <p className="font-semibold text-ink">{sourceTypeLabel[item.source_type]}</p>
+                        </div>
+                        <Badge tone={statusTone(item.status)}>{statusLabel(item.status)}</Badge>
+                        <p className="text-xs font-semibold text-muted">{formatDate(item.updated_at)}</p>
+                      </div>
+                      <div className="mt-4 overflow-hidden">{renderActions(item)}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden md:block">
+                <Table className="table-fixed">
                   <TableHeader>
                     <tr>
-                      <th className="px-4 py-3">Judul</th>
-                      <th className="px-4 py-3">Kategori</th>
-                      <th className="px-4 py-3">Jenis Sumber</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Diubah</th>
-                      <th className="px-4 py-3">Aksi</th>
+                      <th className="w-[30%] px-4 py-3">Judul</th>
+                      <th className="w-[14%] px-4 py-3">Kategori</th>
+                      <th className="w-[13%] px-4 py-3">Jenis Sumber</th>
+                      <th className="w-[11%] px-4 py-3">Status</th>
+                      <th className="w-[14%] px-4 py-3">Diubah</th>
+                      <th className="w-64 px-4 py-3">Aksi</th>
                     </tr>
                   </TableHeader>
                   <tbody>
                     {items.map((item) => (
                       <tr key={item.id}>
-                        <TableCell className="min-w-56">
-                          <p className="font-black text-ink">{item.title}</p>
-                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">{item.content}</p>
-                        </TableCell>
-                        <TableCell>{item.category ?? "-"}</TableCell>
+                        <TableCell className="min-w-0">
+                           <p className="break-words font-black text-ink">{item.title}</p>
+                           <p className="mt-1 line-clamp-2 break-words text-xs leading-5 font-semibold text-muted">{item.content}</p>
+                         </TableCell>
+                         <TableCell className="break-words">{item.category ?? "-"}</TableCell>
                         <TableCell>{sourceTypeLabel[item.source_type]}</TableCell>
                         <TableCell>
                           <Badge tone={statusTone(item.status)}>{statusLabel(item.status)}</Badge>
                         </TableCell>
                         <TableCell>{formatDate(item.updated_at)}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-2">
-                            <Link className="inline-flex min-h-9 items-center rounded-lg border-2 border-ink bg-white px-3 py-1 text-xs font-black text-ink hover:bg-yellow-100" href={`/admin/knowledge-base/${item.id}`}>
-                              Detail
-                            </Link>
-                            <Button className="min-h-9 px-3 py-1 text-xs" onClick={() => setPreviewItem(item)} variant="ghost">
-                              Preview
-                            </Button>
-                            <Button className="min-h-9 px-3 py-1 text-xs" onClick={() => openEditForm(item)} variant="secondary">
-                              Edit
-                            </Button>
-                            {item.status !== "published" ? (
-                              <Button
-                                className="min-h-9 px-3 py-1 text-xs"
-                                disabled={publishMutation.isPending}
-                                onClick={() => publishMutation.mutate(item.id)}
-                              >
-                                Terbitkan
-                              </Button>
-                            ) : null}
-                            {item.status === "published" ? (
-                              <Button
-                                className="min-h-9 px-3 py-1 text-xs"
-                                disabled={archiveMutation.isPending}
-                                onClick={() => { if (confirm(`Arsipkan pengetahuan "${item.title}"? Konten tidak akan digunakan chatbot.`)) archiveMutation.mutate(item.id); }}
-                                variant="ghost"
-                              >
-                                Arsipkan
-                              </Button>
-                            ) : null}
-                            <Button
-                              className="min-h-9 px-3 py-1 text-xs"
-                              disabled={deleteMutation.isPending}
-                              onClick={() => setItemToDelete(item)}
-                              variant="danger"
-                            >
-                              Hapus
-                            </Button>
-                          </div>
-                        </TableCell>
+                        <TableCell>{renderActions(item)}</TableCell>
                       </tr>
                     ))}
                   </tbody>
                 </Table>
+                </div>
                 <Pagination
                   onPageChange={setPage}
                   page={meta?.current_page ?? page}
@@ -432,23 +457,23 @@ export function KnowledgeBaseList() {
             <div className="flex flex-wrap gap-2">
               <Badge tone={statusTone(previewItem.status)}>{statusLabel(previewItem.status)}</Badge>
               <Badge tone="neutral">{sourceTypeLabel[previewItem.source_type]}</Badge>
-              {previewItem.category ? <Badge tone="yellow">{previewItem.category}</Badge> : null}
+              {previewItem.category ? <Badge tone="blue">{previewItem.category}</Badge> : null}
             </div>
             <div>
-              <p className="text-xs font-black uppercase text-slate-500">Judul</p>
+              <p className="text-xs font-black uppercase text-muted">Judul</p>
               <h2 className="mt-1 text-xl font-black text-ink">{previewItem.title}</h2>
             </div>
             {previewItem.source_url ? (
               <div>
-                <p className="text-xs font-black uppercase text-slate-500">URL Sumber</p>
-                <a className="mt-1 block break-all text-sm font-bold text-blue-700 underline" href={previewItem.source_url} rel="noreferrer noopener" target="_blank">
+                <p className="text-xs font-black uppercase text-muted">URL Sumber</p>
+                <a className="mt-1 block break-all text-sm font-bold text-info-foreground underline" href={previewItem.source_url} rel="noreferrer noopener" target="_blank">
                   {previewItem.source_url}
                 </a>
               </div>
             ) : null}
             <div>
-              <p className="text-xs font-black uppercase text-slate-500">Konten Pengetahuan</p>
-              <div className="mt-2 max-h-96 overflow-y-auto whitespace-pre-wrap rounded-lg border-2 border-ink bg-slate-50 p-4 text-sm leading-6 text-slate-800">
+              <p className="text-xs font-black uppercase text-muted">Konten Pengetahuan</p>
+              <div className="mt-2 max-h-96 overflow-y-auto whitespace-pre-wrap rounded-lg border-2 border-border bg-surface-muted p-4 text-sm leading-6 text-foreground">
                 {previewItem.content}
               </div>
             </div>

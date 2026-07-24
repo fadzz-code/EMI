@@ -1,8 +1,9 @@
 "use client";
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { Bot, CheckCheck, ListChecks, TriangleAlert } from "lucide-react";
 
-import { Alert, AudioPlayer, Badge, Button, Card, CardContent, CardHeader, EmptyState, FormField, Input, LoadingState, PageHeader, StatsCard, Textarea } from "@/components/ui";
+import { Alert, AudioPlayer, Badge, Button, Card, CardContent, CardHeader, EmptyState, FormField, Input, LoadingState, Textarea } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
@@ -120,25 +121,44 @@ export function TeacherSpeakingResults() {
     ].filter(Boolean).join(" ").toLowerCase().includes(keyword));
   }, [attempts, search]);
 
-  const alignmentRows = Object.entries(selectedAttempt?.ai_alignment ?? {}).slice(0, 8);
+  const alignmentRows = Array.isArray(selectedAttempt?.ai_alignment) ? [] : Object.entries(selectedAttempt?.ai_alignment ?? {}).slice(0, 8);
   const reviewedCount = attempts.filter((attempt) => attempt.status === "reviewed" || attempt.teacher_score !== null).length;
   const pendingReviewCount = attempts.filter((attempt) => attempt.status === "completed" && attempt.teacher_score === null).length;
   const failedCount = attempts.filter((attempt) => attempt.status === "failed").length;
 
   return (
-    <div className="grid gap-6">
-      <PageHeader badge="AI-assisted" description="Dengarkan audio siswa, baca skor awal AI, lalu simpan skor dan feedback guru sebagai tinjauan manual." title="Hasil Speaking" />
+    <div className="grid gap-8">
+      <section className="flex flex-col gap-2">
+        <p className="text-sm font-black uppercase tracking-[0.08em] text-muted">AI-assisted</p>
+        <h1 className="text-3xl font-black leading-tight text-ink md:text-4xl">Hasil Speaking</h1>
+        <p className="max-w-3xl text-base font-semibold leading-6 text-muted">Dengarkan audio siswa, baca skor awal AI, lalu simpan skor dan feedback guru sebagai tinjauan manual.</p>
+      </section>
       {error ? <Alert tone="error">{error}</Alert> : null}
       {message ? <Alert tone="success">{message}</Alert> : null}
       <Alert tone="info">
-        Skor AI adalah bantuan awal. Keputusan pembelajaran tetap memakai tinjauan guru setelah mendengar audio siswa.
+        Analisis AI merupakan penilaian awal. Guru tetap menentukan nilai akhir.
       </Alert>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatsCard helper="Percobaan yang masuk" label="Total" value={String(attempts.length)} />
-        <StatsCard helper="Perlu feedback guru" label="Siap Ditinjau" value={String(pendingReviewCount)} />
-        <StatsCard helper="Sudah diberi skor guru" label="Ditinjau" value={String(reviewedCount)} />
-        <StatsCard helper="Perlu cek ulang" label="Analisis Gagal" value={String(failedCount)} />
+        {[
+          { label: "Total", value: attempts.length, helper: "Percobaan yang masuk", icon: ListChecks },
+          { label: "Siap Ditinjau", value: pendingReviewCount, helper: "Perlu feedback guru", icon: Bot },
+          { label: "Ditinjau", value: reviewedCount, helper: "Sudah diberi skor guru", icon: CheckCheck },
+          { label: "Analisis Gagal", value: failedCount, helper: "Perlu cek ulang", icon: TriangleAlert },
+        ].map((stat) => (
+          <Card className="group h-full transition hover:-translate-y-1 hover:shadow-emi" key={stat.label}>
+            <CardContent className="flex h-full items-center gap-4">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-xl border-2 border-border bg-surface-muted text-ink transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                <stat.icon className="size-6" strokeWidth={2.5} />
+              </span>
+              <div>
+                <p className="text-sm font-black text-muted">{stat.label}</p>
+                <p className="text-3xl font-black text-ink">{stat.value}</p>
+                <p className="text-xs font-semibold text-muted">{stat.helper}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[1fr_1.3fr]">
@@ -154,12 +174,12 @@ export function TeacherSpeakingResults() {
             {!isLoading && filteredAttempts.length === 0 ? <EmptyState description="Percobaan speaking siswa akan muncul setelah siswa mengirim audio." title="Belum ada hasil speaking" /> : null}
             <div className="grid gap-3">
               {filteredAttempts.map((attempt) => (
-                <button key={attempt.id} className={`rounded-xl border-2 border-ink p-4 text-left shadow-brutal ${selectedAttempt?.id === attempt.id ? "bg-yellow-200" : "bg-white hover:bg-yellow-50"}`} onClick={() => selectAttempt(attempt)} type="button">
+                <button key={attempt.id} className={`rounded-xl border-2 border-border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-emi ${selectedAttempt?.id === attempt.id ? "bg-[var(--color-primary-muted)]" : "bg-surface hover:bg-surface-muted"}`} onClick={() => selectAttempt(attempt)} type="button">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-black text-ink">{attempt.student?.full_name ?? "Siswa"}</p>
-                      <p className="mt-1 text-sm font-bold text-slate-700">{attempt.exercise?.title ?? "Latihan Speaking"}</p>
-                      <p className="mt-1 text-xs text-slate-500">{date(attempt.created_at)}</p>
+                      <p className="mt-1 text-sm font-bold text-muted">{attempt.exercise?.title ?? "Latihan Speaking"}</p>
+                      <p className="mt-1 text-xs text-muted">{date(attempt.created_at)}</p>
                     </div>
                     <Badge tone={attempt.status === "failed" ? "orange" : attempt.status === "reviewed" ? "blue" : "yellow"}>{statusLabel(attempt.status)}</Badge>
                   </div>
@@ -178,21 +198,21 @@ export function TeacherSpeakingResults() {
           <CardContent>
             {!selectedAttempt ? <EmptyState description="Pilih percobaan siswa untuk meninjau audio dan memberi feedback." title="Pilih percobaan" /> : (
               <div className="grid gap-4">
-                <div className="rounded-xl border-2 border-ink bg-blue-50 p-4">
-                  <p className="text-xs font-black uppercase text-blue-700">Target teks</p>
+                <div className="rounded-xl border-2 border-border bg-[var(--color-primary-muted)] p-4">
+                  <p className="text-xs font-black uppercase text-primary">Target teks</p>
                   <p className="mt-2 text-2xl font-black text-ink">{selectedAttempt.target_text}</p>
-                  <p className="mt-2 text-sm text-slate-700">Siswa: {selectedAttempt.student?.full_name ?? "-"} | Status: {statusLabel(selectedAttempt.status)}</p>
+                  <p className="mt-2 text-sm text-muted">Siswa: {selectedAttempt.student?.full_name ?? "-"} | Status: {statusLabel(selectedAttempt.status)}</p>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
-                  <p className="rounded-lg bg-slate-50 p-3 text-sm"><span className="font-black">Skor awal AI:</span> {score(selectedAttempt.ai_score)}</p>
-                  <p className="rounded-lg bg-slate-50 p-3 text-sm"><span className="font-black">Skor guru:</span> {score(selectedAttempt.teacher_score)}</p>
-                  <p className="rounded-lg bg-slate-50 p-3 text-sm md:col-span-2"><span className="font-black">Transkripsi AI:</span> {selectedAttempt.ai_transcription ?? "-"}</p>
+                  <p className="rounded-xl border-2 border-border bg-surface-muted p-3 text-sm"><span className="font-black">Skor awal AI:</span> {score(selectedAttempt.ai_score)}</p>
+                  <p className="rounded-xl border-2 border-border bg-surface-muted p-3 text-sm"><span className="font-black">Skor guru:</span> {score(selectedAttempt.teacher_score)}</p>
+                  <p className="rounded-xl border-2 border-border bg-surface-muted p-3 text-sm md:col-span-2"><span className="font-black">Transkripsi AI:</span> {selectedAttempt.ai_transcription ?? "-"}</p>
                 </div>
                 {selectedAttempt.ai_error ? <Alert tone="error">AI gagal menganalisis: {selectedAttempt.ai_error}</Alert> : null}
                 <AudioPlayer src={audioUrl ?? undefined} title="Audio asli siswa" />
                 {!audioUrl ? <p className="text-sm font-bold text-muted">Audio private akan diputar setelah URL sementara tersedia untuk guru.</p> : null}
                 {alignmentRows.length > 0 ? (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="rounded-xl border border-border bg-surface-muted p-4">
                     <h3 className="font-black text-ink">Ringkasan alignment AI</h3>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {alignmentRows.map(([key, value]) => <Badge key={key} tone={value >= 80 ? "blue" : "yellow"}>{key}: {value}</Badge>)}
@@ -201,7 +221,7 @@ export function TeacherSpeakingResults() {
                 ) : null}
                 <form className="grid gap-4" onSubmit={submitFeedback}>
                   <FormField label="Skor guru (0-100)"><Input max={100} min={0} onChange={(event) => setTeacherScore(event.target.value)} required type="number" value={teacherScore} /></FormField>
-                  <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-muted">
+                  <p className="rounded-xl border border-border bg-surface-muted p-3 text-sm text-muted">
                     Isi skor setelah mendengar audio siswa. Feedback akan tampil untuk siswa sebagai arahan latihan berikutnya.
                   </p>
                   <FormField label="Feedback guru"><Textarea className="min-h-32" onChange={(event) => setTeacherFeedback(event.target.value)} placeholder="Contoh: Pengucapan sudah cukup jelas, ulangi bagian akhir." value={teacherFeedback} /></FormField>

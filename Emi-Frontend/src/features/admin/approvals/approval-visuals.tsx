@@ -3,19 +3,15 @@ import type { ReactNode } from "react";
 import { Badge } from "@/components/ui";
 import { cn, getInitials } from "@/lib/utils";
 
-import { roleLabel, statusLabel, statusTone } from "./approval-utils";
+import { roleLabel, statusLabel } from "./approval-utils";
 import type { RegistrationRequest, RegistrationRequestedRole } from "./types";
 
 export function ApprovalPageShell({ children }: { children: ReactNode }) {
   return (
-    <div className="grid gap-6 rounded-[18px] bg-[#fff8f6] p-1">
+    <div className="grid gap-6 rounded-[18px] bg-surface p-1">
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed inset-0 opacity-[0.04]"
-        style={{
-          backgroundImage: "radial-gradient(#241914 1.4px, transparent 1.4px)",
-          backgroundSize: "24px 24px",
-        }}
+        className="pointer-events-none fixed inset-0 bg-[radial-gradient(var(--color-border)_1.4px,transparent_1.4px)] bg-[length:24px_24px] opacity-[0.04]"
       />
       <div className="relative grid gap-6">{children}</div>
     </div>
@@ -34,11 +30,11 @@ export function ApprovalHero({
   return (
     <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
       <div>
-        <p className="text-sm font-black uppercase text-[#9a4600]">Admin EMI</p>
-        <h1 className="mt-2 text-4xl font-black leading-tight text-[#241914] md:text-5xl">
+        <p className="text-sm font-black uppercase text-primary">Admin EMI</p>
+        <h1 className="mt-2 text-4xl font-black leading-tight text-ink md:text-5xl">
           {title}
         </h1>
-        <p className="mt-2 max-w-3xl text-base font-medium leading-7 text-[#564338]">
+        <p className="mt-2 max-w-3xl text-base font-medium leading-7 text-muted">
           {description}
         </p>
       </div>
@@ -49,8 +45,8 @@ export function ApprovalHero({
 
 export function ApprovalInfoBox({ children }: { children: ReactNode }) {
   return (
-    <section className="flex gap-4 rounded-[12px] border-2 border-[#241914] bg-[#fdd758] p-4 text-[#735d00] shadow-[4px_4px_0_#241914]">
-      <span className="grid size-11 shrink-0 place-items-center rounded-full border-2 border-[#241914] bg-[#fff8f6] text-lg font-black text-[#241914] shadow-[2px_2px_0_#241914]">
+    <section className="flex gap-4 rounded-[12px] border-2 border-border bg-[var(--color-primary-muted)] p-4 text-ink shadow-emi">
+      <span className="grid size-11 shrink-0 place-items-center rounded-full border-2 border-border bg-surface text-lg font-black text-ink shadow-emi">
         i
       </span>
       <div className="grid gap-1">
@@ -65,8 +61,10 @@ export function ApprovalAvatar({ name, role }: { name?: string | null; role?: Re
   return (
     <span
       className={cn(
-        "grid size-11 shrink-0 place-items-center rounded-full border-2 border-[#241914] text-sm font-black shadow-[2px_2px_0_#241914]",
-        role === "student" ? "bg-[#94f990] text-[#004910]" : "bg-[#ffb68d] text-[#321200]",
+        "grid size-11 shrink-0 place-items-center rounded-full border-2 border-border text-sm font-black shadow-emi",
+        role === "student"
+          ? "bg-success text-success-foreground"
+          : "bg-primary text-primary-foreground",
       )}
     >
       {getInitials(name)}
@@ -80,8 +78,10 @@ export function ApprovalRoleBadge({ role }: { role?: RegistrationRequestedRole }
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border-2 border-[#241914] px-3 py-1 text-xs font-black shadow-[2px_2px_0_#241914]",
-        isStudent ? "bg-[#5bbe5d] text-[#004910]" : "bg-[#ff8a3d] text-[#682d00]",
+        "inline-flex items-center rounded-full border-2 border-border px-3 py-1 text-xs font-black shadow-emi",
+        isStudent
+          ? "bg-success text-success-foreground"
+          : "bg-primary text-primary-foreground",
       )}
     >
       {roleLabel(role)}
@@ -90,16 +90,15 @@ export function ApprovalRoleBadge({ role }: { role?: RegistrationRequestedRole }
 }
 
 export function ApprovalStatusBadge({ status }: { status?: string }) {
-  const tone = statusTone(status);
+  const tone = status === "approved" ? "blue" : status === "rejected" ? "orange" : "neutral";
 
   return (
     <Badge
       className={cn(
-        "border-2 border-[#241914] px-3 py-1 font-black shadow-[2px_2px_0_#241914]",
-        tone === "yellow" && "bg-[#fdd758] text-[#735d00]",
-        tone === "blue" && "bg-[#087a2f] text-white",
-        tone === "orange" && "bg-[#ba1a1a] text-white",
-        tone === "neutral" && "bg-[#fff8f6] text-[#241914]",
+        "border-2 border-border px-3 py-1 font-black shadow-emi",
+        tone === "blue" && "bg-success text-success-foreground",
+        tone === "orange" && "bg-danger text-danger-foreground",
+        tone === "neutral" && "bg-surface text-ink",
       )}
       tone={tone}
     >
@@ -110,9 +109,9 @@ export function ApprovalStatusBadge({ status }: { status?: string }) {
 
 export function DetailCell({ label, value }: { label: string; value?: ReactNode }) {
   return (
-    <div className="min-h-24 border-[#241914] p-5 odd:border-r-2 even:border-b-2 max-sm:border-b-2 sm:[&:nth-child(3)]:border-b-0 sm:[&:nth-child(4)]:border-b-0">
-      <p className="text-xs font-black uppercase text-[#564338]">{label}</p>
-      <div className="mt-2 text-base font-black leading-7 text-[#241914]">{value ?? "-"}</div>
+    <div className="min-h-24 border-border p-5 odd:border-r-2 even:border-b-2 max-sm:border-b-2 sm:[&:nth-child(3)]:border-b-0 sm:[&:nth-child(4)]:border-b-0">
+      <p className="text-xs font-black uppercase text-muted">{label}</p>
+      <div className="mt-2 text-base font-black leading-7 text-ink">{value ?? "-"}</div>
     </div>
   );
 }

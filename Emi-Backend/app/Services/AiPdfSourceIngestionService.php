@@ -112,5 +112,4 @@ class AiPdfSourceIngestionService
 
         return $pages;
     }
-
 }

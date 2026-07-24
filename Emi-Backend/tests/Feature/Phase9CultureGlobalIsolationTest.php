@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\AdminCultureItem;
 use App\Models\ClassCultureItem;
 use App\Models\CultureTemplate;
 use App\Models\MediaFile;

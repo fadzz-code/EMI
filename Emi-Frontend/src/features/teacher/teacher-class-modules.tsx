@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Pencil } from "lucide-react";
 
 import { Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, PageHeader, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -24,9 +25,9 @@ export function TeacherClassModules({ classId }: { classId: string }) {
   const publishedCount = modules.filter((module) => module.status === "published").length;
 
   return (
-    <div className="grid gap-6">
-      <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href={teacherRoutes.classes}>
-        Kembali ke Daftar Kelas
+    <div className="grid gap-8">
+      <Link className="group inline-flex min-h-11 w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-primary transition hover:-translate-y-0.5 hover:bg-[var(--color-primary-muted)] hover:shadow-emi" href={teacherRoutes.classes}>
+        <ArrowLeft className="size-5" strokeWidth={2.5} /> Kembali ke Daftar Kelas
       </Link>
       <PageHeader badge="Guru" description="Kelola modul pembelajaran yang sudah tersedia untuk kelas Anda." title="Modul Kelas" />
 
@@ -45,30 +46,30 @@ export function TeacherClassModules({ classId }: { classId: string }) {
               <StatsCard helper="Status published" label="Modul terbit" value={formatCount(publishedCount)} />
               <StatsCard helper="Buka kartu modul untuk melihat materi" label="Materi" value="Tersedia" />
             </section>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid auto-rows-fr gap-6 md:grid-cols-2">
               {modules.map((module) => (
-                <Card key={module.id}>
+                <Card className="flex h-full flex-col transition hover:-translate-y-1 hover:shadow-emi" key={module.id}>
                   <CardHeader>
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <Badge tone={module.status === "published" ? "blue" : "neutral"}>{statusLabel(module.status)}</Badge>
-                        <h2 className="mt-2 text-xl font-black text-ink">{module.title}</h2>
+                        <h2 className="mt-2 text-xl font-black text-primary">{module.title}</h2>
                       </div>
-                      <Link className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-yellow-300 px-4 py-2 text-sm font-bold text-ink shadow-brutal hover:bg-yellow-200" href={teacherRoutes.moduleEdit(module.id)}>
-                        Edit Modul
-                      </Link>
+                       <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-primary px-4 py-2 text-sm font-black text-primary-foreground shadow-emi transition hover:-translate-y-0.5" href={teacherRoutes.moduleEdit(module.id)}>
+                         <Pencil className="size-5" strokeWidth={2.5} /> Edit Modul
+                       </Link>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm leading-6 text-slate-600">{formatOptional(module.description)}</p>
+                    <p className="text-sm leading-6 text-muted">{formatOptional(module.description)}</p>
                     <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                      <div className="rounded-xl bg-slate-50 p-3">
-                        <dt className="font-black uppercase text-slate-500">Terbit</dt>
-                        <dd className="mt-1 font-bold text-ink">{formatDate(module.published_at)}</dd>
+                      <div className="rounded-xl bg-surface-muted p-3">
+                        <dt className="font-black uppercase text-muted">Terbit</dt>
+                        <dd className="mt-1 font-bold text-primary">{formatDate(module.published_at)}</dd>
                       </div>
-                      <div className="rounded-xl bg-slate-50 p-3">
-                        <dt className="font-black uppercase text-slate-500">Lesson</dt>
-                        <dd className="mt-1 font-bold text-ink">{formatCount(module.lessons?.length)}</dd>
+                      <div className="rounded-xl bg-surface-muted p-3">
+                        <dt className="font-black uppercase text-muted">Lesson</dt>
+                        <dd className="mt-1 font-bold text-primary">{formatCount(module.lessons?.length)}</dd>
                       </div>
                     </dl>
                     <ModuleLessons token={token ?? ""} moduleId={module.id} />
@@ -92,7 +93,7 @@ function ModuleLessons({ token, moduleId }: { token: string; moduleId: string })
   const lessons = detailQuery.data?.lessons ?? [];
 
   if (detailQuery.isLoading) {
-    return <p className="mt-4 text-sm font-bold text-slate-500">Memuat lesson...</p>;
+    return <p className="mt-4 text-sm font-bold text-muted">Memuat lesson...</p>;
   }
 
   if (detailQuery.isError) {
@@ -100,16 +101,16 @@ function ModuleLessons({ token, moduleId }: { token: string; moduleId: string })
   }
 
   if (lessons.length === 0) {
-    return <p className="mt-4 text-sm font-bold text-slate-500">Materi belum tersedia untuk modul ini.</p>;
+    return <p className="mt-4 text-sm font-bold text-muted">Materi belum tersedia untuk modul ini.</p>;
   }
 
   return (
     <div className="mt-4 grid gap-2">
       {lessons.map((lesson) => (
-        <details className="rounded-xl border border-slate-200 bg-white p-3" key={lesson.id}>
-          <summary className="cursor-pointer font-black text-ink">{lesson.title}</summary>
-          <p className="mt-2 text-sm text-slate-600">{formatOptional(lesson.description)}</p>
-          {lesson.content_body ? <p className="mt-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">{lesson.content_body}</p> : null}
+        <details className="rounded-xl border border-border bg-surface p-3" key={lesson.id}>
+          <summary className="cursor-pointer font-black text-primary">{lesson.title}</summary>
+          <p className="mt-2 text-sm text-muted">{formatOptional(lesson.description)}</p>
+          {lesson.content_body ? <p className="mt-2 rounded-lg bg-surface-muted p-3 text-sm text-muted">{lesson.content_body}</p> : null}
         </details>
       ))}
     </div>

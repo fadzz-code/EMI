@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { LoaderCircle, Mic, Play, Square, UploadCloud } from "lucide-react";
+import { Cable, LoaderCircle, Mic, Play, Square, UploadCloud } from "lucide-react";
 
 import { Alert, Badge, Button, Card, CardContent, EmptyState } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -10,12 +10,10 @@ import { ApiError, getFirstApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 import { studentService } from "./student-service";
+import { useEsp32SerialCapture } from "./use-esp32-serial-capture";
 import type { SpeakingAttempt, SpeakingExercise } from "./types";
-
-const processingStatuses = new Set(["pending", "processing"]);
-const maxRecordingSeconds = 30;
-const pollIntervalMs = 5000;
-const maxPollAttempts = 12;
+import { createSpeakingPoller, SPEAKING_TERMINAL_STATUSES } from "./speaking-poller";
+import { shouldUseMicrophone, studentAiWarnings } from "./speaking-result";
 
 function statusLabel(status?: string) {
   return {
@@ -67,20 +65,17 @@ export function StudentSpeaking() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [captureSource, setCaptureSource] = useState<"microphone" | "esp32">("microphone");
+  const [outputTarget, setOutputTarget] = useState<"computer" | "device">("computer");
   const [recordedFile, setRecordedFile] = useState<File | null>(null);
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
-  const [recordingSeconds, setRecordingSeconds] = useState(0);
-  const [recordedDuration, setRecordedDuration] = useState(0);
-  const [pollingStopped, setPollingStopped] = useState(false);
   const [referenceAudioError, setReferenceAudioError] = useState(false);
-  const [microphoneDenied, setMicrophoneDenied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
-  const recordingIntervalRef = useRef<number | null>(null);
-  const recordingStartedAtRef = useRef(0);
-  const pollCountRef = useRef(0);
   const chunksRef = useRef<Blob[]>([]);
+  const submitGuardRef = useRef(false);
+  const esp32 = useEsp32SerialCapture();
 
   useEffect(() => {
     if (!token) return;
@@ -98,47 +93,29 @@ export function StudentSpeaking() {
     };
   }, [token]);
 
-  const activeAttemptId = activeAttempt?.id;
-  const activeAttemptStatus = activeAttempt?.status;
-
   useEffect(() => {
-    if (!token || !activeAttemptId || !processingStatuses.has(activeAttemptStatus ?? "")) return;
-    let cancelled = false;
-    const interval = window.setInterval(async () => {
-      if (pollCountRef.current >= maxPollAttempts) {
-        window.clearInterval(interval);
-        if (!cancelled) setPollingStopped(true);
-        return;
-      }
-      pollCountRef.current += 1;
-      try {
-        const detail = await studentService.speakingAttemptDetail(token, activeAttemptId);
-        if (cancelled) return;
-        setActiveAttempt(detail);
-        if (!processingStatuses.has(detail.status)) window.clearInterval(interval);
-      } catch (err) {
-        if (!cancelled) setError(speakingErrorMessage(err));
-      }
-    }, pollIntervalMs);
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-    };
-  }, [activeAttemptId, activeAttemptStatus, token]);
+    if (!token || !activeAttempt || SPEAKING_TERMINAL_STATUSES.has(activeAttempt.status)) return;
+    const poller = createSpeakingPoller({
+      attempt: activeAttempt,
+      fetch: (id) => studentService.speakingAttemptDetail(token, id),
+      update: setActiveAttempt,
+      fail: setError,
+    });
+    return poller.stop;
+  }, [activeAttempt, token]);
+
+  useEffect(() => () => {
+    if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
 
   useEffect(() => () => {
     if (recordedUrl) URL.revokeObjectURL(recordedUrl);
   }, [recordedUrl]);
 
-  useEffect(() => () => {
-    if (recordingIntervalRef.current !== null) window.clearInterval(recordingIntervalRef.current);
-    if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
-    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
-  }, []);
-
   async function startRecording() {
+    if (!shouldUseMicrophone(captureSource)) return;
     setError(null);
-    setMicrophoneDenied(false);
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
       setError("Browser belum mendukung perekaman audio. Gunakan browser terbaru atau unggah dari perangkat lain.");
       return;
@@ -146,9 +123,9 @@ export function StudentSpeaking() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
       const mimeType = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "";
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-      mediaStreamRef.current = stream;
       chunksRef.current = [];
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunksRef.current.push(event.data);
@@ -161,72 +138,63 @@ export function StudentSpeaking() {
         if (recordedUrl) URL.revokeObjectURL(recordedUrl);
         setRecordedFile(file);
         setRecordedUrl(URL.createObjectURL(blob));
-        setRecordedDuration(Math.min(maxRecordingSeconds, Math.max(1, Math.ceil((performance.now() - recordingStartedAtRef.current) / 1000))));
-        setIsRecording(false);
         stream.getTracks().forEach((track) => track.stop());
         mediaStreamRef.current = null;
         mediaRecorderRef.current = null;
       };
-      recorder.onerror = () => {
-        setError("Perekaman audio gagal. Coba rekam ulang.");
-        stopRecording();
-      };
       mediaRecorderRef.current = recorder;
-      recordingStartedAtRef.current = performance.now();
-      setRecordingSeconds(0);
       recorder.start();
       setIsRecording(true);
-      recordingIntervalRef.current = window.setInterval(() => {
-        const elapsed = Math.min(maxRecordingSeconds, Math.floor((performance.now() - recordingStartedAtRef.current) / 1000));
-        setRecordingSeconds(elapsed);
-        if (elapsed >= maxRecordingSeconds) stopRecording();
-      }, 250);
-    } catch (err) {
-      const denied = err instanceof DOMException && (err.name === "NotAllowedError" || err.name === "SecurityError");
-      setMicrophoneDenied(denied);
-      setError(denied ? "Izin mikrofon ditolak. Izinkan mikrofon melalui pengaturan situs browser, lalu coba lagi." : "Tidak dapat mengakses mikrofon. Pastikan mikrofon tersedia lalu coba lagi.");
+    } catch {
+      setError("Tidak dapat mengakses mikrofon. Periksa izin browser lalu coba lagi.");
     }
   }
 
   function stopRecording() {
-    if (recordingIntervalRef.current !== null) {
-      window.clearInterval(recordingIntervalRef.current);
-      recordingIntervalRef.current = null;
-    }
-    const recorder = mediaRecorderRef.current;
-    if (recorder?.state === "recording") recorder.stop();
+    mediaRecorderRef.current?.stop();
+    setIsRecording(false);
   }
 
-  async function refreshActiveAttempt() {
-    if (!token || !activeAttempt) return;
+  async function selectCaptureSource(source: "microphone" | "esp32") {
+    if (isRecording || isSubmitting || esp32.state === "recording" || esp32.state === "finalizing") return;
+    if (source === "microphone") await esp32.disconnect();
+    setCaptureSource(source);
+  }
+
+  async function playOnDevice(source: string | Blob | null | undefined) {
+    if (!source || esp32.state === "recording" || esp32.state === "finalizing") return;
     setError(null);
     try {
-      const detail = await studentService.speakingAttemptDetail(token, activeAttempt.id);
-      setActiveAttempt(detail);
-      setPollingStopped(processingStatuses.has(detail.status));
-    } catch (err) {
-      setError(speakingErrorMessage(err));
+      const audio = typeof source === "string" ? await fetch(source).then((response) => {
+        if (!response.ok) throw new Error("Audio tidak dapat diunduh untuk alat.");
+        return response.blob();
+      }) : source;
+      const played = await esp32.playAudio(audio);
+      if (!played) setError("Playback alat gagal. Pilih output Komputer untuk fallback.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Playback alat gagal. Pilih output Komputer untuk fallback.");
     }
   }
 
   async function submitAttempt() {
-    if (!token || !selectedExercise || !recordedFile || recordedDuration < 1) return;
+    const file = captureSource === "esp32" ? esp32.capture?.file : recordedFile;
+    if (!token || !selectedExercise || !file || submitGuardRef.current) return;
+    submitGuardRef.current = true;
     setIsSubmitting(true);
     setError(null);
     try {
-      const attempt = await studentService.submitSpeakingAttempt(token, selectedExercise.id, recordedFile, recordedDuration);
+      const attempt = await studentService.submitSpeakingAttempt(token, selectedExercise.id, file, captureSource === "esp32" ? "web_esp32_serial" : "web_microphone", captureSource === "esp32" ? esp32.capture?.duration : undefined);
       setActiveAttempt(attempt);
-      pollCountRef.current = 0;
-      setPollingStopped(false);
     } catch (err) {
       setError(speakingErrorMessage(err));
     } finally {
+      submitGuardRef.current = false;
       setIsSubmitting(false);
     }
   }
 
   return (
-    <div className="mx-auto grid max-w-5xl gap-6 pb-24 lg:pb-0">
+    <div className="mx-auto grid max-w-5xl gap-8 pb-24 lg:pb-0">
       <section className="flex flex-col gap-2">
         <p className="text-sm font-black uppercase tracking-[0.08em] text-muted">Latihan Speaking</p>
         <h1 className="text-3xl font-black leading-tight text-ink md:text-4xl">Latih pelafalan Mekongga</h1>
@@ -236,7 +204,6 @@ export function StudentSpeaking() {
       </section>
 
       {error ? <Alert tone="error">{error}</Alert> : null}
-      {microphoneDenied ? <Alert tone="info">Klik ikon izin di bilah alamat browser, ubah Mikrofon menjadi Izinkan, muat ulang bila diminta, lalu tekan Coba Mikrofon Lagi. Browser tidak menyediakan API Web standar untuk membuka pengaturan OS.<Button className="ml-3" onClick={startRecording} type="button" variant="secondary">Coba Mikrofon Lagi</Button></Alert> : null}
 
       <section className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
         <Card className="h-fit">
@@ -260,12 +227,11 @@ export function StudentSpeaking() {
                       ? "border-border bg-accent text-accent-foreground shadow-[2px_2px_0_var(--border)]"
                       : "border-transparent bg-surface-muted text-ink hover:border-border hover:shadow-[2px_2px_0_var(--border)]",
                   )}
-                   disabled={isRecording}
-                   onClick={() => {
-                     setSelectedExercise(exercise);
-                     setReferenceAudioError(false);
-                   }}
-                   type="button"
+                  onClick={() => {
+                    setSelectedExercise(exercise);
+                    setReferenceAudioError(false);
+                  }}
+                  type="button"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -317,9 +283,7 @@ export function StudentSpeaking() {
                   </div>
                   {referenceAudioUrl(selectedExercise) ? (
                     <div className="grid gap-2">
-                      <audio className="w-full" controls onError={() => setReferenceAudioError(true)} src={referenceAudioUrl(selectedExercise) ?? undefined}>
-                        Audio belum dapat diputar. Coba muat ulang halaman.
-                      </audio>
+                      {outputTarget === "computer" ? <audio className="w-full" controls onError={() => setReferenceAudioError(true)} src={referenceAudioUrl(selectedExercise) ?? undefined}>Audio belum dapat diputar. Coba muat ulang halaman.</audio> : <Button disabled={esp32.state !== "ready" && esp32.state !== "captured"} onClick={() => playOnDevice(referenceAudioUrl(selectedExercise))} type="button"><Play className="mr-2 size-4" />Putar melalui alat</Button>}
                       <p className="text-xs font-bold text-muted">{referenceAudioName(selectedExercise)}</p>
                       {referenceAudioError ? <p className="text-xs font-black text-danger">Audio belum dapat diputar. Coba muat ulang halaman.</p> : null}
                     </div>
@@ -330,7 +294,17 @@ export function StudentSpeaking() {
                   )}
                 </div>
 
-                <div className="flex flex-col items-center gap-4 rounded-[var(--radius-card)] border-2 border-border bg-paper p-6 shadow-[2px_2px_0_var(--border)]">
+                <div className="grid grid-cols-2 gap-3" aria-label="Output audio">
+                  <Button onClick={() => { void esp32.stopPlayback(); setOutputTarget("computer"); }} type="button" variant={outputTarget === "computer" ? "primary" : "secondary"}>Komputer</Button>
+                  <Button disabled={!esp32.supported} onClick={() => setOutputTarget("device")} type="button" variant={outputTarget === "device" ? "primary" : "secondary"}>Alat Speaking EMI</Button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3" aria-label="Sumber rekaman">
+                  <Button disabled={isRecording || isSubmitting || esp32.state === "recording" || esp32.state === "finalizing"} onClick={() => selectCaptureSource("microphone")} type="button" variant={captureSource === "microphone" ? "primary" : "secondary"}><Mic className="mr-2 size-4" />Gunakan mikrofon perangkat</Button>
+                  <Button disabled={!esp32.supported || isRecording || isSubmitting || esp32.state === "recording" || esp32.state === "finalizing" || esp32.state === "playing"} onClick={() => selectCaptureSource("esp32")} type="button" variant={captureSource === "esp32" ? "primary" : "secondary"}><Cable className="mr-2 size-4" />Gunakan Alat Speaking EMI</Button>
+                </div>
+
+                {captureSource === "microphone" ? <div className="flex flex-col items-center gap-4 rounded-[var(--radius-card)] border-2 border-border bg-surface p-6 shadow-[2px_2px_0_var(--border)]">
                   <button
                     aria-label={isRecording ? "Stop rekaman" : "Mulai rekaman"}
                     className={cn(
@@ -345,8 +319,7 @@ export function StudentSpeaking() {
                   </button>
                   <div className="text-center">
                     <p className="text-lg font-black text-ink">{isRecording ? "Sedang merekam..." : recordedFile ? "Rekaman siap dikirim" : "Tekan untuk mulai rekam"}</p>
-                     <p className="mt-1 text-xs font-bold text-muted">Durasi: {isRecording ? recordingSeconds : recordedDuration}s / {maxRecordingSeconds}s</p>
-                     <p className="mt-1 text-xs font-bold text-muted">Pastikan mikrofon aktif dan suara terdengar jelas.</p>
+                    <p className="mt-1 text-xs font-bold text-muted">Pastikan mikrofon aktif dan suara terdengar jelas.</p>
                   </div>
                   <div className="flex h-10 w-full max-w-sm items-center justify-center gap-1 rounded-full bg-surface px-4">
                     {Array.from({ length: 18 }).map((_, index) => (
@@ -357,15 +330,35 @@ export function StudentSpeaking() {
                       />
                     ))}
                   </div>
-                </div>
+                </div> : (
+                  <div className="grid gap-4 rounded-[var(--radius-card)] border-2 border-border bg-surface p-6 shadow-[2px_2px_0_var(--border)]">
+                    <div className="flex items-start gap-3">
+                      <span className="flex size-12 shrink-0 items-center justify-center rounded-xl border-2 border-border bg-surface-muted text-ink">
+                        <Mic className="size-6" strokeWidth={2.5} />
+                      </span>
+                      <div>
+                        <p className="text-lg font-black text-ink">Alat Speaking EMI</p>
+                        <p className="mt-1 text-sm font-semibold text-muted">Tekan tombol pada alat untuk mulai.</p>
+                      </div>
+                    </div>
+                    {esp32.notice ? <Alert tone="info">{esp32.notice}</Alert> : null}
+                    {esp32.error ? <Alert tone="error">{esp32.error}</Alert> : null}
+                    <p className="text-sm font-bold text-muted">Status: {{ unsupported: "Alat belum didukung", disconnected: "Alat mati atau belum pernah dipilih", permitted: "Alat tersimpan, belum terhubung", connecting: "Sedang menghubungkan alat...", ready: "Alat siap digunakan", recording: "Sedang merekam...", finalizing: "Menyiapkan rekaman...", captured: "Rekaman siap dikirim", playing: "Sedang memutar melalui alat...", error: "Terjadi masalah pada alat" }[esp32.state]}</p>
+                    <div className="flex flex-wrap gap-3">
+                      <Button disabled={!esp32.supported || esp32.state === "connecting" || esp32.state === "recording" || esp32.state === "finalizing" || isSubmitting} onClick={() => esp32.connect(false)} type="button"><Cable className="mr-2 size-4" />Sambungkan ulang</Button>
+                      <Button disabled={!esp32.supported || esp32.state === "connecting" || esp32.state === "recording" || esp32.state === "finalizing" || isSubmitting} onClick={() => esp32.connect(true)} type="button" variant="secondary">Pilih alat lain</Button>
+                      {esp32.state !== "disconnected" && esp32.state !== "permitted" && esp32.state !== "unsupported" ? <Button disabled={esp32.state === "finalizing" || isSubmitting} onClick={esp32.disconnect} type="button" variant="secondary">Putuskan alat</Button> : null}
+                    </div>
+                  </div>
+                )}
 
-                {recordedUrl ? (
+                {(captureSource === "microphone" ? recordedUrl : esp32.capture?.url) ? (
                   <div className="rounded-[var(--radius-card)] border-2 border-border bg-surface p-4 shadow-[2px_2px_0_var(--border)]">
                     <div className="mb-3 flex items-center gap-2">
                       <Play className="size-5 text-primary" strokeWidth={3} />
                       <p className="font-black text-ink">Preview audio</p>
                     </div>
-                    <audio className="w-full" controls src={recordedUrl} />
+                    {outputTarget === "computer" ? <audio className="w-full" controls src={captureSource === "microphone" ? recordedUrl ?? undefined : esp32.capture?.url} /> : <Button disabled={esp32.state !== "ready" && esp32.state !== "captured"} onClick={() => playOnDevice(captureSource === "microphone" ? recordedFile : esp32.capture?.file)} type="button"><Play className="mr-2 size-4" />Putar preview melalui alat</Button>}
                   </div>
                 ) : null}
 
@@ -375,7 +368,7 @@ export function StudentSpeaking() {
                       <p className="font-black text-ink">Kirim untuk dianalisis</p>
                       <p className="mt-1 text-xs font-bold text-muted">Skor AI adalah penilaian awal. Guru tetap dapat meninjau dan memberi umpan balik.</p>
                     </div>
-                    <Button disabled={!recordedFile || isSubmitting || isRecording} onClick={submitAttempt} type="button">
+                    <Button disabled={!(captureSource === "microphone" ? recordedFile : esp32.capture?.file) || isSubmitting || isRecording || esp32.state === "recording"} onClick={submitAttempt} type="button">
                       {isSubmitting ? <LoaderCircle className="mr-2 size-4 animate-spin" /> : <UploadCloud className="mr-2 size-4" />}
                       {isSubmitting ? "Mengirim" : "Kirim audio"}
                     </Button>
@@ -391,7 +384,10 @@ export function StudentSpeaking() {
         <Card>
           <CardContent>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-xl font-black text-ink">Hasil Percobaan Terakhir</h2>
+              <div>
+                <h2 className="text-xl font-black text-ink">Hasil Percobaan Terakhir</h2>
+                <p className="mt-1 text-xs font-bold text-muted">Hasil AI adalah perkiraan awal. Penilaian akhir akan diberikan oleh guru.</p>
+              </div>
               <Badge tone={statusTone(activeAttempt.status)}>{statusLabel(activeAttempt.status)}</Badge>
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -399,13 +395,11 @@ export function StudentSpeaking() {
               <div className="rounded-xl border-2 border-transparent bg-surface-muted p-4"><p className="text-xs font-black uppercase text-muted">Skor guru</p><p className="mt-1 text-2xl font-black text-ink">{score(activeAttempt.teacher_score)}</p></div>
             </div>
             {activeAttempt.ai_transcription ? <p className="mt-4 text-sm leading-6"><span className="font-black">Transkripsi AI:</span> {activeAttempt.ai_transcription}</p> : null}
-            {activeAttempt.ai_error ? <Alert tone="error">AI gagal menganalisis: {activeAttempt.ai_error}</Alert> : null}
-             {activeAttempt.teacher_feedback ? <Alert tone="success">Feedback guru: {activeAttempt.teacher_feedback}</Alert> : <p className="mt-4 text-sm font-bold text-muted">Menunggu tinjauan guru.</p>}
-             {pollingStopped && processingStatuses.has(activeAttempt.status) ? (
-               <Alert tone="info">Analisis masih berjalan. Refresh status atau lihat Riwayat Hasil nanti.</Alert>
-             ) : null}
-             <Button className="mt-4" onClick={refreshActiveAttempt} type="button" variant="secondary">Refresh status</Button>
-           </CardContent>
+            {activeAttempt.ai_alignment ? <p className="mt-2 text-sm font-bold text-muted">Alignment AI tersedia untuk membantu tinjauan pengucapan.</p> : null}
+            {studentAiWarnings(activeAttempt.ai_warnings).map((warning) => <Alert key={warning} tone="info">{warning}</Alert>)}
+            {activeAttempt.status === "failed" ? <div className="grid gap-3"><Alert tone="error">{activeAttempt.ai_error || "Analisis belum berhasil. Audio tetap tersimpan dan dapat dicoba lagi."}</Alert><Button onClick={() => { setError(null); setActiveAttempt(null); }} type="button" variant="secondary">Coba lagi</Button></div> : null}
+            {activeAttempt.teacher_feedback ? <Alert tone="success">Feedback guru: {activeAttempt.teacher_feedback}</Alert> : <p className="mt-4 text-sm font-bold text-muted">Menunggu tinjauan guru.</p>}
+          </CardContent>
         </Card>
       ) : null}
 

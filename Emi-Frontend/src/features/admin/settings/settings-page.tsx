@@ -11,7 +11,7 @@ import { settingsService } from "./settings-service";
 import { SettingsSectionCard } from "./settings-section-card";
 import { roleLabel } from "./settings-utils";
 
-const disabledFieldClass = "bg-slate-100 text-slate-500";
+const disabledFieldClass = "bg-surface-muted text-muted";
 
 function getInitials(name?: string) {
   return name?.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "AD";
@@ -59,9 +59,9 @@ export function SettingsPage() {
     <div className="grid gap-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <Badge tone="yellow">ADMIN-19</Badge>
+          <Badge tone="blue">ADMIN-19</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">Pengaturan Sistem</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-600">Atur preferensi dasar sistem EMI.</p>
+          <p className="mt-2 text-sm leading-6 text-muted">Atur preferensi dasar sistem EMI.</p>
         </div>
         <Badge tone="neutral">Functional-first</Badge>
       </header>
@@ -90,17 +90,17 @@ export function SettingsPage() {
               const data = formData(event);
               profileMutation.mutate({ full_name: String(data.get("full_name") ?? "").trim(), phone: String(data.get("phone") ?? "").trim() || null });
             }}>
-              <div className="rounded-lg border-2 border-ink bg-yellow-100 p-5">
-                <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-ink bg-white text-2xl font-black text-ink shadow-brutal">{getInitials(user.full_name)}</div>
+              <div className="rounded-2xl border-2 border-border bg-[var(--color-primary-muted)] p-5">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-border bg-surface text-2xl font-black text-ink shadow-emi">{getInitials(user.full_name)}</div>
                 <h2 className="mt-4 text-lg font-black text-ink">{user.full_name}</h2>
-                <p className="mt-1 text-sm font-semibold text-slate-600">{user.email}</p>
+                <p className="mt-1 text-sm font-semibold text-muted">{user.email}</p>
                 <Badge className="mt-4" tone="blue">{roleLabel(user.role)}</Badge>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <FormField label="Nama Lengkap"><Input defaultValue={user.full_name} name="full_name" required /></FormField>
                 <FormField label="Email Kantor"><Input className={disabledFieldClass} disabled value={user.email} /></FormField>
                 <FormField label="Telepon Admin"><Input defaultValue={user.phone ?? ""} name="phone" placeholder="Belum diisi" /></FormField>
-                <FormField label="Status Akun"><Input className={disabledFieldClass} disabled value={user.status === "approved" ? "Disetujui" : user.status === "pending" ? "Menunggu persetujuan" : user.status === "rejected" ? "Ditolak" : user.status} /></FormField>
+                <FormField label="Status Akun"><Input className={disabledFieldClass} disabled value={user.status} /></FormField>
                 <Button className="md:col-span-2" disabled={profileMutation.isPending} type="submit">{profileMutation.isPending ? "Menyimpan..." : "Simpan Profil"}</Button>
               </div>
             </form>
@@ -112,17 +112,17 @@ export function SettingsPage() {
               data.set("enabled", data.get("enabled") ? "1" : "0");
               bannerMutation.mutate(data);
             }}>
-              <div className="rounded-lg border-2 border-ink bg-blue-50 p-5">
-                <p className="text-xs font-black uppercase text-slate-500">Preview banner</p>
-                <div className="mt-3 overflow-hidden rounded-lg border-2 border-dashed border-ink bg-white p-4">
-                  {bannerPreview || settings.banner.image_url ? <img alt="Preview banner login" className="max-h-40 w-full rounded object-cover" src={bannerPreview ?? settings.banner.image_url ?? ""} /> : <p className="text-sm font-bold text-slate-500">Banner belum diunggah.</p>}
+              <div className="rounded-2xl border-2 border-border bg-surface-muted p-5">
+                <p className="text-xs font-black uppercase text-muted">Preview banner</p>
+                <div className="mt-3 overflow-hidden rounded-xl border-2 border-dashed border-border bg-surface p-4">
+                  {bannerPreview || settings.banner.image_url ? <img alt="Preview banner login" className="max-h-40 w-full rounded object-cover" src={bannerPreview ?? settings.banner.image_url ?? ""} /> : <p className="text-sm font-bold text-muted">Banner belum diunggah.</p>}
                 </div>
                 <Input className="mt-4" name="file" onChange={(event) => setBannerPreview(event.target.files?.[0] ? URL.createObjectURL(event.target.files[0]) : null)} type="file" />
               </div>
               <div className="grid gap-4">
                 <label className="flex items-center gap-3 text-sm font-black text-ink"><input defaultChecked={settings.banner.enabled} name="enabled" type="checkbox" /> Aktifkan Banner</label>
                 <Button disabled={bannerMutation.isPending} type="submit">{bannerMutation.isPending ? "Menyimpan..." : "Simpan Banner"}</Button>
-                <div className="grid gap-2 text-xs font-semibold text-slate-600">
+                <div className="grid gap-2 text-xs font-semibold text-muted">
                   {settings.activity_logs.map((log) => <p key={log.id}>{new Date(log.created_at).toLocaleString("id-ID")} · {log.admin} · {log.title} · {log.status ? "aktif" : "nonaktif"}</p>)}
                 </div>
               </div>

@@ -20,10 +20,12 @@ import {
   TableHeader,
 } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
+import { userManagementService } from "@/features/admin/management/management-service";
 import { userStatusLabel } from "@/features/admin/management/management-utils";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { progressReportService } from "./progress-service";
+import { StudentProgressPrintReport } from "./progress-print-report";
 import { ProgressBar } from "./progress-summary-cards";
 import {
   formatDateTime,
@@ -39,29 +41,49 @@ export function ProgressStudentDetail({ studentId }: { studentId: string }) {
   const { token } = useAuth();
   const [quizPage, setQuizPage] = useState(1);
 
-  const detailQuery = useQuery({
-    queryKey: ["admin", "progress", "student-detail", studentId, quizPage],
-    queryFn: () => progressReportService.studentDetail(token ?? "", studentId, { quiz_page: quizPage, quiz_per_page: 10 }),
+  const userQuery = useQuery({
+    queryKey: ["admin", "progress", "student-user", studentId],
+    queryFn: () => userManagementService.detail(token ?? "", studentId),
     enabled: Boolean(token && studentId),
   });
-  const userQuery = { ...detailQuery, data: detailQuery.data?.student };
-  const progressQuery = { ...detailQuery, data: detailQuery.data?.progress };
-  const quizResultsQuery = { ...detailQuery, data: detailQuery.data ? { items: detailQuery.data.quizzes.data, meta: detailQuery.data.quizzes.meta, summary: detailQuery.data.quiz_summary } : undefined };
+
+  const progressQuery = useQuery({
+    queryKey: ["admin", "progress", "student-progress", studentId],
+    queryFn: () =>
+      progressReportService.students(token ?? "", {
+        student_id: studentId,
+        page: 1,
+        per_page: 1,
+      }),
+    enabled: Boolean(token && studentId),
+  });
+
+  const quizResultsQuery = useQuery({
+    queryKey: ["admin", "progress", "student-quiz-results", studentId, quizPage],
+    queryFn: () =>
+      progressReportService.quizResults(token ?? "", {
+        student_id: studentId,
+        page: quizPage,
+        per_page: 10,
+      }),
+    enabled: Boolean(token && studentId),
+  });
+
   const user = userQuery.data;
-  const progress = progressQuery.data ?? null;
+  const progress = progressQuery.data?.items[0] ?? null;
   const status = progress ? learningStatus(progress) : null;
   const quizRows = quizResultsQuery.data?.items ?? [];
   const quizMeta = quizResultsQuery.data?.meta;
   const quizSummary = quizResultsQuery.data?.summary;
 
   function printReport() {
-    void progressReportService.downloadPdf(token ?? "", `/admin/reports/progress/students/${studentId}/pdf`);
+    window.print();
   }
 
   return (
     <div className="grid gap-6">
       <Link
-        className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100"
+        className="w-fit rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 py-2 text-sm font-black text-ink transition-colors hover:bg-primary hover:text-primary-foreground"
         href="/admin/progress"
       >
         Kembali ke Progress
@@ -80,13 +102,13 @@ export function ProgressStudentDetail({ studentId }: { studentId: string }) {
         <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <div className="flex flex-wrap gap-2">
-              <Badge tone="yellow">ADMIN-18</Badge>
+              <Badge tone="blue">ADMIN-18</Badge>
               <Badge tone={statusTone(user.status)}>{userStatusLabel(user.status)}</Badge>
             </div>
             <h1 className="mt-2 text-3xl font-black text-ink">{user.full_name}</h1>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              {user.email} | {progress?.school.name ?? "Sekolah belum tersedia"} |{" "}
-              {progress?.class.name ?? "Kelas belum tersedia"}
+            <p className="mt-2 text-sm leading-6 font-semibold text-muted">
+              {user.email} | {user.active_school?.name ?? "Sekolah belum tersedia"} |{" "}
+              {user.active_class?.name ?? "Kelas belum tersedia"}
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -113,44 +135,44 @@ export function ProgressStudentDetail({ studentId }: { studentId: string }) {
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Card>
               <CardContent>
-                <p className="text-xs font-black uppercase text-slate-500">Progress Modul</p>
+                <p className="text-xs font-black uppercase text-muted">Progress Modul</p>
                 <div className="mt-3">
                   <ProgressBar value={progress.overall_learning_progress_percent} />
                 </div>
-                <p className="mt-2 text-sm text-slate-600">
+                <p className="mt-2 text-sm font-semibold text-muted">
                   {progress.completed_modules}/{progress.published_modules} modul selesai.
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent>
-                <p className="text-xs font-black uppercase text-slate-500">Pelajaran Selesai</p>
+                <p className="text-xs font-black uppercase text-muted">Pelajaran Selesai</p>
                 <p className="mt-3 text-3xl font-black text-ink">
                   {formatNumber(progress.completed_lessons)}
                 </p>
-                <p className="mt-2 text-sm text-slate-600">
+                <p className="mt-2 text-sm font-semibold text-muted">
                   Dari {formatNumber(progress.total_published_lessons)} pelajaran terbit.
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent>
-                <p className="text-xs font-black uppercase text-slate-500">Rata-rata Kuis</p>
+                <p className="text-xs font-black uppercase text-muted">Rata-rata Kuis</p>
                 <p className="mt-3 text-3xl font-black text-ink">
                   {formatPercent(progress.average_best_quiz_score_percent)}
                 </p>
-                <p className="mt-2 text-sm text-slate-600">
+                <p className="mt-2 text-sm font-semibold text-muted">
                   {progress.quizzes_completed}/{progress.published_quizzes} kuis selesai.
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent>
-                <p className="text-xs font-black uppercase text-slate-500">Status Belajar</p>
+                <p className="text-xs font-black uppercase text-muted">Status Belajar</p>
                 <div className="mt-3">
                   <Badge tone={statusTone(status)}>{learningStatusLabel(status)}</Badge>
                 </div>
-                <p className="mt-2 text-sm text-slate-600">
+                <p className="mt-2 text-sm font-semibold text-muted">
                   Aktivitas terakhir: {formatDateTime(latestActivity(progress))}
                 </p>
               </CardContent>
@@ -167,7 +189,7 @@ export function ProgressStudentDetail({ studentId }: { studentId: string }) {
       <Card>
         <CardHeader>
           <h2 className="text-xl font-black text-ink">Riwayat Kuis</h2>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm font-semibold text-muted">
             Satu baris per siswa dan class quiz; backend memilih best final attempt.
           </p>
         </CardHeader>
@@ -192,7 +214,7 @@ export function ProgressStudentDetail({ studentId }: { studentId: string }) {
                   <div className="grid gap-4 md:grid-cols-3">
                     <Card>
                       <CardContent>
-                        <p className="text-xs font-black uppercase text-slate-500">Partisipasi</p>
+                        <p className="text-xs font-black uppercase text-muted">Partisipasi</p>
                         <p className="mt-3 text-2xl font-black text-ink">
                           {formatPercent(quizSummary.participation_rate_percent)}
                         </p>
@@ -200,7 +222,7 @@ export function ProgressStudentDetail({ studentId }: { studentId: string }) {
                     </Card>
                     <Card>
                       <CardContent>
-                        <p className="text-xs font-black uppercase text-slate-500">Completion</p>
+                        <p className="text-xs font-black uppercase text-muted">Completion</p>
                         <p className="mt-3 text-2xl font-black text-ink">
                           {formatPercent(quizSummary.completion_rate_percent)}
                         </p>
@@ -208,7 +230,7 @@ export function ProgressStudentDetail({ studentId }: { studentId: string }) {
                     </Card>
                     <Card>
                       <CardContent>
-                        <p className="text-xs font-black uppercase text-slate-500">Best Average</p>
+                        <p className="text-xs font-black uppercase text-muted">Best Average</p>
                         <p className="mt-3 text-2xl font-black text-ink">
                           {formatPercent(quizSummary.average_best_score_percent)}
                         </p>
@@ -231,7 +253,7 @@ export function ProgressStudentDetail({ studentId }: { studentId: string }) {
                       <tr key={row.quiz.id}>
                         <TableCell>
                           <p className="font-black text-ink">{row.quiz.title}</p>
-                          <p className="text-xs text-slate-600">{row.class.name}</p>
+                          <p className="text-xs font-semibold text-muted">{row.class.name}</p>
                         </TableCell>
                         <TableCell>
                           {row.attempt_count} attempt
@@ -271,6 +293,11 @@ export function ProgressStudentDetail({ studentId }: { studentId: string }) {
         </CardContent>
       </Card>
 
+      <StudentProgressPrintReport
+        progress={progress}
+        quizRows={quizRows}
+        user={user}
+      />
     </div>
   );
 }

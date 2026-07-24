@@ -32,29 +32,29 @@ export function TeacherProfile() {
   const profile = profileQuery.data;
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       <PageHeader badge="Guru" description="Perbarui identitas guru yang tampil di kelas dan laporan." title="Profil Guru" />
 
       {profileQuery.isLoading ? <LoadingState title="Memuat profil" /> : null}
       {profileQuery.isError ? <ErrorState description={getFirstApiError(profileQuery.error)} onRetry={() => void profileQuery.refetch()} title="Gagal memuat profil" /> : null}
 
       {profile ? (
-        <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-          <Card>
+        <div className="grid items-stretch gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+          <Card className="flex h-full flex-col">
             <CardHeader><h2 className="text-xl font-black text-ink">Identitas</h2></CardHeader>
             <CardContent>
               <dl className="grid gap-3 text-sm">
-                <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Nama</dt><dd className="mt-1 font-bold text-ink">{profile.full_name}</dd></div>
-                <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Email</dt><dd className="mt-1 font-bold text-ink">{profile.email}</dd></div>
-                <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Role</dt><dd className="mt-1 font-bold text-ink">{formatOptional(profile.role)}</dd></div>
-                <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Status</dt><dd className="mt-1 font-bold text-ink">{statusLabel(profile.status)}</dd></div>
-                <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Telepon</dt><dd className="mt-1 font-bold text-ink">{formatOptional(profile.phone)}</dd></div>
-                <div className="rounded-xl bg-slate-50 p-3"><dt className="font-black uppercase text-slate-500">Avatar</dt><dd className="mt-1 font-bold text-ink">{profile.avatar?.url ? "Tersedia" : "Belum tersedia"}</dd></div>
+                <div className="rounded-xl border-2 border-border bg-surface-muted p-3"><dt className="font-black uppercase text-muted">Nama</dt><dd className="mt-1 font-bold text-ink">{profile.full_name}</dd></div>
+                <div className="rounded-xl border-2 border-border bg-surface-muted p-3"><dt className="font-black uppercase text-muted">Email</dt><dd className="mt-1 font-bold text-ink">{profile.email}</dd></div>
+                <div className="rounded-xl border-2 border-border bg-surface-muted p-3"><dt className="font-black uppercase text-muted">Role</dt><dd className="mt-1 font-bold text-ink">{formatOptional(profile.role)}</dd></div>
+                <div className="rounded-xl border-2 border-border bg-surface-muted p-3"><dt className="font-black uppercase text-muted">Status</dt><dd className="mt-1 font-bold text-ink">{statusLabel(profile.status)}</dd></div>
+                <div className="rounded-xl border-2 border-border bg-surface-muted p-3"><dt className="font-black uppercase text-muted">Telepon</dt><dd className="mt-1 font-bold text-ink">{formatOptional(profile.phone)}</dd></div>
+                <div className="rounded-xl border-2 border-border bg-surface-muted p-3"><dt className="font-black uppercase text-muted">Avatar</dt><dd className="mt-1 font-bold text-ink">{profile.avatar?.url ? "Tersedia" : "Belum tersedia"}</dd></div>
               </dl>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="flex h-full flex-col">
             <CardHeader><h2 className="text-xl font-black text-ink">Ubah Profil</h2></CardHeader>
             <CardContent>
               <form

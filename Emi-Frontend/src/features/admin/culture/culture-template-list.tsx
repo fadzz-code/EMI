@@ -2,6 +2,7 @@
 
 import { type FormEvent, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Archive, FilePenLine, Plus, Send, Trash2 } from "lucide-react";
 
 import {
   Alert,
@@ -24,12 +25,12 @@ import {
 import { classService } from "@/features/admin/management/management-service";
 import { useAuth } from "@/features/auth/auth-provider";
 import { CultureMediaPreview } from "@/features/culture/culture-media-preview";
+import { cultureFileMatches, cultureFields, cultureMediaAccept, cultureTypeTransition, isCultureFileType } from "@/features/culture/culture-content";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { adminCultureService } from "./culture-service";
 import type { AdminGlobalCultureItem } from "./types";
 
-const fileTypes = ["image", "audio", "pdf", "video"];
 const contentTypes = ["image", "audio", "pdf", "video", "youtube", "article", "link"];
 
 function contentTypeLabel(type: string) {
@@ -95,9 +96,9 @@ export function AdminCultureTemplateList() {
     <div className="grid gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <PageHeader badge="Admin" description="Kelola konten budaya global yang dapat dibagikan ke semua kelas." title="Budaya Mekongga" />
-        <Button onClick={() => openBuilder()} type="button">Tambah Konten Budaya</Button>
+        <Button className="gap-2" onClick={() => openBuilder()} type="button"><Plus className="size-5" strokeWidth={2.5} />Tambah Konten Budaya</Button>
       </div>
-      <p className="text-sm leading-6 text-slate-600">Konten yang disimpan admin akan tersedia sebagai materi budaya untuk kelas-kelas aktif.</p>
+      <p className="text-sm leading-6 font-semibold text-muted">Konten yang disimpan admin akan tersedia sebagai materi budaya untuk kelas-kelas aktif.</p>
       {successMsg ? <Alert tone="success">{successMsg}</Alert> : null}
 
       {itemsQuery.isLoading || classesQuery.isLoading ? <LoadingState title="Memuat Budaya Mekongga" /> : null}
@@ -111,7 +112,7 @@ export function AdminCultureTemplateList() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-2xl font-black text-ink">Semua Kelas</h2>
-                  <p className="mt-2 text-sm font-bold text-slate-500">{items.length} konten - {publishedCount} konten terbit - {classCount} kelas</p>
+                  <p className="mt-2 text-sm font-bold text-muted">{items.length} konten - {publishedCount} konten terbit - {classCount} kelas</p>
                 </div>
                 <Badge tone="neutral">Global untuk semua kelas</Badge>
               </div>
@@ -123,18 +124,18 @@ export function AdminCultureTemplateList() {
           {items.length === 0 ? <Card><CardContent><EmptyState description="Belum ada konten budaya. Klik Tambah Konten Budaya untuk menambah konten ke semua kelas." title="Konten budaya kosong" /></CardContent></Card> : (
             <div className="grid gap-4 md:grid-cols-2">
               {items.map((item) => (
-                <Card key={item.id}>
-                  <CardHeader><div className="flex flex-wrap gap-2"><Badge tone={item.status === "published" ? "blue" : item.status === "archived" ? "neutral" : "yellow"}>{statusLabel(item.status)}</Badge><Badge tone="neutral">{contentTypeLabel(String(item.content_type))}</Badge></div><h2 className="mt-2 text-xl font-black text-ink">{item.title}</h2></CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-slate-600">{item.description ?? "Tanpa deskripsi"}</p>
-                    <p className="mt-2 text-xs font-black uppercase text-slate-500">Global untuk semua kelas</p>
-                    <p className="mt-2 text-sm font-bold text-slate-500">{item.classes_count ?? 0} kelas - {item.published_classes_count ?? 0} kelas terbit</p>
+                <Card className="flex h-full flex-col transition hover:-translate-y-1 hover:shadow-emi" key={item.id}>
+                  <CardHeader><div className="flex flex-wrap gap-2"><Badge tone={item.status === "published" ? "blue" : "neutral"}>{statusLabel(item.status)}</Badge><Badge tone="neutral">{contentTypeLabel(String(item.content_type))}</Badge></div><h2 className="mt-2 text-xl font-black text-ink">{item.title}</h2></CardHeader>
+                  <CardContent className="flex flex-1 flex-col">
+                    <p className="text-sm font-semibold text-muted">{item.description ?? "Tanpa deskripsi"}</p>
+                    <p className="mt-2 text-xs font-black uppercase text-muted">Global untuk semua kelas</p>
+                    <p className="mt-2 text-sm font-bold text-muted">{item.classes_count ?? 0} kelas - {item.published_classes_count ?? 0} kelas terbit</p>
                     <CultureMediaPreview item={item} />
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <Button type="button" variant="secondary" onClick={() => openBuilder(item)}>Edit</Button>
-                      {item.status !== "published" ? <Button type="button" onClick={() => publishMutation.mutate(item.id)}>Terbitkan</Button> : null}
-                      {item.status !== "archived" ? <Button type="button" variant="secondary" onClick={() => archiveMutation.mutate(item.id)}>Arsipkan</Button> : null}
-                      <Button type="button" variant="danger" onClick={() => { if (confirm("Hapus konten budaya ini dari semua kelas?")) deleteMutation.mutate(item.id); }}>Hapus</Button>
+                    <div className="mt-auto flex flex-wrap gap-2 pt-4">
+                      <Button className="gap-2" type="button" variant="secondary" onClick={() => openBuilder(item)}><FilePenLine className="size-4" />Edit</Button>
+                      {item.status !== "published" ? <Button className="gap-2" type="button" onClick={() => publishMutation.mutate(item.id)}><Send className="size-4" />Terbitkan</Button> : null}
+                      {item.status !== "archived" ? <Button className="gap-2" type="button" variant="secondary" onClick={() => archiveMutation.mutate(item.id)}><Archive className="size-4" />Arsipkan</Button> : null}
+                      <Button className="gap-2" type="button" variant="danger" onClick={() => { if (confirm("Hapus konten budaya ini dari semua kelas?")) deleteMutation.mutate(item.id); }}><Trash2 className="size-4" />Hapus</Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -160,30 +161,32 @@ function AdminGlobalCultureForm({
 }) {
   const [type, setType] = useState(String(item?.content_type ?? "image"));
   const [file, setFile] = useState<File | null>(null);
+  const [mediaId, setMediaId] = useState<string | null>(item?.media_id ?? null);
+  const [externalUrl, setExternalUrl] = useState(item?.external_url ?? "");
   const [formError, setFormError] = useState<string | null>(null);
   const mutation = useMutation({
     mutationFn: (payload: Partial<AdminGlobalCultureItem>) => item ? adminCultureService.updateGlobalItem(token, item.id, payload) : adminCultureService.createGlobalItem(token, payload),
     onSuccess: onDone,
   });
-  const isFileBased = fileTypes.includes(type);
+  const isFileBased = isCultureFileType(type);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
     const formData = new FormData(event.currentTarget);
-    let mediaId = item?.media_id ?? null;
+    let nextMediaId = mediaId;
 
     try {
       if (isFileBased && file) {
-        mediaId = (await adminCultureService.uploadMedia(token, file)).id;
+        if (!cultureFileMatches(type, file)) throw new Error("Jenis file tidak sesuai tipe konten.");
+        nextMediaId = (await adminCultureService.uploadMedia(token, file)).id;
       }
 
       mutation.mutate({
         title: String(formData.get("title") ?? ""),
         description: String(formData.get("description") ?? ""),
         content_type: type,
-        media_id: isFileBased ? mediaId : null,
-        external_url: isFileBased ? null : String(formData.get("external_url") ?? ""),
+        ...cultureFields(type, nextMediaId, externalUrl || null),
         display_order: Number(formData.get("display_order") ?? 1),
         status: String(formData.get("status") ?? "draft"),
       });
@@ -199,7 +202,7 @@ function AdminGlobalCultureForm({
           <h2 className="text-xl font-black text-ink">
             {item ? "Edit Konten Budaya" : "Tambah Konten Budaya"}
           </h2>
-          <p className="mt-1 text-sm leading-6 text-slate-600">
+          <p className="mt-1 text-sm leading-6 font-semibold text-muted">
             Atur identitas, tipe konten, media atau tautan, lalu simpan sebagai draft atau
             langsung terbitkan untuk kelas.
           </p>
@@ -210,10 +213,10 @@ function AdminGlobalCultureForm({
           {formError ? <Alert tone="error">{formError}</Alert> : null}
           {mutation.error ? <Alert tone="error">{getFirstApiError(mutation.error)}</Alert> : null}
 
-          <section className="grid gap-4 rounded-lg border-2 border-ink bg-white p-4">
+          <section className="grid gap-4 rounded-2xl border-2 border-border bg-surface p-4">
             <div>
               <h3 className="text-base font-black text-ink">Informasi Konten</h3>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
+              <p className="mt-1 text-sm leading-6 font-semibold text-muted">
                 Judul dan deskripsi ditampilkan ke guru dan siswa saat konten budaya dibuka.
               </p>
             </div>
@@ -225,12 +228,13 @@ function AdminGlobalCultureForm({
             </FormField>
           </section>
 
-          <section className="grid gap-4 rounded-lg border-2 border-ink bg-yellow-50 p-4">
+          <section className="grid gap-4 rounded-2xl border-2 border-border bg-[var(--color-primary-muted)] p-4">
             <div className="grid gap-4 md:grid-cols-2">
               <FormField label="Tipe konten">
                 <Select
                   name="content_type"
-                  onChange={(event) => setType(event.target.value)}
+                   onChange={(event) => { const nextType = event.target.value; const next = cultureTypeTransition(type, nextType, item?.media_id ?? null); setType(nextType); setFile(next.file); setMediaId(next.mediaId); setExternalUrl(next.externalUrl); setFormError(null); }}
+
                   value={type}
                 >
                   {contentTypes.map((contentType) => (
@@ -252,7 +256,7 @@ function AdminGlobalCultureForm({
             {isFileBased ? (
               <div className="grid gap-3">
                 <FormField label="File media">
-                  <UploadComponent onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+                  <UploadComponent accept={cultureMediaAccept(type)} onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
                 </FormField>
                 {file ? (
                   <FilePreview
@@ -261,8 +265,8 @@ function AdminGlobalCultureForm({
                     type={file.type || "File"}
                   />
                 ) : null}
-                {item?.media_id && !file ? (
-                  <p className="text-sm font-bold text-slate-600">
+                {mediaId && !file ? (
+                  <p className="text-sm font-bold font-semibold text-muted">
                     Media saat ini tetap dipakai jika tidak upload file baru.
                   </p>
                 ) : null}
@@ -270,8 +274,9 @@ function AdminGlobalCultureForm({
             ) : (
               <FormField label="URL">
                 <Input
-                  defaultValue={item?.external_url ?? ""}
                   name="external_url"
+                  onChange={(event) => setExternalUrl(event.target.value)}
+                  value={externalUrl}
                   required
                   type="url"
                 />
@@ -279,7 +284,7 @@ function AdminGlobalCultureForm({
             )}
           </section>
 
-          <section className="grid gap-4 rounded-lg border-2 border-ink bg-white p-4 md:grid-cols-2">
+          <section className="grid gap-4 rounded-2xl border-2 border-border bg-surface p-4 md:grid-cols-2">
             <FormField label="Urutan tampil">
               <Input
                 defaultValue={item?.display_order ?? 1}
@@ -288,7 +293,7 @@ function AdminGlobalCultureForm({
                 type="number"
               />
             </FormField>
-            <div className="rounded-lg border-2 border-dashed border-ink bg-slate-50 p-4 text-sm font-bold leading-6 text-slate-600">
+            <div className="rounded-lg border-2 border-dashed border-border bg-surface-muted p-4 text-sm font-bold leading-6 font-semibold text-muted">
               Konten global tetap mempertahankan relasi kelas dan media yang sudah dibuat oleh
               sistem.
             </div>

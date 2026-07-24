@@ -24,9 +24,9 @@ import {
 import { useAuth } from "@/features/auth/auth-provider";
 import { classService, schoolService } from "@/features/admin/management/management-service";
 import { getFirstApiError } from "@/lib/api-client";
-import type { ApiPaginationMeta } from "@/lib/api-client";
 
 import { progressReportService } from "./progress-service";
+import { ProgressOverviewPrintReport } from "./progress-print-report";
 import { ProgressBar, ProgressSummaryCards } from "./progress-summary-cards";
 import {
   formatDateTime,
@@ -38,10 +38,6 @@ import {
   statusTone,
 } from "./progress-utils";
 import type { LearningStatus } from "./types";
-
-function paginatedOverview<T>(page: { data: T[]; meta: ApiPaginationMeta }) {
-  return { items: page.data, meta: page.meta };
-}
 
 export function ProgressOverview() {
   const { token } = useAuth();
@@ -75,20 +71,27 @@ export function ProgressOverview() {
     [classPage, schoolId, search],
   );
 
-  const overviewQuery = useQuery({
-    queryKey: ["admin", "progress", "overview", studentFilters, classFilters],
-    queryFn: () => progressReportService.overview(token ?? "", {
-      ...studentFilters,
-      student_page: page,
-      student_per_page: 12,
-      class_page: classPage,
-      class_per_page: 8,
-    }),
+  const summaryQuery = useQuery({
+    queryKey: ["admin", "progress", "summary", schoolId, classId],
+    queryFn: () =>
+      progressReportService.dashboardSummary(token ?? "", {
+        school_id: schoolId,
+        class_id: classId,
+      }),
     enabled: Boolean(token),
   });
-  const summaryQuery = { ...overviewQuery, data: overviewQuery.data?.summary };
-  const studentsQuery = { ...overviewQuery, data: overviewQuery.data ? paginatedOverview(overviewQuery.data.students) : undefined };
-  const classesQuery = { ...overviewQuery, data: overviewQuery.data ? paginatedOverview(overviewQuery.data.classes) : undefined };
+
+  const studentsQuery = useQuery({
+    queryKey: ["admin", "progress", "students", studentFilters],
+    queryFn: () => progressReportService.students(token ?? "", studentFilters),
+    enabled: Boolean(token),
+  });
+
+  const classesQuery = useQuery({
+    queryKey: ["admin", "progress", "classes", classFilters],
+    queryFn: () => progressReportService.classes(token ?? "", classFilters),
+    enabled: Boolean(token),
+  });
 
   const schoolsQuery = useQuery({
     queryKey: ["admin", "progress", "school-options"],
@@ -113,6 +116,11 @@ export function ProgressOverview() {
   const classMeta = classesQuery.data?.meta;
   const schoolOptions = schoolsQuery.data?.items ?? [];
   const classOptions = classOptionsQuery.data?.items ?? [];
+  const selectedSchoolName =
+    schoolOptions.find((school) => school.id === schoolId)?.name ?? "Semua sekolah";
+  const selectedClassName =
+    classOptions.find((schoolClass) => schoolClass.id === classId)?.name ?? "Semua kelas";
+
   function applyFilters() {
     setPage(1);
     setClassPage(1);
@@ -120,16 +128,16 @@ export function ProgressOverview() {
   }
 
   function printReport() {
-    void progressReportService.downloadPdf(token ?? "", "/admin/reports/progress/pdf", studentFilters);
+    window.print();
   }
 
   return (
     <div className="grid gap-6">
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <Badge tone="yellow">ADMIN-17</Badge>
+          <Badge tone="blue">ADMIN-17</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">Progress Siswa</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+          <p className="mt-2 max-w-3xl text-sm leading-6 font-semibold text-muted">
             Pantau progress global, daftar siswa, dan ringkasan kelas untuk kebutuhan laporan admin.
           </p>
         </div>
@@ -268,15 +276,15 @@ export function ProgressOverview() {
                         <tr key={student.student_id}>
                           <TableCell>
                             <p className="font-black text-ink">{student.full_name}</p>
-                            <p className="mt-1 text-xs text-slate-600">Email belum tersedia di laporan progress.</p>
+                            <p className="mt-1 text-xs font-semibold text-muted">Email belum tersedia di laporan progress.</p>
                           </TableCell>
                           <TableCell>
                             <p className="font-bold text-ink">{student.school.name}</p>
-                            <p className="text-xs text-slate-600">{student.class.name}</p>
+                            <p className="text-xs font-semibold text-muted">{student.class.name}</p>
                           </TableCell>
                           <TableCell>
                             <ProgressBar value={student.overall_learning_progress_percent} />
-                            <p className="mt-1 text-xs text-slate-600">
+                            <p className="mt-1 text-xs font-semibold text-muted">
                               {student.completed_modules}/{student.published_modules} modul selesai
                             </p>
                           </TableCell>
@@ -284,7 +292,7 @@ export function ProgressOverview() {
                             <p className="font-black text-ink">
                               {formatPercent(student.average_best_quiz_score_percent)}
                             </p>
-                            <p className="text-xs text-slate-600">
+                            <p className="text-xs font-semibold text-muted">
                               {student.quizzes_completed}/{student.published_quizzes} kuis selesai
                             </p>
                           </TableCell>
@@ -294,7 +302,7 @@ export function ProgressOverview() {
                           <TableCell>{formatDateTime(latestActivity(student))}</TableCell>
                           <TableCell>
                             <Link
-                              className="inline-flex min-h-9 items-center rounded-lg border-2 border-ink bg-white px-3 py-1 text-xs font-black text-ink hover:bg-yellow-100"
+                              className="inline-flex min-h-9 items-center rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 py-1 text-xs font-black text-ink transition-colors hover:bg-primary hover:text-primary-foreground"
                               href={`/admin/progress/students/${student.student_id}`}
                             >
                               Detail Siswa
@@ -319,7 +327,7 @@ export function ProgressOverview() {
       <Card>
         <CardHeader>
           <h2 className="text-xl font-black text-ink">Ringkasan Progress Kelas</h2>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm font-semibold text-muted">
             Bandingkan progress modul dan kuis antar kelas dari filter yang sama.
           </p>
         </CardHeader>
@@ -355,12 +363,12 @@ export function ProgressOverview() {
                       <tr key={schoolClass.class_id}>
                         <TableCell>
                           <p className="font-black text-ink">{schoolClass.class_name}</p>
-                          <p className="text-xs text-slate-600">{schoolClass.school_name}</p>
+                          <p className="text-xs font-semibold text-muted">{schoolClass.school_name}</p>
                         </TableCell>
                         <TableCell>{formatNumber(schoolClass.active_students)}</TableCell>
                         <TableCell>
                           <ProgressBar value={schoolClass.average_learning_progress_percent} />
-                          <p className="mt-1 text-xs text-slate-600">
+                          <p className="mt-1 text-xs font-semibold text-muted">
                             {formatNumber(schoolClass.completed_module_count)} modul selesai
                           </p>
                         </TableCell>
@@ -368,13 +376,13 @@ export function ProgressOverview() {
                           <p className="font-black text-ink">
                             {formatPercent(schoolClass.average_quiz_score_percent)}
                           </p>
-                          <p className="text-xs text-slate-600">
+                          <p className="text-xs font-semibold text-muted">
                             {formatNumber(schoolClass.students_participated_in_quiz)} siswa ikut kuis
                           </p>
                         </TableCell>
                         <TableCell>
                           <Link
-                            className="inline-flex min-h-9 items-center rounded-lg border-2 border-ink bg-white px-3 py-1 text-xs font-black text-ink hover:bg-yellow-100"
+                            className="inline-flex min-h-9 items-center rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 py-1 text-xs font-black text-ink transition-colors hover:bg-primary hover:text-primary-foreground"
                             href={`/admin/progress/classes/${schoolClass.class_id}`}
                           >
                             Detail Kelas
@@ -395,6 +403,19 @@ export function ProgressOverview() {
         </CardContent>
       </Card>
 
+      <ProgressOverviewPrintReport
+        filters={[
+          { label: "Sekolah", value: selectedSchoolName },
+          { label: "Kelas", value: selectedClassName },
+          {
+            label: "Status",
+            value: learningStatusFilter ? learningStatusLabel(learningStatusFilter) : "Semua status",
+          },
+          { label: "Pencarian", value: search || "-" },
+        ]}
+        students={students}
+        summary={summaryQuery.data}
+      />
     </div>
   );
 }

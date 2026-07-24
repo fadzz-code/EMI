@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { ListChecks, Pencil, Plus, Archive, Trash2 } from "lucide-react";
+import { ListChecks, Pencil, Plus, Archive } from "lucide-react";
 
 import { Alert, AudioPlayer, Badge, Button, Card, CardContent, EmptyState, ErrorState, FormField, Input, LoadingState, Modal, Select, Textarea } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -41,8 +41,8 @@ function statusTone(status?: string | null): "yellow" | "blue" | "orange" {
 function statusLabel(status?: string | null) {
   return {
     draft: "Draft",
-    published: "Terbit",
-    archived: "Arsip",
+    published: "Published",
+    archived: "Archived",
   }[status ?? ""] ?? "Status";
 }
 
@@ -85,9 +85,7 @@ export function TeacherSpeakingExercises() {
   const [isLoading, setIsLoading] = useState(true);
   const [isTemplateLoading, setIsTemplateLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [deletingExerciseId, setDeletingExerciseId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [templateError, setTemplateError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -225,24 +223,6 @@ export function TeacherSpeakingExercises() {
     }
   }
 
-  async function deleteExercise(exercise: TeacherSpeakingExercise) {
-    if (!token || deletingExerciseId) return;
-    if (!window.confirm(`Hapus latihan speaking "${exercise.title}"? Latihan akan dihapus dari kelas dan tindakan ini tidak dapat dibatalkan.`)) return;
-    setDeletingExerciseId(exercise.id);
-    setDeleteError(null);
-    setMessage(null);
-    try {
-      await teacherService.deleteSpeakingExercise(token, exercise.id);
-      setExercises((current) => current.filter((item) => item.id !== exercise.id));
-      setMessage("Latihan speaking berhasil dihapus.");
-      await reloadExercises({ classroom_id: selectedClassId || undefined, status: statusFilter || undefined });
-    } catch (err) {
-      setDeleteError(getFirstApiError(err));
-    } finally {
-      setDeletingExerciseId(null);
-    }
-  }
-
   async function archiveExercise(exercise: TeacherSpeakingExercise) {
     if (!token) return;
     if (!window.confirm(`Arsipkan target speaking "${exercise.title}"?`)) return;
@@ -262,17 +242,16 @@ export function TeacherSpeakingExercises() {
   }
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       <section className="flex flex-col gap-2">
         <p className="text-sm font-black uppercase tracking-[0.08em] text-muted">Kelola Target Speaking</p>
         <h1 className="text-3xl font-black leading-tight text-ink md:text-4xl">Target bacaan per kelas</h1>
-        <p className="max-w-3xl text-sm font-semibold leading-6 text-muted">
+        <p className="max-w-3xl text-base font-semibold leading-6 text-muted">
           Guru mengelola target bacaan untuk kelas aktifnya sendiri. Target yang dipublikasikan akan muncul di latihan speaking siswa kelas Anda.
         </p>
       </section>
 
       {error ? <ErrorState description={error} onRetry={loadInitial} title="Gagal memuat target speaking" /> : null}
-      {deleteError ? <Alert tone="error">{deleteError}</Alert> : null}
       {message ? <Alert tone="success">{message}</Alert> : null}
 
       <Card>
@@ -297,8 +276,8 @@ export function TeacherSpeakingExercises() {
                 <Select onChange={(event) => void applyFilters(selectedClassId, event.target.value)} value={statusFilter}>
                   <option value="">Semua status</option>
                   <option value="draft">Draft</option>
-<option value="published">Terbit</option>
-                   <option value="archived">Arsip</option>
+                  <option value="published">Published</option>
+                  <option value="archived">Archived</option>
                 </Select>
               </FormField>
             </div>
@@ -319,10 +298,10 @@ export function TeacherSpeakingExercises() {
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {exercises.map((exercise) => (
-          <Card key={exercise.id} className="overflow-hidden">
-            <CardContent>
+          <Card key={exercise.id} className="group flex h-full flex-col overflow-hidden transition hover:-translate-y-1 hover:shadow-emi">
+            <CardContent className="flex flex-1 flex-col">
               <div className="flex items-start justify-between gap-3">
-                <span className="flex size-11 items-center justify-center rounded-full border-2 border-border bg-accent text-accent-foreground shadow-[2px_2px_0_var(--border)]">
+                <span className="flex size-12 items-center justify-center rounded-xl border-2 border-border bg-surface-muted text-ink transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                   <ListChecks className="size-5" strokeWidth={3} />
                 </span>
                 <Badge tone={statusTone(exercise.status)}>{statusLabel(exercise.status)}</Badge>
@@ -335,7 +314,7 @@ export function TeacherSpeakingExercises() {
                 {exercise.target_translation ? <p className="mt-1 text-sm font-semibold text-muted">{exercise.target_translation}</p> : null}
               </div>
               {exercise.prompt_text ? <p className="mt-3 text-sm font-semibold leading-6 text-muted">{exercise.prompt_text}</p> : null}
-              <div className="mt-5 flex flex-wrap gap-2">
+              <div className="mt-auto flex flex-wrap gap-2 pt-5">
                 <Button onClick={() => openEdit(exercise)} type="button" variant="secondary">
                   <Pencil className="mr-2 size-4" /> Edit
                 </Button>
@@ -344,9 +323,6 @@ export function TeacherSpeakingExercises() {
                     <Archive className="mr-2 size-4" /> Arsipkan
                   </Button>
                 ) : null}
-                <Button disabled={deletingExerciseId !== null} onClick={() => void deleteExercise(exercise)} type="button" variant="danger">
-                  <Trash2 className="mr-2 size-4" /> {deletingExerciseId === exercise.id ? "Menghapus..." : "Hapus"}
-                </Button>
               </div>
             </CardContent>
           </Card>
@@ -425,7 +401,7 @@ export function TeacherSpeakingExercises() {
             <FormField label="Status">
               <Select onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as FormState["status"] }))} value={form.status}>
                 <option value="draft">Draft</option>
-                <option value="published">Terbit</option>
+                <option value="published">Published</option>
               </Select>
             </FormField>
           </div>

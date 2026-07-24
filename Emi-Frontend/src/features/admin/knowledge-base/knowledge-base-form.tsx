@@ -169,10 +169,10 @@ export function KnowledgeBaseForm({
 
   return (
     <form className="grid gap-5" onSubmit={submit}>
-      <section className="grid gap-4 rounded-lg border-2 border-ink bg-white p-4">
+      <section className="grid gap-4 rounded-2xl border-2 border-border bg-surface p-4">
         <div>
           <h3 className="text-base font-black text-ink">Identitas Pengetahuan</h3>
-          <p className="mt-1 text-sm leading-6 text-slate-600">
+          <p className="mt-1 text-sm leading-6 text-muted">
             Judul dan kategori membantu admin menemukan sumber saat mengelola Basis AI.
           </p>
         </div>
@@ -201,19 +201,19 @@ export function KnowledgeBaseForm({
             required
             value={form.content}
           />
-          <p className="mt-2 text-xs font-bold leading-5 text-slate-600">
+          <p className="mt-2 text-xs font-bold leading-5 text-muted">
             Agar Chatbot AI menjawab lebih tepat, buat pengetahuan secara spesifik. Contoh: &quot;Asal-usul Mekongga&quot;, &quot;Arti nama Mekongga&quot;, &quot;Kosakata dasar Mekongga&quot;, bukan satu konten terlalu umum.
           </p>
         </FormField>
       ) : (
-        <div className="rounded-lg border-2 border-ink bg-blue-50 p-4 text-sm font-bold leading-6 text-blue-950">
+        <div className="rounded-2xl border-2 border-border bg-info p-4 text-sm font-bold leading-6 text-info-foreground">
           Konten Pengetahuan tidak diperlukan untuk Sumber RAG. PDF akan diproses per halaman dan chunk dibuat dari teks PDF.
         </div>
       )}
-      <section className="grid gap-4 rounded-lg border-2 border-ink bg-surface-muted p-4">
+      <section className="grid gap-4 rounded-2xl border-2 border-border bg-surface-muted p-4">
         <div>
           <h3 className="text-base font-black text-ink">Sumber dan Status</h3>
-          <p className="mt-1 text-sm leading-6 text-slate-600">
+          <p className="mt-1 text-sm leading-6 text-muted">
             Pilih jenis sumber sesuai cara admin memasukkan pengetahuan.
           </p>
         </div>
@@ -258,14 +258,14 @@ export function KnowledgeBaseForm({
             value={form.source_url}
           />
           {form.source_type === "link" ? (
-            <p className="mt-2 text-xs font-bold leading-5 text-slate-600">
+            <p className="mt-2 text-xs font-bold leading-5 text-muted">
               Gunakan link artikel atau halaman publik yang dapat diakses tanpa login.
             </p>
           ) : null}
         </FormField>
       ) : null}
       {form.source_type === "pdf" ? (
-        <div className="grid gap-3 rounded-lg border-2 border-ink bg-yellow-50 p-4 text-sm leading-6 text-yellow-950">
+        <div className="grid gap-3 rounded-2xl border-2 border-border bg-[var(--color-primary-muted)] p-4 text-sm leading-6 text-ink">
           <p className="font-bold">PDF dapat diambil dari upload file lokal atau dari URL PDF publik.</p>
           <p>
             Upload PDF dari perangkat digunakan untuk mengambil isi PDF dari file lokal admin. PDF harus berbasis teks. PDF hasil scan/foto belum dapat dibaca otomatis. Setelah isi PDF diambil, admin tetap dapat mengoreksi Konten Pengetahuan sebelum diterbitkan.
@@ -330,7 +330,7 @@ export function KnowledgeBaseForm({
         </div>
       ) : null}
       {form.source_type === "link" ? (
-        <div className="grid gap-3 rounded-lg border-2 border-ink bg-yellow-50 p-4 text-sm leading-6 text-yellow-950">
+        <div className="grid gap-3 rounded-2xl border-2 border-border bg-[var(--color-primary-muted)] p-4 text-sm leading-6 text-ink">
           <p className="font-bold">
             Link tidak otomatis digunakan chatbot hanya karena URL disimpan. Gunakan tombol &quot;Ambil Isi Sumber&quot; agar isi sumber masuk ke Konten Pengetahuan. Admin tetap dapat mengoreksi konten sebelum diterbitkan.
           </p>
@@ -343,7 +343,7 @@ export function KnowledgeBaseForm({
           {extractError ? <Alert tone="error">{extractError}</Alert> : null}
         </div>
       ) : null}
-      <div className="rounded-lg border-2 border-dashed border-ink bg-blue-50 p-4 text-sm leading-6 text-blue-950">
+      <div className="rounded-lg border-2 border-dashed border-border bg-info p-4 text-sm leading-6 text-info-foreground">
         Draft belum digunakan chatbot. Terbit digunakan chatbot siswa. Arsip tetap tersimpan, tetapi tidak digunakan chatbot.
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">

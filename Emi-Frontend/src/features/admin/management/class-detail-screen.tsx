@@ -3,6 +3,7 @@
 import { type FormEvent, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft } from "lucide-react";
 
 import {
   Alert,
@@ -166,11 +167,12 @@ export function ClassDetailScreen({ classId }: { classId: string }) {
   }
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       <Link
-        className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100"
+        className="w-fit rounded-lg border-2 border-border bg-surface px-3 py-2 text-sm font-black text-ink transition-colors hover:bg-primary hover:text-primary-foreground"
         href="/admin/schools-classes"
       >
+        <ArrowLeft className="mr-2 inline size-4" strokeWidth={2.5} />
         Kembali ke Sekolah & Kelas
       </Link>
 
@@ -194,7 +196,7 @@ export function ClassDetailScreen({ classId }: { classId: string }) {
                 {entityStatusLabel(schoolClass.status)}
               </Badge>
               <h1 className="mt-2 text-3xl font-black text-ink">{schoolClass.name}</h1>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
+              <p className="mt-2 text-sm leading-6 text-muted">
                 {schoolClass.school?.name ?? "-"} | {schoolClass.grade_level ?? "-"} |{" "}
                 {schoolClass.academic_year}
               </p>
@@ -215,13 +217,13 @@ export function ClassDetailScreen({ classId }: { classId: string }) {
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardContent>
-                <p className="text-xs font-black uppercase text-slate-500">Sekolah</p>
+                <p className="text-xs font-black uppercase text-muted">Sekolah</p>
                 <p className="mt-2 font-black text-ink">{schoolClass.school?.name ?? "-"}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent>
-                <p className="text-xs font-black uppercase text-slate-500">Guru Aktif</p>
+                <p className="text-xs font-black uppercase text-muted">Guru Aktif</p>
                 <p className="mt-2 font-black text-ink">
                   {schoolClass.active_teacher_assignment?.teacher?.full_name ?? "-"}
                 </p>
@@ -229,7 +231,7 @@ export function ClassDetailScreen({ classId }: { classId: string }) {
             </Card>
             <Card>
               <CardContent>
-                <p className="text-xs font-black uppercase text-slate-500">Siswa Aktif</p>
+                <p className="text-xs font-black uppercase text-muted">Siswa Aktif</p>
                 <p className="mt-2 font-black text-ink">
                   {schoolClass.active_students_count ?? studentsMeta?.total ?? 0}
                 </p>
@@ -237,7 +239,7 @@ export function ClassDetailScreen({ classId }: { classId: string }) {
             </Card>
             <Card>
               <CardContent>
-                <p className="text-xs font-black uppercase text-slate-500">Dibuat</p>
+                <p className="text-xs font-black uppercase text-muted">Dibuat</p>
                 <p className="mt-2 font-black text-ink">{formatDateTime(schoolClass.created_at)}</p>
               </CardContent>
             </Card>
@@ -246,7 +248,7 @@ export function ClassDetailScreen({ classId }: { classId: string }) {
           <Card>
             <CardHeader>
               <h2 className="text-xl font-black text-ink">Siswa Kelas</h2>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="mt-1 text-sm text-muted">
                 Daftar siswa aktif yang saat ini ditempatkan di kelas ini.
               </p>
             </CardHeader>
@@ -292,7 +294,7 @@ export function ClassDetailScreen({ classId }: { classId: string }) {
                             <TableCell>{formatDateTime(membership.joined_at)}</TableCell>
                             <TableCell>
                               <Link
-                                className="inline-flex min-h-9 items-center rounded-lg border-2 border-ink bg-white px-3 py-1 text-xs font-black text-ink hover:bg-yellow-100"
+                                className="inline-flex min-h-9 items-center rounded-lg border-2 border-border bg-surface px-3 py-1 text-xs font-black text-ink transition-colors hover:bg-primary hover:text-primary-foreground"
                                 href={`/admin/users/${membership.student.id}`}
                               >
                                 Detail User

@@ -106,7 +106,7 @@ export function DictionaryEntryForm({
   }
 
   return (
-    <form className="grid gap-4" onSubmit={handleSubmit}>
+    <form className="grid max-h-[75vh] gap-4 overflow-y-auto pr-1" onSubmit={handleSubmit}>
       {audioError ? <Alert tone="error">{audioError}</Alert> : null}
       {audioSuccess ? <Alert tone="success">{audioSuccess}</Alert> : null}
 

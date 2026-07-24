@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { ArrowLeft, ClipboardList } from "lucide-react";
 
 import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, Pagination, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -24,8 +25,8 @@ export function StudentQuizDetail({ quizId }: { quizId: string }) {
   });
 
   const historyQuery = useQuery({
-    queryKey: ["student", "quizzes", quizId, "attempts", historyPage],
-    queryFn: () => studentQuizService.attempts(token ?? "", quizId, { page: historyPage }),
+    queryKey: ["student", "quiz-attempt-history", quizId, historyPage],
+    queryFn: () => studentQuizService.attempts(token ?? "", quizId, { page: historyPage, per_page: 5 }),
     enabled: Boolean(token && quizId),
   });
 
@@ -43,12 +44,12 @@ export function StudentQuizDetail({ quizId }: { quizId: string }) {
 
   const quiz = quizQuery.data;
   const usedAttempts = quiz?.used_attempts ?? quiz?.attempts_count ?? 0;
-  const latestScore = quiz?.latest_result?.score_percent ?? quiz?.latest_score_normalized;
-  const hasSubmittedScore = typeof latestScore === "number";
+  const hasSubmittedScore = typeof quiz?.latest_score_normalized === "number";
 
   return (
-    <div className="grid gap-6">
-      <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href="/student/quizzes">
+    <div className="grid gap-8">
+      <Link className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-ink shadow-emi hover:bg-surface-muted sm:w-fit" href="/student/quizzes">
+        <ArrowLeft className="size-4" strokeWidth={2.5} />
         Kembali ke Daftar Kuis
       </Link>
 
@@ -66,28 +67,31 @@ export function StudentQuizDetail({ quizId }: { quizId: string }) {
           {startMutation.error ? <Alert tone="error">{getFirstApiError(startMutation.error)}</Alert> : null}
           {quiz.attempt_limit_reached ? <Alert tone="warning">Batas percobaan tercapai.</Alert> : null}
 
-          <header className="grid gap-5 rounded-3xl border-2 border-ink bg-[var(--color-primary-muted)] p-5 shadow-brutal lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
+          <header className="grid gap-6 rounded-3xl border-2 border-border bg-[var(--color-primary-muted)] p-5 shadow-emi sm:p-8 lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
             <div className="grid gap-4">
-              <div className="flex flex-wrap gap-2 text-sm font-bold text-slate-500">
+              <div className="inline-flex size-12 items-center justify-center rounded-xl border-2 border-border bg-surface text-primary">
+                <ClipboardList className="size-6" strokeWidth={2.5} />
+              </div>
+              <div className="flex flex-wrap gap-2 text-sm font-bold text-muted">
                 {quiz.open_at ? <Badge tone="neutral">Buka: {formatDate(quiz.open_at)}</Badge> : null}
                 {quiz.close_at ? <Badge tone="neutral">Tutup: {formatDate(quiz.close_at)}</Badge> : null}
                 <Badge tone={quiz.attempt_limit_reached ? "orange" : "blue"}>{quiz.attempt_limit_reached ? "Percobaan habis" : "Siap dikerjakan"}</Badge>
               </div>
               <div>
                 <h1 className="text-3xl font-black text-ink">{quiz.title}</h1>
-                <p className="mt-2 text-sm leading-6 text-slate-700 whitespace-pre-wrap">{formatOptional(quiz.description)}</p>
+                <p className="mt-2 text-sm leading-6 text-muted whitespace-pre-wrap">{formatOptional(quiz.description)}</p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
-                <Button disabled={startMutation.isPending || !quiz.can_start} onClick={() => startMutation.mutate()}>
-                  {quiz.has_active_attempt ? "Lanjutkan Kuis" : quiz.can_start ? "Mulai Kerjakan" : "Kuis Tidak Dapat Dimulai"}
+                <Button disabled={startMutation.isPending || quiz.attempt_limit_reached} onClick={() => startMutation.mutate()}>
+                  {quiz.attempt_limit_reached ? "Batas Percobaan Tercapai" : "Mulai Kerjakan"}
                 </Button>
               </div>
             </div>
-            <div className="rounded-2xl border-2 border-ink bg-white p-4 shadow-brutal">
-              <p className="text-xs font-black uppercase text-slate-500">Ringkasan kuis</p>
+            <div className="rounded-2xl border-2 border-border bg-surface p-4 shadow-emi">
+              <p className="text-xs font-black uppercase text-muted">Ringkasan kuis</p>
               <p className="mt-2 text-4xl font-black text-ink">{formatCount(quiz.questions_count)}</p>
-              <p className="text-sm font-bold text-slate-600">soal tersedia</p>
-              <div className="mt-4 grid gap-2 text-sm font-bold text-slate-700">
+              <p className="text-sm font-bold text-muted">soal tersedia</p>
+              <div className="mt-4 grid gap-2 text-sm font-bold text-muted">
                 <span>Durasi: {quiz.duration_minutes ? `${quiz.duration_minutes} menit` : "Tidak dibatasi"}</span>
                 <span>Percobaan: {quiz.max_attempts ? `${usedAttempts} / ${quiz.max_attempts}` : formatCount(usedAttempts)}</span>
               </div>
@@ -98,29 +102,26 @@ export function StudentQuizDetail({ quizId }: { quizId: string }) {
             <StatsCard helper="Total soal yang harus dijawab" label="Jumlah Soal" value={formatCount(quiz.questions_count)} />
             <StatsCard helper="Batas waktu pengerjaan" label="Durasi" value={quiz.duration_minutes ? `${quiz.duration_minutes} menit` : "Tidak dibatasi"} />
             <StatsCard helper="Percobaan terpakai" label="Percobaan" value={quiz.max_attempts ? `${usedAttempts} / ${quiz.max_attempts}` : formatCount(usedAttempts)} />
-            <StatsCard helper={hasSubmittedScore ? `Terakhir dikumpulkan: ${formatDate(quiz.latest_submitted_at)}` : "Belum ada percobaan yang selesai"} label="Nilai Terakhir" value={hasSubmittedScore ? formatScoreOutOf100(latestScore) : "Belum dikerjakan"} />
-          </section>
-
-          <section className="grid gap-4 sm:grid-cols-3">
-            <StatsCard label="Selesai" value={formatCount(quiz.finished_attempts_count)} />
-            <StatsCard label="Nilai Terbaik" value={typeof quiz.best_result?.score_percent === "number" ? formatScoreOutOf100(quiz.best_result.score_percent) : "Belum tersedia"} />
-            <StatsCard label="Nilai Terakhir" value={hasSubmittedScore ? formatScoreOutOf100(latestScore) : "Belum tersedia"} />
+            <StatsCard helper={hasSubmittedScore ? `Terakhir dikumpulkan: ${formatDate(quiz.latest_submitted_at)}` : "Belum ada percobaan yang selesai"} label="Nilai Terakhir" value={hasSubmittedScore ? formatScoreOutOf100(quiz.latest_score_normalized) : "Belum dikerjakan"} />
           </section>
 
           <Card>
-            <CardHeader>
-              <h2 className="text-xl font-black text-ink">Riwayat Percobaan</h2>
-            </CardHeader>
+            <CardHeader><h2 className="text-xl font-black text-ink">Riwayat Kuis</h2></CardHeader>
             <CardContent>
-              <div className="grid gap-3">
-                {(historyQuery.data?.items ?? []).map((attempt) => (
-                  <Link className="rounded-xl border-2 border-ink p-3 font-bold" href={`/student/quizzes/${quiz.id}/result?attemptId=${attempt.id}`} key={attempt.id}>
-                    Percobaan {attempt.attempt_number} · {statusLabel(attempt.status)} · {typeof attempt.score_percent === "number" ? formatScoreOutOf100(attempt.score_percent) : "Nilai disembunyikan"}
-                  </Link>
-                ))}
-                {!historyQuery.isLoading && !historyQuery.data?.items.length ? <p>Belum ada riwayat percobaan.</p> : null}
-                <Pagination onPageChange={setHistoryPage} page={historyQuery.data?.meta?.current_page ?? historyPage} totalPages={historyQuery.data?.meta?.last_page ?? 1} />
-              </div>
+              {historyQuery.isLoading ? <LoadingState title="Memuat riwayat kuis" /> : null}
+              {historyQuery.isError ? <ErrorState description={getFirstApiError(historyQuery.error)} onRetry={() => void historyQuery.refetch()} title="Gagal memuat riwayat kuis" /> : null}
+              {historyQuery.isSuccess && !historyQuery.data.items.length ? <EmptyState description="Belum ada percobaan kuis." title="Riwayat masih kosong" /> : null}
+              {historyQuery.isSuccess && historyQuery.data.items.length ? (
+                <div className="grid gap-4">
+                  {historyQuery.data.items.map((historyAttempt) => (
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border-2 border-border p-4" key={historyAttempt.id}>
+                      <span className="font-bold text-ink">Percobaan {formatCount(historyAttempt.attempt_number)} · {statusLabel(historyAttempt.status)}</span>
+                      <span className="text-sm font-bold text-muted">{formatDate(historyAttempt.submitted_at ?? historyAttempt.started_at)}</span>
+                    </div>
+                  ))}
+                  <Pagination onPageChange={setHistoryPage} page={historyQuery.data.meta?.current_page ?? historyPage} totalPages={historyQuery.data.meta?.last_page ?? 1} />
+                </div>
+              ) : null}
             </CardContent>
           </Card>
 
@@ -129,7 +130,7 @@ export function StudentQuizDetail({ quizId }: { quizId: string }) {
               <h2 className="text-xl font-black text-ink">Instruksi Pengerjaan</h2>
             </CardHeader>
             <CardContent>
-              <div className="prose prose-slate max-w-none text-sm leading-6 text-slate-700 whitespace-pre-wrap">
+              <div className="prose prose-slate max-w-none text-sm leading-6 text-muted whitespace-pre-wrap">
                 {quiz.instructions || "Tidak ada instruksi khusus."}
               </div>
             </CardContent>

@@ -27,25 +27,28 @@ class AnalyzeSpeakingAttemptJob implements ShouldQueue
         }
 
         if (! $client->enabled()) {
-            SpeakingAttempt::query()->whereKey($attempt->id)->update(['analysis_status' => 'pending', 'status' => 'pending']);
+            SpeakingAttempt::query()->whereKey($attempt->id)->where('review_status', '!=', 'reviewed')->update(['analysis_status' => 'pending', 'status' => 'pending']);
 
             return;
         }
 
-        SpeakingAttempt::query()->whereKey($attempt->id)->update(['analysis_status' => 'processing', 'status' => 'processing', 'ai_error' => null]);
+        $started = SpeakingAttempt::query()->whereKey($attempt->id)->where('review_status', '!=', 'reviewed')->update(['analysis_status' => 'processing', 'status' => 'processing', 'ai_error' => null]);
+        if (! $started) {
+            return;
+        }
 
         try {
             $result = $client->analyze($attempt->refresh()->load('audioMedia'));
 
-            SpeakingAttempt::query()->whereKey($attempt->id)->update([
+            SpeakingAttempt::query()->whereKey($attempt->id)->where('review_status', '!=', 'reviewed')->update([
                 'status' => 'completed',
                 'analysis_status' => 'completed',
                 'ai_engine' => $result['engine'] ?? null,
                 'ai_model' => $result['model'] ?? null,
                 'ai_transcription' => $result['transcription'] ?? null,
                 'ai_score' => $result['score'] ?? null,
-                'ai_alignment' => $result['alignment'] ?? null,
-                'ai_raw_response' => $result,
+                'ai_alignment' => isset($result['alignment']) ? json_encode($result['alignment'], JSON_THROW_ON_ERROR) : null,
+                'ai_raw_response' => json_encode($result, JSON_THROW_ON_ERROR),
                 'ai_error' => null,
             ]);
         } catch (Throwable $exception) {
@@ -67,13 +70,13 @@ class AnalyzeSpeakingAttemptJob implements ShouldQueue
                 'Audio speaking tidak dapat dianalisis.',
                 'Layanan analisis speaking sedang tidak tersedia.',
             ];
-            SpeakingAttempt::query()->whereKey($attempt->id)->update([
+            SpeakingAttempt::query()->whereKey($attempt->id)->where('review_status', '!=', 'reviewed')->update([
                 'status' => 'failed',
                 'analysis_status' => 'failed',
                 'ai_error' => in_array($exception->getMessage(), $publicErrors, true) ? $exception->getMessage() : 'Analisis speaking AI gagal.',
-                'ai_raw_response' => array_filter([
+                'ai_raw_response' => json_encode(array_filter([
                     'error_code' => $exception instanceof SpeakingAiException ? $exception->errorCode : 'SPEAKING_AI_RESPONSE_INVALID',
-                ]),
+                ]), JSON_THROW_ON_ERROR),
             ]);
         }
     }

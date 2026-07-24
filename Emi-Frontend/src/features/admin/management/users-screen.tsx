@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { GraduationCap, UserRound } from "lucide-react";
 
 import {
   Badge,
@@ -69,7 +70,7 @@ export function UsersScreen() {
   }
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       <PageHeader
         badge="Admin"
         description="Cari, filter, dan buka detail akun guru atau siswa tanpa mengubah alur persetujuan pendaftaran."
@@ -89,6 +90,11 @@ export function UsersScreen() {
             }}
             variant={role === item.value ? "secondary" : "ghost"}
           >
+            {item.value === "teacher" ? (
+              <UserRound className="size-5" strokeWidth={2.5} />
+            ) : (
+              <GraduationCap className="size-5" strokeWidth={2.5} />
+            )}
             {item.label}
           </Button>
         ))}
@@ -120,7 +126,7 @@ export function UsersScreen() {
             <option value="">Semua status</option>
             <option value="approved">Disetujui</option>
             <option value="inactive">Nonaktif</option>
-            <option value="pending">Menunggu persetujuan</option>
+            <option value="pending">Pending</option>
             <option value="rejected">Ditolak</option>
           </Select>
         </label>
@@ -138,7 +144,7 @@ export function UsersScreen() {
               <h2 className="text-xl font-black text-ink">
                 {role === "teacher" ? "Daftar Guru" : "Daftar Siswa"}
               </h2>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
+              <p className="mt-1 text-sm leading-6 text-muted">
                 Gunakan detail untuk meninjau profil, status akun, dan relasi sekolah atau kelas.
               </p>
             </div>
@@ -191,7 +197,7 @@ export function UsersScreen() {
                         <TableCell>{activeClassLabel(user)}</TableCell>
                         <TableCell>
                           <Link
-                            className="inline-flex min-h-9 items-center rounded-lg border-2 border-ink bg-white px-3 py-1 text-xs font-black text-ink hover:bg-yellow-100"
+                            className="inline-flex min-h-9 items-center rounded-lg border-2 border-border bg-surface px-3 py-1 text-xs font-black text-ink transition-colors hover:bg-primary hover:text-primary-foreground"
                             href={`/admin/users/${user.id}`}
                           >
                             Detail/Edit

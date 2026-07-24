@@ -156,7 +156,7 @@ export function TeacherQuizQuestionForm({ classQuizId, defaultOrder, editingQues
 
 function MultipleChoiceFields({ form, setForm }: { form: QuestionFormState; setForm: Dispatch<SetStateAction<QuestionFormState>> }) {
   return (
-    <div className="grid gap-3 rounded-lg border-2 border-ink bg-yellow-50 p-4">
+    <div className="grid gap-3 rounded-xl border-2 border-border bg-surface-muted p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><h3 className="font-black text-ink">Pilihan Jawaban</h3><Button onClick={() => setForm((current) => ({ ...current, options: [...current.options, { option_text: "", is_correct: false }] }))} type="button" variant="ghost">Tambah Pilihan</Button></div>
       {form.options.map((option, index) => (
         <div className="grid gap-3 md:grid-cols-[auto_1fr_auto]" key={index}>
@@ -171,7 +171,7 @@ function MultipleChoiceFields({ form, setForm }: { form: QuestionFormState; setF
 
 function ShortAnswerFields({ form, setForm }: { form: QuestionFormState; setForm: Dispatch<SetStateAction<QuestionFormState>> }) {
   return (
-    <div className="grid gap-4 rounded-lg border-2 border-ink bg-blue-50 p-4 md:grid-cols-3">
+    <div className="grid gap-4 rounded-xl border-2 border-border bg-[var(--color-primary-muted)] p-4 md:grid-cols-3">
       <FormField label="Jawaban benar"><Input onChange={(event) => setForm((current) => ({ ...current, correct_answer_text: event.target.value }))} required value={form.correct_answer_text} /></FormField>
       <FormField label="Fuzzy matching"><Select onChange={(event) => setForm((current) => ({ ...current, use_fuzzy_matching: event.target.value as "true" | "false" }))} value={form.use_fuzzy_matching}><option value="false">Tidak</option><option value="true">Ya</option></Select></FormField>
       <FormField label="Threshold fuzzy"><Input disabled={form.use_fuzzy_matching === "false"} max={100} min={1} onChange={(event) => setForm((current) => ({ ...current, fuzzy_threshold: event.target.value }))} type="number" value={form.fuzzy_threshold} /></FormField>

@@ -30,17 +30,17 @@ const defaultForm: FormState = {
   reference_audio_media_id: "",
 };
 
-function statusTone(status?: string | null): "yellow" | "blue" | "orange" {
+function statusTone(status?: string | null): "neutral" | "blue" | "orange" {
   if (status === "published") return "blue";
   if (status === "archived") return "orange";
-  return "yellow";
+  return "neutral";
 }
 
 function statusLabel(status?: string | null) {
   return {
     draft: "Draft",
-    published: "Terbit",
-    archived: "Arsip",
+    published: "Published",
+    archived: "Archived",
   }[status ?? ""] ?? "Status";
 }
 
@@ -186,10 +186,10 @@ export function AdminSpeakingExercises() {
 
   async function archiveExercise(exercise: AdminSpeakingExercise) {
     if (!token) return;
-    if (!window.confirm(`Arsipkan template speaking "${exercise.title}"? Template tidak akan tampil untuk siswa.`)) return;
+    if (!window.confirm("Hapus template ini dari daftar? Data akan diarsipkan dan tidak tampil untuk siswa.")) return;
     try {
       await adminSpeakingService.archiveExercise(token, exercise.id);
-       setMessage("Template speaking berhasil diarsipkan.");
+      setMessage("Template speaking berhasil dihapus dari daftar.");
       await loadExercises();
     } catch (err) {
       setError(getFirstApiError(err));
@@ -221,8 +221,8 @@ export function AdminSpeakingExercises() {
               <Select onChange={(event) => void applyStatus(event.target.value)} value={statusFilter}>
                 <option value="">Semua status</option>
                 <option value="draft">Draft</option>
-<option value="published">Terbit</option>
-                 <option value="archived">Arsip</option>
+                <option value="published">Published</option>
+                <option value="archived">Archived</option>
               </Select>
             </FormField>
             <Button onClick={openCreate} type="button">
@@ -237,12 +237,12 @@ export function AdminSpeakingExercises() {
         <EmptyState description="Buat template global pertama untuk latihan speaking." title="Belum ada template speaking" />
       ) : null}
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <section className="grid auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-3">
         {exercises.map((exercise) => (
-          <Card key={exercise.id} className="overflow-hidden">
-            <CardContent>
+          <Card key={exercise.id} className="flex h-full overflow-hidden transition-transform hover:-translate-y-1 hover:shadow-emi">
+            <CardContent className="flex w-full flex-col">
               <div className="flex items-start justify-between gap-3">
-                <span className="flex size-11 items-center justify-center rounded-full border-2 border-border bg-accent text-accent-foreground shadow-[2px_2px_0_var(--border)]">
+                <span className="flex size-11 items-center justify-center rounded-full border-2 border-border bg-[var(--color-primary-muted)] text-ink shadow-[2px_2px_0_var(--border)]">
                   <Headphones className="size-5" strokeWidth={3} />
                 </span>
                 <Badge tone={statusTone(exercise.status)}>{statusLabel(exercise.status)}</Badge>
@@ -264,13 +264,13 @@ export function AdminSpeakingExercises() {
                   <p className="mt-1 text-sm font-semibold text-muted">Belum ada audio</p>
                 )}
               </div>
-              <div className="mt-5 flex flex-wrap gap-2">
+              <div className="mt-auto flex flex-wrap gap-2 pt-5">
                 <Button onClick={() => openEdit(exercise)} type="button" variant="secondary">
                   <Pencil className="mr-2 size-4" /> Edit
                 </Button>
                 {exercise.status !== "archived" ? (
                   <Button onClick={() => void archiveExercise(exercise)} type="button" variant="ghost">
-                    <Trash2 className="mr-2 size-4" /> Arsipkan
+                    <Trash2 className="mr-2 size-4" /> Hapus
                   </Button>
                 ) : null}
               </div>
@@ -306,7 +306,7 @@ export function AdminSpeakingExercises() {
             <FormField label="Status">
               <Select onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as FormState["status"] }))} value={form.status}>
                 <option value="draft">Draft</option>
-                <option value="published">Terbit</option>
+                <option value="published">Published</option>
               </Select>
             </FormField>
           </div>

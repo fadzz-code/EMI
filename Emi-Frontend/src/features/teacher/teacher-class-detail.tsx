@@ -11,6 +11,7 @@ import { teacherRoutes } from "@/lib/routes";
 import { TeacherClassNav } from "./teacher-class-nav";
 import { teacherService } from "./teacher-service";
 import { formatCount, formatOptional, formatPercent, statusLabel } from "./teacher-utils";
+import { teacherProgressKey } from "./teacher-workflow";
 
 export function TeacherClassDetail({ classId }: { classId: string }) {
   const { token } = useAuth();
@@ -35,8 +36,8 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
     enabled: Boolean(token && classId),
   });
   const progressQuery = useQuery({
-    queryKey: ["teacher", "progress", "students", classId],
-    queryFn: () => teacherService.studentProgress(token ?? "", { classId, perPage: 8 }),
+    queryKey: teacherProgressKey(classId, { page: 1 }),
+    queryFn: () => teacherService.studentProgress(token ?? "", { class_id: classId, page: 1 }),
     enabled: Boolean(token && classId),
   });
 
@@ -47,8 +48,8 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
   const progressRows = progressQuery.data?.items ?? [];
 
   return (
-    <div className="grid gap-6">
-      <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href={teacherRoutes.classes}>
+    <div className="grid gap-8">
+      <Link className="w-fit rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-ink transition hover:-translate-y-0.5 hover:bg-surface-muted hover:shadow-emi" href={teacherRoutes.classes}>
         Kembali ke Kelas Saya
       </Link>
 
@@ -63,11 +64,11 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
 
       {teacherClass ? (
         <>
-          <header className="grid gap-4 rounded-3xl border-2 border-ink bg-white p-5 shadow-brutal">
+          <header className="grid gap-4 rounded-2xl border-2 border-border bg-[var(--color-primary-muted)] p-6 shadow-emi sm:p-8">
             <div>
               <Badge tone={teacherClass.status === "active" ? "blue" : "neutral"}>{statusLabel(teacherClass.status)}</Badge>
-              <h1 className="mt-2 text-3xl font-black text-ink">{teacherClass.name}</h1>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
+              <h1 className="mt-2 text-3xl font-black leading-tight text-ink md:text-4xl">{teacherClass.name}</h1>
+              <p className="mt-2 text-base font-semibold leading-6 text-muted">
                 {formatOptional(teacherClass.school?.name)} | Tahun ajaran {formatOptional(teacherClass.academic_year)}
               </p>
             </div>
@@ -75,7 +76,7 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
 
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatsCard helper="Dari detail kelas" label="Sekolah" value={formatOptional(teacherClass.school?.name)} />
-            <StatsCard helper="Penugasan aktif" label="Guru" value={formatOptional(teacherClass.active_teacher_assignment?.teacher?.full_name)} />
+            <StatsCard helper="Assignment aktif" label="Guru" value={formatOptional(teacherClass.active_teacher_assignment?.teacher?.full_name)} />
             <StatsCard helper="Siswa aktif di kelas" label="Siswa" value={formatCount(teacherClass.active_students_count ?? students.length)} />
             <StatsCard helper="Materi yang tersedia" label="Modul" value={formatCount(modules.length)} />
           </section>
@@ -83,7 +84,7 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
           <TeacherClassNav classId={classId} />
 
           <section className="grid gap-6 xl:grid-cols-2">
-            <Card>
+            <Card className="flex h-full flex-col">
               <CardHeader>
                 <h2 className="text-xl font-black text-ink">Siswa Kelas</h2>
               </CardHeader>
@@ -98,10 +99,10 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
                   ) : (
                     <div className="grid gap-3">
                       {students.map((membership) => (
-                        <div className="rounded-xl border border-slate-200 bg-white p-3" key={membership.membership_id}>
+                        <div className="rounded-xl border-2 border-border bg-surface-muted p-3" key={membership.membership_id}>
                           <p className="font-black text-ink">{membership.student.full_name}</p>
-                          <p className="text-sm text-slate-600">{membership.student.email}</p>
-                          <p className="mt-1 text-xs font-bold text-slate-500">{statusLabel(membership.student.status)}</p>
+                          <p className="text-sm text-muted">{membership.student.email}</p>
+                          <p className="mt-1 text-xs font-bold text-muted">{statusLabel(membership.student.status)}</p>
                         </div>
                       ))}
                     </div>
@@ -110,7 +111,7 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="flex h-full flex-col">
               <CardHeader>
                 <h2 className="text-xl font-black text-ink">Progress Belajar</h2>
               </CardHeader>
@@ -125,15 +126,15 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
                   ) : (
                     <div className="grid gap-3">
                       {progressRows.slice(0, 8).map((row, index) => (
-                        <div className="rounded-xl border border-slate-200 bg-white p-3" key={row.student_id ?? index}>
+                        <div className="rounded-xl border-2 border-border bg-surface-muted p-3" key={row.student_id ?? index}>
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <p className="font-black text-ink">{formatOptional(row.full_name)}</p>
-                              <p className="text-sm text-slate-600">{formatOptional(row.class?.name)}</p>
+                              <p className="text-sm text-muted">{formatOptional(row.class?.name)}</p>
                             </div>
                             <Badge tone="blue">{formatPercent(row.overall_learning_progress_percent)}</Badge>
                           </div>
-                          <p className="mt-2 text-xs text-slate-500">
+                          <p className="mt-2 text-xs text-muted">
                             Modul: {formatCount(row.completed_modules)} / {formatCount(row.published_modules)} | Kuis selesai: {formatCount(row.quizzes_completed)}
                           </p>
                         </div>
@@ -146,7 +147,7 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
           </section>
 
           <section className="grid gap-6 xl:grid-cols-2">
-            <Card>
+            <Card className="flex h-full flex-col">
               <CardHeader>
                 <h2 className="text-xl font-black text-ink">Modul Kelas</h2>
               </CardHeader>
@@ -161,10 +162,10 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
                   ) : (
                     <div className="grid gap-3">
                       {modules.map((module) => (
-                        <div className="rounded-xl border border-slate-200 bg-white p-3" key={module.id}>
+                        <div className="rounded-xl border-2 border-border bg-surface-muted p-3" key={module.id}>
                           <Badge tone={module.status === "published" ? "blue" : "neutral"}>{statusLabel(module.status)}</Badge>
                           <p className="mt-2 font-black text-ink">{module.title}</p>
-                          <p className="text-sm text-slate-600">{formatOptional(module.description)}</p>
+                          <p className="text-sm text-muted">{formatOptional(module.description)}</p>
                         </div>
                       ))}
                     </div>
@@ -173,7 +174,7 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="flex h-full flex-col">
               <CardHeader>
                 <h2 className="text-xl font-black text-ink">Kuis Kelas</h2>
               </CardHeader>
@@ -188,11 +189,11 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
                   ) : (
                     <div className="grid gap-3">
                       {quizzes.map((quiz) => (
-                        <div className="rounded-xl border border-slate-200 bg-white p-3" key={quiz.id}>
+                        <div className="rounded-xl border-2 border-border bg-surface-muted p-3" key={quiz.id}>
                           <Badge tone={quiz.status === "published" ? "blue" : "neutral"}>{statusLabel(quiz.status)}</Badge>
                           <p className="mt-2 font-black text-ink">{quiz.title}</p>
-                          <p className="text-sm text-slate-600">{formatOptional(quiz.description)}</p>
-                          <p className="mt-2 text-xs text-slate-500">Soal: {formatCount(quiz.questions_count)} | Percobaan: {formatCount(quiz.attempts_count)}</p>
+                          <p className="text-sm text-muted">{formatOptional(quiz.description)}</p>
+                          <p className="mt-2 text-xs text-muted">Soal: {formatCount(quiz.questions_count)} | Attempt: {formatCount(quiz.attempts_count)}</p>
                         </div>
                       ))}
                     </div>

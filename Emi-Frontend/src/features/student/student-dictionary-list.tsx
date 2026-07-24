@@ -3,6 +3,7 @@
 import { type FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, Languages, Search } from "lucide-react";
 
 import {
   AudioPlayer,
@@ -73,7 +74,7 @@ export function StudentDictionaryList() {
   }
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       <PageHeader
         badge="Siswa"
         description="Cari arti kata, contoh kalimat, dan audio Bahasa Mekongga."
@@ -124,7 +125,8 @@ export function StudentDictionaryList() {
             </Select>
           </label>
           <div className="flex items-end md:col-span-4">
-            <Button className="w-full md:w-fit" type="submit" variant="secondary">
+            <Button className="w-full gap-2 md:w-fit" type="submit" variant="secondary">
+              <Search className="size-5" strokeWidth={2.5} />
               Terapkan Filter
             </Button>
           </div>
@@ -149,21 +151,31 @@ export function StudentDictionaryList() {
               <div className="grid gap-4">
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {entries.map((entry) => (
-                    <article className="grid gap-4 rounded-2xl border-2 border-ink bg-white p-4 shadow-brutal" key={entry.id}>
+                    <article className="flex h-full flex-col rounded-2xl border-2 border-border bg-surface p-5 transition hover:-translate-y-1 hover:shadow-emi" key={entry.id}>
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge tone="blue">{entry.category?.name ?? "Tanpa kategori"}</Badge>
                         <Badge tone={entry.audio ? "yellow" : "neutral"}>{entry.audio ? "Audio tersedia" : "Audio belum tersedia"}</Badge>
                       </div>
-                      <div className="grid gap-2">
-                        <p className="text-xs font-black uppercase text-slate-500">Bahasa Mekongga</p>
-                        <h2 className="text-2xl font-black text-ink">{entry.mekongga}</h2>
-                        <p className="text-sm text-slate-700">Indonesia: <span className="font-bold text-ink">{entry.indonesia}</span></p>
-                        <p className="text-sm text-slate-700">Inggris: <span className="font-bold text-ink">{entry.english}</span></p>
+                      <div className="mt-4 flex items-start gap-3">
+                        <div className="inline-flex size-12 shrink-0 items-center justify-center rounded-xl border-2 border-border bg-surface-muted text-ink">
+                          <Languages className="size-6" strokeWidth={2.5} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">Bahasa Mekongga</p>
+                          <h2 className="text-2xl font-black text-ink">{entry.mekongga}</h2>
+                        </div>
                       </div>
-                      <p className="text-sm leading-6 text-slate-600">Contoh: {formatOptional(entry.example_mekongga)}</p>
-                      <AudioPlayer src={entry.audio?.url} title="Mekongga" />
-                      <Link className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-ink bg-blue-600 px-4 py-2 text-sm font-black text-white shadow-brutal hover:bg-blue-700" href={`/student/dictionary/${entry.id}`}>
+                      <div className="mt-4 grid gap-2 rounded-xl border-2 border-border bg-surface-muted p-4">
+                        <p className="text-sm font-semibold text-muted">Indonesia: <span className="font-black text-ink">{entry.indonesia}</span></p>
+                        <p className="text-sm font-semibold text-muted">Inggris: <span className="font-black text-ink">{entry.english}</span></p>
+                      </div>
+                      <p className="mt-4 flex-1 text-sm font-semibold leading-6 text-muted">Contoh: {formatOptional(entry.example_mekongga)}</p>
+                      <div className="mt-4">
+                        <AudioPlayer src={entry.audio?.url} title="Mekongga" />
+                      </div>
+                      <Link className="mt-4 inline-flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-primary px-4 py-2 text-sm font-black text-primary-foreground shadow-emi transition-transform hover:-translate-y-0.5" href={`/student/dictionary/${entry.id}`}>
                         Lihat Detail
+                        <ArrowRight className="size-5" strokeWidth={2.5} />
                       </Link>
                     </article>
                   ))}

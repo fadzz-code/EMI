@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Pencil, Search } from "lucide-react";
 
 import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState, PageHeader, Select, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -67,8 +68,8 @@ export function TeacherQuizResults({ classQuizId }: { classQuizId: string }) {
   return (
     <div className="grid gap-6">
       <div className="flex flex-wrap gap-3">
-        <Link className="w-fit rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-black text-ink hover:bg-yellow-100" href={teacherRoutes.quizzes}>Kembali ke Kuis</Link>
-        <Link className="w-fit rounded-lg border-2 border-ink bg-yellow-300 px-3 py-2 text-sm font-black text-ink shadow-brutal hover:bg-yellow-200" href={teacherRoutes.quizBuilder(classQuizId)}>Buka Builder</Link>
+        <Link className="inline-flex w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 py-2 text-sm font-black text-ink transition-colors hover:bg-surface-muted" href={teacherRoutes.quizzes}><ArrowLeft className="size-4" />Kembali ke Kuis</Link>
+        <Link className="inline-flex w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-primary px-3 py-2 text-sm font-black text-primary-foreground shadow-emi transition-transform hover:-translate-y-0.5" href={teacherRoutes.quizBuilder(classQuizId)}><Pencil className="size-4" />Buka Builder</Link>
       </div>
       <PageHeader badge="Guru" description="Tinjau attempt siswa, cek skor, dan buka detail jawaban untuk kuis kelas." title="Hasil Kuis" />
 
@@ -83,12 +84,12 @@ export function TeacherQuizResults({ classQuizId }: { classQuizId: string }) {
               <div>
                 <div className="flex flex-wrap gap-2"><Badge tone={quizQuery.data.status === "published" ? "blue" : "neutral"}>{statusLabel(quizQuery.data.status)}</Badge><Badge tone="yellow">{formatCount(quizQuery.data.questions_count)} soal</Badge></div>
                 <h2 className="mt-3 text-2xl font-black text-ink">{quizQuery.data.title}</h2>
-                <p className="mt-1 text-sm font-bold text-slate-500">Kelas: {quizQuery.data.class?.name ?? quizQuery.data.class_id}</p>
+                <p className="mt-1 text-sm font-bold text-muted">Kelas: {quizQuery.data.class?.name ?? quizQuery.data.class_id}</p>
               </div>
-              <p className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-600">Show result: {quizQuery.data.show_result ? "Ya" : "Tidak"}</p>
+              <p className="rounded-lg border-2 border-border bg-surface-muted px-3 py-2 text-sm font-bold text-muted">Show result: {quizQuery.data.show_result ? "Ya" : "Tidak"}</p>
             </div>
           </CardHeader>
-          <CardContent><p className="text-sm leading-6 text-slate-600">{formatOptional(quizQuery.data.description)}</p></CardContent>
+          <CardContent><p className="text-sm leading-6 text-muted">{formatOptional(quizQuery.data.description)}</p></CardContent>
         </Card>
       ) : null}
 
@@ -105,7 +106,7 @@ export function TeacherQuizResults({ classQuizId }: { classQuizId: string }) {
         <CardHeader><h2 className="text-xl font-black text-ink">Daftar Attempt</h2></CardHeader>
         <CardContent>
           <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_220px]">
-            <Input onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama/email siswa" value={search} />
+            <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" /><Input className="pl-10" onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama/email siswa" value={search} /></div>
             <Select onChange={(event) => setStatus(event.target.value)} value={status}>
               <option value="">Semua status</option>
               <option value="in_progress">Sedang dikerjakan</option>
@@ -119,16 +120,16 @@ export function TeacherQuizResults({ classQuizId }: { classQuizId: string }) {
           {filteredAttempts.length > 0 ? (
             <div className="grid gap-3">
               {filteredAttempts.map((attempt) => (
-                <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 lg:grid-cols-[1fr_auto]" key={attempt.id}>
+                <div className="grid gap-3 rounded-xl border-2 border-border bg-surface-muted p-4 lg:grid-cols-[1fr_auto]" key={attempt.id}>
                   <div>
                     <div className="flex flex-wrap items-center gap-2"><Badge tone={attempt.status === "submitted" ? "blue" : "neutral"}>{statusLabel(attempt.status)}</Badge><Badge tone="yellow">Attempt #{formatOptional(attempt.attempt_number)}</Badge></div>
                     <h3 className="mt-2 font-black text-ink">{studentName(attempt)}</h3>
-                    <p className="text-sm text-slate-600">{formatOptional(attempt.student?.email)}</p>
+                    <p className="text-sm text-muted">{formatOptional(attempt.student?.email)}</p>
                     <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-4">
-                      <div><dt className="font-black text-slate-500">Skor</dt><dd>{formatPercent(attempt.score_percent)}</dd></div>
-                      <div><dt className="font-black text-slate-500">Poin</dt><dd>{formatOptional(attempt.score_points)} / {formatOptional(attempt.max_points)}</dd></div>
-                      <div><dt className="font-black text-slate-500">Mulai</dt><dd>{formatDate(attempt.started_at)}</dd></div>
-                      <div><dt className="font-black text-slate-500">Submit</dt><dd>{formatDate(attempt.submitted_at)}</dd></div>
+                      <div><dt className="font-black text-muted">Skor</dt><dd>{formatPercent(attempt.score_percent)}</dd></div>
+                      <div><dt className="font-black text-muted">Poin</dt><dd>{formatOptional(attempt.score_points)} / {formatOptional(attempt.max_points)}</dd></div>
+                      <div><dt className="font-black text-muted">Mulai</dt><dd>{formatDate(attempt.started_at)}</dd></div>
+                      <div><dt className="font-black text-muted">Submit</dt><dd>{formatDate(attempt.submitted_at)}</dd></div>
                     </dl>
                   </div>
                   <Button onClick={() => setSelectedAttemptId((current) => current === attempt.id ? null : attempt.id)} type="button" variant="secondary">{selectedAttemptId === attempt.id ? "Tutup Detail" : "Lihat Detail"}</Button>
@@ -147,18 +148,18 @@ export function TeacherQuizResults({ classQuizId }: { classQuizId: string }) {
             {detailQuery.isError ? <ErrorState description={getFirstApiError(detailQuery.error)} onRetry={() => void detailQuery.refetch()} title="Gagal memuat detail attempt" /> : null}
             {selectedAttempt ? (
               <div className="grid gap-4">
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="rounded-xl border-2 border-border bg-surface-muted p-4">
                   <h3 className="font-black text-ink">{studentName(selectedAttempt)}</h3>
-                  <p className="text-sm text-slate-600">Status: {statusLabel(selectedAttempt.status)} | Skor: {formatPercent(selectedAttempt.score_percent)}</p>
+                  <p className="text-sm text-muted">Status: {statusLabel(selectedAttempt.status)} | Skor: {formatPercent(selectedAttempt.score_percent)}</p>
                 </div>
                 {selectedAttempt.answers?.length ? selectedAttempt.answers.map((answer) => {
                   const question = questionsById.get(answer.quiz_question_id);
                   return (
-                    <div className="rounded-xl border border-slate-200 bg-white p-4" key={answer.id}>
+                    <div className="rounded-xl border-2 border-border bg-surface p-4" key={answer.id}>
                       <div className="flex flex-wrap gap-2"><Badge tone="neutral">{formatOptional(question?.question_type)}</Badge>{typeof answer.is_correct === "boolean" ? <Badge tone={answer.is_correct ? "blue" : "orange"}>{answer.is_correct ? "Benar" : "Salah"}</Badge> : null}</div>
                       <h4 className="mt-2 font-black text-ink">{question?.order_number}. {question?.question_text ?? answer.quiz_question_id}</h4>
-                      <p className="mt-2 text-sm text-slate-700"><span className="font-black">Jawaban siswa:</span> {answerLabel(answer, question)}</p>
-                      <p className="mt-1 text-sm text-slate-600">Poin: {formatOptional(answer.awarded_points)} / {formatOptional(answer.max_points)}{typeof answer.similarity_score === "number" ? ` | Similarity: ${formatPercent(answer.similarity_score)}` : ""}</p>
+                      <p className="mt-2 text-sm text-ink"><span className="font-black">Jawaban siswa:</span> {answerLabel(answer, question)}</p>
+                      <p className="mt-1 text-sm text-muted">Poin: {formatOptional(answer.awarded_points)} / {formatOptional(answer.max_points)}{typeof answer.similarity_score === "number" ? ` | Similarity: ${formatPercent(answer.similarity_score)}` : ""}</p>
                     </div>
                   );
                 }) : <EmptyState description="Backend tidak mengembalikan detail jawaban untuk attempt ini." title="Detail jawaban kosong" />}

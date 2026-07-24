@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Check, X } from "lucide-react";
 
 import { Button, Modal, Textarea } from "@/components/ui";
 
@@ -33,18 +34,18 @@ export function ApprovalActionDialog({
       <div className="grid gap-4">
         <div
           className={[
-            "rounded-[10px] border-2 border-[#241914] p-4 text-sm font-bold leading-6 shadow-[3px_3px_0_#241914]",
-            isReject ? "bg-[#ffdad6] text-[#93000a]" : "bg-[#94f990] text-[#004910]",
+            "rounded-[10px] border-2 border-border p-4 text-sm font-bold leading-6 shadow-emi",
+            isReject ? "bg-danger/15 text-danger" : "bg-success/20 text-success",
           ].join(" ")}
         >
           {isReject
             ? "Alasan penolakan wajib diisi dan akan disimpan sebagai catatan review."
             : "Catatan review opsional. Sistem akan mengaktifkan akun dan membuat assignment atau membership sesuai role."}
         </div>
-        <label className="grid gap-2 text-sm font-bold text-[#241914]">
+        <label className="grid gap-2 text-sm font-bold text-ink">
           <span>{isReject ? "Alasan penolakan" : "Catatan review"}</span>
           <Textarea
-            className="rounded-[8px] border-2 border-[#241914] bg-[#fff8f6] text-sm shadow-[2px_2px_0_#241914] focus:ring-[#fdd758]"
+            className="rounded-[8px] border-2 border-border bg-surface text-sm shadow-emi focus:ring-primary"
             onChange={(event) => setReviewNote(event.target.value)}
             placeholder={
               isReject
@@ -56,7 +57,7 @@ export function ApprovalActionDialog({
         </label>
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
           <Button
-            className="border-2 border-[#241914] bg-[#fff8f6] shadow-[2px_2px_0_#241914]"
+            className="border-2 border-border bg-surface shadow-emi"
             disabled={isSubmitting}
             onClick={onClose}
             variant="ghost"
@@ -65,20 +66,18 @@ export function ApprovalActionDialog({
           </Button>
           <Button
             className={[
-              "border-2 border-[#241914] font-black shadow-[3px_3px_0_#241914]",
+              "border-2 border-border font-black shadow-emi",
               isReject
-                ? "bg-[#ffdad6] text-[#93000a] hover:bg-[#ffe6e2]"
-                : "bg-[#5bbe5d] text-[#004910] hover:bg-[#75d877]",
+                ? "bg-danger-muted text-danger hover:bg-danger/20"
+                : "bg-success text-success-foreground hover:bg-success/80",
             ].join(" ")}
             disabled={isSubmitting || (isReject && !reviewNote.trim())}
             onClick={handleConfirm}
             variant={isReject ? "danger" : "secondary"}
           >
-            {isSubmitting
-              ? "Memproses..."
-              : isReject
-                ? "Tolak"
-                : "Setujui"}
+            {!isSubmitting && isReject ? <X aria-hidden="true" className="mr-2 size-4" /> : null}
+            {!isSubmitting && !isReject ? <Check aria-hidden="true" className="mr-2 size-4" /> : null}
+            {isSubmitting ? "Memproses..." : isReject ? "Tolak" : "Setujui"}
           </Button>
         </div>
       </div>

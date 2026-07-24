@@ -134,29 +134,27 @@ export function StudentChatbot() {
   const isPending = sendMutation.isPending;
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-12rem)] max-w-4xl flex-col overflow-hidden rounded-[var(--radius-card)] border-2 border-border bg-[var(--color-paper)] shadow-emi lg:min-h-[calc(100vh-10rem)]">
-      <header className="shrink-0 border-b-2 border-border bg-surface px-4 py-4 sm:px-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="flex size-9 items-center justify-center rounded-full border-2 border-border bg-accent text-accent-foreground shadow-[2px_2px_0_var(--border)]">
-                <Sparkles className="size-4" strokeWidth={3} />
-              </span>
-              <div>
-                <p className="text-lg font-black text-ink">Chatbot AI EMI</p>
-                <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Basis pengetahuan</p>
-              </div>
+    <div className="mx-auto flex min-h-[760px] max-w-4xl flex-col overflow-hidden rounded-[var(--radius-card)] border-2 border-border bg-surface shadow-emi lg:min-h-[820px]">
+      <header className="shrink-0 border-b-2 border-border bg-surface px-4 py-5 sm:px-6 sm:py-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border-2 border-border bg-surface-muted text-ink">
+              <Sparkles className="size-5" strokeWidth={2.5} />
+            </span>
+            <div>
+              <p className="text-xl font-black text-ink">Chatbot AI EMI</p>
+              <p className="mt-1 text-xs font-black uppercase tracking-[0.08em] text-muted">Basis pengetahuan</p>
+              <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-muted">
+                Tanyakan materi Bahasa Mekongga. EMI akan menjawab berdasarkan basis pengetahuan yang tersedia dan menampilkan referensi jika cocok.
+              </p>
             </div>
-            <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-muted">
-              Tanyakan materi Bahasa Mekongga. EMI akan menjawab berdasarkan basis pengetahuan yang tersedia dan menampilkan referensi jika cocok.
-            </p>
           </div>
           <Badge tone="blue">Aktif</Badge>
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_1px_1px,rgba(29,27,23,0.08)_1px,transparent_0)] [background-size:18px_18px] p-4 sm:p-5">
-        <div className="grid gap-4">
+      <div className="flex-1 overflow-y-auto bg-surface-muted p-5 sm:p-8">
+        <div className="grid gap-6">
           {formError ? <Alert tone="error">{formError}</Alert> : null}
           {apiError ? <Alert tone="error">{apiError}</Alert> : null}
 
@@ -192,13 +190,13 @@ export function StudentChatbot() {
                   {chat.role === "assistant" ? (
                     <div className="mt-3 grid gap-2">
                       {chat.matched ? (
-                        <span className="w-fit rounded-full border border-border bg-paper px-3 py-1 text-[11px] font-black uppercase tracking-[0.06em] text-ink">
+                        <span className="w-fit rounded-full border border-border bg-surface px-3 py-1 text-[11px] font-black uppercase tracking-[0.06em] text-ink">
                           Referensi tersedia
                         </span>
                       ) : null}
 
                       {isFallback ? (
-                        <p className="rounded-xl border-2 border-dashed border-border bg-orange-50 p-3 text-xs font-bold leading-5 text-orange-950">
+                        <p className="rounded-xl border-2 border-dashed border-border bg-surface-muted p-3 text-xs font-bold leading-5 text-muted">
                           Coba gunakan kata kunci yang lebih spesifik atau tanyakan topik yang tersedia di Basis AI EMI.
                         </p>
                       ) : null}
@@ -206,14 +204,14 @@ export function StudentChatbot() {
                       {canShowReference ? (
                         <div className="grid gap-2">
                           <button
-                            className="w-fit rounded-full border border-border bg-paper px-3 py-1 text-xs font-black text-ink underline-offset-2 hover:bg-accent/30"
+                            className="w-fit rounded-full border border-border bg-surface px-3 py-1 text-xs font-black text-ink underline-offset-2 hover:bg-accent/30"
                             onClick={() => toggleReference(chat.id)}
                             type="button"
                           >
                             {referenceOpen ? "Sembunyikan sumber" : `Sumber: ${chat.source?.title ?? "Basis AI"}`}
                           </button>
                           {referenceOpen ? (
-                            <div className="rounded-xl border-2 border-border bg-paper p-3 text-xs leading-5 text-ink">
+                            <div className="rounded-xl border-2 border-border bg-surface p-3 text-xs leading-5 text-ink">
                               <p className="font-black">{chat.source?.title}</p>
                               <p>Kategori: {chat.source?.category ?? "Umum"}</p>
                               <p>Jenis sumber: {sourceTypeLabel(chat.source?.source_type)}</p>
@@ -248,11 +246,11 @@ export function StudentChatbot() {
         </div>
       </div>
 
-      <form className="shrink-0 border-t-2 border-border bg-surface p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:p-4" onSubmit={submit}>
+      <form className="shrink-0 border-t-2 border-border bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6" onSubmit={submit}>
         <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
           {suggestedQuestions.map((question) => (
             <button
-              className="shrink-0 rounded-full border-2 border-border bg-paper px-4 py-2 text-xs font-black text-ink shadow-[1px_1px_0_var(--border)] hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
+              className="shrink-0 rounded-full border-2 border-border bg-surface px-4 py-2 text-xs font-black text-ink shadow-[1px_1px_0_var(--border)] hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isPending}
               key={question}
               onClick={() => sendQuestion(question)}
@@ -263,7 +261,7 @@ export function StudentChatbot() {
           ))}
         </div>
 
-        <div className="rounded-2xl border-2 border-border bg-paper p-2 shadow-[2px_2px_0_var(--border)]">
+        <div className="rounded-2xl border-2 border-border bg-surface p-2 shadow-[2px_2px_0_var(--border)]">
           <Textarea
             className="min-h-20 border-0 bg-transparent shadow-none focus-visible:ring-0"
             disabled={isPending}

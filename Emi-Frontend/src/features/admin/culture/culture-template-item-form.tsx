@@ -5,6 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 
 import { Alert, Button, Card, CardContent, CardHeader, FilePreview, FormField, Input, Select, Textarea, UploadComponent } from "@/components/ui";
 import { getFirstApiError } from "@/lib/api-client";
+import { cultureFileMatches, cultureFields, cultureMediaAccept, isCultureFileType } from "@/features/culture/culture-content";
 
 import { adminCultureService } from "./culture-service";
 import type { AdminCultureTemplateItem } from "./types";
@@ -22,11 +23,15 @@ export function CultureTemplateItemForm({ editingItem, onCancel, onSaved, templa
     onSuccess: onSaved,
   });
 
-  const isFileBased = ["image", "audio", "pdf", "video"].includes(contentType);
-  const isLinkBased = ["youtube", "article", "link"].includes(contentType);
+  const isFileBased = isCultureFileType(contentType);
+  const isLinkBased = !isFileBased;
 
   async function uploadMedia() {
     if (!file) return;
+    if (!cultureFileMatches(contentType, file)) {
+      setUploadError("Jenis file tidak sesuai tipe konten.");
+      return;
+    }
     setIsUploading(true);
     setUploadError(null);
     setUploadSuccess(null);
@@ -48,8 +53,7 @@ export function CultureTemplateItemForm({ editingItem, onCancel, onSaved, templa
       title: String(formData.get("title") ?? ""),
       description: String(formData.get("description") ?? "") || null,
       content_type: contentType,
-      media_id: isFileBased ? (mediaId || null) : null,
-      external_url: isLinkBased ? (String(formData.get("external_url") ?? "") || null) : null,
+      ...cultureFields(contentType, mediaId || null, String(formData.get("external_url") ?? "") || null),
       display_order: Number(formData.get("display_order") ?? 1),
       status: String(formData.get("status") ?? "draft"),
     });
@@ -63,7 +67,7 @@ export function CultureTemplateItemForm({ editingItem, onCancel, onSaved, templa
           {saveMutation.error ? <Alert tone="error">{getFirstApiError(saveMutation.error)}</Alert> : null}
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="Tipe Konten"><Select onChange={(e) => setContentType(e.target.value)} value={contentType}><option value="image">Gambar</option><option value="audio">Audio</option><option value="pdf">PDF</option><option value="video">Video Lokal</option><option value="youtube">YouTube</option><option value="article">Artikel Teks</option><option value="link">Tautan Eksternal</option></Select></FormField>
+            <FormField label="Tipe Konten"><Select onChange={(e) => { setContentType(e.target.value); setFile(null); setMediaId(e.target.value === editingItem?.content_type ? editingItem?.media_id ?? "" : ""); setUploadError(null); setUploadSuccess(null); }} value={contentType}><option value="image">Gambar</option><option value="audio">Audio</option><option value="pdf">PDF</option><option value="video">Video Lokal</option><option value="youtube">YouTube</option><option value="article">Artikel Teks</option><option value="link">Tautan Eksternal</option></Select></FormField>
             <FormField label="Status"><Select defaultValue={editingItem?.status ?? "draft"} name="status"><option value="draft">Draft</option><option value="published">Terbit</option></Select></FormField>
           </div>
 
@@ -72,11 +76,11 @@ export function CultureTemplateItemForm({ editingItem, onCancel, onSaved, templa
           <FormField label="Urutan Tampil"><Input defaultValue={editingItem?.display_order ?? 1} min={1} name="display_order" required type="number" /></FormField>
 
           {isFileBased ? (
-            <div className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <h3 className="font-black text-ink">Unggah Media</h3>
+            <div className="grid gap-4 rounded-2xl border-2 border-border bg-surface-muted p-4">
+              <h3 className="font-black text-ink">Upload Media</h3>
               {uploadError ? <Alert tone="error">{uploadError}</Alert> : null}
               {uploadSuccess ? <Alert tone="success">{uploadSuccess}</Alert> : null}
-              <UploadComponent accept=".jpg,.jpeg,.png,.webp,.pdf,.mp3,.wav,.m4a,.ogg,.webm,image/jpeg,image/png,image/webp,application/pdf,audio/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+              <UploadComponent accept={cultureMediaAccept(contentType)} onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
               <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
                 <FormField label="Media"><Input onChange={(e) => setMediaId(e.target.value)} placeholder="Otomatis terisi setelah upload" required value={mediaId} /></FormField>
                 <div className="flex gap-2"><Button disabled={!file || isUploading} onClick={uploadMedia} type="button" variant="secondary">{isUploading ? "Upload..." : "Upload"}</Button></div>
@@ -86,7 +90,7 @@ export function CultureTemplateItemForm({ editingItem, onCancel, onSaved, templa
           ) : null}
 
           {isLinkBased ? (
-            <div className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="grid gap-4 rounded-2xl border-2 border-border bg-surface-muted p-4">
               <FormField label="URL Eksternal"><Input defaultValue={editingItem?.external_url ?? ""} name="external_url" required type="url" /></FormField>
             </div>
           ) : null}

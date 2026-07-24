@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Archive, Hammer, Send, Share2, Trash2 } from "lucide-react";
 
 import {
   Alert,
@@ -27,19 +29,19 @@ import { useAuth } from "@/features/auth/auth-provider";
 import { classService } from "@/features/admin/management/management-service";
 import { getFirstApiError } from "@/lib/api-client";
 
-import { ModuleTemplateForm } from "./module-form";
 import { moduleTemplateService } from "./module-service";
+import { newModuleDraft } from "./module-workflow";
 import { formatDate, statusLabel, statusTone } from "./module-utils";
-import type { ModuleTemplate, ModuleTemplatePayload, ModuleTemplateStatus } from "./types";
+import type { ModuleTemplate, ModuleTemplateStatus } from "./types";
 
 export function ModuleList() {
   const { token } = useAuth();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ModuleTemplateStatus | "">("");
-  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [applyTarget, setApplyTarget] = useState<ModuleTemplate | null>(null);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   const [publishAfterApply, setPublishAfterApply] = useState(true);
@@ -69,13 +71,8 @@ export function ModuleList() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (payload: ModuleTemplatePayload) =>
-      moduleTemplateService.create(token ?? "", payload),
-    onSuccess: async (module) => {
-      setSuccessMessage(`Modul ${module.title} berhasil dibuat.`);
-      setCreateModalOpen(false);
-      await queryClient.invalidateQueries({ queryKey: ["admin", "module-templates"] });
-    },
+    mutationFn: () => moduleTemplateService.create(token ?? "", newModuleDraft()),
+    onSuccess: (module) => router.push(`/admin/modules/${module.id}/edit`),
   });
 
   const publishMutation = useMutation({
@@ -151,7 +148,6 @@ export function ModuleList() {
   });
 
   const actionError =
-    createMutation.error ??
     publishMutation.error ??
     archiveMutation.error ??
     applyMutation.error ??
@@ -178,19 +174,27 @@ export function ModuleList() {
     <div className="grid gap-6">
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <Badge tone="yellow">ADMIN-13</Badge>
+          <Badge tone="blue">ADMIN-13</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">Modul Pembelajaran</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+          <p className="mt-2 max-w-3xl text-sm leading-6 font-semibold text-muted">
             Kelola template modul, materi awal, status terbit, dan distribusi modul ke kelas aktif.
           </p>
         </div>
-        <Button onClick={() => setCreateModalOpen(true)}>Tambah Modul</Button>
+        <Button
+          disabled={createMutation.isPending}
+          onClick={() => createMutation.mutate()}
+        >
+          {createMutation.isPending ? "Membuat Modul..." : "Tambah Modul"}
+        </Button>
       </header>
 
       <Alert tone="info">
         Alur tampil ke siswa: terbitkan template, terapkan ke kelas, lalu pastikan modul kelas ikut diterbitkan.
       </Alert>
       {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
+      {createMutation.isError ? (
+        <Alert tone="error">Modul belum berhasil dibuat. Silakan coba lagi.</Alert>
+      ) : null}
       {actionError ? <Alert tone="error">{getFirstApiError(actionError)}</Alert> : null}
 
       <FilterPanel className="md:grid-cols-[2fr_1fr_auto]">
@@ -247,81 +251,61 @@ export function ModuleList() {
               />
             ) : (
               <div className="grid gap-4">
-                <Table>
-                  <TableHeader>
+                <Table className="w-full table-fixed">
+                  <TableHeader className="hidden md:table-header-group">
                     <tr>
                       <th className="px-4 py-3">Modul</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Dibuat</th>
-                      <th className="px-4 py-3">Diubah</th>
-                      <th className="px-4 py-3">Aksi</th>
+                      <th className="w-[110px] px-4 py-3">Status</th>
+                      <th className="w-[130px] px-4 py-3">Dibuat</th>
+                      <th className="w-[130px] px-4 py-3">Diubah</th>
+                      <th className="w-[264px] px-4 py-3">Aksi</th>
                     </tr>
                   </TableHeader>
-                  <tbody>
+                  <tbody className="grid gap-4 md:table-row-group">
                     {modules.map((module) => (
-                      <tr key={module.id}>
-                        <TableCell>
-                          <p className="font-black text-ink">{module.title}</p>
-                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">
+                      <tr className="grid min-w-0 gap-3 rounded-xl border-2 border-border p-4 md:table-row md:rounded-none md:border-0 md:p-0" key={module.id}>
+                        <TableCell className="min-w-0 border-0 p-0 md:border-t md:px-4 md:py-3">
+                          <p className="truncate font-black text-ink">{module.title}</p>
+                          <p className="mt-1 line-clamp-2 text-xs leading-5 font-semibold text-muted">
                             {module.description ?? "Tanpa deskripsi."}
                           </p>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="border-0 p-0 md:border-t md:px-4 md:py-3">
+                          <span className="mr-2 font-bold md:hidden">Status:</span>
                           <Badge tone={statusTone(module.status)}>
                             {statusLabel(module.status)}
                           </Badge>
                         </TableCell>
-                        <TableCell>{formatDate(module.created_at)}</TableCell>
-                        <TableCell>{formatDate(module.updated_at)}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-2">
-                            <Link
-                              className="inline-flex min-h-9 items-center rounded-lg border-2 border-ink bg-white px-3 py-1 text-xs font-black text-ink hover:bg-yellow-100"
-                              href={`/admin/modules/${module.id}/edit`}
-                            >
-                              Editor
+                        <TableCell className="border-0 p-0 md:border-t md:px-4 md:py-3"><span className="font-bold md:hidden">Dibuat: </span>{formatDate(module.created_at)}</TableCell>
+                        <TableCell className="border-0 p-0 md:border-t md:px-4 md:py-3"><span className="font-bold md:hidden">Diubah: </span>{formatDate(module.updated_at)}</TableCell>
+                        <TableCell className="border-0 p-0 md:border-t md:px-4 md:py-3">
+                          <div className="grid w-full max-w-[232px] grid-cols-2 gap-2">
+                            <Link className="inline-flex h-9 w-28 items-center justify-center gap-1.5 rounded-lg border-2 border-border text-xs font-bold text-ink hover:border-primary hover:text-primary" href={`/admin/modules/${module.id}/edit`}>
+                              <Hammer aria-hidden="true" className="size-4 shrink-0" />
+                              Builder
                             </Link>
                             {module.status !== "published" ? (
-                              <Button
-                                className="min-h-9 px-3 py-1 text-xs"
-                                disabled={publishMutation.isPending}
-                                onClick={() => publishMutation.mutate(module.id)}
-                                variant="secondary"
-                              >
+                              <button className="inline-flex h-9 w-28 items-center justify-center gap-1.5 rounded-lg border-2 border-border text-xs font-bold text-ink hover:border-primary hover:text-primary disabled:opacity-50" disabled={publishMutation.isPending} onClick={() => publishMutation.mutate(module.id)} type="button">
+                                <Send aria-hidden="true" className="size-4 shrink-0" />
                                 Terbitkan
-                              </Button>
+                              </button>
                             ) : null}
                             {module.status === "published" ? (
-                              <Button
-                                className="min-h-9 px-3 py-1 text-xs"
-                                onClick={() => {
-                                  setApplyTarget(module);
-                                  setSelectedClassIds([]);
-                                  setPublishAfterApply(true);
-                                }}
-                                variant="secondary"
-                              >
-                                Terapkan ke Kelas
-                              </Button>
+                              <button className="inline-flex h-9 w-28 items-center justify-center gap-1.5 rounded-lg border-2 border-border text-xs font-bold text-ink hover:border-primary hover:text-primary disabled:opacity-50" disabled={applyMutation.isPending} onClick={() => { setApplyTarget(module); setSelectedClassIds([]); setPublishAfterApply(true); }} type="button">
+                                <Share2 aria-hidden="true" className="size-4 shrink-0" />
+                                Terapkan
+                              </button>
                             ) : null}
                             {module.status !== "archived" ? (
-                              <Button
-                                className="min-h-9 px-3 py-1 text-xs"
-                                disabled={archiveMutation.isPending}
-                                onClick={() => { if (confirm(`Arsipkan modul "${module.title}"?`)) archiveMutation.mutate(module.id); }}
-                                variant="ghost"
-                              >
+                              <button className="inline-flex h-9 w-28 items-center justify-center gap-1.5 rounded-lg border-2 border-border text-xs font-bold text-ink hover:border-primary hover:text-primary disabled:opacity-50" disabled={archiveMutation.isPending} onClick={() => archiveMutation.mutate(module.id)} type="button">
+                                <Archive aria-hidden="true" className="size-4 shrink-0" />
                                 Arsipkan
-                              </Button>
+                              </button>
                             ) : null}
-                            <Button
-                              className="min-h-9 px-3 py-1 text-xs"
-                              disabled={deleteMutation.isPending}
-                              onClick={() => setDeleteTarget(module)}
-                              variant="danger"
-                            >
+                            <button className="inline-flex h-9 w-28 items-center justify-center gap-1.5 rounded-lg border-2 border-danger/40 text-xs font-bold text-danger hover:border-danger disabled:opacity-50" disabled={deleteMutation.isPending} onClick={() => setDeleteTarget(module)} type="button">
+                              <Trash2 aria-hidden="true" className="size-4 shrink-0" />
                               Hapus
-                            </Button>
+                            </button>
                           </div>
                         </TableCell>
                       </tr>
@@ -340,18 +324,6 @@ export function ModuleList() {
       </Card>
 
       <Modal
-        onClose={() => setCreateModalOpen(false)}
-        open={createModalOpen}
-        title="Tambah Modul Default"
-      >
-        <ModuleTemplateForm
-          isSubmitting={createMutation.isPending}
-          onCancel={() => setCreateModalOpen(false)}
-          onSubmit={(payload) => createMutation.mutate(payload)}
-        />
-      </Modal>
-
-      <Modal
         onClose={() => setApplyTarget(null)}
         open={Boolean(applyTarget)}
         title="Terapkan Modul ke Kelas"
@@ -366,9 +338,9 @@ export function ModuleList() {
             classes.length === 0 ? (
               <EmptyState description="Belum ada kelas aktif untuk menerima template modul." title="Kelas aktif kosong" />
             ) : (
-              <div className="grid max-h-80 gap-2 overflow-auto rounded-xl border border-slate-200 p-3">
+              <div className="grid max-h-80 gap-2 overflow-auto rounded-xl border border-border p-3">
                 {classes.map((schoolClass) => (
-                  <label className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm font-bold text-ink" key={schoolClass.id}>
+                  <label className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3 text-sm font-bold text-ink" key={schoolClass.id}>
                     <input
                       checked={selectedClassIds.includes(schoolClass.id)}
                       onChange={() => toggleClass(schoolClass.id)}
@@ -380,7 +352,7 @@ export function ModuleList() {
               </div>
             )
           ) : null}
-          <label className="flex items-start gap-3 rounded-xl border-2 border-ink bg-yellow-50 p-3 text-sm font-bold text-ink">
+          <label className="flex items-start gap-3 rounded-xl border-2 border-border bg-[var(--color-primary-muted)] p-3 text-sm font-bold text-ink">
             <input
               checked={publishAfterApply}
               className="mt-1"

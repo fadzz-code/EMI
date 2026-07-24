@@ -1,4 +1,4 @@
-import { ApiError, apiClient, apiRequest } from "@/lib/api-client";
+import { ApiError, apiClient } from "@/lib/api-client";
 import { isUserRole } from "@/lib/roles";
 
 import type {
@@ -56,32 +56,6 @@ export const authService = {
     assertApprovedUser(response.data);
 
     return response.data;
-  },
-
-  async updateProfile(token: string, payload: { full_name: string; phone: string | null }) {
-    const response = await apiClient.patch<AuthUser>("/auth/me", payload, { token });
-    if (!response.data) throw new Error("Response profil tidak tersedia.");
-    return response.data;
-  },
-
-  async updatePassword(token: string, payload: { current_password: string; password: string; password_confirmation: string }) {
-    await apiClient.put<AuthUser>("/auth/password", payload, { token });
-  },
-
-  async uploadAvatar(token: string, avatar: File) {
-    const body = new FormData();
-    body.append("avatar", avatar);
-    const response = await apiClient.post<AuthUser>("/auth/me/avatar", body, { token });
-    if (!response.data) throw new Error("Response avatar tidak tersedia.");
-    return response.data;
-  },
-
-  async deleteAvatar(token: string) {
-    await apiClient.delete<AuthUser>("/auth/me/avatar", { token });
-  },
-
-  async deleteAccount(token: string, currentPassword: string) {
-    await apiRequest<null>("/auth/account", { method: "DELETE", token, body: { current_password: currentPassword } });
   },
 
   async registerTeacher(payload: Omit<RegisterPayload, "requested_role">) {
