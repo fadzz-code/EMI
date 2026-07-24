@@ -2,22 +2,20 @@
 
 import { type FormEvent, useState } from "react";
 
-import { Button, FormField, Input, Select, Textarea } from "@/components/ui";
+import { Button, FormField, Input, Textarea } from "@/components/ui";
 
 import { normalizeNullable } from "./module-utils";
-import type { ModuleTemplate, ModuleTemplatePayload, ModuleTemplateStatus } from "./types";
+import type { ModuleTemplate, ModuleTemplatePayload } from "./types";
 
 type ModuleFormState = {
   title: string;
   description: string;
-  status: ModuleTemplateStatus;
 };
 
 function toForm(module?: ModuleTemplate | null): ModuleFormState {
   return {
     title: module?.title ?? "",
     description: module?.description ?? "",
-    status: module?.status ?? "draft",
   };
 }
 
@@ -25,7 +23,6 @@ function toPayload(form: ModuleFormState): ModuleTemplatePayload {
   return {
     title: form.title.trim(),
     description: normalizeNullable(form.description),
-    status: form.status,
   };
 }
 
@@ -66,27 +63,12 @@ export function ModuleTemplateForm({
           value={form.description}
         />
       </FormField>
-      <FormField label="Status">
-        <Select
-          onChange={(event) =>
-            setForm((current) => ({
-              ...current,
-              status: event.target.value as ModuleTemplateStatus,
-            }))
-          }
-          value={form.status}
-        >
-          <option value="draft">Draft</option>
-          <option value="published">Terbit</option>
-          <option value="archived">Diarsipkan</option>
-        </Select>
-      </FormField>
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
         <Button onClick={onCancel} type="button" variant="ghost">
           Batal
         </Button>
         <Button disabled={isSubmitting} type="submit">
-          Simpan Modul
+          Simpan Metadata
         </Button>
       </div>
     </form>

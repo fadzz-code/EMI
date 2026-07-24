@@ -280,6 +280,7 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
             <CardContent>
               <ModuleTemplateForm
                 isSubmitting={updateModuleMutation.isPending}
+                key={moduleTemplate.updated_at ?? moduleTemplate.id}
                 module={moduleTemplate}
                 onCancel={() => void moduleQuery.refetch()}
                 onSubmit={(payload) => updateModuleMutation.mutate(payload)}
