@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClipboardCheck } from "lucide-react";
 
-import { Alert, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState } from "@/components/ui";
+import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
@@ -176,7 +176,13 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
 
           <Card className="border-2 border-border bg-surface shadow-emi">
             <CardHeader>
-              <h2 className="text-lg font-black text-ink">{currentQuestion.question_text}</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone="neutral">Soal {currentQuestionIndex + 1}</Badge>
+                {typeof currentQuestion.points === "number" ? (
+                  <Badge tone="blue">{currentQuestion.points} poin</Badge>
+                ) : null}
+              </div>
+              <h2 className="mt-2 text-lg font-black text-ink">{currentQuestion.question_text}</h2>
               {currentQuestion.image_media?.url ? (
                 <img alt="Soal" className="mt-4 max-h-64 rounded-xl border-2 border-border object-cover" src={currentQuestion.image_media.url} />
               ) : null}
