@@ -90,9 +90,9 @@ class EmiTheme {
         fillColor: EmiColors.surface,
         border: _inputBorder(),
         enabledBorder: _inputBorder(),
-        focusedBorder: _inputBorder(color: EmiColors.primary, width: 2),
+        focusedBorder: _inputBorder(color: EmiColors.primary),
         errorBorder: _inputBorder(color: EmiColors.error),
-        focusedErrorBorder: _inputBorder(color: EmiColors.error, width: 2),
+        focusedErrorBorder: _inputBorder(color: EmiColors.error),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
