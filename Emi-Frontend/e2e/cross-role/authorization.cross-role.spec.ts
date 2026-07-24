@@ -8,6 +8,11 @@ test("[E2E Cross Role] foreign IDs and private media reject access without path 
   const admin = await rolePage(browser, "admin");
   const teacher = await rolePage(browser, "teacher");
   const student = await rolePage(browser, "student");
+  
+  // Authorization approval test - UI side
+  const unauthorizedCheck = await teacher.page.goto("/admin/approvals");
+  await expect(teacher.page.locator("body")).toContainText(/Akses Ditolak|Halaman Tidak Ditemukan|Tidak ada akses|unauthorized/i);
+
   const adminAuth = await token(admin.page, "admin");
   const teacherAuth = await token(teacher.page, "teacher");
   const { studentToken, classroom } = await classFixture(request, student.page);

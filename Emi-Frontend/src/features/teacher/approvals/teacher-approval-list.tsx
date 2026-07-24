@@ -104,8 +104,8 @@ export function TeacherApprovalList() {
             </div>
           </div>
 
-          <div className="border rounded-md">
-            <Table>
+          <div className="border border-border rounded-md overflow-hidden bg-surface mt-6">
+            <Table className="border-0 mb-0">
               <TableHeader>
                 <tr>
                   <th className="px-4 py-3">Nama</th>

@@ -49,7 +49,7 @@ class DevAccountSeeder extends Seeder
                     'updated_at' => now(),
                 ]);
             } else {
-                $user = new User();
+                $user = new User;
                 $user->id = (string) Str::uuid();
                 $user->full_name = $account['full_name'];
                 $user->email = $account['email'];
