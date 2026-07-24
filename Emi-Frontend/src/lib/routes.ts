@@ -14,6 +14,7 @@ import {
   ListChecks,
   User,
   TrendingUp,
+  CheckCircle,
 } from "lucide-react";
 
 import type { UserRole } from "./roles";
@@ -38,6 +39,7 @@ export const publicRoutes = {
 
 export const teacherRoutes = {
   dashboard: "/teacher/dashboard",
+  approvals: "/teacher/approvals",
   classes: "/teacher/classes",
   students: "/teacher/students",
   studentDetail: (studentId: string) => `/teacher/students/${studentId}`,
@@ -77,6 +79,7 @@ export const roleNavItems: Record<UserRole, NavItem[]> = {
   ],
   teacher: [
     { label: "Beranda", href: teacherRoutes.dashboard, shortLabel: "Beranda", status: "ready", icon: LayoutDashboard },
+    { label: "Persetujuan", href: teacherRoutes.approvals, status: "ready", icon: CheckCircle },
     { label: "Kelas", href: teacherRoutes.classes, status: "ready", icon: School },
     { label: "Siswa", href: teacherRoutes.students, status: "ready", icon: Users },
     { label: "Progress", href: teacherRoutes.progressReport, status: "ready", icon: TrendingUp },
@@ -116,7 +119,7 @@ export const roleMobileNavItems: Record<UserRole, NavItem[]> = {
   ]),
   teacher: pickNavItems(roleNavItems.teacher, [
     teacherRoutes.dashboard,
-    teacherRoutes.classes,
+    teacherRoutes.approvals,
     teacherRoutes.students,
     teacherRoutes.quizzes,
     teacherRoutes.speakingResults,
