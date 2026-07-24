@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/emi_theme.dart';
 import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/error_message.dart';
+import 'auth_brand_mark.dart';
 import 'auth_controller.dart';
 import 'login_validator.dart';
 
@@ -50,9 +51,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const _AuthBrandMark(),
+                        const AuthBrandMark(),
                         const SizedBox(height: EmiSpacing.xl),
                         EmiCard(
+                          hero: true,
                           padding: const EdgeInsets.all(EmiSpacing.lg),
                           child: Form(
                             key: _formKey,
@@ -175,38 +177,5 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
-  }
-}
-
-/// Simple, shadow-free brand mark shared by auth screens.
-class _AuthBrandMark extends StatelessWidget {
-  const _AuthBrandMark();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            color: EmiColors.primarySoft,
-            borderRadius: BorderRadius.circular(EmiRadii.pill),
-          ),
-          child: const Icon(
-            Icons.school_outlined,
-            size: 32,
-            color: EmiColors.primary,
-          ),
-        ),
-        const SizedBox(height: EmiSpacing.sm),
-        Text(
-          'EMI Kolaka',
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(color: EmiColors.textSecondary),
-        ),
-      ],
-    );
   }
 }

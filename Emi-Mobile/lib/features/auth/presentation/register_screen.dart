@@ -9,6 +9,7 @@ import '../../../shared/widgets/error_message.dart';
 import '../data/auth_providers.dart';
 import '../domain/auth_repository.dart';
 import '../domain/session_user.dart';
+import 'auth_brand_mark.dart';
 import 'auth_controller.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -62,21 +63,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      color: EmiColors.primarySoft,
-                      borderRadius: BorderRadius.circular(EmiRadii.pill),
-                    ),
-                    child: const Icon(
-                      Icons.person_add_alt_outlined,
-                      size: 32,
-                      color: EmiColors.primary,
-                    ),
-                  ),
+                  const AuthBrandMark(icon: Icons.person_add_alt_outlined),
                   const SizedBox(height: EmiSpacing.xl),
                   EmiCard(
+                    hero: true,
                     padding: const EdgeInsets.all(EmiSpacing.lg),
                     child: Form(
                       key: _formKey,

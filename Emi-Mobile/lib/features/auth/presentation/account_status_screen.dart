@@ -21,6 +21,7 @@ class AccountStatusScreen extends ConsumerWidget {
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(EmiSpacing.lg),
             child: EmiCard(
+              hero: true,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,

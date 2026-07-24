@@ -7,6 +7,7 @@ import '../../../core/errors/app_error.dart';
 import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/error_message.dart';
 import '../data/auth_providers.dart';
+import 'auth_brand_mark.dart';
 import 'login_validator.dart';
 
 class ResetPasswordScreen extends ConsumerStatefulWidget {
@@ -50,21 +51,10 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      color: EmiColors.primarySoft,
-                      borderRadius: BorderRadius.circular(EmiRadii.pill),
-                    ),
-                    child: const Icon(
-                      Icons.key_outlined,
-                      size: 32,
-                      color: EmiColors.primary,
-                    ),
-                  ),
+                  const AuthBrandMark(icon: Icons.key_outlined),
                   const SizedBox(height: EmiSpacing.xl),
                   EmiCard(
+                    hero: true,
                     padding: const EdgeInsets.all(EmiSpacing.lg),
                     child: Form(
                       key: _formKey,
