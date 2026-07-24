@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/emi_theme.dart';
 import '../../../core/errors/app_error.dart';
 import '../../../shared/widgets/emi_card.dart';
+import '../../../shared/widgets/status_badge.dart';
 import '../data/admin_crud_providers.dart';
 import '../data/admin_providers.dart';
 import '../data/admin_repository.dart';
@@ -196,13 +197,13 @@ class _QuizTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => InkWell(
     onTap: () => context.push('/admin/quizzes/${item.id}'),
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.circular(EmiRadii.card),
     child: Container(
       padding: const EdgeInsets.all(EmiSpacing.md),
       decoration: BoxDecoration(
         color: EmiColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: EmiColors.border),
+        borderRadius: BorderRadius.circular(EmiRadii.card),
+        border: Border.all(color: EmiColors.border, width: 1.5),
       ),
       child: Row(
         children: [
@@ -219,10 +220,20 @@ class _QuizTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: EmiSpacing.xs),
-                Text(
-                  '${item.questionsCount} Pertanyaan · ${_statusLabel(item.status)}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${item.questionsCount} Pertanyaan',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    EmiStatusBadge(
+                      label: _statusLabel(item.status),
+                      tone: emiStatusToneFromKey(item.status),
+                    ),
+                  ],
                 ),
                 Text(
                   '${item.durationMinutes} menit · ${item.maxAttempts} percobaan · Diubah ${_shortDate(item.updatedAt)}',
@@ -970,7 +981,7 @@ class _AdminQuestionFormScreenState
                             onPressed: _saving ? null : _delete,
                             child: const Text(
                               'Hapus soal',
-                              style: TextStyle(color: Colors.red),
+                              style: TextStyle(color: EmiColors.error),
                             ),
                           ),
                         ],

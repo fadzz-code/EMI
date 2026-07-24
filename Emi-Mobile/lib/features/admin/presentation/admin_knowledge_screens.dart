@@ -9,6 +9,7 @@ import '../../../app/theme/emi_theme.dart';
 import '../../../core/errors/app_error.dart';
 import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/role_dashboard_widgets.dart';
+import '../../../shared/widgets/status_badge.dart';
 import '../data/admin_knowledge_providers.dart';
 import '../data/admin_knowledge_repository.dart';
 import 'admin_shell.dart';
@@ -289,7 +290,7 @@ class _KnowledgeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => InkWell(
     onTap: () => context.push('/admin/knowledge/${item.id}'),
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.circular(EmiRadii.card),
     child: Container(
       constraints: const BoxConstraints(minHeight: 88),
       padding: const EdgeInsets.symmetric(
@@ -298,8 +299,8 @@ class _KnowledgeTile extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: EmiColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: EmiColors.border, width: 1),
+        borderRadius: BorderRadius.circular(EmiRadii.card),
+        border: Border.all(color: EmiColors.border, width: 1.5),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -327,11 +328,22 @@ class _KnowledgeTile extends StatelessWidget {
                 ),
                 const SizedBox(height: EmiSpacing.xs),
                 Text(
-                  '${_sourceLabel(item.sourceType)} • ${_statusLabel(item.status)}',
+                  _sourceLabel(item.sourceType),
                   style: Theme.of(context).textTheme.bodySmall,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                const SizedBox(height: EmiSpacing.xs),
+                Wrap(
+                  spacing: EmiSpacing.xs,
+                  children: [
+                    EmiStatusBadge(
+                      label: _statusLabel(item.status),
+                      tone: emiStatusToneFromKey(item.status),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: EmiSpacing.xs),
                 Text(
                   'Diubah ${_shortDate(item.updatedAt)}',
                   style: Theme.of(context).textTheme.bodySmall,

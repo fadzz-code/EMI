@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/emi_theme.dart';
 import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/role_dashboard_widgets.dart';
+import '../../../shared/widgets/status_badge.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../data/admin_providers.dart';
 import '../data/admin_repository.dart';
@@ -419,20 +420,52 @@ class _AdminClassTile extends StatelessWidget {
   final AdminClass klass;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    leading: const CircleAvatar(child: Icon(Icons.school_outlined)),
-    title: Text(klass.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-    subtitle: Text(
-      [
-        klass.schoolName ?? 'Belum Ada Sekolah',
-        'Guru: ${klass.teacherName ?? 'Belum Ada Guru'}',
-        '${klass.studentsCount == 0 ? 'Belum Ada Siswa' : '${klass.studentsCount} Siswa'} • ${_classStatusLabel(klass.status)}',
-      ].join('\n'),
-      maxLines: 3,
-      overflow: TextOverflow.ellipsis,
+  Widget build(BuildContext context) => EmiCard(
+    child: InkWell(
+      onTap: () => context.push('/admin/classes/${klass.id}'),
+      child: Row(
+        children: [
+          const CircleAvatar(child: Icon(Icons.school_outlined)),
+          const SizedBox(width: EmiSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  klass.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                Text(
+                  klass.schoolName ?? 'Belum Ada Sekolah',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  'Guru: ${klass.teacherName ?? 'Belum Ada Guru'}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  klass.studentsCount == 0
+                      ? 'Belum Ada Siswa'
+                      : '${klass.studentsCount} Siswa',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: EmiSpacing.xs),
+                EmiStatusBadge(
+                  label: _classStatusLabel(klass.status),
+                  tone: emiStatusToneFromKey(klass.status),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right),
+        ],
+      ),
     ),
-    trailing: const Icon(Icons.chevron_right),
-    onTap: () => context.push('/admin/classes/${klass.id}'),
   );
 }
 
@@ -600,20 +633,45 @@ class _AdminSchoolTile extends StatelessWidget {
   final AdminSchool school;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    leading: const CircleAvatar(child: Icon(Icons.apartment_outlined)),
-    title: Text(school.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-    subtitle: Text(
-      [
-        _schoolStatusLabel(school.status),
-        school.address ?? 'Alamat belum diisi',
-        '${school.classesCount} kelas',
-      ].join('\n'),
-      maxLines: 3,
-      overflow: TextOverflow.ellipsis,
+  Widget build(BuildContext context) => EmiCard(
+    child: InkWell(
+      onTap: () => context.push('/admin/schools/${school.id}'),
+      child: Row(
+        children: [
+          const CircleAvatar(child: Icon(Icons.apartment_outlined)),
+          const SizedBox(width: EmiSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  school.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                Text(
+                  school.address ?? 'Alamat belum diisi',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  '${school.classesCount} kelas',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: EmiSpacing.xs),
+                EmiStatusBadge(
+                  label: _schoolStatusLabel(school.status),
+                  tone: emiStatusToneFromKey(school.status),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right),
+        ],
+      ),
     ),
-    trailing: const Icon(Icons.chevron_right),
-    onTap: () => context.push('/admin/schools/${school.id}'),
   );
 }
 
@@ -657,7 +715,11 @@ class AdminSchoolDetailScreen extends ConsumerWidget {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        Text(_schoolStatusLabel(school.status)),
+                        const SizedBox(height: EmiSpacing.xs),
+                        EmiStatusBadge(
+                          label: _schoolStatusLabel(school.status),
+                          tone: emiStatusToneFromKey(school.status),
+                        ),
                       ],
                     ),
                   ),
@@ -933,15 +995,32 @@ class AdminClassDetailScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
             EmiCard(
-              child: ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const CircleAvatar(child: Icon(Icons.school_outlined)),
-                title: Text(
-                  klass.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Text(_classStatusLabel(klass.status)),
+              child: Row(
+                children: [
+                  const CircleAvatar(
+                    radius: 28,
+                    child: Icon(Icons.school_outlined),
+                  ),
+                  const SizedBox(width: EmiSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          klass.name,
+                          style: Theme.of(context).textTheme.titleLarge,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: EmiSpacing.xs),
+                        EmiStatusBadge(
+                          label: _classStatusLabel(klass.status),
+                          tone: emiStatusToneFromKey(klass.status),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: EmiSpacing.md),
@@ -1217,7 +1296,13 @@ class _ClassContentList extends ConsumerWidget {
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(item.title),
-                      subtitle: Text(_statusLabel(item.status)),
+                      subtitle: Align(
+                        alignment: Alignment.centerLeft,
+                        child: EmiStatusBadge(
+                          label: _statusLabel(item.status),
+                          tone: emiStatusToneFromKey(item.status),
+                        ),
+                      ),
                       trailing: item.status == 'draft'
                           ? TextButton(
                               onPressed: () => _publishClassContent(
@@ -1306,8 +1391,10 @@ class _ClassStudentsList extends ConsumerWidget {
                 contentPadding: EdgeInsets.zero,
                 leading: const CircleAvatar(child: Icon(Icons.person_outline)),
                 title: Text(student.name),
-                subtitle: Text(
-                  '${student.email}\n${_statusLabel(student.status)}',
+                subtitle: Text(student.email),
+                trailing: EmiStatusBadge(
+                  label: _statusLabel(student.status),
+                  tone: emiStatusToneFromKey(student.status),
                 ),
               ),
           ],
@@ -1735,23 +1822,54 @@ class _AdminUserTile extends StatelessWidget {
   final AdminUser user;
 
   @override
-  Widget build(BuildContext context) => ListTile(
+  Widget build(BuildContext context) => EmiCard(
     key: Key('adminUserRow-${user.id}'),
-    leading: CircleAvatar(
-      child: Icon(user.role == 'teacher' ? Icons.school : Icons.person),
+    child: InkWell(
+      onTap: () => context.push('/admin/users/${user.id}'),
+      child: Row(
+        children: [
+          CircleAvatar(
+            child: Icon(user.role == 'teacher' ? Icons.school : Icons.person),
+          ),
+          const SizedBox(width: EmiSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                Text(
+                  user.schoolName ?? 'Belum Ada Sekolah',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  user.className ?? 'Belum Ditempatkan ke Kelas',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: EmiSpacing.xs),
+                Wrap(
+                  spacing: EmiSpacing.xs,
+                  children: [
+                    EmiStatusBadge(label: _roleLabel(user.role)),
+                    EmiStatusBadge(
+                      label: _statusLabel(user.status),
+                      tone: emiStatusToneFromKey(user.status),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right),
+        ],
+      ),
     ),
-    title: Text(user.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-    subtitle: Text(
-      [
-        '${_roleLabel(user.role)} • ${_statusLabel(user.status)}',
-        user.schoolName ?? 'Belum Ada Sekolah',
-        user.className ?? 'Belum Ditempatkan ke Kelas',
-      ].join('\n'),
-      maxLines: 3,
-      overflow: TextOverflow.ellipsis,
-    ),
-    trailing: const Icon(Icons.chevron_right),
-    onTap: () => context.push('/admin/users/${user.id}'),
   );
 }
 
@@ -2013,7 +2131,17 @@ class _AdminUserHeader extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              Text('${_roleLabel(user.role)} • ${_statusLabel(user.status)}'),
+              const SizedBox(height: EmiSpacing.xs),
+              Wrap(
+                spacing: EmiSpacing.xs,
+                children: [
+                  EmiStatusBadge(label: _roleLabel(user.role)),
+                  EmiStatusBadge(
+                    label: _statusLabel(user.status),
+                    tone: emiStatusToneFromKey(user.status),
+                  ),
+                ],
+              ),
             ],
           ),
         ),

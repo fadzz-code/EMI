@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../shared/widgets/emi_card.dart';
+import '../../../shared/widgets/status_badge.dart';
 import '../data/admin_progress_models.dart';
 import '../data/admin_progress_providers.dart';
 import '../data/admin_progress_repository.dart';
@@ -740,23 +741,13 @@ class ProgressSectionHeader extends StatelessWidget {
 }
 
 class ProgressStatusBadge extends StatelessWidget {
-  const ProgressStatusBadge(this.label, {super.key});
+  const ProgressStatusBadge(this.label, {super.key, this.tone});
   final String label;
+  final EmiStatusTone? tone;
 
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.secondaryContainer,
-      borderRadius: BorderRadius.circular(EmiRadii.card),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: EmiSpacing.sm,
-        vertical: 4,
-      ),
-      child: Text(label, style: Theme.of(context).textTheme.labelMedium),
-    ),
-  );
+  Widget build(BuildContext context) =>
+      EmiStatusBadge(label: label, tone: tone ?? EmiStatusTone.neutral);
 }
 
 class ProgressInfoRow extends StatelessWidget {
@@ -832,6 +823,7 @@ class ProgressStudentItem extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: ProgressStatusBadge(
                 adminProgressStatus(student.learningStatus),
+                tone: emiStatusToneFromKey(student.learningStatus),
               ),
             ),
           ],

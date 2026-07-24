@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../shared/widgets/emi_card.dart';
+import '../../../shared/widgets/status_badge.dart';
 import '../data/admin_progress_models.dart';
 import '../data/admin_progress_providers.dart';
 import 'admin_reports_screen.dart';
@@ -90,6 +91,7 @@ class _AdminStudentProgressScreenState
                         ),
                         ProgressStatusBadge(
                           adminProgressStatus(quiz.latestStatus),
+                          tone: emiStatusToneFromKey(quiz.latestStatus),
                         ),
                       ],
                     ),

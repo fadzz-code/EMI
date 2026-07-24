@@ -173,8 +173,9 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_success != null) _message(_success!, Colors.green),
-          if (_error != null) _message(_friendlyError(_error!), Colors.red),
+          if (_success != null) _message(_success!, EmiColors.success),
+          if (_error != null)
+            _message(_friendlyError(_error!), EmiColors.error),
           _section('Pengaturan Aplikasi', [
             _field(_name, 'Nama Aplikasi', required: true),
             _field(_subtitle, 'Subtitle / Slogan'),

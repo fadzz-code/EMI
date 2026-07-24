@@ -10,6 +10,7 @@ import 'package:just_audio/just_audio.dart';
 import '../../../app/theme/emi_theme.dart';
 import '../../../shared/media/media_opener.dart';
 import '../../../shared/widgets/role_dashboard_widgets.dart';
+import '../../../shared/widgets/status_badge.dart';
 import '../data/admin_culture_providers.dart';
 import '../data/admin_culture_repository.dart';
 import 'admin_shell.dart';
@@ -255,7 +256,7 @@ class _CultureTile extends StatelessWidget {
       padding: const EdgeInsets.all(EmiSpacing.md),
       decoration: BoxDecoration(
         color: EmiColors.surface,
-        border: Border.all(color: EmiColors.border),
+        border: Border.all(color: EmiColors.border, width: 1.5),
         borderRadius: BorderRadius.circular(EmiRadii.card),
       ),
       child: Row(
@@ -281,8 +282,11 @@ class _CultureTile extends StatelessWidget {
                   item.title,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
-                Text(
-                  '${_category(item.contentType)} · ${_status(item.status)}',
+                Text(_category(item.contentType)),
+                const SizedBox(height: EmiSpacing.xs),
+                EmiStatusBadge(
+                  label: _status(item.status),
+                  tone: emiStatusToneFromKey(item.status),
                 ),
                 Text(
                   'Diubah ${_date(item.updatedAt)}',
@@ -333,6 +337,11 @@ class AdminCultureDetailScreen extends ConsumerWidget {
                 item.title,
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
+              const SizedBox(height: EmiSpacing.xs),
+              EmiStatusBadge(
+                label: _status(item.status),
+                tone: emiStatusToneFromKey(item.status),
+              ),
               const SizedBox(height: EmiSpacing.lg),
               Text(
                 'Informasi Konten',
@@ -344,7 +353,6 @@ class AdminCultureDetailScreen extends ConsumerWidget {
               ),
               _Field(label: 'Kategori', value: _category(item.contentType)),
               _Field(label: 'Urutan tampil', value: '${item.displayOrder}'),
-              _Field(label: 'Status', value: _status(item.status)),
               const SizedBox(height: EmiSpacing.lg),
               Text(
                 'Media atau Tautan',

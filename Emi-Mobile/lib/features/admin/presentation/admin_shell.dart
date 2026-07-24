@@ -200,6 +200,12 @@ class _AdminDrawer extends ConsumerWidget {
                 route: feature.route,
                 selected: location.startsWith(feature.route),
               ),
+            _Item(
+              label: 'Profil',
+              icon: Icons.person_outline,
+              route: '/admin/profile',
+              selected: location.startsWith('/admin/profile'),
+            ),
             const Divider(height: 1),
             ListTile(
               key: const Key('adminLogoutButton'),

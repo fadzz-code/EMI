@@ -8,6 +8,7 @@ import '../../../app/theme/emi_theme.dart';
 import '../../../core/errors/app_error.dart';
 import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/role_dashboard_widgets.dart';
+import '../../../shared/widgets/status_badge.dart';
 import '../data/admin_crud_providers.dart';
 import '../data/admin_crud_repository.dart';
 import '../data/admin_providers.dart';
@@ -205,22 +206,56 @@ class _ApprovalTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => EmiCard(
     key: Key('adminApprovalRow-${item.id}'),
-    child: ListTile(
-      leading: CircleAvatar(child: Icon(_roleIcon(item.requestedRole))),
-      title: Text(item.userName, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        [
-          '${_roleLabel(item.requestedRole)} • ${_statusLabel(item.status)}',
-          item.userEmail,
-          item.schoolName ?? 'Belum Memilih Sekolah',
-          if (item.createdAt != null) 'Diajukan ${_dateLabel(item.createdAt!)}',
-        ].join('\n'),
-        maxLines: 4,
-        overflow: TextOverflow.ellipsis,
-      ),
-      isThreeLine: true,
-      trailing: const Icon(Icons.chevron_right),
+    child: InkWell(
       onTap: () => context.push('/admin/approvals/${item.id}'),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(child: Icon(_roleIcon(item.requestedRole))),
+          const SizedBox(width: EmiSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.userName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  item.userEmail,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  item.schoolName ?? 'Belum Memilih Sekolah',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (item.createdAt != null)
+                  Text(
+                    'Diajukan ${_dateLabel(item.createdAt!)}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                const SizedBox(height: EmiSpacing.xs),
+                Wrap(
+                  spacing: EmiSpacing.xs,
+                  children: [
+                    EmiStatusBadge(label: _roleLabel(item.requestedRole)),
+                    EmiStatusBadge(
+                      label: _statusLabel(item.status),
+                      tone: emiStatusToneFromKey(item.status),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right),
+        ],
+      ),
     ),
   );
 }
@@ -261,18 +296,37 @@ class _AdminApprovalDetailScreenState
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
               EmiCard(
-                child: ListTile(
-                  leading: CircleAvatar(
-                    child: Icon(_roleIcon(item.requestedRole)),
-                  ),
-                  title: Text(
-                    item.userName,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    '${_roleLabel(item.requestedRole)} • ${_statusLabel(item.status)}',
-                  ),
+                child: Row(
+                  children: [
+                    CircleAvatar(child: Icon(_roleIcon(item.requestedRole))),
+                    const SizedBox(width: EmiSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.userName,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: EmiSpacing.xs),
+                          Wrap(
+                            spacing: EmiSpacing.xs,
+                            children: [
+                              EmiStatusBadge(
+                                label: _roleLabel(item.requestedRole),
+                              ),
+                              EmiStatusBadge(
+                                label: _statusLabel(item.status),
+                                tone: emiStatusToneFromKey(item.status),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: EmiSpacing.md),

@@ -10,6 +10,7 @@ import 'package:just_audio/just_audio.dart';
 import '../../../app/theme/emi_theme.dart';
 import '../../../core/errors/app_error.dart';
 import '../../../shared/widgets/role_dashboard_widgets.dart';
+import '../../../shared/widgets/status_badge.dart';
 import '../data/admin_modules_providers.dart';
 import '../data/admin_modules_repository.dart';
 import 'admin_shell.dart';
@@ -206,7 +207,7 @@ class _ModuleTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => InkWell(
     onTap: () => context.push('/admin/modules/${item.id}'),
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.circular(EmiRadii.card),
     child: Container(
       constraints: const BoxConstraints(minHeight: 88),
       padding: const EdgeInsets.symmetric(
@@ -215,8 +216,8 @@ class _ModuleTile extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: EmiColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: EmiColors.border, width: 1),
+        borderRadius: BorderRadius.circular(EmiRadii.card),
+        border: Border.all(color: EmiColors.border, width: 1.5),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,10 +247,20 @@ class _ModuleTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: EmiSpacing.xs),
-                Text(
-                  '${item.lessonsCount} Materi · ${_statusLabel(item.status)}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${item.lessonsCount} Materi',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    EmiStatusBadge(
+                      label: _statusLabel(item.status),
+                      tone: emiStatusToneFromKey(item.status),
+                    ),
+                  ],
                 ),
                 Text(
                   'Diubah ${_shortDate(item.updatedAt)}',
@@ -416,8 +427,21 @@ class _LessonTile extends StatelessWidget {
   Widget build(BuildContext context) => ListTile(
     contentPadding: EdgeInsets.zero,
     title: Text(lesson.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-    subtitle: Text(
-      '${_contentLabel(lesson.contentType)} · ${_statusLabel(lesson.status)}',
+    subtitle: Row(
+      children: [
+        Flexible(
+          child: Text(
+            _contentLabel(lesson.contentType),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(width: EmiSpacing.xs),
+        EmiStatusBadge(
+          label: _statusLabel(lesson.status),
+          tone: emiStatusToneFromKey(lesson.status),
+        ),
+      ],
     ),
     trailing: PopupMenuButton<String>(
       onSelected: (value) {

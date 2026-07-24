@@ -8,6 +8,7 @@ import 'package:just_audio/just_audio.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../shared/widgets/role_dashboard_widgets.dart';
+import '../../../shared/widgets/status_badge.dart';
 import '../data/admin_speaking_providers.dart';
 import '../data/admin_speaking_repository.dart';
 import 'admin_shell.dart';
@@ -178,7 +179,7 @@ class _SpeakingTile extends StatelessWidget {
       padding: const EdgeInsets.all(EmiSpacing.md),
       decoration: BoxDecoration(
         color: EmiColors.surface,
-        border: Border.all(color: EmiColors.border),
+        border: Border.all(color: EmiColors.border, width: 1.5),
         borderRadius: BorderRadius.circular(EmiRadii.card),
       ),
       child: Row(
@@ -198,8 +199,24 @@ class _SpeakingTile extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                Text(
-                  '${_status(item.status)} · ${item.referenceAudioMediaId == null ? 'Tanpa audio' : 'Audio tersedia'}',
+                const SizedBox(height: EmiSpacing.xs),
+                Wrap(
+                  spacing: EmiSpacing.xs,
+                  runSpacing: EmiSpacing.xs,
+                  children: [
+                    EmiStatusBadge(
+                      label: _status(item.status),
+                      tone: emiStatusToneFromKey(item.status),
+                    ),
+                    EmiStatusBadge(
+                      label: item.referenceAudioMediaId == null
+                          ? 'Tanpa audio'
+                          : 'Audio tersedia',
+                      icon: item.referenceAudioMediaId == null
+                          ? Icons.volume_off_outlined
+                          : Icons.volume_up_outlined,
+                    ),
+                  ],
                 ),
                 Text(
                   '${_difficulty(item.difficulty)} · Diubah ${_date(item.updatedAt)}',
@@ -255,6 +272,11 @@ class AdminSpeakingDetailScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
             Text(item.title, style: Theme.of(context).textTheme.headlineMedium),
+            const SizedBox(height: EmiSpacing.xs),
+            EmiStatusBadge(
+              label: _status(item.status),
+              tone: emiStatusToneFromKey(item.status),
+            ),
             const SizedBox(height: EmiSpacing.lg),
             Text(
               'Kalimat Latihan',
@@ -268,7 +290,6 @@ class AdminSpeakingDetailScreen extends ConsumerWidget {
             const SizedBox(height: EmiSpacing.sm),
             _Row(label: 'Petunjuk', value: item.promptText ?? '-'),
             _Row(label: 'Kesulitan', value: _difficulty(item.difficulty)),
-            _Row(label: 'Status', value: _status(item.status)),
             const SizedBox(height: EmiSpacing.lg),
             Text(
               'Audio Referensi',

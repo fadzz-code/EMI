@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/emi_theme.dart';
 import '../../../core/errors/app_error.dart';
 import '../../../shared/widgets/emi_card.dart';
+import '../../../shared/widgets/status_badge.dart';
 import '../data/admin_crud_providers.dart';
 import '../data/admin_crud_repository.dart';
 import 'admin_shell.dart';
@@ -567,9 +568,9 @@ class _AdminDictionaryDetailScreenState
                   runSpacing: EmiSpacing.xs,
                   children: [
                     _Chip(text: item.categoryName ?? 'Kategori tidak tersedia'),
-                    _Chip(
-                      text: _statusLabel(item.status),
-                      color: EmiColors.secondary,
+                    EmiStatusBadge(
+                      label: _statusLabel(item.status),
+                      tone: emiStatusToneFromKey(item.status),
                     ),
                   ],
                 ),
@@ -795,9 +796,9 @@ class AdminDictionaryCategoryScreen extends ConsumerWidget {
                       runSpacing: EmiSpacing.xs,
                       children: [
                         _Chip(text: '${category.entriesCount} kosakata'),
-                        _Chip(
-                          text: _statusLabel(category.status),
-                          color: EmiColors.secondary,
+                        EmiStatusBadge(
+                          label: _statusLabel(category.status),
+                          tone: emiStatusToneFromKey(category.status),
                         ),
                       ],
                     ),
@@ -1219,9 +1220,9 @@ class _DictionaryTile extends StatelessWidget {
               runSpacing: EmiSpacing.xs,
               children: [
                 _Chip(text: item.categoryName ?? 'Tanpa Kategori'),
-                _Chip(
-                  text: _statusLabel(item.status),
-                  color: EmiColors.secondary,
+                EmiStatusBadge(
+                  label: _statusLabel(item.status),
+                  tone: emiStatusToneFromKey(item.status),
                 ),
                 _Chip(
                   text: item.audioUrl?.isNotEmpty == true
