@@ -4,6 +4,7 @@ class EmiColors {
   const EmiColors._();
 
   static const primary = Color(0xFFFF8A3D);
+  static const primarySoft = Color(0xFFFFF0E4);
   static const secondary = Color(0xFFFDD758);
   static const background = Color(0xFFFEF8F1);
   static const backgroundWarm = Color(0xFFFFF9F2);
@@ -11,6 +12,8 @@ class EmiColors {
   static const surfaceSoft = Color(0xFFFFF1EB);
   static const surfaceAccent = Color(0xFFFEEAE0);
   static const textPrimary = Color(0xFF1D1B17);
+  static const textSecondary = Color(0xFF6F5548);
+  static const textMuted = Color(0xFF927B70);
   static const border = Color(0xFF1D1B17);
   static const divider = Color(0xFFD8C8BE);
   static const success = Color(0xFF5BBE5D);

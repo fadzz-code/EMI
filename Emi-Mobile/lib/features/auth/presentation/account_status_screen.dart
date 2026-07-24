@@ -15,12 +15,12 @@ class AccountStatusScreen extends ConsumerWidget {
     final copy = _copyFor(auth.status, auth.error?.message);
 
     return Scaffold(
+      backgroundColor: EmiColors.background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(EmiSpacing.lg),
             child: EmiCard(
-              elevated: true,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,

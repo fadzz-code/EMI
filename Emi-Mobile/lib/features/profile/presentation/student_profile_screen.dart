@@ -399,7 +399,6 @@ class _ProfileHeader extends StatelessWidget {
           );
 
     return EmiCard(
-      elevated: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

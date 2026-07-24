@@ -22,12 +22,12 @@ class UnsupportedRoleScreen extends ConsumerWidget {
             : 'Halaman tidak tersedia.');
 
     return Scaffold(
+      backgroundColor: EmiColors.background,
       body: SafeArea(
         child: Center(
           child: Padding(
             padding: const EdgeInsets.all(EmiSpacing.lg),
             child: EmiCard(
-              elevated: true,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,

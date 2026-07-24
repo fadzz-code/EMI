@@ -34,6 +34,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final auth = ref.watch(authControllerProvider);
 
     return Scaffold(
+      backgroundColor: EmiColors.background,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -44,88 +45,117 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   minHeight: constraints.maxHeight - EmiSpacing.lg * 2,
                 ),
                 child: Center(
-                  child: EmiCard(
-                    elevated: true,
-                    padding: const EdgeInsets.all(EmiSpacing.lg),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            'Masuk EMI',
-                            style: Theme.of(context).textTheme.headlineMedium,
-                          ),
-                          const SizedBox(height: EmiSpacing.xs),
-                          const Text(
-                            'Gunakan akun Admin, Guru, atau Siswa yang sudah disetujui pengelola.',
-                          ),
-                          const SizedBox(height: EmiSpacing.lg),
-                          TextFormField(
-                            key: const Key('emailField'),
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Email',
-                            ),
-                            validator: _validator.email,
-                          ),
-                          const SizedBox(height: EmiSpacing.md),
-                          TextFormField(
-                            key: const Key('passwordField'),
-                            controller: _passwordController,
-                            obscureText: _obscurePassword,
-                            textInputAction: TextInputAction.done,
-                            decoration: InputDecoration(
-                              labelText: 'Password',
-                              suffixIcon: IconButton(
-                                key: const Key('togglePasswordButton'),
-                                onPressed: () => setState(
-                                  () => _obscurePassword = !_obscurePassword,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const _AuthBrandMark(),
+                        const SizedBox(height: EmiSpacing.xl),
+                        EmiCard(
+                          padding: const EdgeInsets.all(EmiSpacing.lg),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  'Masuk EMI',
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.headlineMedium,
                                 ),
-                                icon: Icon(
-                                  _obscurePassword
-                                      ? Icons.visibility
-                                      : Icons.visibility_off,
+                                const SizedBox(height: EmiSpacing.xs),
+                                Text(
+                                  'Gunakan akun Admin, Guru, atau Siswa yang sudah disetujui pengelola.',
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: EmiColors.textSecondary,
+                                      ),
                                 ),
-                              ),
-                            ),
-                            validator: _validator.password,
-                            onFieldSubmitted: (_) => _submit(),
-                          ),
-                          if (auth.error != null) ...[
-                            const SizedBox(height: EmiSpacing.md),
-                            ErrorMessage(message: auth.error!.message),
-                          ],
-                          const SizedBox(height: EmiSpacing.lg),
-                          ElevatedButton(
-                            key: const Key('loginButton'),
-                            onPressed: auth.isLoading ? null : _submit,
-                            child: auth.isLoading
-                                ? const SizedBox.square(
-                                    dimension: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
+                                const SizedBox(height: EmiSpacing.lg),
+                                TextFormField(
+                                  key: const Key('emailField'),
+                                  controller: _emailController,
+                                  keyboardType: TextInputType.emailAddress,
+                                  textInputAction: TextInputAction.next,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Email',
+                                    prefixIcon: Icon(
+                                      Icons.mail_outline,
+                                      size: 20,
                                     ),
-                                  )
-                                : const Text('Masuk'),
+                                  ),
+                                  validator: _validator.email,
+                                ),
+                                const SizedBox(height: EmiSpacing.md),
+                                TextFormField(
+                                  key: const Key('passwordField'),
+                                  controller: _passwordController,
+                                  obscureText: _obscurePassword,
+                                  textInputAction: TextInputAction.done,
+                                  decoration: InputDecoration(
+                                    labelText: 'Password',
+                                    prefixIcon: const Icon(
+                                      Icons.lock_outline,
+                                      size: 20,
+                                    ),
+                                    suffixIcon: IconButton(
+                                      key: const Key('togglePasswordButton'),
+                                      onPressed: () => setState(
+                                        () => _obscurePassword =
+                                            !_obscurePassword,
+                                      ),
+                                      icon: Icon(
+                                        _obscurePassword
+                                            ? Icons.visibility_outlined
+                                            : Icons.visibility_off_outlined,
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ),
+                                  validator: _validator.password,
+                                  onFieldSubmitted: (_) => _submit(),
+                                ),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: auth.isLoading
+                                        ? null
+                                        : () => context.go('/forgot-password'),
+                                    child: const Text('Lupa Kata Sandi?'),
+                                  ),
+                                ),
+                                if (auth.error != null) ...[
+                                  const SizedBox(height: EmiSpacing.xs),
+                                  ErrorMessage(message: auth.error!.message),
+                                ],
+                                const SizedBox(height: EmiSpacing.sm),
+                                ElevatedButton(
+                                  key: const Key('loginButton'),
+                                  onPressed: auth.isLoading ? null : _submit,
+                                  child: auth.isLoading
+                                      ? const SizedBox.square(
+                                          dimension: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Text('Masuk'),
+                                ),
+                              ],
+                            ),
                           ),
-                          TextButton(
-                            onPressed: auth.isLoading
-                                ? null
-                                : () => context.go('/forgot-password'),
-                            child: const Text('Lupa Kata Sandi'),
-                          ),
-                          TextButton(
-                            onPressed: auth.isLoading
-                                ? null
-                                : () => context.go('/register'),
-                            child: const Text('Daftar akun Guru/Siswa'),
-                          ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: EmiSpacing.lg),
+                        TextButton(
+                          onPressed: auth.isLoading
+                              ? null
+                              : () => context.go('/register'),
+                          child: const Text('Belum punya akun? Daftar'),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -145,5 +175,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
+  }
+}
+
+/// Simple, shadow-free brand mark shared by auth screens.
+class _AuthBrandMark extends StatelessWidget {
+  const _AuthBrandMark();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: EmiColors.primarySoft,
+            borderRadius: BorderRadius.circular(EmiRadii.pill),
+          ),
+          child: const Icon(
+            Icons.school_outlined,
+            size: 32,
+            color: EmiColors.primary,
+          ),
+        ),
+        const SizedBox(height: EmiSpacing.sm),
+        Text(
+          'EMI Kolaka',
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(color: EmiColors.textSecondary),
+        ),
+      ],
+    );
   }
 }
