@@ -24,9 +24,10 @@ class EmiColors {
 class EmiRadii {
   const EmiRadii._();
 
-  static const card = 12.0;
+  static const card = 14.0;
   static const button = 12.0;
   static const input = 12.0;
+  static const dialog = 16.0;
   static const pill = 9999.0;
 }
 
@@ -45,7 +46,7 @@ class EmiShadows {
 
   static const hard = BoxShadow(
     color: EmiColors.border,
-    offset: Offset(4, 4),
+    offset: Offset(3, 4),
     blurRadius: 0,
     spreadRadius: 0,
   );
@@ -93,9 +94,9 @@ class EmiTheme {
         fillColor: EmiColors.surface,
         border: _inputBorder(color: EmiColors.divider),
         enabledBorder: _inputBorder(color: EmiColors.divider),
-        focusedBorder: _inputBorder(color: EmiColors.primary),
+        focusedBorder: _inputBorder(color: EmiColors.primary, width: 2),
         errorBorder: _inputBorder(color: EmiColors.error),
-        focusedErrorBorder: _inputBorder(color: EmiColors.error),
+        focusedErrorBorder: _inputBorder(color: EmiColors.error, width: 2),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
