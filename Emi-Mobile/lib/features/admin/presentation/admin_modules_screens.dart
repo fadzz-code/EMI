@@ -228,7 +228,6 @@ class _ModuleTile extends StatelessWidget {
             decoration: BoxDecoration(
               color: EmiColors.secondary,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: EmiColors.border),
             ),
             child: const Icon(Icons.menu_book_outlined),
           ),

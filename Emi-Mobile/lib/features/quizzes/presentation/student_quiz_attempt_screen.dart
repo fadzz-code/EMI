@@ -416,7 +416,7 @@ class _AttemptView extends StatelessWidget {
           decoration: const BoxDecoration(
             color: EmiColors.background,
             border: Border(
-              bottom: BorderSide(color: EmiColors.border, width: 2),
+              bottom: BorderSide(color: EmiColors.border, width: 1.5),
             ),
           ),
           child: Row(
@@ -466,7 +466,10 @@ class _AttemptView extends StatelessWidget {
                       onSelected: (_) => onSelect(option.id),
                       selectedColor: EmiColors.primary,
                       backgroundColor: EmiColors.surface,
-                      side: const BorderSide(color: EmiColors.border, width: 2),
+                      side: const BorderSide(
+                        color: EmiColors.border,
+                        width: 1.5,
+                      ),
                     ),
                   ),
                 )
@@ -486,7 +489,9 @@ class _AttemptView extends StatelessWidget {
           padding: const EdgeInsets.all(EmiSpacing.md),
           decoration: const BoxDecoration(
             color: EmiColors.surface,
-            border: Border(top: BorderSide(color: EmiColors.border, width: 2)),
+            border: Border(
+              top: BorderSide(color: EmiColors.border, width: 1.5),
+            ),
           ),
           child: Row(
             children: [
@@ -604,7 +609,6 @@ class _TimerPill extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: remaining.inMinutes < 1 ? EmiColors.error : EmiColors.secondary,
-        border: Border.all(color: EmiColors.border, width: 2),
         borderRadius: BorderRadius.circular(EmiRadii.pill),
       ),
       child: Text('$minutes:$seconds'),

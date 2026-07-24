@@ -97,7 +97,7 @@ class _SummaryCard extends StatelessWidget {
             decoration: const BoxDecoration(
               color: EmiColors.secondary,
               border: Border(
-                bottom: BorderSide(color: EmiColors.border, width: 2),
+                bottom: BorderSide(color: EmiColors.border, width: 1.5),
               ),
               borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
             ),
@@ -218,7 +218,6 @@ class _StatPill extends StatelessWidget {
       padding: const EdgeInsets.all(EmiSpacing.sm),
       decoration: BoxDecoration(
         color: EmiColors.backgroundWarm,
-        border: Border.all(color: EmiColors.border, width: 2),
         borderRadius: BorderRadius.circular(EmiRadii.card),
       ),
       child: Column(
@@ -246,7 +245,6 @@ class _StatusPill extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: status == 'completed' ? EmiColors.success : EmiColors.secondary,
-        border: Border.all(color: EmiColors.border, width: 2),
         borderRadius: BorderRadius.circular(EmiRadii.pill),
       ),
       child: Text(studentProgressStatus(status)),

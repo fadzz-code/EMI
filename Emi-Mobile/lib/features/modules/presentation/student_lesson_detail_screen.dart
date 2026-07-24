@@ -129,7 +129,7 @@ class _LessonCard extends StatelessWidget {
             decoration: const BoxDecoration(
               color: EmiColors.secondary,
               border: Border(
-                bottom: BorderSide(color: EmiColors.border, width: 2),
+                bottom: BorderSide(color: EmiColors.border, width: 1.5),
               ),
               borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
             ),

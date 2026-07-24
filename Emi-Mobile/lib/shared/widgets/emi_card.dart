@@ -17,7 +17,7 @@ class EmiCard extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        border: Border.all(color: EmiColors.border, width: 2),
+        border: Border.all(color: EmiColors.border, width: 1.5),
         borderRadius: BorderRadius.circular(EmiRadii.card),
         boxShadow: const [EmiShadows.hard],
       ),

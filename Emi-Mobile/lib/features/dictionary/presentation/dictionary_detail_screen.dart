@@ -57,15 +57,7 @@ class _HeroCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
                 color: EmiColors.primary,
-                border: Border.all(color: EmiColors.border, width: 2),
                 borderRadius: BorderRadius.circular(EmiRadii.pill),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black,
-                    offset: Offset(2, 2),
-                    blurRadius: 0,
-                  ),
-                ],
               ),
               child: Text(entry.category!.name),
             ),
@@ -75,8 +67,8 @@ class _HeroCard extends StatelessWidget {
             style: Theme.of(context).textTheme.headlineMedium,
           ),
           const Divider(
-            color: EmiColors.border,
-            thickness: 2,
+            color: EmiColors.divider,
+            thickness: 1,
             height: EmiSpacing.xl,
           ),
           _MeaningRow(label: 'Indonesia', value: entry.indonesia),
@@ -141,11 +133,9 @@ class _DictionaryAudioPlayerState extends State<DictionaryAudioPlayer> {
       padding: const EdgeInsets.all(EmiSpacing.md),
       decoration: BoxDecoration(
         color: const Color(0xFF81D4FA),
-        border: Border.all(color: EmiColors.border, width: 2),
+        border: Border.all(color: EmiColors.border, width: 1.5),
         borderRadius: BorderRadius.circular(EmiRadii.card),
-        boxShadow: const [
-          BoxShadow(color: Colors.black, offset: Offset(4, 4), blurRadius: 0),
-        ],
+        boxShadow: const [EmiShadows.hard],
       ),
       child: Row(
         children: [
@@ -220,11 +210,9 @@ class _ExamplesCard extends StatelessWidget {
       padding: const EdgeInsets.all(EmiSpacing.lg),
       decoration: BoxDecoration(
         color: EmiColors.secondary,
-        border: Border.all(color: EmiColors.border, width: 2),
+        border: Border.all(color: EmiColors.border, width: 1.5),
         borderRadius: BorderRadius.circular(EmiRadii.card),
-        boxShadow: const [
-          BoxShadow(color: Colors.black, offset: Offset(4, 4), blurRadius: 0),
-        ],
+        boxShadow: const [EmiShadows.hard],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,7 +230,6 @@ class _ExamplesCard extends StatelessWidget {
                 padding: const EdgeInsets.all(EmiSpacing.md),
                 decoration: BoxDecoration(
                   color: EmiColors.background,
-                  border: Border.all(color: EmiColors.border, width: 2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(

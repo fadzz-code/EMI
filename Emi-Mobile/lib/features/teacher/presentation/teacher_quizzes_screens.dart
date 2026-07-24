@@ -1473,7 +1473,6 @@ class _StatusBadge extends StatelessWidget {
           : status == 'archived'
           ? EmiColors.surfaceSoft
           : EmiColors.warning,
-      border: Border.all(color: EmiColors.border, width: 2),
       borderRadius: BorderRadius.circular(EmiRadii.pill),
     ),
     child: Text(_status(status), style: Theme.of(context).textTheme.labelLarge),

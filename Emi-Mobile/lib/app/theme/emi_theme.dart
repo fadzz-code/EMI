@@ -12,6 +12,7 @@ class EmiColors {
   static const surfaceAccent = Color(0xFFFEEAE0);
   static const textPrimary = Color(0xFF1D1B17);
   static const border = Color(0xFF1D1B17);
+  static const divider = Color(0xFFD8C8BE);
   static const success = Color(0xFF5BBE5D);
   static const warning = Color(0xFFFDD758);
   static const error = Color(0xFFBA1A1A);
@@ -89,9 +90,9 @@ class EmiTheme {
         fillColor: EmiColors.surface,
         border: _inputBorder(),
         enabledBorder: _inputBorder(),
-        focusedBorder: _inputBorder(width: 3),
+        focusedBorder: _inputBorder(color: EmiColors.primary, width: 2),
         errorBorder: _inputBorder(color: EmiColors.error),
-        focusedErrorBorder: _inputBorder(color: EmiColors.error, width: 3),
+        focusedErrorBorder: _inputBorder(color: EmiColors.error, width: 2),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -104,7 +105,7 @@ class EmiTheme {
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(EmiRadii.button),
-            side: const BorderSide(color: EmiColors.border, width: 2),
+            side: const BorderSide(color: EmiColors.border, width: 1.5),
           ),
           textStyle: const TextStyle(fontWeight: FontWeight.w800),
         ),
@@ -114,7 +115,7 @@ class EmiTheme {
 
   static OutlineInputBorder _inputBorder({
     Color color = EmiColors.border,
-    double width = 2,
+    double width = 1.5,
   }) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(EmiRadii.input),

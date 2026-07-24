@@ -47,7 +47,7 @@ class TeacherShell extends ConsumerWidget {
                 decoration: const BoxDecoration(
                   color: EmiColors.background,
                   border: Border(
-                    bottom: BorderSide(color: EmiColors.border, width: 2),
+                    bottom: BorderSide(color: EmiColors.border, width: 1.5),
                   ),
                 ),
                 child: Row(
@@ -124,7 +124,7 @@ class _TeacherBottomNav extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         color: EmiColors.surface,
-        border: Border(top: BorderSide(color: EmiColors.border, width: 2)),
+        border: Border(top: BorderSide(color: EmiColors.border, width: 1.5)),
       ),
       padding: const EdgeInsets.fromLTRB(EmiSpacing.xs, 6, EmiSpacing.xs, 6),
       child: Row(

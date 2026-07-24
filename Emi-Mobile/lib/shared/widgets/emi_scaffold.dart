@@ -38,7 +38,7 @@ class EmiScaffold extends ConsumerWidget {
                 decoration: const BoxDecoration(
                   color: EmiColors.background,
                   border: Border(
-                    bottom: BorderSide(color: EmiColors.border, width: 2),
+                    bottom: BorderSide(color: EmiColors.border, width: 1.5),
                   ),
                 ),
                 child: Row(
@@ -259,7 +259,7 @@ class _EmiBottomNav extends StatelessWidget {
       height: 80,
       decoration: const BoxDecoration(
         color: EmiColors.surface,
-        border: Border(top: BorderSide(color: EmiColors.border, width: 2)),
+        border: Border(top: BorderSide(color: EmiColors.border, width: 1.5)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -277,7 +277,7 @@ class _EmiBottomNav extends StatelessWidget {
                 decoration: active
                     ? BoxDecoration(
                         color: EmiColors.success,
-                        border: Border.all(color: EmiColors.border, width: 2),
+                        border: Border.all(color: EmiColors.border, width: 1.5),
                         borderRadius: BorderRadius.circular(EmiRadii.pill),
                       )
                     : null,

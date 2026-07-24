@@ -301,8 +301,8 @@ class _Nav extends StatelessWidget {
             style: OutlinedButton.styleFrom(
               backgroundColor: selected == index
                   ? EmiColors.secondary
-                  : Colors.white,
-              side: const BorderSide(color: EmiColors.border, width: 2),
+                  : EmiColors.surface,
+              side: const BorderSide(color: EmiColors.border, width: 1.5),
             ),
             onPressed: () => onSelected(index),
             child: Text(labels[index]),
@@ -899,8 +899,7 @@ class _InnerCard extends StatelessWidget {
     width: double.infinity,
     padding: const EdgeInsets.all(EmiSpacing.sm),
     decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: const Color(0xFFE2E8F0)),
+      color: EmiColors.surfaceSoft,
       borderRadius: BorderRadius.circular(EmiRadii.card),
     ),
     child: child,
@@ -936,7 +935,6 @@ class _Badge extends StatelessWidget {
     padding: const EdgeInsets.symmetric(horizontal: EmiSpacing.sm, vertical: 5),
     decoration: BoxDecoration(
       color: EmiColors.secondary,
-      border: Border.all(color: EmiColors.border),
       borderRadius: BorderRadius.circular(EmiRadii.pill),
     ),
     child: Text(text, style: Theme.of(context).textTheme.labelLarge),

@@ -117,7 +117,7 @@ class _Filters extends StatelessWidget {
               onSelected: (_) => onChanged(entry.key),
               selectedColor: EmiColors.primary,
               backgroundColor: EmiColors.background,
-              side: const BorderSide(color: EmiColors.border, width: 2),
+              side: const BorderSide(color: EmiColors.border, width: 1.5),
             ),
           );
         }).toList(),
@@ -178,7 +178,7 @@ class _SmallStat extends StatelessWidget {
       padding: const EdgeInsets.all(EmiSpacing.sm),
       decoration: BoxDecoration(
         color: color ?? EmiColors.background,
-        border: Border.all(color: EmiColors.border, width: 2),
+        border: Border.all(color: EmiColors.border, width: 1.5),
         borderRadius: BorderRadius.circular(EmiRadii.card),
         boxShadow: const [EmiShadows.hard],
       ),
@@ -211,7 +211,7 @@ class _ModuleCard extends StatelessWidget {
               decoration: const BoxDecoration(
                 color: Color(0xFF81D4FA),
                 border: Border(
-                  bottom: BorderSide(color: EmiColors.border, width: 2),
+                  bottom: BorderSide(color: EmiColors.border, width: 1.5),
                 ),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
               ),

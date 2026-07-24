@@ -118,9 +118,7 @@ class _IntroCard extends StatelessWidget {
                 padding: const EdgeInsets.all(EmiSpacing.sm),
                 decoration: BoxDecoration(
                   color: EmiColors.secondary,
-                  border: Border.all(color: EmiColors.border, width: 2),
                   borderRadius: BorderRadius.circular(EmiRadii.pill),
-                  boxShadow: const [EmiShadows.hard],
                 ),
                 child: const Icon(Icons.auto_awesome_outlined),
               ),
@@ -215,7 +213,7 @@ class _UserBubble extends StatelessWidget {
         padding: const EdgeInsets.all(EmiSpacing.md),
         decoration: BoxDecoration(
           color: EmiColors.primary,
-          border: Border.all(color: EmiColors.border, width: 2),
+          border: Border.all(color: EmiColors.border, width: 1.5),
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(18),
             topRight: Radius.circular(18),
@@ -250,7 +248,7 @@ class _AssistantBubble extends StatelessWidget {
         padding: const EdgeInsets.all(EmiSpacing.md),
         decoration: BoxDecoration(
           color: EmiColors.surface,
-          border: Border.all(color: EmiColors.border, width: 2),
+          border: Border.all(color: EmiColors.border, width: 1.5),
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(18),
             topRight: Radius.circular(18),
@@ -272,7 +270,6 @@ class _AssistantBubble extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: EmiColors.background,
-                  border: Border.all(color: EmiColors.border),
                   borderRadius: BorderRadius.circular(EmiRadii.pill),
                 ),
                 child: const Text('Referensi tersedia'),
@@ -350,7 +347,7 @@ class _ChatInput extends StatelessWidget {
         padding: const EdgeInsets.all(EmiSpacing.md),
         decoration: const BoxDecoration(
           color: EmiColors.surface,
-          border: Border(top: BorderSide(color: EmiColors.border, width: 2)),
+          border: Border(top: BorderSide(color: EmiColors.border, width: 1.5)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,

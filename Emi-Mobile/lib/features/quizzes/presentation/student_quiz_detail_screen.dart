@@ -69,7 +69,10 @@ class _StudentQuizDetailScreenState
                       decoration: const BoxDecoration(
                         color: EmiColors.secondary,
                         border: Border(
-                          bottom: BorderSide(color: EmiColors.border, width: 2),
+                          bottom: BorderSide(
+                            color: EmiColors.border,
+                            width: 1.5,
+                          ),
                         ),
                         borderRadius: BorderRadius.vertical(
                           top: Radius.circular(10),
@@ -260,7 +263,6 @@ class _InfoTile extends StatelessWidget {
       padding: const EdgeInsets.all(EmiSpacing.sm),
       decoration: BoxDecoration(
         color: EmiColors.backgroundWarm,
-        border: Border.all(color: EmiColors.border, width: 2),
         borderRadius: BorderRadius.circular(EmiRadii.card),
       ),
       child: Column(
@@ -290,7 +292,6 @@ class _StatusPill extends StatelessWidget {
         color: quiz.availability == QuizAvailability.finished
             ? EmiColors.success
             : EmiColors.primary,
-        border: Border.all(color: EmiColors.border, width: 2),
         borderRadius: BorderRadius.circular(EmiRadii.pill),
       ),
       child: Text(

@@ -86,7 +86,7 @@ class _ModuleHeader extends StatelessWidget {
             decoration: const BoxDecoration(
               color: EmiColors.secondary,
               border: Border(
-                bottom: BorderSide(color: EmiColors.border, width: 2),
+                bottom: BorderSide(color: EmiColors.border, width: 1.5),
               ),
               borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
             ),
@@ -109,15 +109,7 @@ class _ModuleHeader extends StatelessWidget {
             margin: const EdgeInsets.all(EmiSpacing.md),
             decoration: BoxDecoration(
               color: const Color(0xFFFFDBC9),
-              border: Border.all(color: EmiColors.border, width: 2),
               borderRadius: BorderRadius.circular(8),
-              boxShadow: const [
-                BoxShadow(
-                  color: EmiColors.border,
-                  offset: Offset(2, 2),
-                  blurRadius: 0,
-                ),
-              ],
             ),
             alignment: Alignment.center,
             child: const Icon(Icons.menu_book_outlined, size: 48),
@@ -170,8 +162,7 @@ class _LessonTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(EmiSpacing.sm),
         decoration: BoxDecoration(
-          color: EmiColors.surface,
-          border: Border.all(color: EmiColors.border, width: 2),
+          color: EmiColors.surfaceSoft,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(

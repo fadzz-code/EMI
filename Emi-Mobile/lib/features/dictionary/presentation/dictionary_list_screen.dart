@@ -211,7 +211,7 @@ class _Chip extends StatelessWidget {
         onSelected: (_) => onTap(),
         selectedColor: EmiColors.primary,
         backgroundColor: EmiColors.surface,
-        side: const BorderSide(color: EmiColors.border, width: 2),
+        side: const BorderSide(color: EmiColors.border, width: 1.5),
       ),
     );
   }

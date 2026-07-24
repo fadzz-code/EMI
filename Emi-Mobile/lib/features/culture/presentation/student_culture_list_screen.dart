@@ -242,7 +242,6 @@ class _CultureTypeChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: EmiColors.secondary,
-        border: Border.all(color: EmiColors.border, width: 2),
         borderRadius: BorderRadius.circular(EmiRadii.pill),
       ),
       child: Text(type),

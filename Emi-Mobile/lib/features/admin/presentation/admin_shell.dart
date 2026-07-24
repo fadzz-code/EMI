@@ -59,7 +59,7 @@ class AdminShell extends ConsumerWidget {
                 decoration: const BoxDecoration(
                   color: EmiColors.background,
                   border: Border(
-                    bottom: BorderSide(color: EmiColors.border, width: 2),
+                    bottom: BorderSide(color: EmiColors.border, width: 1.5),
                   ),
                 ),
                 child: Row(

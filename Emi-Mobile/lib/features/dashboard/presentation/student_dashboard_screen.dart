@@ -76,7 +76,7 @@ class _HeroCard extends StatelessWidget {
       padding: const EdgeInsets.all(EmiSpacing.lg),
       decoration: BoxDecoration(
         color: EmiColors.secondary,
-        border: Border.all(color: EmiColors.border, width: 2),
+        border: Border.all(color: EmiColors.border, width: 1.5),
         borderRadius: BorderRadius.circular(16),
         boxShadow: const [EmiShadows.hard],
       ),
@@ -87,7 +87,6 @@ class _HeroCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
               color: EmiColors.surface,
-              border: Border.all(color: EmiColors.border, width: 2),
               borderRadius: BorderRadius.circular(EmiRadii.pill),
             ),
             child: Text(summary.classInfo?.name ?? 'Belajar EMI'),
