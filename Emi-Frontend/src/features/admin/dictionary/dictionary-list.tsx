@@ -3,7 +3,7 @@
 import { type FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, Eye, Plus, Search, Trash2 } from "lucide-react";
+import { Download, Eye, Pencil, Plus, Search, Trash2 } from "lucide-react";
 
 import {
   Alert,
@@ -13,6 +13,7 @@ import {
   Card,
   CardContent,
   CardHeader,
+  ConfirmDialog,
   EmptyState,
   ErrorState,
   FilterPanel,
@@ -38,10 +39,27 @@ import {
   statusTone,
 } from "./dictionary-utils";
 import type {
+  DictionaryCategory,
   DictionaryCategoryPayload,
   DictionaryEntryPayload,
   DictionaryStatus,
 } from "./types";
+
+const defaultCategoryForm = {
+  name: "",
+  description: "",
+  status: "active" as DictionaryStatus,
+};
+
+function toCategoryForm(category?: DictionaryCategory | null) {
+  return category
+    ? {
+        name: category.name,
+        description: category.description ?? "",
+        status: category.status,
+      }
+    : defaultCategoryForm;
+}
 
 export function DictionaryList() {
   const { token } = useAuth();
@@ -54,11 +72,10 @@ export function DictionaryList() {
   const [hasAudio, setHasAudio] = useState<boolean | "">("");
   const [entryModalOpen, setEntryModalOpen] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
-  const [categoryForm, setCategoryForm] = useState({
-    name: "",
-    description: "",
-    status: "active" as DictionaryStatus,
-  });
+  const [categoryForm, setCategoryForm] = useState(defaultCategoryForm);
+  const [editingCategory, setEditingCategory] = useState<DictionaryCategory | null>(null);
+  const [deleteCategoryTarget, setDeleteCategoryTarget] = useState<DictionaryCategory | null>(null);
+  const [deleteCategoryConfirmStep, setDeleteCategoryConfirmStep] = useState<1 | 2>(1);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const entryFilters = useMemo(
@@ -100,9 +117,29 @@ export function DictionaryList() {
       dictionaryService.createCategory(token ?? "", payload),
     onSuccess: async (category) => {
       setSuccessMessage(`Kategori ${category.name} berhasil dibuat.`);
-      setCategoryModalOpen(false);
-      setCategoryForm({ name: "", description: "", status: "active" });
+      closeCategoryModal();
       await queryClient.invalidateQueries({ queryKey: ["admin", "dictionary", "categories"] });
+    },
+  });
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: DictionaryCategoryPayload }) =>
+      dictionaryService.updateCategory(token ?? "", id, payload),
+    onSuccess: async (category) => {
+      setSuccessMessage(`Kategori ${category.name} berhasil diperbarui.`);
+      closeCategoryModal();
+      await queryClient.invalidateQueries({ queryKey: ["admin", "dictionary", "categories"] });
+    },
+  });
+
+  const deleteCategoryMutation = useMutation({
+    mutationFn: (categoryId: string) => dictionaryService.deleteCategory(token ?? "", categoryId),
+    onSuccess: async () => {
+      setSuccessMessage(`Kategori ${deleteCategoryTarget?.name ?? ""} berhasil dihapus.`);
+      setDeleteCategoryTarget(null);
+      setDeleteCategoryConfirmStep(1);
+      await queryClient.invalidateQueries({ queryKey: ["admin", "dictionary", "categories"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "dictionary", "entries"] });
     },
   });
 
@@ -118,20 +155,49 @@ export function DictionaryList() {
   const categories = categoriesQuery.data?.items ?? [];
   const meta = entriesQuery.data?.meta;
   const actionError =
-    createEntryMutation.error ?? createCategoryMutation.error ?? deleteEntryMutation.error;
+    createEntryMutation.error ??
+    createCategoryMutation.error ??
+    updateCategoryMutation.error ??
+    deleteCategoryMutation.error ??
+    deleteEntryMutation.error;
 
   function applySearch() {
     setPage(1);
     setSearch(searchInput.trim());
   }
 
+  function openCreateCategory() {
+    setEditingCategory(null);
+    setCategoryForm(defaultCategoryForm);
+    setCategoryModalOpen(true);
+  }
+
+  function openEditCategory(category: DictionaryCategory) {
+    setEditingCategory(category);
+    setCategoryForm(toCategoryForm(category));
+    setCategoryModalOpen(true);
+  }
+
+  function closeCategoryModal() {
+    setCategoryModalOpen(false);
+    setEditingCategory(null);
+    setCategoryForm(defaultCategoryForm);
+  }
+
   function submitCategory(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    createCategoryMutation.mutate({
+    const payload: DictionaryCategoryPayload = {
       name: categoryForm.name.trim(),
       description: normalizeNullable(categoryForm.description),
       status: categoryForm.status,
-    });
+    };
+
+    if (editingCategory) {
+      updateCategoryMutation.mutate({ id: editingCategory.id, payload });
+      return;
+    }
+
+    createCategoryMutation.mutate(payload);
   }
 
   return (
@@ -152,7 +218,7 @@ export function DictionaryList() {
             <Download aria-hidden="true" className="mr-2 size-4" />
             Impor CSV/ZIP
           </Link>
-          <Button onClick={() => setCategoryModalOpen(true)} variant="secondary">
+          <Button onClick={openCreateCategory} variant="secondary">
             Tambah Kategori
           </Button>
           <Button onClick={() => setEntryModalOpen(true)}><Plus aria-hidden="true" className="mr-2 size-4" />Tambah Kata</Button>
@@ -308,6 +374,86 @@ export function DictionaryList() {
 
       <Card>
         <CardHeader>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-black text-ink">Kategori Kamus</h2>
+              <p className="mt-1 text-sm text-muted">
+                Kelola kategori yang dipakai untuk mengelompokkan kata kamus.
+              </p>
+            </div>
+            <Badge tone="neutral">{categories.length} kategori</Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {categoriesQuery.isLoading ? <LoadingState title="Memuat kategori" /> : null}
+          {categoriesQuery.isError ? (
+            <ErrorState
+              description={getFirstApiError(categoriesQuery.error)}
+              onRetry={() => void categoriesQuery.refetch()}
+              title="Gagal memuat kategori"
+            />
+          ) : null}
+          {!categoriesQuery.isLoading && !categoriesQuery.isError ? (
+            categories.length === 0 ? (
+              <EmptyState
+                description="Belum ada kategori kamus."
+                title="Kategori kosong"
+              />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <tr>
+                    <th className="px-4 py-3">Nama</th>
+                    <th className="px-4 py-3">Deskripsi</th>
+                    <th className="px-4 py-3">Jumlah Kata</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Aksi</th>
+                  </tr>
+                </TableHeader>
+                <tbody>
+                  {categories.map((category) => (
+                    <tr key={category.id}>
+                      <TableCell className="font-black text-ink">{category.name}</TableCell>
+                      <TableCell>{category.description ?? "-"}</TableCell>
+                      <TableCell>{category.entries_count ?? 0}</TableCell>
+                      <TableCell>
+                        <Badge tone={statusTone(category.status)}>{statusLabel(category.status)}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            className="min-h-9 px-3 py-1 text-xs"
+                            onClick={() => openEditCategory(category)}
+                            variant="secondary"
+                          >
+                            <Pencil aria-hidden="true" className="mr-1 size-4" />
+                            Edit
+                          </Button>
+                          <Button
+                            className="min-h-9 px-3 py-1 text-xs"
+                            disabled={deleteCategoryMutation.isPending}
+                            onClick={() => {
+                              setDeleteCategoryTarget(category);
+                              setDeleteCategoryConfirmStep(1);
+                            }}
+                            variant="danger"
+                          >
+                            <Trash2 aria-hidden="true" className="mr-1 size-4" />
+                            Hapus
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            )
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <h2 className="text-xl font-black text-ink">Pratinjau Audio Kamus</h2>
         </CardHeader>
         <CardContent>
@@ -332,9 +478,9 @@ export function DictionaryList() {
       </Modal>
 
       <Modal
-        onClose={() => setCategoryModalOpen(false)}
+        onClose={closeCategoryModal}
         open={categoryModalOpen}
-        title="Tambah Kategori Kamus"
+        title={editingCategory ? "Edit Kategori Kamus" : "Tambah Kategori Kamus"}
       >
         <form className="grid gap-4" onSubmit={submitCategory}>
           <FormField label="Nama kategori">
@@ -369,15 +515,53 @@ export function DictionaryList() {
             </Select>
           </FormField>
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-            <Button onClick={() => setCategoryModalOpen(false)} type="button" variant="ghost">
+            <Button onClick={closeCategoryModal} type="button" variant="ghost">
               Batal
             </Button>
-            <Button disabled={createCategoryMutation.isPending} type="submit" variant="secondary">
+            <Button
+              disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}
+              type="submit"
+              variant="secondary"
+            >
               Simpan Kategori
             </Button>
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        confirmLabel="Ya, Lanjutkan"
+        description={
+          deleteCategoryTarget
+            ? `Kategori "${deleteCategoryTarget.name}" memiliki ${deleteCategoryTarget.entries_count ?? 0} kata. Menghapus kategori ini akan membuat kata-kata tersebut kehilangan kategorinya. Lanjutkan?`
+            : ""
+        }
+        onCancel={() => {
+          setDeleteCategoryTarget(null);
+          setDeleteCategoryConfirmStep(1);
+        }}
+        onConfirm={() => setDeleteCategoryConfirmStep(2)}
+        open={Boolean(deleteCategoryTarget) && deleteCategoryConfirmStep === 1}
+        title="Hapus kategori kamus?"
+      />
+
+      <ConfirmDialog
+        confirmLabel={deleteCategoryMutation.isPending ? "Menghapus..." : "Ya, Hapus Permanen"}
+        description={
+          deleteCategoryTarget
+            ? `Konfirmasi terakhir: kategori "${deleteCategoryTarget.name}" akan dihapus permanen dan tidak dapat dibatalkan.`
+            : ""
+        }
+        onCancel={() => {
+          setDeleteCategoryTarget(null);
+          setDeleteCategoryConfirmStep(1);
+        }}
+        onConfirm={() => {
+          if (deleteCategoryTarget) deleteCategoryMutation.mutate(deleteCategoryTarget.id);
+        }}
+        open={Boolean(deleteCategoryTarget) && deleteCategoryConfirmStep === 2}
+        title="Konfirmasi sekali lagi"
+      />
     </div>
   );
 }
