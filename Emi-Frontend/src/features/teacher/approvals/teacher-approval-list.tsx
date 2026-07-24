@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/states";
 import { getFirstApiError } from "@/lib/api-client";
+import { useAuth } from "@/features/auth/auth-provider";
 
 import {
   useApproveTeacherRequest,
@@ -34,17 +35,17 @@ import {
 import { type RegistrationRequest, type RegistrationRequestStatus } from "@/features/admin/approvals/types";
 
 export function TeacherApprovalList() {
+  const { token } = useAuth();
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<RegistrationRequestStatus>("pending");
 
   const [search, setSearch] = useState("");
-  const { data, isLoading, isError } = useTeacherApprovals({
+  const { data, isLoading, isError } = useTeacherApprovals(token, {
     page,
     status,
     search,
-
   });
-  const approveMutation = useApproveTeacherRequest();
+  const approveMutation = useApproveTeacherRequest(token);
   const [selectedRequest, setSelectedRequest] = useState<RegistrationRequest | null>(null);
 
   const [reviewNote, setReviewNote] = useState("");
@@ -129,7 +130,7 @@ export function TeacherApprovalList() {
                   <tr>
                     <td colSpan={6} className="text-center py-8">Gagal memuat data pendaftaran.</td>
                   </tr>
-                ) : !data?.data?.length ? (
+                ) : !data?.items?.length ? (
                   <tr>
                     <td colSpan={6} className="p-0">
                       <EmptyState
@@ -138,7 +139,7 @@ export function TeacherApprovalList() {
                       />
                     </td>
                   </tr>
-                ) : data.data.map(req => (
+                ) : data.items.map(req => (
                   <tr key={req.id}>
                     <TableCell className="font-medium">{req.user?.full_name}</TableCell>
                     <TableCell>{req.user?.email}</TableCell>
@@ -170,11 +171,11 @@ export function TeacherApprovalList() {
             </Table>
           </div>
 
-          {data && data.last_page > 1 && (
+          {data?.meta && (data.meta.last_page ?? 1) > 1 && (
             <div className="mt-4 flex justify-end">
               <Pagination
                 page={page}
-                totalPages={data.last_page}
+                totalPages={data.meta.last_page ?? 1}
                 onPageChange={setPage}
               />
             </div>
