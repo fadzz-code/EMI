@@ -66,7 +66,6 @@ export function StudentSpeaking() {
   const [isRecording, setIsRecording] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [captureSource, setCaptureSource] = useState<"microphone" | "esp32">("microphone");
-  const [outputTarget, setOutputTarget] = useState<"computer" | "device">("computer");
   const [recordedFile, setRecordedFile] = useState<File | null>(null);
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
   const [referenceAudioError, setReferenceAudioError] = useState(false);
@@ -159,21 +158,6 @@ export function StudentSpeaking() {
     if (isRecording || isSubmitting || esp32.state === "recording" || esp32.state === "finalizing") return;
     if (source === "microphone") await esp32.disconnect();
     setCaptureSource(source);
-  }
-
-  async function playOnDevice(source: string | Blob | null | undefined) {
-    if (!source || esp32.state === "recording" || esp32.state === "finalizing") return;
-    setError(null);
-    try {
-      const audio = typeof source === "string" ? await fetch(source).then((response) => {
-        if (!response.ok) throw new Error("Audio tidak dapat diunduh untuk alat.");
-        return response.blob();
-      }) : source;
-      const played = await esp32.playAudio(audio);
-      if (!played) setError("Playback alat gagal. Pilih output Komputer untuk fallback.");
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Playback alat gagal. Pilih output Komputer untuk fallback.");
-    }
   }
 
   async function submitAttempt() {
@@ -283,9 +267,10 @@ export function StudentSpeaking() {
                   </div>
                   {referenceAudioUrl(selectedExercise) ? (
                     <div className="grid gap-2">
-                      {outputTarget === "computer" ? <audio className="w-full" controls onError={() => setReferenceAudioError(true)} src={referenceAudioUrl(selectedExercise) ?? undefined}>Audio belum dapat diputar. Coba muat ulang halaman.</audio> : <Button disabled={esp32.state !== "ready" && esp32.state !== "captured"} onClick={() => playOnDevice(referenceAudioUrl(selectedExercise))} type="button"><Play className="mr-2 size-4" />Putar melalui alat</Button>}
+                      <audio className="w-full" controls onError={() => setReferenceAudioError(true)} src={referenceAudioUrl(selectedExercise) ?? undefined}>Audio belum dapat diputar. Coba muat ulang halaman.</audio>
                       <p className="text-xs font-bold text-muted">{referenceAudioName(selectedExercise)}</p>
                       {referenceAudioError ? <p className="text-xs font-black text-danger">Audio belum dapat diputar. Coba muat ulang halaman.</p> : null}
+                      {esp32.state !== "unsupported" ? <p className="text-xs font-semibold text-muted">Pilih &quot;EMI_KOLAKA&quot; sebagai output audio Windows agar suara keluar dari speaker alat.</p> : null}
                     </div>
                   ) : (
                     <p className="rounded-2xl bg-surface-muted p-3 text-sm font-semibold leading-6 text-muted">
@@ -294,14 +279,9 @@ export function StudentSpeaking() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3" aria-label="Output audio">
-                  <Button onClick={() => { void esp32.stopPlayback(); setOutputTarget("computer"); }} type="button" variant={outputTarget === "computer" ? "primary" : "secondary"}>Komputer</Button>
-                  <Button disabled={!esp32.supported} onClick={() => setOutputTarget("device")} type="button" variant={outputTarget === "device" ? "primary" : "secondary"}>Alat Speaking EMI</Button>
-                </div>
-
                 <div className="grid grid-cols-2 gap-3" aria-label="Sumber rekaman">
                   <Button disabled={isRecording || isSubmitting || esp32.state === "recording" || esp32.state === "finalizing"} onClick={() => selectCaptureSource("microphone")} type="button" variant={captureSource === "microphone" ? "primary" : "secondary"}><Mic className="mr-2 size-4" />Gunakan mikrofon perangkat</Button>
-                  <Button disabled={!esp32.supported || isRecording || isSubmitting || esp32.state === "recording" || esp32.state === "finalizing" || esp32.state === "playing"} onClick={() => selectCaptureSource("esp32")} type="button" variant={captureSource === "esp32" ? "primary" : "secondary"}><Cable className="mr-2 size-4" />Gunakan Alat Speaking EMI</Button>
+                  <Button disabled={!esp32.supported || isRecording || isSubmitting || esp32.state === "recording" || esp32.state === "finalizing"} onClick={() => selectCaptureSource("esp32")} type="button" variant={captureSource === "esp32" ? "primary" : "secondary"}><Cable className="mr-2 size-4" />Gunakan Alat Speaking EMI</Button>
                 </div>
 
                 {captureSource === "microphone" ? <div className="flex flex-col items-center gap-4 rounded-[var(--radius-card)] border-2 border-border bg-surface p-6 shadow-[2px_2px_0_var(--border)]">
@@ -343,7 +323,7 @@ export function StudentSpeaking() {
                     </div>
                     {esp32.notice ? <Alert tone="info">{esp32.notice}</Alert> : null}
                     {esp32.error ? <Alert tone="error">{esp32.error}</Alert> : null}
-                    <p className="text-sm font-bold text-muted">Status: {{ unsupported: "Alat belum didukung", disconnected: "Alat mati atau belum pernah dipilih", permitted: "Alat tersimpan, belum terhubung", connecting: "Sedang menghubungkan alat...", ready: "Alat siap digunakan", recording: "Sedang merekam...", finalizing: "Menyiapkan rekaman...", captured: "Rekaman siap dikirim", playing: "Sedang memutar melalui alat...", error: "Terjadi masalah pada alat" }[esp32.state]}</p>
+                    <p className="text-sm font-bold text-muted">Status: {{ unsupported: "Alat belum didukung", disconnected: "Alat mati atau belum pernah dipilih", permitted: "Alat tersimpan, belum terhubung", connecting: "Sedang menghubungkan alat...", ready: "Alat siap digunakan", recording: "Sedang merekam...", finalizing: "Menyiapkan rekaman...", captured: "Rekaman siap dikirim", error: "Terjadi masalah pada alat" }[esp32.state]}</p>
                     <div className="flex flex-wrap gap-3">
                       <Button disabled={!esp32.supported || esp32.state === "connecting" || esp32.state === "recording" || esp32.state === "finalizing" || isSubmitting} onClick={() => esp32.connect(false)} type="button"><Cable className="mr-2 size-4" />Sambungkan ulang</Button>
                       <Button disabled={!esp32.supported || esp32.state === "connecting" || esp32.state === "recording" || esp32.state === "finalizing" || isSubmitting} onClick={() => esp32.connect(true)} type="button" variant="secondary">Pilih alat lain</Button>
@@ -358,7 +338,7 @@ export function StudentSpeaking() {
                       <Play className="size-5 text-primary" strokeWidth={3} />
                       <p className="font-black text-ink">Preview audio</p>
                     </div>
-                    {outputTarget === "computer" ? <audio className="w-full" controls src={captureSource === "microphone" ? recordedUrl ?? undefined : esp32.capture?.url} /> : <Button disabled={esp32.state !== "ready" && esp32.state !== "captured"} onClick={() => playOnDevice(captureSource === "microphone" ? recordedFile : esp32.capture?.file)} type="button"><Play className="mr-2 size-4" />Putar preview melalui alat</Button>}
+                    <audio className="w-full" controls src={captureSource === "microphone" ? recordedUrl ?? undefined : esp32.capture?.url} />
                   </div>
                 ) : null}
 

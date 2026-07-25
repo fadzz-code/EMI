@@ -1,15 +1,10 @@
-import { encodeSerialPacket, SerialPacketParser } from "./esp32-serial-parser";
+import { SerialPacketParser } from "./esp32-serial-parser";
 
 export const ESP32_BAUD_RATE = 921_600;
 export const PCM_PACKET_TYPE = 0x01;
 export const CONTROL_PACKET_TYPE = 0x02;
 export const PTT_PRESSED = 0x01;
 export const PTT_RELEASED = 0x00;
-export const STOP_PLAYBACK = 0x02;
-export const HARDWARE_PLAYBACK_CHUNK_BYTES = 512;
-export const HARDWARE_PLAYBACK_INTERVAL_MS = 12;
-export const HARDWARE_PLAYBACK_FLUSH_DELAY_MS = 50;
-export const PLAYBACK_TIMEOUT_MS = 30_000;
 export const SERIAL_UNSUPPORTED_MESSAGE = "Alat Speaking EMI belum didukung di browser ini. Gunakan Chrome atau Edge desktop melalui HTTPS atau localhost.";
 export const SERIAL_CHOOSER_CANCELLED_MESSAGE = "Pemilihan alat dibatalkan.";
 
@@ -53,8 +48,6 @@ export class Esp32SerialService {
   private onEnd: (reason: SerialEndReason) => void = () => undefined;
   private readonly api: SerialNavigator;
   private listening = false;
-  private playback: AbortController | null = null;
-  private playbackDone: Promise<void> | null = null;
   private readonly disconnectListener = (event: Event & { port?: SerialPortLike; target?: SerialPortLike }) => {
     const disconnected = event.port ?? event.target;
     if (!disconnected || disconnected === this.port) void this.teardown("disconnect", true);
@@ -120,50 +113,6 @@ export class Esp32SerialService {
     return { status: "connected" };
   }
 
-  playPcm(pcm: Uint8Array, options: { signal?: AbortSignal; timeoutMs?: number; wait?: (milliseconds: number) => Promise<void> } = {}) {
-    const writable = this.port?.writable;
-    if (!writable) return Promise.reject(new Error("Alat belum terhubung."));
-    if (this.playback) return Promise.reject(new Error("Playback alat sedang berjalan."));
-    const controller = new AbortController();
-    this.playback = controller;
-    const done = this.streamPcm(pcm, writable, controller, options);
-    this.playbackDone = done;
-    return done.finally(() => { if (this.playbackDone === done) this.playbackDone = null; });
-  }
-
-  private async streamPcm(pcm: Uint8Array, writable: WritableStream<Uint8Array>, controller: AbortController, options: { signal?: AbortSignal; timeoutMs?: number; wait?: (milliseconds: number) => Promise<void> }) {
-    const timeout = setTimeout(() => controller.abort(new Error("Playback alat melewati batas waktu.")), options.timeoutMs ?? PLAYBACK_TIMEOUT_MS);
-    const abort = () => controller.abort(options.signal?.reason);
-    options.signal?.addEventListener("abort", abort, { once: true });
-    const writer = writable.getWriter();
-    const wait = options.wait ?? ((milliseconds) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
-    try {
-      for (let offset = 0; offset < pcm.length; offset += HARDWARE_PLAYBACK_CHUNK_BYTES) {
-        if (controller.signal.aborted) throw controller.signal.reason ?? new DOMException("Playback dibatalkan.", "AbortError");
-        await writer.write(encodeSerialPacket(PCM_PACKET_TYPE, pcm.slice(offset, offset + HARDWARE_PLAYBACK_CHUNK_BYTES)));
-        if (offset + HARDWARE_PLAYBACK_CHUNK_BYTES < pcm.length) await wait(HARDWARE_PLAYBACK_INTERVAL_MS);
-      }
-    } finally {
-      clearTimeout(timeout);
-      options.signal?.removeEventListener("abort", abort);
-      try {
-        await writer.write(encodeSerialPacket(CONTROL_PACKET_TYPE, new Uint8Array([STOP_PLAYBACK])));
-        await wait(HARDWARE_PLAYBACK_FLUSH_DELAY_MS);
-      } finally {
-        writer.releaseLock();
-        if (this.playback === controller) this.playback = null;
-      }
-    }
-  }
-
-  async stopPlayback() {
-    this.playback?.abort(new DOMException("Playback dibatalkan.", "AbortError"));
-    if (this.playback || !this.port?.writable) return;
-    const writer = this.port.writable.getWriter();
-    try { await writer.write(encodeSerialPacket(CONTROL_PACKET_TYPE, new Uint8Array([STOP_PLAYBACK]))); }
-    finally { writer.releaseLock(); }
-  }
-
   disconnect() { return this.teardown("disconnect", false); }
 
   async dispose() {
@@ -180,8 +129,6 @@ export class Esp32SerialService {
 
   private async teardown(reason: SerialEndReason, notify: boolean) {
     const hadSession = Boolean(this.port || this.reader || this.opening);
-    this.playback?.abort(new DOMException("Playback dibatalkan.", "AbortError"));
-    await this.playbackDone?.catch(() => undefined);
     ++this.generation;
     const reader = this.reader;
     this.reader = null;
