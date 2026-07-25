@@ -8,8 +8,10 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Smalot\PdfParser\Config;
 use Smalot\PdfParser\Parser;
 
 class AiPdfSourceIngestionService
@@ -39,7 +41,7 @@ class AiPdfSourceIngestionService
                 'created_by' => $actor->id,
             ]);
 
-            $pages = $this->extractPages(file_get_contents($file->getRealPath()));
+            $pages = $this->extractPages($file->getRealPath());
             $skippedCount = 0;
 
             foreach ($pages as $page) {
@@ -76,18 +78,21 @@ class AiPdfSourceIngestionService
         });
     }
 
-    private function extractPages(string $pdfContent): array
+    private function extractPages(string $pdfPath): array
     {
-        if (strpos($pdfContent, '%PDF') !== 0) {
+        $header = (string) file_get_contents($pdfPath, false, null, 0, 5);
+        if (strpos($header, '%PDF') !== 0) {
             throw new Exception('File bukan PDF yang valid.');
         }
 
-        $pdf = (new Parser)->parseContent($pdfContent);
+        $rawPages = $this->extractRawPages($pdfPath);
+
         $pages = [];
 
-        foreach ($pdf->getPages() as $index => $page) {
+        foreach ($rawPages as $index => $rawText) {
             $pageNumber = $index + 1;
-            $original = trim($page->getText());
+            $original = trim($rawText);
+
             $classification = $this->pageClassifier->classify($original, $pageNumber);
             $cleaned = $classification['content'];
             $skipReason = in_array($classification['page_type'], ['empty', 'low_quality_ocr'], true) ? $classification['skip_reason'] : null;
@@ -111,5 +116,112 @@ class AiPdfSourceIngestionService
         }
 
         return $pages;
+    }
+
+    private function extractRawPages(string $pdfPath): array
+    {
+        $viaPoppler = $this->extractPagesViaPoppler($pdfPath);
+        if ($viaPoppler !== null) {
+            return $viaPoppler;
+        }
+
+        return $this->extractPagesViaSmalot($pdfPath);
+    }
+
+    private function extractPagesViaPoppler(string $pdfPath): ?array
+    {
+        $binary = $this->resolvePdftotextPath();
+        if ($binary === null) {
+            return null;
+        }
+
+        try {
+            $result = Process::timeout((int) config('ai.pdf.pdftotext_timeout_seconds', 60))
+                ->run([$binary, '-enc', 'UTF-8', $pdfPath, '-']);
+        } catch (\Throwable $exception) {
+            return null;
+        }
+
+        if (! $result->successful()) {
+            return null;
+        }
+
+        $output = str_replace("\0", '', $result->output());
+        if (trim($output) === '') {
+            return null;
+        }
+
+        $pages = explode("\f", $output);
+        if (end($pages) === '') {
+            array_pop($pages);
+        }
+
+        return array_values($pages);
+    }
+
+    private function extractPagesViaSmalot(string $pdfPath): array
+    {
+        try {
+            $pdf = $this->makeParser()->parseContent((string) file_get_contents($pdfPath));
+            $parsedPages = $pdf->getPages();
+        } catch (\Throwable $exception) {
+            throw new Exception('PDF tidak dapat dibaca. Struktur PDF tidak didukung atau berkas rusak. Coba simpan ulang PDF sebagai PDF berbasis teks standar.');
+        }
+
+        $texts = [];
+        foreach ($parsedPages as $page) {
+            try {
+                $texts[] = $page->getText();
+            } catch (\Throwable $exception) {
+                $texts[] = '';
+            }
+        }
+
+        return $texts;
+    }
+
+    private function resolvePdftotextPath(): ?string
+    {
+        $configured = config('ai.pdf.pdftotext_path');
+        if (is_string($configured) && $configured !== '' && is_file($configured)) {
+            return $configured;
+        }
+
+        $candidates = [
+            'C:\\Program Files\\Git\\mingw64\\bin\\pdftotext.exe',
+            'C:\\Program Files\\poppler\\bin\\pdftotext.exe',
+            '/usr/bin/pdftotext',
+            '/usr/local/bin/pdftotext',
+        ];
+        foreach ($candidates as $candidate) {
+            if (is_file($candidate)) {
+                return $candidate;
+            }
+        }
+
+        $which = PHP_OS_FAMILY === 'Windows' ? 'where' : 'which';
+        try {
+            $result = Process::run([$which, 'pdftotext']);
+            if ($result->successful()) {
+                $line = trim(strtok($result->output(), "\n"));
+                if ($line !== '' && is_file($line)) {
+                    return $line;
+                }
+            }
+        } catch (\Throwable $exception) {
+            return null;
+        }
+
+        return null;
+    }
+
+    private function makeParser(): Parser
+    {
+        $config = new Config;
+        $config->setRetainImageContent(false);
+        $config->setIgnoreEncryption(true);
+        $config->setDecodeMemoryLimit(0);
+
+        return new Parser([], $config);
     }
 }

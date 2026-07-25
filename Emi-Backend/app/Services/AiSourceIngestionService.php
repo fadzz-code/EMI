@@ -271,10 +271,15 @@ class AiSourceIngestionService
         }
 
         $text = '';
-        foreach ($phpWord->getSections() as $section) {
-            foreach ($section->getElements() as $element) {
-                $text .= $this->elementText($element)."\n";
+
+        try {
+            foreach ($phpWord->getSections() as $section) {
+                foreach ($section->getElements() as $element) {
+                    $text .= $this->elementText($element)."\n";
+                }
             }
+        } catch (\Throwable $exception) {
+            throw new Exception('Dokumen DOCX tidak dapat dibaca. Struktur dokumen tidak didukung atau berkas rusak.');
         }
 
         return $this->cleanText($text);

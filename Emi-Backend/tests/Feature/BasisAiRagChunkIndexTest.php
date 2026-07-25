@@ -23,6 +23,12 @@ class BasisAiRagChunkIndexTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['ai.free_provider' => 'none']);
+    }
+
     public function test_creating_knowledge_item_generates_chunks(): void
     {
         $admin = User::factory()->admin()->create();
@@ -285,7 +291,8 @@ class BasisAiRagChunkIndexTest extends TestCase
             ->assertJsonPath('data.mode', 'free_ai');
 
         Http::assertSent(function (Request $request): bool {
-            $prompt = $request->data()['messages'][0]['content'] ?? '';
+            $messages = collect($request->data()['messages'] ?? []);
+            $prompt = (string) ($messages->firstWhere('role', 'user')['content'] ?? '');
 
             return str_contains($prompt, 'Sagu rumbia diolah dengan cara diparut')
                 && ! str_contains($prompt, str_repeat('Bagian awal tidak relevan dan tidak boleh dikirim penuh. ', 20))

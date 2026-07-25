@@ -1,7 +1,7 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
-import { MessageSquarePlus, RotateCcw, SendHorizontal, Sparkles, Trash2 } from "lucide-react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
+import { History, MessageSquarePlus, RotateCcw, SendHorizontal, Sparkles, Trash2, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Alert, Badge, Button, ConfirmDialog, Textarea } from "@/components/ui";
@@ -43,7 +43,8 @@ export function StudentChatbot() {
   const [formError, setFormError] = useState<string | null>(null);
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-  const [historyOpenMobile, setHistoryOpenMobile] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const scrollAnchorRef = useRef<HTMLDivElement>(null);
 
   const conversationsQuery = useQuery({
     queryKey: ["chatbot", "conversations"],
@@ -153,112 +154,48 @@ export function StudentChatbot() {
     setFormError(null);
     setPendingQuestion(null);
     setMessage("");
-    setHistoryOpenMobile(false);
+    setHistoryOpen(false);
   }
 
   function openConversation(id: string) {
     setConversationId(id);
     setFormError(null);
     setPendingQuestion(null);
-    setHistoryOpenMobile(false);
+    setHistoryOpen(false);
   }
 
   const apiError = sendMutation.error ? getFirstApiError(sendMutation.error) : null;
   const isPending = sendMutation.isPending;
   const conversations = conversationsQuery.data?.items ?? [];
 
+  useEffect(() => {
+    scrollAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, isPending]);
+
   return (
-    <div className="mx-auto flex min-h-[760px] max-w-6xl flex-col gap-4 lg:min-h-[820px] lg:flex-row">
-      <aside className="hidden w-72 shrink-0 rounded-[var(--radius-card)] border-2 border-border bg-surface shadow-emi lg:flex lg:flex-col">
-        <div className="flex items-center justify-between gap-2 border-b-2 border-border p-4">
-          <p className="text-sm font-black uppercase tracking-[0.06em] text-muted">Riwayat</p>
-          <Button aria-label="Sesi baru" className="size-9 rounded-full p-0" onClick={startNewSession} type="button" variant="secondary">
-            <MessageSquarePlus className="size-4" strokeWidth={2.5} />
-          </Button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-3">
-          {conversationsQuery.isLoading ? <p className="p-2 text-xs font-bold text-muted">Memuat riwayat...</p> : null}
-          {!conversationsQuery.isLoading && conversations.length === 0 ? (
-            <p className="p-2 text-xs font-bold text-muted">Belum ada percakapan tersimpan.</p>
-          ) : null}
-          <div className="grid gap-1">
-            {conversations.map((conversation) => (
-              <div
-                className={cn(
-                  "group flex items-center gap-1 rounded-xl border-2 p-2 text-left transition-colors",
-                  conversation.id === conversationId
-                    ? "border-border bg-accent/20"
-                    : "border-transparent hover:border-border hover:bg-surface-muted",
-                )}
-                key={conversation.id}
-              >
-                <button
-                  className="min-w-0 flex-1 text-left"
-                  onClick={() => openConversation(conversation.id)}
-                  type="button"
-                >
-                  <p className="truncate text-xs font-bold text-ink">{conversation.title ?? "Percakapan"}</p>
-                  <p className="mt-0.5 text-[10px] font-semibold text-muted">{formatDateTime(conversation.last_message_at ?? conversation.created_at)}</p>
-                </button>
-                <button
-                  aria-label="Hapus percakapan"
-                  className="shrink-0 rounded-lg p-1.5 text-muted opacity-0 transition-opacity hover:bg-danger-muted hover:text-danger group-hover:opacity-100"
-                  onClick={() => setDeleteTarget(conversation.id)}
-                  type="button"
-                >
-                  <Trash2 className="size-3.5" strokeWidth={2.5} />
-                </button>
-              </div>
-            ))}
+    <div className="relative mx-auto flex h-[calc(100dvh-6.5rem)] min-h-[560px] max-w-6xl flex-col">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--radius-card)] border-2 border-border bg-surface shadow-emi">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b-2 border-border bg-surface px-4 py-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border-2 border-border bg-surface-muted text-ink">
+              <Sparkles className="size-4" strokeWidth={2.5} />
+            </span>
+            <p className="truncate text-base font-black text-ink">Chatbot AI EMI</p>
+            <Badge tone="blue">Aktif</Badge>
           </div>
-        </div>
-      </aside>
-
-      <div className="flex min-h-[760px] flex-1 flex-col overflow-hidden rounded-[var(--radius-card)] border-2 border-border bg-surface shadow-emi lg:min-h-[820px]">
-        <header className="shrink-0 border-b-2 border-border bg-surface px-4 py-5 sm:px-6 sm:py-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex gap-3">
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border-2 border-border bg-surface-muted text-ink">
-                <Sparkles className="size-5" strokeWidth={2.5} />
-              </span>
-              <div>
-                <p className="text-xl font-black text-ink">Chatbot AI EMI</p>
-                <p className="mt-1 text-xs font-black uppercase tracking-[0.08em] text-muted">Basis pengetahuan</p>
-                <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-muted">
-                  Tanyakan materi Bahasa Mekongga. EMI akan menjawab berdasarkan basis pengetahuan yang tersedia dan menampilkan referensi jika cocok.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button className="lg:hidden" onClick={() => setHistoryOpenMobile((current) => !current)} type="button" variant="secondary">
-                Riwayat
-              </Button>
-              <Button onClick={startNewSession} type="button" variant="secondary">
-                <MessageSquarePlus className="mr-2 size-4" strokeWidth={2.5} />
-                Sesi Baru
-              </Button>
-              <Badge tone="blue">Aktif</Badge>
-            </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button onClick={() => setHistoryOpen(true)} type="button" variant="secondary">
+              <History className="size-4 sm:mr-2" strokeWidth={2.5} />
+              <span className="hidden sm:inline">Riwayat</span>
+            </Button>
+            <Button onClick={startNewSession} type="button" variant="secondary">
+              <MessageSquarePlus className="size-4 sm:mr-2" strokeWidth={2.5} />
+              <span className="hidden sm:inline">Sesi Baru</span>
+            </Button>
           </div>
-
-          {historyOpenMobile ? (
-            <div className="mt-4 grid gap-1 rounded-xl border-2 border-border bg-surface-muted p-2 lg:hidden">
-              {conversations.length === 0 ? <p className="p-2 text-xs font-bold text-muted">Belum ada percakapan tersimpan.</p> : null}
-              {conversations.map((conversation) => (
-                <div className="flex items-center gap-1" key={conversation.id}>
-                  <button className="min-w-0 flex-1 rounded-lg p-2 text-left text-xs font-bold text-ink hover:bg-surface" onClick={() => openConversation(conversation.id)} type="button">
-                    {conversation.title ?? "Percakapan"}
-                  </button>
-                  <button aria-label="Hapus percakapan" className="rounded-lg p-2 text-muted hover:bg-danger-muted hover:text-danger" onClick={() => setDeleteTarget(conversation.id)} type="button">
-                    <Trash2 className="size-3.5" strokeWidth={2.5} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : null}
         </header>
 
-        <div className="flex-1 overflow-y-auto bg-surface-muted p-5 sm:p-8">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-surface-muted p-5 sm:p-8">
           <div className="grid gap-6">
             {formError ? <Alert tone="error">{formError}</Alert> : null}
             {apiError ? (
@@ -373,27 +310,30 @@ export function StudentChatbot() {
                 </div>
               </div>
             ) : null}
+            <div ref={scrollAnchorRef} />
           </div>
         </div>
 
-        <form className="shrink-0 border-t-2 border-border bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6" onSubmit={submit}>
-          <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
-            {suggestedQuestions.map((question) => (
-              <button
-                className="shrink-0 rounded-full border-2 border-border bg-surface px-4 py-2 text-xs font-black text-ink shadow-[1px_1px_0_var(--border)] hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={isPending}
-                key={question}
-                onClick={() => sendQuestion(question)}
-                type="button"
-              >
-                {question}
-              </button>
-            ))}
-          </div>
+        <form className="shrink-0 border-t-2 border-border bg-surface px-4 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] sm:px-6" onSubmit={submit}>
+          {messages.length === 0 ? (
+            <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
+              {suggestedQuestions.map((question) => (
+                <button
+                  className="shrink-0 rounded-full border-2 border-border bg-surface px-3 py-1.5 text-xs font-black text-ink shadow-[1px_1px_0_var(--border)] hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={isPending}
+                  key={question}
+                  onClick={() => sendQuestion(question)}
+                  type="button"
+                >
+                  {question}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
-          <div className="rounded-2xl border-2 border-border bg-surface p-2 shadow-[2px_2px_0_var(--border)]">
+          <div className="flex items-end gap-2 rounded-2xl border-2 border-border bg-surface p-1.5 shadow-[2px_2px_0_var(--border)]">
             <Textarea
-              className="min-h-20 border-0 bg-transparent shadow-none focus-visible:ring-0"
+              className="max-h-40 min-h-11 flex-1 resize-none border-0 bg-transparent py-2 shadow-none focus-visible:ring-0"
               disabled={isPending}
               onChange={(event) => setMessage(event.target.value)}
               onKeyDown={(event) => {
@@ -405,21 +345,67 @@ export function StudentChatbot() {
               placeholder="Tanyakan materi, kosakata, atau budaya Mekongga..."
               value={message}
             />
-            <div className="mt-2 flex items-center justify-between gap-3 border-t border-border/20 pt-2">
-              <p className="text-[11px] font-bold text-muted">
-                Enter kirim, Shift+Enter baris baru.
-              </p>
-              <Button aria-label="Kirim pertanyaan" className="size-11 rounded-full p-0" disabled={isPending} type="submit">
-                <SendHorizontal className="size-5" strokeWidth={3} />
-              </Button>
-            </div>
+            <Button aria-label="Kirim pertanyaan" className="size-10 shrink-0 rounded-full p-0" disabled={isPending} type="submit">
+              <SendHorizontal className="size-5" strokeWidth={3} />
+            </Button>
           </div>
 
-          <p className="mt-3 text-[11px] font-bold leading-5 text-muted">
-            Jawaban berasal dari Basis AI yang dipublish admin. AI bisa keliru; cek referensi saat tersedia.
+          <p className="mt-1.5 text-center text-[10px] font-semibold text-muted">
+            Enter kirim, Shift+Enter baris baru. AI bisa keliru; cek referensi saat tersedia.
           </p>
         </form>
       </div>
+
+      {historyOpen ? (
+        <div className="absolute inset-0 z-20 flex">
+          <button aria-label="Tutup riwayat" className="absolute inset-0 bg-ink/40" onClick={() => setHistoryOpen(false)} type="button" />
+          <aside className="relative ml-auto flex h-full w-80 max-w-[85%] flex-col rounded-l-[var(--radius-card)] border-l-2 border-border bg-surface shadow-emi">
+            <div className="flex items-center justify-between gap-2 border-b-2 border-border p-4">
+              <p className="text-sm font-black uppercase tracking-[0.06em] text-muted">Riwayat</p>
+              <div className="flex items-center gap-1">
+                <Button aria-label="Sesi baru" className="size-9 rounded-full p-0" onClick={startNewSession} type="button" variant="secondary">
+                  <MessageSquarePlus className="size-4" strokeWidth={2.5} />
+                </Button>
+                <Button aria-label="Tutup riwayat" className="size-9 rounded-full p-0" onClick={() => setHistoryOpen(false)} type="button" variant="secondary">
+                  <X className="size-4" strokeWidth={2.5} />
+                </Button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3">
+              {conversationsQuery.isLoading ? <p className="p-2 text-xs font-bold text-muted">Memuat riwayat...</p> : null}
+              {!conversationsQuery.isLoading && conversations.length === 0 ? (
+                <p className="p-2 text-xs font-bold text-muted">Belum ada percakapan tersimpan.</p>
+              ) : null}
+              <div className="grid gap-1">
+                {conversations.map((conversation) => (
+                  <div
+                    className={cn(
+                      "group flex items-center gap-1 rounded-xl border-2 p-2 text-left transition-colors",
+                      conversation.id === conversationId
+                        ? "border-border bg-accent/20"
+                        : "border-transparent hover:border-border hover:bg-surface-muted",
+                    )}
+                    key={conversation.id}
+                  >
+                    <button className="min-w-0 flex-1 text-left" onClick={() => openConversation(conversation.id)} type="button">
+                      <p className="truncate text-xs font-bold text-ink">{conversation.title ?? "Percakapan"}</p>
+                      <p className="mt-0.5 text-[10px] font-semibold text-muted">{formatDateTime(conversation.last_message_at ?? conversation.created_at)}</p>
+                    </button>
+                    <button
+                      aria-label="Hapus percakapan"
+                      className="shrink-0 rounded-lg p-1.5 text-muted transition-opacity hover:bg-danger-muted hover:text-danger"
+                      onClick={() => setDeleteTarget(conversation.id)}
+                      type="button"
+                    >
+                      <Trash2 className="size-3.5" strokeWidth={2.5} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </div>
+      ) : null}
 
       <ConfirmDialog
         confirmLabel="Hapus Percakapan"

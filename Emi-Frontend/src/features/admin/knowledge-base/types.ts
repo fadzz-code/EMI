@@ -1,5 +1,5 @@
 export type AiKnowledgeStatus = "draft" | "published" | "archived";
-export type AiKnowledgeSourceType = "manual" | "link" | "pdf";
+export type AiKnowledgeSourceType = "manual" | "link" | "pdf" | "docx" | "txt";
 
 export type AiKnowledgeItem = {
   id: string;
@@ -27,7 +27,7 @@ export type AiKnowledgePayload = {
 export type AiKnowledgeSourceExtraction = {
   title?: string | null;
   content: string;
-  source_type: Extract<AiKnowledgeSourceType, "link" | "pdf">;
+  source_type: Extract<AiKnowledgeSourceType, "link" | "pdf" | "docx" | "txt">;
   source_url?: string | null;
   original_filename?: string | null;
   character_count: number;

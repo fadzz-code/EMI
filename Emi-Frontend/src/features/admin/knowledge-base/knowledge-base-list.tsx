@@ -40,7 +40,9 @@ const statusOptions: Array<{ value: AiKnowledgeStatus; label: string; descriptio
 const sourceTypeLabel = {
   manual: "Teks Manual",
   link: "Link",
-  pdf: "PDF / Dokumen",
+  pdf: "PDF",
+  docx: "Dokumen (DOCX)",
+  txt: "Dokumen (TXT)",
 } as const;
 
 function statusLabel(status: AiKnowledgeStatus) {

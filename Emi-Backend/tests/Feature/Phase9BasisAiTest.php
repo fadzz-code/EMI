@@ -24,6 +24,12 @@ class Phase9BasisAiTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['ai.free_provider' => 'none']);
+    }
+
     public function test_admin_can_create_basis_ai_knowledge_item(): void
     {
         $admin = User::factory()->admin()->create();
@@ -672,7 +678,8 @@ class Phase9BasisAiTest extends TestCase
             ->assertJsonPath('data.mode', 'free_ai');
 
         Http::assertSent(function (Request $request): bool {
-            $prompt = $request->data()['messages'][0]['content'] ?? '';
+            $messages = collect($request->data()['messages'] ?? []);
+            $prompt = (string) ($messages->firstWhere('role', 'user')['content'] ?? '');
 
             return str_contains($prompt, 'monga makan')
                 && str_contains($prompt, 'Kosakata monga')
@@ -917,7 +924,8 @@ class Phase9BasisAiTest extends TestCase
             ->assertJsonPath('data.mode', 'free_ai');
 
         Http::assertSent(function (Request $request): bool {
-            $prompt = $request->data()['messages'][0]['content'] ?? '';
+            $messages = collect($request->data()['messages'] ?? []);
+            $prompt = (string) ($messages->firstWhere('role', 'user')['content'] ?? '');
 
             return str_contains($prompt, 'Ritual mosehe adalah upacara penyucian wilayah.')
                 && str_contains($prompt, 'Kata monga digunakan untuk menjelaskan kegiatan makan sehari-hari.')
