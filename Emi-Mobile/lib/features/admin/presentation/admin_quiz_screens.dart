@@ -15,6 +15,7 @@ import '../data/admin_providers.dart';
 import '../data/admin_repository.dart';
 import '../data/admin_crud_repository.dart';
 import 'admin_shell.dart';
+import 'admin_widgets.dart';
 
 class AdminQuizScreen extends ConsumerStatefulWidget {
   const AdminQuizScreen({super.key});
@@ -195,71 +196,62 @@ class _QuizTile extends StatelessWidget {
   final QuizTemplateAdmin item;
 
   @override
-  Widget build(BuildContext context) => InkWell(
+  Widget build(BuildContext context) => AdminCard(
     onTap: () => context.push('/admin/quizzes/${item.id}'),
-    borderRadius: BorderRadius.circular(EmiRadii.card),
-    child: Container(
-      padding: const EdgeInsets.all(EmiSpacing.md),
-      decoration: BoxDecoration(
-        color: EmiColors.surface,
-        borderRadius: BorderRadius.circular(EmiRadii.card),
-        border: Border.all(color: EmiColors.border, width: 1.5),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.title,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: EmiSpacing.xs),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${item.questionsCount} Pertanyaan',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: EmiSpacing.xs),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '${item.questionsCount} Pertanyaan',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    EmiStatusBadge(
-                      label: _statusLabel(item.status),
-                      tone: emiStatusToneFromKey(item.status),
-                    ),
-                  ],
-                ),
-                Text(
-                  '${item.durationMinutes} menit · ${item.maxAttempts} percobaan · Diubah ${_shortDate(item.updatedAt)}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'view') context.push('/admin/quizzes/${item.id}');
-              if (value == 'edit') context.push('/admin/quizzes/${item.id}');
-              if (value == 'questions') {
-                context.push('/admin/quizzes/${item.id}/questions');
-              }
-            },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'view', child: Text('Lihat')),
-              PopupMenuItem(value: 'edit', child: Text('Edit')),
-              PopupMenuItem(value: 'questions', child: Text('Pertanyaan')),
+                  EmiStatusBadge(
+                    label: _statusLabel(item.status),
+                    tone: emiStatusToneFromKey(item.status),
+                  ),
+                ],
+              ),
+              Text(
+                '${item.durationMinutes} menit · ${item.maxAttempts} percobaan · Diubah ${_shortDate(item.updatedAt)}',
+                style: Theme.of(context).textTheme.bodySmall,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
-        ],
-      ),
+        ),
+        PopupMenuButton<String>(
+          onSelected: (value) {
+            if (value == 'view') context.push('/admin/quizzes/${item.id}');
+            if (value == 'edit') context.push('/admin/quizzes/${item.id}');
+            if (value == 'questions') {
+              context.push('/admin/quizzes/${item.id}/questions');
+            }
+          },
+          itemBuilder: (context) => const [
+            PopupMenuItem(value: 'view', child: Text('Lihat')),
+            PopupMenuItem(value: 'edit', child: Text('Edit')),
+            PopupMenuItem(value: 'questions', child: Text('Pertanyaan')),
+          ],
+        ),
+      ],
     ),
   );
 }
