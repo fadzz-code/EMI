@@ -13,7 +13,7 @@ class UpdateAiKnowledgeItemRequest extends ApiFormRequest
             'title' => ['sometimes', 'required', 'string', 'max:255'],
             'category' => ['nullable', 'string', 'max:255'],
             'content' => ['sometimes', 'required', 'string'],
-            'source_type' => ['sometimes', 'required', Rule::in(['manual', 'link', 'pdf'])],
+            'source_type' => ['sometimes', 'required', Rule::in(['manual', 'link', 'pdf', 'docx', 'txt'])],
             'source_url' => ['nullable', 'required_if:source_type,link,pdf', 'string', 'max:2048'],
             'status' => ['nullable', Rule::in(['draft', 'published', 'archived'])],
         ];

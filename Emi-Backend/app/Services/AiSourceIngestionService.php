@@ -9,6 +9,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use PhpOffice\PhpWord\IOFactory;
 use Smalot\PdfParser\Parser;
 
 class AiSourceIngestionService
@@ -229,6 +230,74 @@ class AiSourceIngestionService
             'source_url' => $path ? Storage::disk('public')->url($path) : null,
             'original_filename' => $file->getClientOriginalName(),
         ];
+    }
+
+    public function extractFromDocumentUpload(UploadedFile $file): array
+    {
+        $extension = strtolower($file->getClientOriginalExtension());
+        $title = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+
+        $cleanText = $extension === 'docx'
+            ? $this->extractDocxText($file->getRealPath())
+            : $this->cleanText((string) file_get_contents($file->getRealPath()));
+
+        if (empty($cleanText)) {
+            throw new Exception($extension === 'docx'
+                ? 'Dokumen DOCX tidak memiliki teks yang dapat dibaca.'
+                : 'Berkas TXT kosong atau tidak dapat dibaca.');
+        }
+
+        $sourceType = $extension === 'docx' ? 'docx' : 'txt';
+        $filename = Str::uuid().'.'.$extension;
+        $path = $file->storeAs('ai-knowledge-sources', $filename, 'public');
+
+        return [
+            'content' => mb_substr($cleanText, 0, self::MAX_CONTENT_LENGTH),
+            'title' => $title,
+            'source_type' => $sourceType,
+            'source_url' => $path ? Storage::disk('public')->url($path) : null,
+            'character_count' => mb_strlen($cleanText),
+            'original_filename' => $file->getClientOriginalName(),
+            'warnings' => [],
+        ];
+    }
+
+    private function extractDocxText(string $path): string
+    {
+        try {
+            $phpWord = IOFactory::load($path, 'Word2007');
+        } catch (\Throwable $exception) {
+            throw new Exception('Dokumen DOCX tidak valid atau rusak.');
+        }
+
+        $text = '';
+        foreach ($phpWord->getSections() as $section) {
+            foreach ($section->getElements() as $element) {
+                $text .= $this->elementText($element)."\n";
+            }
+        }
+
+        return $this->cleanText($text);
+    }
+
+    private function elementText(mixed $element): string
+    {
+        if (method_exists($element, 'getText')) {
+            $value = $element->getText();
+
+            return is_string($value) ? $value : '';
+        }
+
+        if (method_exists($element, 'getElements')) {
+            $text = '';
+            foreach ($element->getElements() as $child) {
+                $text .= $this->elementText($child).' ';
+            }
+
+            return $text;
+        }
+
+        return '';
     }
 
     private function extractFromPdf(string $url): array

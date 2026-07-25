@@ -71,7 +71,7 @@ class AiKnowledgeService
 
     public function retryProcessing(AiKnowledgeItem $item, User $actor, Request $request): AiKnowledgeItem
     {
-        abort_unless(in_array($item->source_type, ['pdf', 'link'], true), 422, 'Sumber ini tidak dapat diproses ulang.');
+        abort_unless(in_array($item->source_type, ['pdf', 'link', 'docx', 'txt'], true), 422, 'Sumber ini tidak dapat diproses ulang.');
         abort_if($item->processingStatus() === 'ready', 409, 'Pengetahuan sudah siap digunakan.');
 
         $this->chunkingService->rebuild($item);
@@ -90,7 +90,7 @@ class AiKnowledgeService
     private function setStatus(AiKnowledgeItem $item, string $status, User $actor, Request $request, string $action): AiKnowledgeItem
     {
         if ($status === 'published') {
-            if ($item->source_type === 'manual' || ($item->sourcePages()->doesntExist() && ! str_starts_with(trim((string) $item->content), 'Dokumen PDF telah diproses'))) {
+            if (in_array($item->source_type, ['manual', 'docx', 'txt'], true) || ($item->sourcePages()->doesntExist() && ! str_starts_with(trim((string) $item->content), 'Dokumen PDF telah diproses'))) {
                 $this->chunkingService->ensureChunks($item);
                 $item->refresh();
             }
