@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../../../app/theme/emi_theme.dart';
-import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
+import '../../../shared/widgets/student_style.dart';
+import '../../../shared/widgets/student_widgets.dart';
 import '../data/dictionary_entry.dart';
 import '../data/dictionary_providers.dart';
 
@@ -22,7 +23,6 @@ class DictionaryDetailScreen extends ConsumerWidget {
       child: entry.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => _ErrorState(
-          message: error.toString(),
           onRetry: () => ref.invalidate(dictionaryDetailProvider(entryId)),
         ),
         data: (data) => ListView(
@@ -47,24 +47,19 @@ class _HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EmiCard(
+    return StudentCard(
       padding: const EdgeInsets.all(EmiSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (entry.category != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: EmiColors.primary,
-                borderRadius: BorderRadius.circular(EmiRadii.pill),
-              ),
-              child: Text(entry.category!.name),
-            ),
+            StudentStatusChip(label: entry.category!.name),
           const SizedBox(height: EmiSpacing.md),
           Text(
             entry.mekongga,
-            style: Theme.of(context).textTheme.headlineMedium,
+            style: Theme.of(
+              context,
+            ).textTheme.headlineMedium?.copyWith(color: StudentStyle.ink),
           ),
           const Divider(
             color: EmiColors.divider,
@@ -93,9 +88,16 @@ class _MeaningRow extends StatelessWidget {
       children: [
         SizedBox(
           width: 96,
-          child: Text(label, style: Theme.of(context).textTheme.labelLarge),
+          child: Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.labelLarge?.copyWith(color: StudentStyle.inkMuted),
+          ),
         ),
-        Expanded(child: Text(value)),
+        Expanded(
+          child: Text(value, style: const TextStyle(color: StudentStyle.ink)),
+        ),
       ],
     );
   }
@@ -132,10 +134,9 @@ class _DictionaryAudioPlayerState extends State<DictionaryAudioPlayer> {
     return Container(
       padding: const EdgeInsets.all(EmiSpacing.md),
       decoration: BoxDecoration(
-        color: const Color(0xFF81D4FA),
-        border: Border.all(color: EmiColors.border, width: 1.5),
-        borderRadius: BorderRadius.circular(EmiRadii.card),
-        boxShadow: const [EmiShadows.hard],
+        color: StudentStyle.tint,
+        borderRadius: BorderRadius.circular(StudentStyle.cardRadius),
+        boxShadow: StudentStyle.softShadow(),
       ),
       child: Row(
         children: [
@@ -145,11 +146,18 @@ class _DictionaryAudioPlayerState extends State<DictionaryAudioPlayer> {
               final playing = snapshot.data?.playing == true;
               return IconButton.filled(
                 onPressed: _loading ? null : () => _toggle(playing),
+                style: IconButton.styleFrom(
+                  backgroundColor: EmiColors.primary,
+                  foregroundColor: Colors.white,
+                ),
                 icon: _loading
                     ? const SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : Icon(playing ? Icons.pause : Icons.play_arrow),
               );
@@ -159,7 +167,9 @@ class _DictionaryAudioPlayerState extends State<DictionaryAudioPlayer> {
           Expanded(
             child: Text(
               _error ?? 'Putar pelafalan',
-              style: Theme.of(context).textTheme.titleMedium,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: _error != null ? EmiColors.error : StudentStyle.ink,
+              ),
             ),
           ),
         ],
@@ -206,20 +216,34 @@ class _ExamplesCard extends StatelessWidget {
 
     if (examples.isEmpty) return const SizedBox.shrink();
 
-    return Container(
+    return StudentCard(
       padding: const EdgeInsets.all(EmiSpacing.lg),
-      decoration: BoxDecoration(
-        color: EmiColors.secondary,
-        border: Border.all(color: EmiColors.border, width: 1.5),
-        borderRadius: BorderRadius.circular(EmiRadii.card),
-        boxShadow: const [EmiShadows.hard],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Contoh Kalimat',
-            style: Theme.of(context).textTheme.titleMedium,
+          Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: StudentStyle.tint,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.format_quote_outlined,
+                  size: 16,
+                  color: EmiColors.primary,
+                ),
+              ),
+              const SizedBox(width: EmiSpacing.xs),
+              Text(
+                'Contoh Kalimat',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(color: StudentStyle.ink),
+              ),
+            ],
           ),
           const SizedBox(height: EmiSpacing.md),
           ...examples.map(
@@ -229,8 +253,8 @@ class _ExamplesCard extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(EmiSpacing.md),
                 decoration: BoxDecoration(
-                  color: EmiColors.background,
-                  borderRadius: BorderRadius.circular(8),
+                  color: StudentStyle.tint,
+                  borderRadius: BorderRadius.circular(EmiRadii.card),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,9 +262,14 @@ class _ExamplesCard extends StatelessWidget {
                     if (example.mekongga != null)
                       Text(
                         example.mekongga!,
-                        style: Theme.of(context).textTheme.titleMedium,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(color: StudentStyle.ink),
                       ),
-                    if (example.indonesia != null) Text(example.indonesia!),
+                    if (example.indonesia != null)
+                      Text(
+                        example.indonesia!,
+                        style: const TextStyle(color: StudentStyle.inkMuted),
+                      ),
                   ],
                 ),
               ),
@@ -253,9 +282,8 @@ class _ExamplesCard extends StatelessWidget {
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
+  const _ErrorState({required this.onRetry});
 
-  final String message;
   final VoidCallback onRetry;
 
   @override
@@ -263,17 +291,11 @@ class _ErrorState extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(EmiSpacing.md),
       children: [
-        EmiCard(
-          child: Column(
-            children: [
-              Text(message),
-              const SizedBox(height: EmiSpacing.md),
-              ElevatedButton(
-                onPressed: onRetry,
-                child: const Text('Coba Lagi'),
-              ),
-            ],
-          ),
+        StudentPlaceholder(
+          icon: Icons.cloud_off_outlined,
+          title: 'Kata Belum Bisa Dimuat',
+          message: 'Periksa koneksi internetmu, lalu coba lagi.',
+          onRetry: onRetry,
         ),
       ],
     );

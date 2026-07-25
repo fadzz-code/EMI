@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
-import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
+import '../../../shared/widgets/student_style.dart';
+import '../../../shared/widgets/student_widgets.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../data/student_dashboard_providers.dart';
 import '../data/student_dashboard_summary.dart';
@@ -24,22 +25,42 @@ class StudentDashboardScreen extends ConsumerWidget {
       child: RefreshIndicator(
         onRefresh: () => ref.refresh(studentDashboardSummaryProvider.future),
         child: summary.when(
-          loading: () => const _DashboardLoading(),
-          error: (_, _) => _DashboardError(
-            onRetry: () => ref.invalidate(studentDashboardSummaryProvider),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, _) => ListView(
+            padding: const EdgeInsets.all(EmiSpacing.md),
+            children: [
+              StudentPlaceholder(
+                icon: Icons.cloud_off_outlined,
+                title: 'Data belum bisa dimuat',
+                message: 'Periksa koneksi internetmu, lalu coba lagi.',
+                onRetry: () => ref.invalidate(studentDashboardSummaryProvider),
+              ),
+            ],
           ),
           data: (data) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
-              _HeroCard(name: user?.fullName ?? 'Siswa', summary: data),
-              const SizedBox(height: EmiSpacing.xl),
+              StudentHeroCard(
+                greeting: 'Halo,',
+                name: user?.fullName ?? 'Siswa',
+                subtitle:
+                    data.classInfo?.schoolName ?? 'Lanjutkan belajar Mekongga.',
+                actionLabel: 'Lanjut Belajar',
+                onAction: () => context.go('/student/modules'),
+              ),
+              const SizedBox(height: EmiSpacing.lg),
               if (data.emptyState)
-                const EmiCard(child: Text('Kelas aktif belum tersedia.'))
+                StudentPlaceholder(
+                  icon: Icons.school_outlined,
+                  title: 'Kelas Aktif Belum Tersedia',
+                  message:
+                      'Kamu belum tergabung di kelas aktif. Hubungi gurumu.',
+                )
               else ...[
                 _StatsGrid(summary: data),
-                const SizedBox(height: EmiSpacing.xl),
+                const SizedBox(height: EmiSpacing.lg),
                 _ContinueCard(summary: data),
-                const SizedBox(height: EmiSpacing.xl),
+                const SizedBox(height: EmiSpacing.lg),
                 _QuickMenu(
                   onTapModules: () => context.go('/student/modules'),
                   onTapDictionary: () => context.go('/student/dictionary'),
@@ -64,80 +85,6 @@ class StudentDashboardScreen extends ConsumerWidget {
   }
 }
 
-class _HeroCard extends StatelessWidget {
-  const _HeroCard({required this.name, required this.summary});
-
-  final String name;
-  final StudentDashboardSummary summary;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(EmiSpacing.lg),
-      decoration: BoxDecoration(
-        color: EmiColors.secondary,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: EmiColors.border, width: 2),
-        boxShadow: const [
-          BoxShadow(color: EmiColors.border, offset: Offset(4, 5)),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: EmiColors.surface,
-              borderRadius: BorderRadius.circular(EmiRadii.pill),
-              border: Border.all(color: EmiColors.border, width: 1.5),
-            ),
-            child: const Icon(
-              Icons.school_outlined,
-              size: 30,
-              color: EmiColors.textPrimary,
-            ),
-          ),
-          const SizedBox(width: EmiSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Halo,',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: EmiColors.textPrimary,
-                  ),
-                ),
-                Text(
-                  name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: EmiColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: EmiSpacing.xs),
-                Text(
-                  summary.classInfo?.schoolName ??
-                      'Lanjutkan belajar Mekongga.',
-                  style: const TextStyle(color: EmiColors.textPrimary),
-                ),
-                const SizedBox(height: EmiSpacing.md),
-                ElevatedButton(
-                  onPressed: () => context.go('/student/modules'),
-                  child: const Text('Lanjut Belajar'),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _StatsGrid extends StatelessWidget {
   const _StatsGrid({required this.summary});
 
@@ -150,64 +97,43 @@ class _StatsGrid extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        const StudentSectionHeader(
           'Statistik Belajarmu',
-          style: Theme.of(context).textTheme.titleMedium,
+          icon: Icons.insights_outlined,
+          leading: false,
         ),
-        const SizedBox(height: EmiSpacing.md),
         GridView.count(
           crossAxisCount: 2,
           crossAxisSpacing: EmiSpacing.md,
           mainAxisSpacing: EmiSpacing.md,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: 1.35,
+          childAspectRatio: 1.5,
           children: [
-            _StatCard(label: 'Modul', value: '${learning.publishedModules}'),
-            _StatCard(label: 'Selesai', value: '${learning.completedModules}'),
-            _StatCard(
+            StudentMetricTile(
+              icon: Icons.menu_book_outlined,
+              label: 'Modul',
+              value: '${learning.publishedModules}',
+            ),
+            StudentMetricTile(
+              icon: Icons.check_circle_outline,
+              label: 'Selesai',
+              value: '${learning.completedModules}',
+            ),
+            StudentMetricTile(
+              icon: Icons.trending_up_outlined,
               label: 'Progress',
               value: '${learning.overallProgressPercent}%',
-              color: EmiColors.primary,
+              highlight: true,
             ),
-            _StatCard(label: 'Kuis', value: '${quizzes.available}'),
+            StudentMetricTile(
+              icon: Icons.quiz_outlined,
+              label: 'Kuis',
+              value: '${quizzes.available}',
+            ),
           ],
         ),
       ],
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({required this.label, required this.value, this.color});
-
-  final String label;
-  final String value;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(EmiSpacing.md),
-      decoration: BoxDecoration(
-        color: EmiColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: EmiColors.border, width: 1.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            value,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              color: color ?? EmiColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: EmiSpacing.xs),
-          Text(label),
-        ],
-      ),
     );
   }
 }
@@ -220,22 +146,41 @@ class _ContinueCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final learning = summary.learning;
-    return EmiCard(
+    return StudentCard(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Lanjutkan Belajar',
-            style: Theme.of(context).textTheme.titleMedium,
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: StudentStyle.tint,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.play_circle_outline,
+                  color: EmiColors.primary,
+                ),
+              ),
+              const SizedBox(width: EmiSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Lanjutkan Belajar',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(color: StudentStyle.ink),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: EmiSpacing.sm),
-          Text(
-            '${learning.completedLessons}/${learning.totalLessons} materi selesai',
-          ),
-          const SizedBox(height: EmiSpacing.sm),
-          LinearProgressIndicator(
-            value: (learning.overallProgressPercent / 100).clamp(0.0, 1.0),
+          const SizedBox(height: EmiSpacing.md),
+          StudentProgressBar(
+            value: learning.overallProgressPercent / 100,
+            caption:
+                '${learning.completedLessons}/${learning.totalLessons} materi selesai',
           ),
         ],
       ),
@@ -263,14 +208,18 @@ class _QuickMenu extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Menu Cepat', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: EmiSpacing.md),
+        const StudentSectionHeader(
+          'Menu Cepat',
+          icon: Icons.grid_view_outlined,
+          leading: false,
+        ),
         GridView.count(
           crossAxisCount: 3,
           crossAxisSpacing: EmiSpacing.sm,
           mainAxisSpacing: EmiSpacing.sm,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
+          childAspectRatio: 0.95,
           children: [
             _QuickMenuItem(
               key: const Key('studentQuickMenuModules'),
@@ -329,69 +278,43 @@ class _QuickMenuItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: EmiColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: EmiColors.border, width: 1.5),
+        color: StudentStyle.surface,
+        borderRadius: BorderRadius.circular(StudentStyle.cardRadius),
+        boxShadow: StudentStyle.softShadow(),
       ),
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(StudentStyle.cardRadius),
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(EmiSpacing.sm),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: EmiColors.primary),
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: StudentStyle.tint,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: EmiColors.primary),
+                ),
                 const SizedBox(height: EmiSpacing.xs),
-                Text(label),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: StudentStyle.ink),
+                ),
               ],
             ),
           ),
         ),
       ),
-    );
-  }
-}
-
-class _DashboardLoading extends StatelessWidget {
-  const _DashboardLoading();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: CircularProgressIndicator());
-  }
-}
-
-class _DashboardError extends StatelessWidget {
-  const _DashboardError({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(EmiSpacing.md),
-      children: [
-        EmiCard(
-          child: Column(
-            children: [
-              Text(
-                'Data belum bisa dimuat',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: EmiSpacing.xs),
-              const Text('Periksa koneksi internetmu, lalu coba lagi.'),
-              const SizedBox(height: EmiSpacing.md),
-              ElevatedButton(
-                onPressed: onRetry,
-                child: const Text('Coba Lagi'),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

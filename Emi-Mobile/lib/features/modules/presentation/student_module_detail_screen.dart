@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
-import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
+import '../../../shared/widgets/student_style.dart';
+import '../../../shared/widgets/student_widgets.dart';
 import '../data/student_module.dart';
 import '../data/student_module_providers.dart';
 
@@ -27,7 +28,6 @@ class StudentModuleDetailScreen extends ConsumerWidget {
         child: detail.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => _ErrorState(
-            message: error.toString(),
             onRetry: () =>
                 ref.invalidate(studentModuleDetailProvider(moduleId)),
           ),
@@ -35,16 +35,18 @@ class StudentModuleDetailScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
               _ModuleHeader(module: module),
-              const SizedBox(height: EmiSpacing.lg),
-              _ProgressCard(progress: module.progress),
-              const SizedBox(height: EmiSpacing.lg),
-              Text(
-                'Daftar Lesson',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
               const SizedBox(height: EmiSpacing.md),
+              _ProgressCard(progress: module.progress),
+              const StudentSectionHeader(
+                'Daftar Lesson',
+                icon: Icons.list_alt_outlined,
+              ),
               if (module.lessons.isEmpty)
-                const EmiCard(child: Text('Belum ada lesson tersedia.'))
+                StudentPlaceholder(
+                  icon: Icons.article_outlined,
+                  title: 'Belum Ada Lesson',
+                  message: 'Materi untuk modul ini belum tersedia.',
+                )
               else
                 ...module.lessons.map(
                   (lesson) => Padding(
@@ -75,44 +77,49 @@ class _ModuleHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EmiCard(
+    return StudentCard(
       padding: EdgeInsets.zero,
+      clip: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
+            height: 150,
             width: double.infinity,
-            padding: const EdgeInsets.all(EmiSpacing.md),
             decoration: const BoxDecoration(
-              color: EmiColors.secondary,
-              border: Border(
-                bottom: BorderSide(color: EmiColors.border, width: 1.5),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFFFB877), Color(0xFFFF8A3D)],
               ),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
             ),
+            alignment: Alignment.center,
+            child: const Icon(
+              Icons.menu_book_outlined,
+              size: 52,
+              color: Colors.white,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(EmiSpacing.md),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   module.title,
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(color: StudentStyle.ink),
                 ),
                 if (module.description != null) ...[
                   const SizedBox(height: EmiSpacing.xs),
-                  Text(module.description!),
+                  Text(
+                    module.description!,
+                    style: const TextStyle(color: StudentStyle.inkMuted),
+                  ),
                 ],
               ],
             ),
-          ),
-          Container(
-            height: 160,
-            margin: const EdgeInsets.all(EmiSpacing.md),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFDBC9),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            alignment: Alignment.center,
-            child: const Icon(Icons.menu_book_outlined, size: 48),
           ),
         ],
       ),
@@ -127,19 +134,21 @@ class _ProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EmiCard(
+    return StudentCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Progress Modul',
-            style: Theme.of(context).textTheme.titleMedium,
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(color: StudentStyle.ink),
           ),
-          const SizedBox(height: EmiSpacing.sm),
-          LinearProgressIndicator(value: progress.progressPercent / 100),
-          const SizedBox(height: EmiSpacing.xs),
-          Text(
-            '${progress.completedLessons}/${progress.totalLessons} lesson selesai',
+          const SizedBox(height: EmiSpacing.md),
+          StudentProgressBar(
+            value: progress.progressPercent / 100,
+            caption:
+                '${progress.completedLessons}/${progress.totalLessons} lesson selesai',
           ),
         ],
       ),
@@ -154,50 +163,58 @@ class _LessonTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return StudentCard(
+      padding: const EdgeInsets.all(EmiSpacing.sm),
       onTap: () => context.go(
         '/student/lessons/${lesson.id}',
         extra: lesson.classModuleId,
       ),
-      child: Container(
-        padding: const EdgeInsets.all(EmiSpacing.sm),
-        decoration: BoxDecoration(
-          color: EmiColors.surfaceSoft,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.check_circle_outline),
-            const SizedBox(width: EmiSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    lesson.title,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  if (lesson.description != null)
-                    Text(
-                      lesson.description!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                ],
-              ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: StudentStyle.tint,
+              borderRadius: BorderRadius.circular(12),
             ),
-            const Icon(Icons.chevron_right),
-          ],
-        ),
+            child: const Icon(
+              Icons.play_lesson_outlined,
+              color: EmiColors.primary,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: EmiSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  lesson.title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(color: StudentStyle.ink),
+                ),
+                if (lesson.description != null)
+                  Text(
+                    lesson.description!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: StudentStyle.inkMuted),
+                  ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right, color: StudentStyle.inkMuted),
+        ],
       ),
     );
   }
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
+  const _ErrorState({required this.onRetry});
 
-  final String message;
   final VoidCallback onRetry;
 
   @override
@@ -205,17 +222,11 @@ class _ErrorState extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(EmiSpacing.md),
       children: [
-        EmiCard(
-          child: Column(
-            children: [
-              Text(message),
-              const SizedBox(height: EmiSpacing.md),
-              ElevatedButton(
-                onPressed: onRetry,
-                child: const Text('Coba Lagi'),
-              ),
-            ],
-          ),
+        StudentPlaceholder(
+          icon: Icons.cloud_off_outlined,
+          title: 'Modul Belum Bisa Dimuat',
+          message: 'Periksa koneksi internetmu, lalu coba lagi.',
+          onRetry: onRetry,
         ),
       ],
     );

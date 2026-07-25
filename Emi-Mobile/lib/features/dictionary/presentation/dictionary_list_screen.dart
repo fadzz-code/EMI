@@ -6,8 +6,9 @@ import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../../../app/theme/emi_theme.dart';
-import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
+import '../../../shared/widgets/student_style.dart';
+import '../../../shared/widgets/student_widgets.dart';
 import '../data/dictionary_entry.dart';
 import '../data/dictionary_providers.dart';
 
@@ -51,28 +52,42 @@ class _DictionaryListScreenState extends ConsumerState<DictionaryListScreen> {
         child: entries.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => _ErrorState(
-            message: error.toString(),
             onRetry: () => ref.invalidate(dictionaryListProvider(query)),
           ),
           data: (page) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
-              Text(
-                'Kamus Mekongga',
-                style: Theme.of(context).textTheme.headlineMedium,
+              const StudentPageHeader(
+                icon: Icons.translate_outlined,
+                title: 'Kamus Mekongga',
+                subtitle: 'Cari arti kata Indonesia, Inggris, atau Mekongga.',
               ),
-              const SizedBox(height: EmiSpacing.xs),
-              const Text(
-                'Cari arti kata dalam bahasa Indonesia, Inggris, atau Mekongga.',
-              ),
-              const SizedBox(height: EmiSpacing.lg),
-              TextField(
-                controller: _searchController,
-                decoration: const InputDecoration(
-                  hintText: 'Cari kata (Mekongga / Indo / Eng)...',
-                  prefixIcon: Icon(Icons.search),
+              const SizedBox(height: EmiSpacing.md),
+              Container(
+                decoration: BoxDecoration(
+                  color: StudentStyle.tint,
+                  borderRadius: BorderRadius.circular(EmiRadii.pill),
                 ),
-                onChanged: _onSearchChanged,
+                child: TextField(
+                  controller: _searchController,
+                  style: const TextStyle(color: StudentStyle.ink),
+                  decoration: const InputDecoration(
+                    hintText: 'Cari kata (Mekongga / Indo / Eng)...',
+                    filled: false,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: EmiSpacing.md,
+                      vertical: EmiSpacing.sm,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.search,
+                      color: StudentStyle.inkMuted,
+                    ),
+                  ),
+                  onChanged: _onSearchChanged,
+                ),
               ),
               const SizedBox(height: EmiSpacing.md),
               _CategoryChips(
@@ -83,9 +98,13 @@ class _DictionaryListScreenState extends ConsumerState<DictionaryListScreen> {
                   _page = 1;
                 }),
               ),
-              const SizedBox(height: EmiSpacing.lg),
+              const SizedBox(height: EmiSpacing.md),
               if (page.items.isEmpty)
-                const EmiCard(child: Text('Kata tidak ditemukan.'))
+                StudentPlaceholder(
+                  icon: Icons.search_off_outlined,
+                  title: 'Kata Tidak Ditemukan',
+                  message: 'Coba kata kunci atau kategori lain.',
+                )
               else
                 ...page.items.map(
                   (entry) => Padding(
@@ -93,9 +112,11 @@ class _DictionaryListScreenState extends ConsumerState<DictionaryListScreen> {
                     child: _DictionaryCard(entry: entry),
                   ),
                 ),
+              const SizedBox(height: EmiSpacing.xs),
               Text(
                 'Halaman ${page.currentPage} dari ${page.lastPage} · ${page.total} kata',
                 textAlign: TextAlign.center,
+                style: const TextStyle(color: StudentStyle.inkMuted),
               ),
               const SizedBox(height: EmiSpacing.sm),
               Row(
@@ -209,9 +230,17 @@ class _Chip extends StatelessWidget {
         selected: selected,
         label: Text(label),
         onSelected: (_) => onTap(),
+        showCheckmark: false,
         selectedColor: EmiColors.primary,
-        backgroundColor: EmiColors.surface,
-        side: const BorderSide(color: EmiColors.border, width: 1.5),
+        backgroundColor: StudentStyle.tint,
+        labelStyle: TextStyle(
+          color: selected ? Colors.white : StudentStyle.inkMuted,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        ),
+        side: BorderSide.none,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(EmiRadii.pill),
+        ),
       ),
     );
   }
@@ -248,63 +277,65 @@ class _DictionaryCardState extends ConsumerState<_DictionaryCard> {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return StudentCard(
       onTap: () => context.push('/student/dictionary/${entry.id}'),
-      child: EmiCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        entry.mekongga,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      Text(entry.indonesia),
-                    ],
-                  ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      entry.mekongga,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleLarge?.copyWith(color: StudentStyle.ink),
+                    ),
+                    Text(
+                      entry.indonesia,
+                      style: const TextStyle(color: StudentStyle.inkMuted),
+                    ),
+                  ],
                 ),
-                if (entry.hasAudio)
-                  StreamBuilder<PlayerState>(
-                    stream: _player.playerStateStream,
-                    builder: (context, snapshot) {
-                      final playing = snapshot.data?.playing == true;
-                      return IconButton.filled(
-                        key: Key('dictionaryAudio-${entry.id}'),
-                        onPressed: _loading ? null : () => _toggle(playing),
-                        icon: _loading
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Icon(playing ? Icons.pause : Icons.play_arrow),
-                      );
-                    },
-                  ),
-              ],
-            ),
-            const SizedBox(height: EmiSpacing.sm),
-            Text(entry.english),
-            if (_error != null) ...[
-              const SizedBox(height: EmiSpacing.xs),
-              Text(_error!, style: const TextStyle(color: EmiColors.error)),
-            ],
-            if (entry.category != null) ...[
-              const SizedBox(height: EmiSpacing.sm),
-              Text(
-                entry.category!.name,
-                style: Theme.of(context).textTheme.labelLarge,
               ),
+              if (entry.hasAudio)
+                StreamBuilder<PlayerState>(
+                  stream: _player.playerStateStream,
+                  builder: (context, snapshot) {
+                    final playing = snapshot.data?.playing == true;
+                    return IconButton.filled(
+                      key: Key('dictionaryAudio-${entry.id}'),
+                      onPressed: _loading ? null : () => _toggle(playing),
+                      style: IconButton.styleFrom(
+                        backgroundColor: StudentStyle.tint,
+                        foregroundColor: EmiColors.primary,
+                      ),
+                      icon: _loading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Icon(playing ? Icons.pause : Icons.play_arrow),
+                    );
+                  },
+                ),
             ],
+          ),
+          const SizedBox(height: EmiSpacing.sm),
+          Text(entry.english, style: const TextStyle(color: StudentStyle.ink)),
+          if (_error != null) ...[
+            const SizedBox(height: EmiSpacing.xs),
+            Text(_error!, style: const TextStyle(color: EmiColors.error)),
           ],
-        ),
+          if (entry.category != null) ...[
+            const SizedBox(height: EmiSpacing.sm),
+            StudentStatusChip(label: entry.category!.name),
+          ],
+        ],
       ),
     );
   }
@@ -338,9 +369,8 @@ class _DictionaryCardState extends ConsumerState<_DictionaryCard> {
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
+  const _ErrorState({required this.onRetry});
 
-  final String message;
   final VoidCallback onRetry;
 
   @override
@@ -348,17 +378,11 @@ class _ErrorState extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(EmiSpacing.md),
       children: [
-        EmiCard(
-          child: Column(
-            children: [
-              Text(message),
-              const SizedBox(height: EmiSpacing.md),
-              ElevatedButton(
-                onPressed: onRetry,
-                child: const Text('Coba Lagi'),
-              ),
-            ],
-          ),
+        StudentPlaceholder(
+          icon: Icons.cloud_off_outlined,
+          title: 'Kamus Belum Bisa Dimuat',
+          message: 'Periksa koneksi internetmu, lalu coba lagi.',
+          onRetry: onRetry,
         ),
       ],
     );

@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
-import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
+import '../../../shared/widgets/student_style.dart';
+import '../../../shared/widgets/student_widgets.dart';
 import '../data/culture_models.dart';
 import '../data/culture_providers.dart';
 
@@ -53,7 +54,6 @@ class _StudentCultureListScreenState
                 ),
           error: (error, _) => _items.isEmpty
               ? _CultureError(
-                  message: error.toString(),
                   onRetry: () => ref.invalidate(cultureListProvider(query)),
                 )
               : _CultureList(
@@ -120,21 +120,43 @@ class _CultureList extends StatelessWidget {
     if (items.isEmpty) {
       return ListView(
         padding: const EdgeInsets.all(EmiSpacing.md),
-        children: const [
-          EmiCard(child: Text('Belum ada Budaya Mekongga untuk kelas Anda.')),
+        children: [
+          const StudentPageHeader(
+            icon: Icons.public_outlined,
+            title: 'Budaya Mekongga',
+            subtitle: 'Jelajahi kekayaan budaya Mekongga.',
+          ),
+          const SizedBox(height: EmiSpacing.md),
+          StudentPlaceholder(
+            icon: Icons.public_off_outlined,
+            title: 'Belum Ada Budaya',
+            message: 'Materi budaya untuk kelasmu belum tersedia.',
+          ),
         ],
       );
     }
 
     return ListView.separated(
       padding: const EdgeInsets.all(EmiSpacing.md),
-      itemCount: items.length + 1,
+      itemCount: items.length + 2,
       separatorBuilder: (_, _) => const SizedBox(height: EmiSpacing.md),
       itemBuilder: (context, index) {
-        if (index == items.length) {
+        if (index == 0) {
+          return const StudentPageHeader(
+            icon: Icons.public_outlined,
+            title: 'Budaya Mekongga',
+            subtitle: 'Jelajahi kekayaan budaya Mekongga.',
+          );
+        }
+        if (index == items.length + 1) {
           return Column(
             children: [
-              if (error != null) EmiCard(child: Text(error!)),
+              if (error != null)
+                StudentPlaceholder(
+                  icon: Icons.cloud_off_outlined,
+                  title: 'Sebagian Belum Dimuat',
+                  message: 'Beberapa materi belum bisa dimuat.',
+                ),
               if (hasNextPage)
                 OutlinedButton.icon(
                   onPressed: loadingMore ? null : onLoadMore,
@@ -150,7 +172,7 @@ class _CultureList extends StatelessWidget {
             ],
           );
         }
-        final item = items[index];
+        final item = items[index - 1];
         return _CultureCard(
           item: item,
           onTap: () => context.push('/student/culture/${item.id}', extra: item),
@@ -168,43 +190,77 @@ class _CultureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return StudentCard(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(EmiRadii.card),
-      child: EmiCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    item.title,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: StudentStyle.tint,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                _CultureTypeChip(type: item.contentType),
-              ],
-            ),
-            const SizedBox(height: EmiSpacing.sm),
-            Text(
-              item.description ?? 'Deskripsi budaya belum tersedia.',
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: EmiSpacing.sm),
-            Text('Kelas: ${item.schoolClass?.name ?? item.classId}'),
-          ],
-        ),
+                child: Icon(
+                  _iconFor(item.contentType),
+                  color: EmiColors.primary,
+                ),
+              ),
+              const SizedBox(width: EmiSpacing.sm),
+              Expanded(
+                child: Text(
+                  item.title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(color: StudentStyle.ink),
+                ),
+              ),
+              StudentStatusChip(label: _typeLabel(item.contentType)),
+            ],
+          ),
+          const SizedBox(height: EmiSpacing.sm),
+          Text(
+            item.description ?? 'Deskripsi budaya belum tersedia.',
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: StudentStyle.inkMuted),
+          ),
+          const SizedBox(height: EmiSpacing.sm),
+          Text(
+            'Kelas: ${item.schoolClass?.name ?? item.classId}',
+            style: const TextStyle(color: StudentStyle.inkMuted, fontSize: 12),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _CultureError extends StatelessWidget {
-  const _CultureError({required this.message, required this.onRetry});
+IconData _iconFor(String type) => switch (type) {
+  'image' => Icons.image_outlined,
+  'audio' => Icons.audiotrack_outlined,
+  'video' || 'youtube' => Icons.play_circle_outline,
+  'pdf' => Icons.picture_as_pdf_outlined,
+  'article' => Icons.article_outlined,
+  _ => Icons.link_outlined,
+};
 
-  final String message;
+String _typeLabel(String type) => switch (type) {
+  'image' => 'Gambar',
+  'audio' => 'Audio',
+  'video' => 'Video',
+  'youtube' => 'YouTube',
+  'pdf' => 'PDF',
+  'article' => 'Artikel',
+  _ => 'Tautan',
+};
+
+class _CultureError extends StatelessWidget {
+  const _CultureError({required this.onRetry});
+
   final VoidCallback onRetry;
 
   @override
@@ -212,39 +268,13 @@ class _CultureError extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(EmiSpacing.md),
       children: [
-        EmiCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(message),
-              const SizedBox(height: EmiSpacing.sm),
-              OutlinedButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Coba lagi'),
-              ),
-            ],
-          ),
+        StudentPlaceholder(
+          icon: Icons.cloud_off_outlined,
+          title: 'Budaya Belum Bisa Dimuat',
+          message: 'Periksa koneksi internetmu, lalu coba lagi.',
+          onRetry: onRetry,
         ),
       ],
-    );
-  }
-}
-
-class _CultureTypeChip extends StatelessWidget {
-  const _CultureTypeChip({required this.type});
-
-  final String type;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: EmiColors.secondary,
-        borderRadius: BorderRadius.circular(EmiRadii.pill),
-      ),
-      child: Text(type),
     );
   }
 }

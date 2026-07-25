@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/theme/emi_theme.dart';
 import '../../features/auth/domain/session_user.dart';
 import '../../features/auth/presentation/auth_controller.dart';
+import 'student_style.dart';
 
 class EmiScaffold extends ConsumerWidget {
   const EmiScaffold({
@@ -26,41 +27,53 @@ class EmiScaffold extends ConsumerWidget {
     final location = GoRouterState.of(context).uri.path;
 
     return Scaffold(
-      backgroundColor: EmiColors.background,
+      backgroundColor: StudentStyle.pageBackground,
       drawer: _StudentDrawer(user: user, location: location),
       body: SafeArea(
         child: Column(
           children: [
             if (title != null)
-              Container(
-                constraints: const BoxConstraints(minHeight: 64),
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: EmiSpacing.md),
-                decoration: const BoxDecoration(
-                  color: EmiColors.surface,
-                  border: Border(
-                    bottom: BorderSide(color: EmiColors.border, width: 1.5),
-                  ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  EmiSpacing.md,
+                  EmiSpacing.md,
+                  EmiSpacing.md,
+                  EmiSpacing.xs,
                 ),
-                child: Row(
-                  children: [
-                    Builder(
-                      builder: (context) => IconButton(
-                        key: const Key('studentMenuButton'),
-                        onPressed: () => Scaffold.of(context).openDrawer(),
-                        icon: const Icon(Icons.menu),
-                        tooltip: 'Buka menu',
-                      ),
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 60),
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: EmiSpacing.xs,
+                  ),
+                  decoration: BoxDecoration(
+                    color: StudentStyle.surface,
+                    borderRadius: BorderRadius.circular(
+                      StudentStyle.cardRadius,
                     ),
-                    const SizedBox(width: EmiSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        title!,
-                        style: Theme.of(context).textTheme.titleLarge,
-                        overflow: TextOverflow.ellipsis,
+                    boxShadow: StudentStyle.softShadow(),
+                  ),
+                  child: Row(
+                    children: [
+                      Builder(
+                        builder: (context) => IconButton(
+                          key: const Key('studentMenuButton'),
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                          icon: const Icon(Icons.menu, color: StudentStyle.ink),
+                          tooltip: 'Buka menu',
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: EmiSpacing.xs),
+                      Expanded(
+                        child: Text(
+                          title!,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(color: StudentStyle.ink),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             Expanded(child: child),
@@ -82,14 +95,21 @@ class _StudentDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      backgroundColor: EmiColors.surface,
+      backgroundColor: StudentStyle.pageBackground,
       child: SafeArea(
         child: ListView(
-          padding: EdgeInsets.zero,
+          padding: const EdgeInsets.symmetric(
+            horizontal: EmiSpacing.sm,
+            vertical: EmiSpacing.md,
+          ),
           children: [
             Container(
               padding: const EdgeInsets.all(EmiSpacing.md),
-              color: EmiColors.surfaceSoft,
+              decoration: BoxDecoration(
+                color: StudentStyle.surface,
+                borderRadius: BorderRadius.circular(StudentStyle.cardRadius),
+                boxShadow: StudentStyle.softShadow(),
+              ),
               child: Row(
                 children: [
                   _DrawerAvatar(user: user),
@@ -102,13 +122,21 @@ class _StudentDrawer extends StatelessWidget {
                           user?.fullName ?? 'Siswa EMI',
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleMedium,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(color: StudentStyle.ink),
+                        ),
+                        Text(
+                          'Ruang Siswa',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: EmiColors.primary),
                         ),
                         if (user?.email != null)
                           Text(
                             user!.email,
-                            maxLines: 2,
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: StudentStyle.inkMuted),
                           ),
                       ],
                     ),
@@ -116,7 +144,7 @@ class _StudentDrawer extends StatelessWidget {
                 ],
               ),
             ),
-            const Divider(height: 1, color: EmiColors.border),
+            const SizedBox(height: EmiSpacing.md),
             _DrawerItem(
               label: 'Beranda',
               icon: Icons.home_outlined,
@@ -191,29 +219,27 @@ class _DrawerAvatar extends StatelessWidget {
       (user?.fullName.isNotEmpty ?? false)
           ? user!.fullName.characters.first
           : '?',
+      style: const TextStyle(
+        color: EmiColors.primary,
+        fontWeight: FontWeight.w800,
+      ),
     );
     final avatarUrl = user?.avatarUrl?.trim();
 
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: EmiColors.border, width: 1.5),
-      ),
-      child: CircleAvatar(
-        radius: 28,
-        backgroundColor: EmiColors.secondary,
-        child: avatarUrl == null || avatarUrl.isEmpty
-            ? fallback
-            : ClipOval(
-                child: Image.network(
-                  avatarUrl,
-                  width: 56,
-                  height: 56,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Center(child: fallback),
-                ),
+    return CircleAvatar(
+      radius: 28,
+      backgroundColor: StudentStyle.tint,
+      child: avatarUrl == null || avatarUrl.isEmpty
+          ? fallback
+          : ClipOval(
+              child: Image.network(
+                avatarUrl,
+                width: 56,
+                height: 56,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => Center(child: fallback),
               ),
-      ),
+            ),
     );
   }
 }
@@ -233,26 +259,47 @@ class _DrawerItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      minVerticalPadding: EmiSpacing.sm,
-      leading: Icon(
-        icon,
-        size: 22,
-        color: selected ? EmiColors.primary : EmiColors.textPrimary,
-      ),
-      title: Text(
-        label,
-        style: TextStyle(
-          color: selected ? EmiColors.primary : EmiColors.textPrimary,
-          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(EmiRadii.pill),
+          onTap: () {
+            Navigator.of(context).pop();
+            if (!selected) context.go(route);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: EmiSpacing.md,
+              vertical: EmiSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: selected ? EmiColors.primarySoft : Colors.transparent,
+              borderRadius: BorderRadius.circular(EmiRadii.pill),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 22,
+                  color: selected ? EmiColors.primary : StudentStyle.inkMuted,
+                ),
+                const SizedBox(width: EmiSpacing.md),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: selected ? EmiColors.primary : StudentStyle.ink,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
-      selected: selected,
-      selectedTileColor: EmiColors.primarySoft,
-      onTap: () {
-        Navigator.of(context).pop();
-        if (!selected) context.go(route);
-      },
     );
   }
 }
@@ -274,40 +321,63 @@ class _EmiBottomNav extends StatelessWidget {
       Icons.person_outline,
     ];
 
-    return Container(
-      height: 64,
-      decoration: const BoxDecoration(
-        color: EmiColors.surface,
-        border: Border(top: BorderSide(color: EmiColors.border, width: 1.5)),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        EmiSpacing.md,
+        EmiSpacing.xs,
+        EmiSpacing.md,
+        EmiSpacing.sm,
       ),
-      child: Row(
-        children: List.generate(labels.length, (item) {
-          final active = item == index;
-          final color = active ? EmiColors.primary : Colors.black54;
-          return Expanded(
-            child: InkWell(
-              onTap: () => onTap(item),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icons[item], size: 22, color: color),
-                  const SizedBox(height: 2),
-                  Text(
-                    labels[item],
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: color,
-                      fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+      child: Container(
+        height: 64,
+        decoration: BoxDecoration(
+          color: StudentStyle.surface,
+          borderRadius: BorderRadius.circular(EmiRadii.pill),
+          boxShadow: StudentStyle.softShadow(opacity: 0.08),
+        ),
+        child: Row(
+          children: List.generate(labels.length, (item) {
+            final active = item == index;
+            final color = active ? EmiColors.primary : StudentStyle.inkMuted;
+            return Expanded(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(EmiRadii.pill),
+                onTap: () => onTap(item),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: EmiSpacing.md,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: active
+                            ? EmiColors.primarySoft
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(EmiRadii.pill),
+                      ),
+                      child: Icon(icons[item], size: 22, color: color),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text(
+                      labels[item],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: color,
+                        fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          );
-        }),
+            );
+          }),
+        ),
       ),
     );
   }

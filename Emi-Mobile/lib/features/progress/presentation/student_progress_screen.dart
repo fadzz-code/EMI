@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
-import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
+import '../../../shared/widgets/student_style.dart';
+import '../../../shared/widgets/student_widgets.dart';
 import '../data/student_progress.dart';
 import '../data/student_progress_providers.dart';
 
@@ -26,18 +27,12 @@ class StudentProgressScreen extends ConsumerWidget {
           error: (error, _) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
-              EmiCard(
-                child: Column(
-                  children: [
-                    Text(error.toString()),
-                    const SizedBox(height: EmiSpacing.md),
-                    ElevatedButton(
-                      onPressed: () =>
-                          ref.invalidate(studentProgressReportProvider(query)),
-                      child: const Text('Coba Lagi'),
-                    ),
-                  ],
-                ),
+              StudentPlaceholder(
+                icon: Icons.cloud_off_outlined,
+                title: 'Progress Belum Bisa Dimuat',
+                message: 'Periksa koneksi internetmu, lalu coba lagi.',
+                onRetry: () =>
+                    ref.invalidate(studentProgressReportProvider(query)),
               ),
             ],
           ),
@@ -45,8 +40,12 @@ class StudentProgressScreen extends ConsumerWidget {
             if (report.isEmpty) {
               return ListView(
                 padding: const EdgeInsets.all(EmiSpacing.md),
-                children: const [
-                  EmiCard(child: Text('Progress belum tersedia.')),
+                children: [
+                  StudentPlaceholder(
+                    icon: Icons.trending_up_outlined,
+                    title: 'Progress Belum Tersedia',
+                    message: 'Mulai belajar untuk melihat progressmu di sini.',
+                  ),
                 ],
               );
             }
@@ -55,14 +54,16 @@ class StudentProgressScreen extends ConsumerWidget {
               children: [
                 if (report.summary != null)
                   _SummaryCard(summary: report.summary!),
-                const SizedBox(height: EmiSpacing.lg),
-                Text(
+                const StudentSectionHeader(
                   'Progress Modul',
-                  style: Theme.of(context).textTheme.titleMedium,
+                  icon: Icons.menu_book_outlined,
                 ),
-                const SizedBox(height: EmiSpacing.md),
                 if (report.modules.items.isEmpty)
-                  const EmiCard(child: Text('Belum ada progress modul.'))
+                  StudentPlaceholder(
+                    icon: Icons.menu_book_outlined,
+                    title: 'Belum Ada Progress Modul',
+                    message: 'Progress modulmu akan muncul setelah kamu mulai.',
+                  )
                 else
                   ...report.modules.items.map(
                     (module) => Padding(
@@ -86,76 +87,90 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EmiCard(
+    return StudentCard(
       padding: EdgeInsets.zero,
+      clip: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(EmiSpacing.md),
+            padding: const EdgeInsets.all(EmiSpacing.lg),
             decoration: const BoxDecoration(
-              color: EmiColors.secondary,
-              border: Border(
-                bottom: BorderSide(color: EmiColors.border, width: 1.5),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFFFB877), Color(0xFFFF8A3D)],
               ),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   summary.fullName,
-                  style: Theme.of(context).textTheme.headlineMedium,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-                if (summary.className != null) Text(summary.className!),
+                if (summary.className != null)
+                  Text(
+                    summary.className!,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.92),
+                    ),
+                  ),
+                const SizedBox(height: EmiSpacing.md),
+                Text(
+                  '${summary.overallLearningProgressPercent.round()}%',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 36,
+                  ),
+                ),
+                const SizedBox(height: EmiSpacing.sm),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(EmiRadii.pill),
+                  child: LinearProgressIndicator(
+                    value: (summary.overallLearningProgressPercent / 100).clamp(
+                      0,
+                      1,
+                    ),
+                    minHeight: 10,
+                    backgroundColor: Colors.white.withValues(alpha: 0.3),
+                    valueColor: const AlwaysStoppedAnimation(Colors.white),
+                  ),
+                ),
               ],
             ),
           ),
           Padding(
             padding: const EdgeInsets.all(EmiSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Wrap(
+              spacing: EmiSpacing.sm,
+              runSpacing: EmiSpacing.sm,
               children: [
-                Text(
-                  '${summary.overallLearningProgressPercent.round()}%',
-                  style: Theme.of(context).textTheme.headlineMedium,
+                StudentStatChip(
+                  label: 'Modul selesai',
+                  value:
+                      '${summary.completedModules}/${summary.publishedModules}',
                 ),
-                const SizedBox(height: EmiSpacing.sm),
-                LinearProgressIndicator(
-                  value: (summary.overallLearningProgressPercent / 100).clamp(
-                    0,
-                    1,
+                StudentStatChip(
+                  label: 'Materi selesai',
+                  value:
+                      '${summary.completedLessons}/${summary.totalPublishedLessons}',
+                ),
+                StudentStatChip(
+                  label: 'Kuis selesai',
+                  value:
+                      '${summary.quizzesCompleted}/${summary.publishedQuizzes}',
+                ),
+                if (summary.averageBestQuizScorePercent != null)
+                  StudentStatChip(
+                    label: 'Rata-rata kuis',
+                    value: '${summary.averageBestQuizScorePercent!.round()}%',
                   ),
-                ),
-                const SizedBox(height: EmiSpacing.lg),
-                Wrap(
-                  spacing: EmiSpacing.sm,
-                  runSpacing: EmiSpacing.sm,
-                  children: [
-                    _StatPill(
-                      label: 'Modul selesai',
-                      value:
-                          '${summary.completedModules}/${summary.publishedModules}',
-                    ),
-                    _StatPill(
-                      label: 'Materi selesai',
-                      value:
-                          '${summary.completedLessons}/${summary.totalPublishedLessons}',
-                    ),
-                    _StatPill(
-                      label: 'Kuis selesai',
-                      value:
-                          '${summary.quizzesCompleted}/${summary.publishedQuizzes}',
-                    ),
-                    if (summary.averageBestQuizScorePercent != null)
-                      _StatPill(
-                        label: 'Rata-rata kuis',
-                        value:
-                            '${summary.averageBestQuizScorePercent!.round()}%',
-                      ),
-                  ],
-                ),
               ],
             ),
           ),
@@ -172,82 +187,39 @@ class _ModuleProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return StudentCard(
       onTap: module.id.isEmpty
           ? null
           : () => context.go('/student/modules/${module.id}'),
-      child: EmiCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    module.title,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-                _StatusPill(status: module.status),
-              ],
-            ),
-            const SizedBox(height: EmiSpacing.md),
-            LinearProgressIndicator(
-              value: (module.progressPercent / 100).clamp(0, 1),
-            ),
-            const SizedBox(height: EmiSpacing.sm),
-            Text(
-              '${module.progressPercent.round()}% • ${module.completedLessons}/${module.totalLessons} materi',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatPill extends StatelessWidget {
-  const _StatPill({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(EmiSpacing.sm),
-      decoration: BoxDecoration(
-        color: EmiColors.backgroundWarm,
-        borderRadius: BorderRadius.circular(EmiRadii.card),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label),
-          Text(value, style: Theme.of(context).textTheme.titleMedium),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  module.title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(color: StudentStyle.ink),
+                ),
+              ),
+              const SizedBox(width: EmiSpacing.sm),
+              StudentStatusChip(
+                label: studentProgressStatus(module.status),
+                status: module.status,
+              ),
+            ],
+          ),
+          const SizedBox(height: EmiSpacing.md),
+          StudentProgressBar(
+            value: module.progressPercent / 100,
+            caption:
+                '${module.progressPercent.round()}% • ${module.completedLessons}/${module.totalLessons} materi',
+          ),
         ],
       ),
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: EmiSpacing.sm,
-        vertical: 6,
-      ),
-      decoration: BoxDecoration(
-        color: status == 'completed' ? EmiColors.success : EmiColors.secondary,
-        borderRadius: BorderRadius.circular(EmiRadii.pill),
-      ),
-      child: Text(studentProgressStatus(status)),
     );
   }
 }

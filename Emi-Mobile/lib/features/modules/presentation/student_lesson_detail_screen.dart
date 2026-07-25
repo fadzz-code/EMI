@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
-import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
+import '../../../shared/widgets/student_style.dart';
+import '../../../shared/widgets/student_widgets.dart';
 import '../../dashboard/data/student_dashboard_providers.dart';
 import '../data/student_module.dart';
 import '../data/student_module_providers.dart';
@@ -40,7 +41,6 @@ class _StudentLessonDetailScreenState
       child: lesson.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => _ErrorState(
-          message: error.toString(),
           onRetry: () {
             ref.invalidate(studentLessonDetailProvider(widget.lessonId));
             ref.invalidate(studentLessonContentProvider(widget.lessonId));
@@ -51,23 +51,32 @@ class _StudentLessonDetailScreenState
           children: [
             _LessonCard(lesson: item, content: content),
             const SizedBox(height: EmiSpacing.lg),
-            ElevatedButton.icon(
-              onPressed: _submitting ? null : () => _complete(item),
-              icon: _submitting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.check_circle_outline),
-              label: const Text('Tandai Selesai'),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _submitting ? null : () => _complete(item),
+                icon: _submitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.check_circle_outline),
+                label: const Text('Tandai Selesai'),
+              ),
             ),
             const SizedBox(height: EmiSpacing.sm),
-            OutlinedButton(
-              onPressed: () => widget.moduleId == null
-                  ? context.go('/student/modules')
-                  : context.go('/student/modules/${widget.moduleId}'),
-              child: const Text('Kembali ke Modul'),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => widget.moduleId == null
+                    ? context.go('/student/modules')
+                    : context.go('/student/modules/${widget.moduleId}'),
+                child: const Text('Kembali ke Modul'),
+              ),
             ),
           ],
         ),
@@ -118,8 +127,9 @@ class _LessonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EmiCard(
+    return StudentCard(
       padding: EdgeInsets.zero,
+      clip: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -127,22 +137,30 @@ class _LessonCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(EmiSpacing.md),
             decoration: const BoxDecoration(
-              color: EmiColors.secondary,
-              border: Border(
-                bottom: BorderSide(color: EmiColors.border, width: 1.5),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFFFB877), Color(0xFFFF8A3D)],
               ),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   lesson.title,
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 if (lesson.description != null) ...[
                   const SizedBox(height: EmiSpacing.xs),
-                  Text(lesson.description!),
+                  Text(
+                    lesson.description!,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.92),
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -155,11 +173,23 @@ class _LessonCard extends StatelessWidget {
                 _MediaBlock(lesson: lesson, content: content),
                 const SizedBox(height: EmiSpacing.md),
                 if (lesson.hasTextContent)
-                  Text(lesson.contentBody!)
+                  Text(
+                    lesson.contentBody!,
+                    style: const TextStyle(
+                      color: StudentStyle.ink,
+                      height: 1.5,
+                    ),
+                  )
                 else if (lesson.hasExternalUrl)
-                  SelectableText(lesson.externalUrl!)
+                  SelectableText(
+                    lesson.externalUrl!,
+                    style: const TextStyle(color: EmiColors.primary),
+                  )
                 else
-                  const Text('Konten teks belum tersedia untuk lesson ini.'),
+                  const Text(
+                    'Konten teks belum tersedia untuk lesson ini.',
+                    style: TextStyle(color: StudentStyle.inkMuted),
+                  ),
               ],
             ),
           ),
@@ -179,37 +209,47 @@ class _MediaBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     if (lesson.media == null) return const SizedBox.shrink();
     return content.when(
-      loading: () => const EmiCard(child: Text('Memuat media...')),
-      error: (error, _) => EmiCard(child: Text('Media gagal dimuat: $error')),
+      loading: () => _mediaNotice(context, 'Memuat media...'),
+      error: (error, _) => _mediaNotice(context, 'Media gagal dimuat.'),
       data: (value) {
         if (value == null || !value.hasUrl) {
-          return const EmiCard(child: Text('URL media tidak tersedia.'));
+          return _mediaNotice(context, 'URL media tidak tersedia.');
         }
         if (lesson.media!.isImage) {
           return ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(EmiRadii.card),
             child: Image.network(
               value.url!,
               fit: BoxFit.cover,
               errorBuilder: (_, _, _) =>
-                  const EmiCard(child: Text('Gambar gagal dimuat.')),
+                  _mediaNotice(context, 'Gambar gagal dimuat.'),
             ),
           );
         }
-        return EmiCard(
-          child: SelectableText(
-            'Media ${lesson.media!.mimeType}: ${value.url}',
-          ),
+        return _mediaNotice(
+          context,
+          'Media ${lesson.media!.mimeType}: ${value.url}',
         );
       },
+    );
+  }
+
+  Widget _mediaNotice(BuildContext context, String text) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(EmiSpacing.md),
+      decoration: BoxDecoration(
+        color: StudentStyle.tint,
+        borderRadius: BorderRadius.circular(EmiRadii.card),
+      ),
+      child: Text(text, style: const TextStyle(color: StudentStyle.inkMuted)),
     );
   }
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
+  const _ErrorState({required this.onRetry});
 
-  final String message;
   final VoidCallback onRetry;
 
   @override
@@ -217,17 +257,11 @@ class _ErrorState extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(EmiSpacing.md),
       children: [
-        EmiCard(
-          child: Column(
-            children: [
-              Text(message),
-              const SizedBox(height: EmiSpacing.md),
-              ElevatedButton(
-                onPressed: onRetry,
-                child: const Text('Coba Lagi'),
-              ),
-            ],
-          ),
+        StudentPlaceholder(
+          icon: Icons.cloud_off_outlined,
+          title: 'Lesson Belum Bisa Dimuat',
+          message: 'Periksa koneksi internetmu, lalu coba lagi.',
+          onRetry: onRetry,
         ),
       ],
     );
