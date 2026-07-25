@@ -10,6 +10,7 @@ class StudentChatbotMessageRequest extends ApiFormRequest
     {
         return [
             'message' => ['required', 'string', 'min:2', 'max:1000'],
+            'conversation_id' => ['sometimes', 'nullable', 'uuid'],
         ];
     }
 }
