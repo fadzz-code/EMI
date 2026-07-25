@@ -193,6 +193,40 @@ void main() {
     );
   });
 
+  test('repository submits captureSource=mobile_esp32_bluetooth when provided', () async {
+    final repository = SpeakingRepository(
+      _dio((options, handler) {
+        final form = options.data as FormData;
+        expect(
+          form.fields
+              .firstWhere((field) => field.key == 'capture_source')
+              .value,
+          'mobile_esp32_bluetooth',
+        );
+        handler.resolve(
+          Response(
+            requestOptions: options,
+            statusCode: 201,
+            data: {'data': _attemptJson},
+          ),
+        );
+      }),
+      const DioErrorMapper(),
+    );
+    final temp = await File(
+      '${Directory.systemTemp.path}${Platform.pathSeparator}sample-hardware.wav',
+    ).writeAsBytes([1, 2, 3, 4]);
+    addTearDown(() => temp.delete().catchError((_) => temp));
+
+    final submitted = await repository.submitAttempt(
+      exerciseId: 'exercise-1',
+      file: SpeakingSubmissionFile(path: temp.path, sizeBytes: 4),
+      captureSource: 'mobile_esp32_bluetooth',
+    );
+
+    expect(submitted.id, 'attempt-1');
+  });
+
   test('repository maps backend error', () async {
     final repository = SpeakingRepository(
       _dio((options, handler) {

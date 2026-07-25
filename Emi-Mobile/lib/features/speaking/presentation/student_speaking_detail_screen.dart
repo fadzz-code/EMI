@@ -12,6 +12,7 @@ import '../../../shared/widgets/emi_scaffold.dart';
 import '../data/speaking_models.dart';
 import '../data/speaking_providers.dart';
 import '../data/speaking_repository.dart';
+import 'hardware_capture_controller.dart';
 import 'speaking_recorder_controller.dart';
 
 enum SpeakingPollingStop { terminal, timeout, error }
@@ -63,6 +64,8 @@ class StudentSpeakingDetailScreen extends ConsumerStatefulWidget {
       _StudentSpeakingDetailScreenState();
 }
 
+enum _CaptureSource { microphone, hardware }
+
 class _StudentSpeakingDetailScreenState
     extends ConsumerState<StudentSpeakingDetailScreen> {
   final _referencePlayer = AudioPlayer();
@@ -73,6 +76,7 @@ class _StudentSpeakingDetailScreenState
   String? _error;
   SpeakingPollingController? _polling;
   String? _pollingMessage;
+  var _captureSource = _CaptureSource.microphone;
 
   @override
   void dispose() {
@@ -86,12 +90,16 @@ class _StudentSpeakingDetailScreenState
   Widget build(BuildContext context) {
     final exercise = ref.watch(speakingExerciseProvider(widget.exerciseId));
     final recorder = ref.watch(speakingRecorderProvider(widget.exerciseId));
+    final hardware = ref.watch(hardwareCaptureProvider);
     final attempt = _attemptId == null
         ? null
         : ref.watch(speakingAttemptProvider(_attemptId!));
+    final hardwareBusy =
+        hardware.state == HardwareCaptureState.recording ||
+        hardware.state == HardwareCaptureState.finalizing;
 
     return PopScope(
-      canPop: !recorder.recording && !_submitting,
+      canPop: !recorder.recording && !hardwareBusy && !_submitting,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final leave = await showDialog<bool>(
@@ -140,31 +148,71 @@ class _StudentSpeakingDetailScreenState
               if (data.referenceAudio?.url != null ||
                   data.referenceAudioMediaId != null)
                 const SizedBox(height: EmiSpacing.md),
-              _RecorderCard(
-                state: recorder,
-                onStart: () async {
-                  await _referencePlayer.pause();
-                  await _previewPlayer.pause();
-                  await ref
-                      .read(
-                        speakingRecorderProvider(widget.exerciseId).notifier,
-                      )
-                      .start();
+              _CaptureSourceSwitch(
+                source: _captureSource,
+                disabled:
+                    recorder.recording || hardwareBusy || _submitting,
+                onChanged: (source) async {
+                  if (source == _captureSource) return;
+                  if (source == _CaptureSource.microphone) {
+                    await ref
+                        .read(hardwareCaptureProvider.notifier)
+                        .disconnect();
+                  } else {
+                    await ref
+                        .read(
+                          speakingRecorderProvider(
+                            widget.exerciseId,
+                          ).notifier,
+                        )
+                        .deleteRecording();
+                  }
+                  setState(() => _captureSource = source);
                 },
-                onStop: () => ref
-                    .read(speakingRecorderProvider(widget.exerciseId).notifier)
-                    .stop(),
-                onDelete: () async {
-                  await _previewPlayer.stop();
-                  await ref
-                      .read(
-                        speakingRecorderProvider(widget.exerciseId).notifier,
-                      )
-                      .deleteRecording();
-                },
-                onOpenSettings: openAppSettings,
               ),
-              if (recorder.path != null) ...[
+              const SizedBox(height: EmiSpacing.md),
+              if (_captureSource == _CaptureSource.microphone)
+                _RecorderCard(
+                  state: recorder,
+                  onStart: () async {
+                    await _referencePlayer.pause();
+                    await _previewPlayer.pause();
+                    await ref
+                        .read(
+                          speakingRecorderProvider(
+                            widget.exerciseId,
+                          ).notifier,
+                        )
+                        .start();
+                  },
+                  onStop: () => ref
+                      .read(
+                        speakingRecorderProvider(widget.exerciseId).notifier,
+                      )
+                      .stop(),
+                  onDelete: () async {
+                    await _previewPlayer.stop();
+                    await ref
+                        .read(
+                          speakingRecorderProvider(
+                            widget.exerciseId,
+                          ).notifier,
+                        )
+                        .deleteRecording();
+                  },
+                  onOpenSettings: openAppSettings,
+                )
+              else
+                _HardwareCaptureCard(
+                  data: hardware,
+                  onConnect: () =>
+                      ref.read(hardwareCaptureProvider.notifier).connect(),
+                  onDisconnect: () =>
+                      ref.read(hardwareCaptureProvider.notifier).disconnect(),
+                  onOpenSettings: openAppSettings,
+                ),
+              if (_captureSource == _CaptureSource.microphone &&
+                  recorder.path != null) ...[
                 const SizedBox(height: EmiSpacing.md),
                 _AudioBox(
                   title: 'Preview Rekaman',
@@ -178,7 +226,33 @@ class _StudentSpeakingDetailScreenState
                   submitting: _submitting,
                   progress: _progress,
                   error: _error,
-                  onSubmit: () => _submit(recorder.path!, recorder.duration),
+                  onSubmit: () => _submit(
+                    recorder.path!,
+                    recorder.duration,
+                    'mobile_microphone',
+                  ),
+                ),
+              ],
+              if (_captureSource == _CaptureSource.hardware &&
+                  hardware.recordedPath != null) ...[
+                const SizedBox(height: EmiSpacing.md),
+                _AudioBox(
+                  title: 'Preview Rekaman Alat',
+                  player: _previewPlayer,
+                  url: hardware.recordedPath!,
+                  beforePlay: () => _referencePlayer.pause(),
+                  local: true,
+                ),
+                const SizedBox(height: EmiSpacing.md),
+                _SubmitCard(
+                  submitting: _submitting,
+                  progress: _progress,
+                  error: _error,
+                  onSubmit: () => _submit(
+                    hardware.recordedPath!,
+                    Duration(seconds: hardware.recordedDurationSeconds),
+                    'mobile_esp32_bluetooth',
+                  ),
                 ),
               ],
               if (attempt != null) ...[
@@ -201,7 +275,11 @@ class _StudentSpeakingDetailScreenState
     );
   }
 
-  Future<void> _submit(String path, Duration duration) async {
+  Future<void> _submit(
+    String path,
+    Duration duration,
+    String captureSource,
+  ) async {
     if (_submitting) return;
     setState(() {
       _submitting = true;
@@ -219,6 +297,7 @@ class _StudentSpeakingDetailScreenState
             durationSeconds: duration.inSeconds == 0
                 ? null
                 : duration.inSeconds,
+            captureSource: captureSource,
             onSendProgress: (sent, total) {
               if (mounted && total > 0) {
                 setState(() => _progress = sent / total);
@@ -347,6 +426,150 @@ class _RecorderCard extends StatelessWidget {
                   onPressed: onOpenSettings,
                   child: const Text('Buka Pengaturan'),
                 ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CaptureSourceSwitch extends StatelessWidget {
+  const _CaptureSourceSwitch({
+    required this.source,
+    required this.disabled,
+    required this.onChanged,
+  });
+
+  final _CaptureSource source;
+  final bool disabled;
+  final ValueChanged<_CaptureSource> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: disabled
+                ? null
+                : () => onChanged(_CaptureSource.microphone),
+            icon: const Icon(Icons.mic),
+            label: const Text('Mikrofon HP'),
+            style: OutlinedButton.styleFrom(
+              backgroundColor: source == _CaptureSource.microphone
+                  ? Theme.of(context).colorScheme.primaryContainer
+                  : null,
+            ),
+          ),
+        ),
+        const SizedBox(width: EmiSpacing.sm),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: disabled
+                ? null
+                : () => onChanged(_CaptureSource.hardware),
+            icon: const Icon(Icons.bluetooth_audio),
+            label: const Text('Alat Speaking EMI'),
+            style: OutlinedButton.styleFrom(
+              backgroundColor: source == _CaptureSource.hardware
+                  ? Theme.of(context).colorScheme.primaryContainer
+                  : null,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HardwareCaptureCard extends StatelessWidget {
+  const _HardwareCaptureCard({
+    required this.data,
+    required this.onConnect,
+    required this.onDisconnect,
+    required this.onOpenSettings,
+  });
+
+  final HardwareCaptureData data;
+  final VoidCallback onConnect;
+  final VoidCallback onDisconnect;
+  final VoidCallback onOpenSettings;
+
+  String get _statusLabel {
+    switch (data.state) {
+      case HardwareCaptureState.disconnected:
+        return 'Alat belum terhubung.';
+      case HardwareCaptureState.connecting:
+        return 'Menghubungkan ke alat...';
+      case HardwareCaptureState.connected:
+        return 'Alat siap. Tekan tombol PTT pada alat untuk mulai merekam.';
+      case HardwareCaptureState.recording:
+        return 'Sedang merekam dari alat...';
+      case HardwareCaptureState.finalizing:
+        return 'Menyiapkan rekaman...';
+      case HardwareCaptureState.captured:
+        return 'Rekaman dari alat siap dikirim.';
+      case HardwareCaptureState.error:
+        return 'Terjadi masalah pada alat.';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final connected =
+        data.state != HardwareCaptureState.disconnected &&
+        data.state != HardwareCaptureState.error;
+    final busy =
+        data.state == HardwareCaptureState.connecting ||
+        data.state == HardwareCaptureState.recording ||
+        data.state == HardwareCaptureState.finalizing;
+
+    return EmiCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Alat Speaking EMI',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: EmiSpacing.sm),
+          Text(_statusLabel),
+          if (data.error != null) ...[
+            const SizedBox(height: EmiSpacing.sm),
+            Text(
+              data.error!,
+              style: const TextStyle(color: EmiColors.error),
+            ),
+          ],
+          const SizedBox(height: EmiSpacing.md),
+          Wrap(
+            spacing: EmiSpacing.sm,
+            children: [
+              if (!connected)
+                FilledButton.icon(
+                  onPressed: busy ? null : onConnect,
+                  icon: const Icon(Icons.bluetooth_searching),
+                  label: Text(
+                    data.state == HardwareCaptureState.connecting
+                        ? 'Menghubungkan...'
+                        : 'Sambungkan Alat',
+                  ),
+                )
+              else
+                OutlinedButton.icon(
+                  onPressed:
+                      data.state == HardwareCaptureState.recording ||
+                          data.state == HardwareCaptureState.finalizing
+                      ? null
+                      : onDisconnect,
+                  icon: const Icon(Icons.bluetooth_disabled),
+                  label: const Text('Putuskan'),
+                ),
+              OutlinedButton(
+                onPressed: onOpenSettings,
+                child: const Text('Pengaturan Bluetooth'),
+              ),
             ],
           ),
         ],
