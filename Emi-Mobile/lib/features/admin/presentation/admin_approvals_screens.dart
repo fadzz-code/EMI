@@ -13,6 +13,7 @@ import '../data/admin_crud_providers.dart';
 import '../data/admin_crud_repository.dart';
 import '../data/admin_providers.dart';
 import 'admin_shell.dart';
+import 'admin_widgets.dart';
 
 class AdminApprovalsScreen extends ConsumerStatefulWidget {
   const AdminApprovalsScreen({super.key});
@@ -204,58 +205,56 @@ class _ApprovalTile extends StatelessWidget {
   final RegistrationApprovalAdmin item;
 
   @override
-  Widget build(BuildContext context) => EmiCard(
+  Widget build(BuildContext context) => AdminCard(
     key: Key('adminApprovalRow-${item.id}'),
-    child: InkWell(
-      onTap: () => context.push('/admin/approvals/${item.id}'),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(child: Icon(_roleIcon(item.requestedRole))),
-          const SizedBox(width: EmiSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+    onTap: () => context.push('/admin/approvals/${item.id}'),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CircleAvatar(child: Icon(_roleIcon(item.requestedRole))),
+        const SizedBox(width: EmiSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.userName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                item.userEmail,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                item.schoolName ?? 'Belum Memilih Sekolah',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (item.createdAt != null)
                 Text(
-                  item.userName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium,
+                  'Diajukan ${_dateLabel(item.createdAt!)}',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  item.userEmail,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  item.schoolName ?? 'Belum Memilih Sekolah',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (item.createdAt != null)
-                  Text(
-                    'Diajukan ${_dateLabel(item.createdAt!)}',
-                    style: Theme.of(context).textTheme.bodySmall,
+              const SizedBox(height: EmiSpacing.xs),
+              Wrap(
+                spacing: EmiSpacing.xs,
+                children: [
+                  EmiStatusBadge(label: _roleLabel(item.requestedRole)),
+                  EmiStatusBadge(
+                    label: _statusLabel(item.status),
+                    tone: emiStatusToneFromKey(item.status),
                   ),
-                const SizedBox(height: EmiSpacing.xs),
-                Wrap(
-                  spacing: EmiSpacing.xs,
-                  children: [
-                    EmiStatusBadge(label: _roleLabel(item.requestedRole)),
-                    EmiStatusBadge(
-                      label: _statusLabel(item.status),
-                      tone: emiStatusToneFromKey(item.status),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ),
-          const Icon(Icons.chevron_right),
-        ],
-      ),
+        ),
+        const Icon(Icons.chevron_right),
+      ],
     ),
   );
 }
