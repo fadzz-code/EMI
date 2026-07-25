@@ -358,7 +358,7 @@ class StudentMetricTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(EmiSpacing.md),
+      padding: const EdgeInsets.all(EmiSpacing.sm),
       decoration: BoxDecoration(
         color: StudentStyle.surface,
         borderRadius: BorderRadius.circular(StudentStyle.cardRadius),
@@ -367,24 +367,29 @@ class StudentMetricTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 34,
-            height: 34,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
               color: highlight ? EmiColors.primarySoft : StudentStyle.tint,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, size: 18, color: EmiColors.primary),
           ),
-          const SizedBox(height: EmiSpacing.sm),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: highlight ? EmiColors.primary : StudentStyle.ink,
+          const SizedBox(height: EmiSpacing.xs),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: highlight ? EmiColors.primary : StudentStyle.ink,
+              ),
             ),
           ),
           Text(

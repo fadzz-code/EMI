@@ -108,7 +108,7 @@ class _StatsGrid extends StatelessWidget {
           mainAxisSpacing: EmiSpacing.md,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: 1.5,
+          childAspectRatio: 1.35,
           children: [
             StudentMetricTile(
               icon: Icons.menu_book_outlined,
@@ -219,7 +219,7 @@ class _QuickMenu extends StatelessWidget {
           mainAxisSpacing: EmiSpacing.sm,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: 0.95,
+          childAspectRatio: 0.9,
           children: [
             _QuickMenuItem(
               key: const Key('studentQuickMenuModules'),
@@ -288,9 +288,10 @@ class _QuickMenuItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(StudentStyle.cardRadius),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(EmiSpacing.sm),
+            padding: const EdgeInsets.all(EmiSpacing.xs),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
                   width: 40,
@@ -306,6 +307,7 @@ class _QuickMenuItem extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: StudentStyle.ink),
