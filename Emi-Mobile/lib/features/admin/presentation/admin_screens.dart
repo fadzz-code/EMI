@@ -11,6 +11,7 @@ import '../../../shared/widgets/status_badge.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../data/admin_providers.dart';
 import '../data/admin_repository.dart';
+import 'admin_dashboard_widgets.dart';
 import 'admin_shell.dart';
 
 class AdminDashboardScreen extends ConsumerWidget {
@@ -35,7 +36,7 @@ class AdminDashboardScreen extends ConsumerWidget {
           data: (data) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
-              RoleHeroHeader(
+              AdminHeroHeader(
                 greeting: 'Selamat datang,',
                 name: user?.fullName ?? 'Admin EMI',
                 message: 'Mari periksa kegiatan EMI hari ini.',
@@ -69,7 +70,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                   mainAxisExtent: 150,
                   children: [
                     for (final item in data.items)
-                      SimpleStatItem(
+                      AdminMetricCard(
                         label: item.label,
                         value: item.value,
                         icon: _metricIcon(item),
@@ -85,13 +86,14 @@ class AdminDashboardScreen extends ConsumerWidget {
               ),
               const SizedBox(height: EmiSpacing.md),
               Wrap(
+                alignment: WrapAlignment.center,
                 spacing: EmiSpacing.sm,
                 runSpacing: EmiSpacing.sm,
                 children: [
                   for (final feature in AdminFeature.values.where(
                     (feature) => feature.isMobileImplemented,
                   ))
-                    QuickActionItem(
+                    AdminQuickActionItem(
                       label: feature.label,
                       icon: _featureIcon(feature),
                       onTap: () => context.go(feature.route),

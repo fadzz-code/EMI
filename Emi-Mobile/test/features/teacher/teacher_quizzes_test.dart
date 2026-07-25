@@ -10,7 +10,7 @@ import 'package:emi_mobile/features/teacher/data/teacher_providers.dart';
 import 'package:emi_mobile/features/teacher/data/teacher_quiz_repository.dart';
 import 'package:emi_mobile/features/teacher/presentation/teacher_dashboard_screen.dart';
 import 'package:emi_mobile/features/teacher/presentation/teacher_quizzes_screens.dart';
-import 'package:emi_mobile/shared/widgets/emi_card.dart';
+import 'package:emi_mobile/features/teacher/presentation/teacher_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -584,7 +584,7 @@ void main() {
               .map(
                 (label) => find.ancestor(
                   of: label.first,
-                  matching: find.byType(EmiCard),
+                  matching: find.byType(TeacherListCard),
                 ),
               )
               .toList();

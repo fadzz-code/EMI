@@ -6,6 +6,7 @@ import '../../../app/theme/emi_theme.dart';
 import '../../auth/domain/session_user.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../data/admin_providers.dart';
+import 'admin_style.dart';
 
 class AdminShell extends ConsumerWidget {
   const AdminShell({
@@ -43,6 +44,7 @@ class AdminShell extends ConsumerWidget {
       },
       child: Scaffold(
         key: Key('adminScreen-$domain'),
+        backgroundColor: EmiColors.background,
         drawer: _AdminDrawer(user: user, location: location),
         bottomNavigationBar: showQuickNavigation
             ? SafeArea(
@@ -57,9 +59,12 @@ class AdminShell extends ConsumerWidget {
                 height: 64,
                 padding: const EdgeInsets.symmetric(horizontal: EmiSpacing.md),
                 decoration: const BoxDecoration(
-                  color: EmiColors.background,
+                  color: EmiColors.surface,
                   border: Border(
-                    bottom: BorderSide(color: EmiColors.border, width: 1.5),
+                    bottom: BorderSide(
+                      color: AdminStyle.ink,
+                      width: AdminStyle.cardBorderWidth,
+                    ),
                   ),
                 ),
                 child: Row(
@@ -118,12 +123,14 @@ class _AdminDrawer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Drawer(
+      backgroundColor: EmiColors.surface,
       child: SafeArea(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            Padding(
+            Container(
               padding: const EdgeInsets.all(EmiSpacing.md),
+              color: EmiColors.surfaceSoft,
               child: Row(
                 children: [
                   _Avatar(user: user),
@@ -144,7 +151,7 @@ class _AdminDrawer extends ConsumerWidget {
                 ],
               ),
             ),
-            const Divider(height: 1),
+            const Divider(height: 1, color: AdminStyle.ink),
             _Item(
               label: 'Beranda',
               icon: Icons.home_outlined,
@@ -206,7 +213,7 @@ class _AdminDrawer extends ConsumerWidget {
               route: '/admin/profile',
               selected: location.startsWith('/admin/profile'),
             ),
-            const Divider(height: 1),
+            const Divider(height: 1, color: AdminStyle.ink),
             ListTile(
               key: const Key('adminLogoutButton'),
               leading: const Icon(Icons.logout),
@@ -275,8 +282,17 @@ class AdminQuickNavigation extends StatelessWidget {
         'adminQuickSettings',
       ),
     ];
-    return SizedBox(
+    return Container(
       height: 64,
+      decoration: const BoxDecoration(
+        color: EmiColors.surface,
+        border: Border(
+          top: BorderSide(
+            color: AdminStyle.ink,
+            width: AdminStyle.cardBorderWidth,
+          ),
+        ),
+      ),
       child: Row(
         children: [
           for (final item in items)
@@ -288,13 +304,20 @@ class AdminQuickNavigation extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(item.$2, size: 22),
+                    Icon(
+                      item.$2,
+                      size: 22,
+                      color: item.$4 ? EmiColors.primary : AdminStyle.ink,
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       item.$1,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelSmall,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: item.$4 ? EmiColors.primary : AdminStyle.ink,
+                        fontWeight: item.$4 ? FontWeight.w700 : FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
@@ -359,20 +382,26 @@ class _Avatar extends StatelessWidget {
           : 'A',
     );
     final url = user?.avatarUrl?.trim();
-    return CircleAvatar(
-      radius: 28,
-      backgroundColor: EmiColors.secondary,
-      child: url == null || url.isEmpty
-          ? fallback
-          : ClipOval(
-              child: Image.network(
-                url,
-                width: 56,
-                height: 56,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Center(child: fallback),
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: AdminStyle.ink, width: 1.5),
+      ),
+      child: CircleAvatar(
+        radius: 28,
+        backgroundColor: EmiColors.secondary,
+        child: url == null || url.isEmpty
+            ? fallback
+            : ClipOval(
+                child: Image.network(
+                  url,
+                  width: 56,
+                  height: 56,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Center(child: fallback),
+                ),
               ),
-            ),
+      ),
     );
   }
 }
@@ -401,10 +430,20 @@ class _Item extends StatelessWidget {
           left: indented ? EmiSpacing.lg : EmiSpacing.md,
           right: EmiSpacing.md,
         ),
-        leading: Icon(icon, size: 22),
-        title: Text(label),
+        leading: Icon(
+          icon,
+          size: 22,
+          color: selected ? EmiColors.primary : AdminStyle.ink,
+        ),
+        title: Text(
+          label,
+          style: TextStyle(
+            color: selected ? EmiColors.primary : AdminStyle.ink,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
         selected: selected,
-        selectedTileColor: EmiColors.secondary,
+        selectedTileColor: EmiColors.primarySoft,
         onTap: () {
           Navigator.of(context).pop();
           if (!selected) context.go(route);

@@ -76,32 +76,61 @@ class _HeroCard extends StatelessWidget {
       padding: const EdgeInsets.all(EmiSpacing.lg),
       decoration: BoxDecoration(
         color: EmiColors.secondary,
-        border: Border.all(color: EmiColors.border, width: 1.5),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [EmiShadows.hard],
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: EmiColors.border, width: 2),
+        boxShadow: const [
+          BoxShadow(color: EmiColors.border, offset: Offset(4, 5)),
+        ],
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            width: 56,
+            height: 56,
             decoration: BoxDecoration(
               color: EmiColors.surface,
               borderRadius: BorderRadius.circular(EmiRadii.pill),
+              border: Border.all(color: EmiColors.border, width: 1.5),
             ),
-            child: Text(summary.classInfo?.name ?? 'Belajar EMI'),
+            child: const Icon(
+              Icons.school_outlined,
+              size: 30,
+              color: EmiColors.textPrimary,
+            ),
           ),
-          const SizedBox(height: EmiSpacing.sm),
-          Text(
-            'Halo, $name',
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: EmiSpacing.xs),
-          Text(summary.classInfo?.schoolName ?? 'Lanjutkan belajar Mekongga.'),
-          const SizedBox(height: EmiSpacing.md),
-          ElevatedButton(
-            onPressed: () => context.go('/student/modules'),
-            child: const Text('Lanjut Belajar'),
+          const SizedBox(width: EmiSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Halo,',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: EmiColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: EmiColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: EmiSpacing.xs),
+                Text(
+                  summary.classInfo?.schoolName ??
+                      'Lanjutkan belajar Mekongga.',
+                  style: const TextStyle(color: EmiColors.textPrimary),
+                ),
+                const SizedBox(height: EmiSpacing.md),
+                ElevatedButton(
+                  onPressed: () => context.go('/student/modules'),
+                  child: const Text('Lanjut Belajar'),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -158,12 +187,23 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EmiCard(
+    return Container(
+      padding: const EdgeInsets.all(EmiSpacing.md),
+      decoration: BoxDecoration(
+        color: EmiColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: EmiColors.border, width: 1.5),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(value, style: Theme.of(context).textTheme.headlineMedium),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              color: color ?? EmiColors.textPrimary,
+            ),
+          ),
           const SizedBox(height: EmiSpacing.xs),
           Text(label),
         ],
@@ -287,17 +327,28 @@ class _QuickMenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: EmiCard(
-        padding: const EdgeInsets.all(EmiSpacing.sm),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon),
-            const SizedBox(height: EmiSpacing.xs),
-            Text(label),
-          ],
+    return Container(
+      decoration: BoxDecoration(
+        color: EmiColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: EmiColors.border, width: 1.5),
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(EmiSpacing.sm),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: EmiColors.primary),
+                const SizedBox(height: EmiSpacing.xs),
+                Text(label),
+              ],
+            ),
+          ),
         ),
       ),
     );

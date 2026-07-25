@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/emi_theme.dart';
 import '../../auth/domain/session_user.dart';
 import '../../auth/presentation/auth_controller.dart';
+import 'teacher_style.dart';
 
 class TeacherShell extends ConsumerWidget {
   const TeacherShell({
@@ -37,6 +38,7 @@ class TeacherShell extends ConsumerWidget {
         }
       },
       child: Scaffold(
+        backgroundColor: TeacherStyle.pageBackground,
         drawer: _TeacherDrawer(user: user, location: location),
         body: SafeArea(
           child: Column(
@@ -44,11 +46,9 @@ class TeacherShell extends ConsumerWidget {
               Container(
                 height: 64,
                 padding: const EdgeInsets.symmetric(horizontal: EmiSpacing.md),
-                decoration: const BoxDecoration(
-                  color: EmiColors.background,
-                  border: Border(
-                    bottom: BorderSide(color: EmiColors.border, width: 1.5),
-                  ),
+                decoration: BoxDecoration(
+                  color: TeacherStyle.pageBackground,
+                  boxShadow: TeacherStyle.softShadow(opacity: 0.04),
                 ),
                 child: Row(
                   children: [
@@ -57,7 +57,10 @@ class TeacherShell extends ConsumerWidget {
                         builder: (context) => IconButton(
                           key: const Key('teacherMenuButton'),
                           onPressed: () => Scaffold.of(context).openDrawer(),
-                          icon: const Icon(Icons.menu),
+                          icon: const Icon(
+                            Icons.menu_rounded,
+                            color: TeacherStyle.ink,
+                          ),
                         ),
                       )
                     else
@@ -73,13 +76,18 @@ class TeacherShell extends ConsumerWidget {
                             context.go(fallbackRoute!);
                           }
                         },
-                        icon: const Icon(Icons.arrow_back),
+                        icon: const Icon(
+                          Icons.arrow_back_rounded,
+                          color: TeacherStyle.ink,
+                        ),
                       ),
                     const SizedBox(width: EmiSpacing.sm),
                     Expanded(
                       child: Text(
                         title,
-                        style: Theme.of(context).textTheme.titleLarge,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: TeacherStyle.ink,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -88,7 +96,10 @@ class TeacherShell extends ConsumerWidget {
                       IconButton(
                         tooltip: 'Profil',
                         onPressed: () => context.go('/teacher/profile'),
-                        icon: const Icon(Icons.account_circle_outlined),
+                        icon: const Icon(
+                          Icons.account_circle_outlined,
+                          color: TeacherStyle.ink,
+                        ),
                       ),
                   ],
                 ),
@@ -113,20 +124,36 @@ class _TeacherBottomNav extends StatelessWidget {
     final items = [
       (
         Icons.dashboard_outlined,
-        Icons.dashboard,
+        Icons.dashboard_rounded,
         'Beranda',
         '/teacher/dashboard',
       ),
-      (Icons.groups_outlined, Icons.groups, 'Kelas', '/teacher/classes'),
-      (Icons.menu_book_outlined, Icons.menu_book, 'Modul', '/teacher/modules'),
-      (Icons.quiz_outlined, Icons.quiz, 'Kuis', '/teacher/quizzes'),
+      (
+        Icons.groups_outlined,
+        Icons.groups_rounded,
+        'Kelas',
+        '/teacher/classes',
+      ),
+      (
+        Icons.menu_book_outlined,
+        Icons.menu_book_rounded,
+        'Modul',
+        '/teacher/modules',
+      ),
+      (Icons.quiz_outlined, Icons.quiz_rounded, 'Kuis', '/teacher/quizzes'),
     ];
     return Container(
-      decoration: const BoxDecoration(
-        color: EmiColors.surface,
-        border: Border(top: BorderSide(color: EmiColors.border, width: 1.5)),
+      padding: const EdgeInsets.fromLTRB(EmiSpacing.sm, 8, EmiSpacing.sm, 8),
+      decoration: BoxDecoration(
+        color: TeacherStyle.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
       ),
-      padding: const EdgeInsets.fromLTRB(EmiSpacing.xs, 6, EmiSpacing.xs, 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: items.map((item) {
@@ -136,14 +163,21 @@ class _TeacherBottomNav extends StatelessWidget {
             child: InkWell(
               borderRadius: BorderRadius.circular(EmiRadii.pill),
               onTap: () => context.go(item.$4),
-              child: Padding(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
                 padding: const EdgeInsets.symmetric(vertical: 6),
+                decoration: BoxDecoration(
+                  color: selected ? TeacherStyle.tint : Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       selected ? item.$2 : item.$1,
-                      color: selected ? EmiColors.textPrimary : Colors.black54,
+                      color: selected
+                          ? EmiColors.primary
+                          : TeacherStyle.inkMuted,
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -151,11 +185,11 @@ class _TeacherBottomNav extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: selected
-                            ? FontWeight.w800
-                            : FontWeight.w600,
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                         color: selected
-                            ? EmiColors.textPrimary
-                            : Colors.black54,
+                            ? EmiColors.primary
+                            : TeacherStyle.inkMuted,
                       ),
                     ),
                   ],
@@ -177,34 +211,63 @@ class _TeacherDrawer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => Drawer(
+    backgroundColor: TeacherStyle.surface,
     child: SafeArea(
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(EmiSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Container(
+            padding: const EdgeInsets.all(EmiSpacing.lg),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [EmiColors.primary, Color(0xFFFFA968)],
+              ),
+            ),
+            child: Row(
               children: [
                 CircleAvatar(
                   radius: 28,
+                  backgroundColor: Colors.white,
+                  foregroundColor: EmiColors.primary,
                   child: Text(
                     (user?.fullName.isNotEmpty ?? false)
                         ? user!.fullName.characters.first
                         : 'G',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                 ),
-                const SizedBox(height: EmiSpacing.sm),
-                Text(
-                  user?.fullName ?? 'Guru EMI',
-                  style: Theme.of(context).textTheme.titleMedium,
+                const SizedBox(width: EmiSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user?.fullName ?? 'Guru EMI',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleMedium?.copyWith(color: Colors.white),
+                      ),
+                      if (user?.email != null)
+                        Text(
+                          user!.email,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                          ),
+                        ),
+                      Text(
+                        'Guru',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                if (user?.email != null) Text(user!.email),
-                const Text('Guru'),
               ],
             ),
           ),
-          const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.fromLTRB(
               EmiSpacing.md,
@@ -214,7 +277,9 @@ class _TeacherDrawer extends ConsumerWidget {
             ),
             child: Text(
               'Menu EMI',
-              style: Theme.of(context).textTheme.labelLarge,
+              style: Theme.of(
+                context,
+              ).textTheme.labelLarge?.copyWith(color: TeacherStyle.inkMuted),
             ),
           ),
           _Item(
@@ -260,11 +325,20 @@ class _TeacherDrawer extends ConsumerWidget {
             route: '/teacher/progress',
             selected: location.startsWith('/teacher/progress'),
           ),
-          const Divider(height: 1),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: EmiSpacing.xs),
+            child: Divider(height: 1, color: TeacherStyle.tint),
+          ),
           ListTile(
             key: const Key('teacherLogoutButton'),
-            leading: const Icon(Icons.logout),
-            title: const Text('Keluar'),
+            leading: const Icon(
+              Icons.logout_rounded,
+              color: TeacherStyle.inkMuted,
+            ),
+            title: const Text(
+              'Keluar',
+              style: TextStyle(color: TeacherStyle.inkMuted),
+            ),
             onTap: () async {
               Navigator.of(context).pop();
               await ref.read(authControllerProvider.notifier).logout();
@@ -290,14 +364,30 @@ class _Item extends StatelessWidget {
   final bool selected;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    leading: Icon(icon),
-    title: Text(label),
-    selected: selected,
-    selectedTileColor: EmiColors.secondary,
-    onTap: () {
-      Navigator.of(context).pop();
-      if (route != null && !selected) context.go(route!);
-    },
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: EmiSpacing.sm, vertical: 2),
+    child: Material(
+      color: selected ? TeacherStyle.tint : Colors.transparent,
+      borderRadius: BorderRadius.circular(14),
+      child: ListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        leading: Icon(
+          icon,
+          color: selected ? EmiColors.primary : TeacherStyle.ink,
+        ),
+        title: Text(
+          label,
+          style: TextStyle(
+            color: selected ? EmiColors.primary : TeacherStyle.ink,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+        selected: selected,
+        onTap: () {
+          Navigator.of(context).pop();
+          if (route != null && !selected) context.go(route!);
+        },
+      ),
+    ),
   );
 }

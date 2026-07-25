@@ -14,6 +14,7 @@ import '../../../shared/widgets/role_dashboard_widgets.dart';
 import '../../culture/data/culture_models.dart';
 import '../data/teacher_providers.dart';
 import 'teacher_shell.dart';
+import 'teacher_widgets.dart';
 
 typedef TeacherCultureFilePicker = Future<PlatformFile?> Function(String type);
 final teacherCultureFilePickerProvider = Provider<TeacherCultureFilePicker>(
@@ -86,7 +87,11 @@ class _CultureScreenState extends ConsumerState<TeacherCultureScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(EmiSpacing.md),
                 children: [
-                  const Text('Kelola materi budaya untuk kelas Anda.'),
+                  const TeacherPageHeader(
+                    icon: Icons.public_outlined,
+                    title: 'Budaya Mekongga',
+                    subtitle: 'Kelola materi budaya untuk kelas Anda.',
+                  ),
                   const SizedBox(height: EmiSpacing.md),
                   if (classPage.items.length > 1) ...[
                     DropdownButtonFormField<String>(
@@ -338,21 +343,31 @@ class _TeacherCultureDetailScreenState
                   ),
                 ],
               ),
-              const SizedBox(height: EmiSpacing.lg),
-              Text(
+              TeacherSectionHeader(
                 'Informasi Budaya',
-                style: Theme.of(context).textTheme.titleLarge,
+                icon: Icons.info_outline,
               ),
-              _Field(
-                'Deskripsi',
-                item.description?.isNotEmpty == true ? item.description! : '-',
+              TeacherListCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _Field(
+                      'Deskripsi',
+                      item.description?.isNotEmpty == true
+                          ? item.description!
+                          : '-',
+                    ),
+                    _Field('Jenis konten', _type(item.contentType)),
+                    _Field('Urutan tampil', '${item.displayOrder ?? 1}'),
+                    _Field('Status', _status(item.status)),
+                    _Field('Terakhir diubah', _date(item.updatedAt)),
+                  ],
+                ),
               ),
-              _Field('Jenis konten', _type(item.contentType)),
-              _Field('Urutan tampil', '${item.displayOrder ?? 1}'),
-              _Field('Status', _status(item.status)),
-              _Field('Terakhir diubah', _date(item.updatedAt)),
-              const SizedBox(height: EmiSpacing.lg),
-              Text('Pratinjau', style: Theme.of(context).textTheme.titleLarge),
+              TeacherSectionHeader(
+                'Pratinjau',
+                icon: Icons.visibility_outlined,
+              ),
               if (item.contentType == 'image' && item.contentUrl != null)
                 Image.network(
                   item.contentUrl!,
@@ -555,9 +570,10 @@ class _FormState extends ConsumerState<TeacherCultureFormScreen> {
             child: ListView(
               padding: const EdgeInsets.all(EmiSpacing.md),
               children: [
-                Text(
+                TeacherSectionHeader(
                   'Informasi Budaya',
-                  style: Theme.of(context).textTheme.titleLarge,
+                  icon: Icons.public_outlined,
+                  leading: false,
                 ),
                 TextFormField(
                   controller: title,
@@ -588,9 +604,7 @@ class _FormState extends ConsumerState<TeacherCultureFormScreen> {
                     dirty = true;
                   }),
                 ),
-                const SizedBox(height: 24),
-                Text('Urutan', style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: EmiSpacing.md),
+                TeacherSectionHeader('Urutan'),
                 TextFormField(
                   controller: order,
                   keyboardType: TextInputType.number,
@@ -599,10 +613,9 @@ class _FormState extends ConsumerState<TeacherCultureFormScreen> {
                       ? 'Masukkan angka minimal 1.'
                       : null,
                 ),
-                const SizedBox(height: 24),
-                Text(
+                TeacherSectionHeader(
                   'Media atau Tautan',
-                  style: Theme.of(context).textTheme.titleLarge,
+                  icon: Icons.attach_file,
                 ),
                 if (mediaTypes.contains(type)) ...[
                   if (filePath != null && type == 'image')
@@ -643,8 +656,7 @@ class _FormState extends ConsumerState<TeacherCultureFormScreen> {
                         ? null
                         : 'Masukkan URL lengkap.',
                   ),
-                const SizedBox(height: 24),
-                Text('Status', style: Theme.of(context).textTheme.titleLarge),
+                TeacherSectionHeader('Status'),
                 DropdownButtonFormField<String>(
                   key: ValueKey('status-$status'),
                   initialValue: status,
@@ -814,10 +826,7 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Align(
     alignment: Alignment.centerLeft,
-    child: Chip(
-      label: Text(_status(value)),
-      visualDensity: VisualDensity.compact,
-    ),
+    child: TeacherStatusChip(label: _status(value)),
   );
 }
 

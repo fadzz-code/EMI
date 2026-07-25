@@ -5,12 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
-import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/role_dashboard_widgets.dart';
 import '../data/teacher_providers.dart';
 import '../data/teacher_quiz_models.dart';
 import '../data/teacher_repository.dart';
 import 'teacher_shell.dart';
+import 'teacher_style.dart';
+import 'teacher_widgets.dart';
 
 class TeacherClassesScreen extends ConsumerStatefulWidget {
   const TeacherClassesScreen({super.key});
@@ -42,20 +43,16 @@ class _TeacherClassesScreenState extends ConsumerState<TeacherClassesScreen> {
         child: ListView(
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
-            const _Intro(
+            const TeacherPageHeader(
+              icon: Icons.groups_outlined,
               title: 'Kelas Saya',
-              description:
-                  'Daftar kelas yang dapat Anda akses. Untuk EMI saat ini, guru mengajar dari satu kelas aktif.',
+              subtitle: 'Guru mengajar dari satu kelas aktif.',
             ),
             const SizedBox(height: EmiSpacing.md),
-            TextField(
-              key: const Key('teacherClassSearch'),
+            TeacherSearchField(
+              fieldKey: const Key('teacherClassSearch'),
               controller: searchController,
-              textInputAction: TextInputAction.search,
-              decoration: const InputDecoration(
-                labelText: 'Cari kelas',
-                prefixIcon: Icon(Icons.search),
-              ),
+              label: 'Cari kelas',
               onSubmitted: (value) => setState(() {
                 search = value.trim();
                 page = 1;
@@ -78,43 +75,41 @@ class _TeacherClassesScreenState extends ConsumerState<TeacherClassesScreen> {
                     )
                   : Column(
                       children: [
-                        _Stats(
-                          items: [
-                            ('Kelas aktif', '${result.total}'),
-                            (
-                              'Siswa halaman ini',
-                              '${result.items.fold<int>(0, (sum, item) => sum + item.studentsCount)}',
+                        Wrap(
+                          spacing: EmiSpacing.sm,
+                          runSpacing: EmiSpacing.sm,
+                          children: [
+                            TeacherStatChip(
+                              label: 'Kelas aktif',
+                              value: '${result.total}',
                             ),
-                            ('Akses', 'Belum tersedia'),
+                            TeacherStatChip(
+                              label: 'Siswa halaman ini',
+                              value:
+                                  '${result.items.fold<int>(0, (sum, item) => sum + item.studentsCount)}',
+                            ),
                           ],
                         ),
                         const SizedBox(height: EmiSpacing.md),
                         for (final klass in result.items) ...[
                           _ClassCard(klass: klass),
-                          const SizedBox(height: EmiSpacing.md),
+                          const SizedBox(height: EmiSpacing.sm),
                         ],
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            IconButton(
-                              key: const Key('teacherClassesPrevious'),
-                              onPressed: result.currentPage > 1
-                                  ? () => setState(() => page--)
-                                  : null,
-                              icon: const Icon(Icons.chevron_left),
-                            ),
-                            Text(
-                              'Halaman ${result.currentPage} dari ${result.lastPage}',
-                            ),
-                            IconButton(
-                              key: const Key('teacherClassesNext'),
-                              onPressed: result.currentPage < result.lastPage
-                                  ? () => setState(() => page++)
-                                  : null,
-                              icon: const Icon(Icons.chevron_right),
-                            ),
-                          ],
-                        ),
+                        if (result.lastPage > 1) ...[
+                          const SizedBox(height: EmiSpacing.xs),
+                          TeacherPaginationBar(
+                            previousKey: const Key('teacherClassesPrevious'),
+                            nextKey: const Key('teacherClassesNext'),
+                            currentPage: result.currentPage,
+                            lastPage: result.lastPage,
+                            onPrevious: result.currentPage > 1
+                                ? () => setState(() => page--)
+                                : null,
+                            onNext: result.currentPage < result.lastPage
+                                ? () => setState(() => page++)
+                                : null,
+                          ),
+                        ],
                       ],
                     ),
             ),
@@ -171,40 +166,64 @@ class _TeacherClassDetailScreenState
           data: (klass) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
-              EmiCard(
+              Container(
+                padding: const EdgeInsets.all(EmiSpacing.lg),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [EmiColors.primary, Color(0xFFFFA968)],
+                  ),
+                  borderRadius: BorderRadius.circular(TeacherStyle.heroRadius),
+                  boxShadow: TeacherStyle.heroShadow(),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _Badge(_status(klass.status)),
+                    TeacherStatusChip(
+                      label: _status(klass.status),
+                      color: Colors.white,
+                      textColor: EmiColors.primary,
+                    ),
                     const SizedBox(height: EmiSpacing.sm),
                     Text(
                       klass.name,
-                      style: Theme.of(context).textTheme.headlineMedium,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.headlineMedium?.copyWith(color: Colors.white),
                     ),
                     const SizedBox(height: EmiSpacing.xs),
                     Text(
-                      '${_optional(klass.schoolName)} | Tahun ajaran ${_optional(klass.academicYear)}',
+                      '${_optional(klass.schoolName)} • Tahun ajaran ${_optional(klass.academicYear)}',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.92),
+                      ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: EmiSpacing.md),
+              const SizedBox(height: EmiSpacing.lg),
               _DetailStats(id: id, klass: klass),
-              const SizedBox(height: EmiSpacing.md),
-              _Nav(
+              const SizedBox(height: EmiSpacing.lg),
+              TeacherSegmentedTabs(
+                labels: const [
+                  'Ringkasan',
+                  'Siswa',
+                  'Modul',
+                  'Kuis',
+                  'Budaya Mekongga',
+                ],
                 selected: tab,
                 onSelected: (value) => setState(() => tab = value),
               ),
-              if (tab == 4)
-                Padding(
-                  padding: const EdgeInsets.only(top: EmiSpacing.md),
-                  child: FilledButton.icon(
-                    onPressed: () =>
-                        context.push('/teacher/culture?classId=$id'),
-                    icon: const Icon(Icons.public),
-                    label: const Text('Kelola Budaya Kelas'),
-                  ),
+              if (tab == 4) ...[
+                const SizedBox(height: EmiSpacing.md),
+                FilledButton.icon(
+                  onPressed: () => context.push('/teacher/culture?classId=$id'),
+                  icon: const Icon(Icons.public),
+                  label: const Text('Kelola Budaya Kelas'),
                 ),
+              ],
               const SizedBox(height: EmiSpacing.md),
               switch (tab) {
                 0 => _Summary(id: id),
@@ -226,27 +245,31 @@ class _ClassCard extends StatelessWidget {
   final TeacherClass klass;
 
   @override
-  Widget build(BuildContext context) => EmiCard(
+  Widget build(BuildContext context) => TeacherListCard(
+    padding: const EdgeInsets.all(EmiSpacing.md),
+    onTap: () => context.push('/teacher/classes/${klass.id}'),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _Badge(_status(klass.status)),
+        TeacherStatusChip(label: _status(klass.status)),
         const SizedBox(height: EmiSpacing.sm),
         Text(klass.name, style: Theme.of(context).textTheme.titleLarge),
         Text(_optional(klass.schoolName)),
         const SizedBox(height: EmiSpacing.md),
-        _Field(label: 'Tahun ajaran', value: _optional(klass.academicYear)),
-        const SizedBox(height: EmiSpacing.sm),
-        _Field(label: 'Siswa', value: '${klass.studentsCount}'),
-        const SizedBox(height: EmiSpacing.sm),
-        _Field(label: 'Guru aktif', value: _optional(klass.teacherName)),
-        const SizedBox(height: EmiSpacing.md),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () => context.push('/teacher/classes/${klass.id}'),
-            child: const Text('Detail'),
-          ),
+        Wrap(
+          spacing: EmiSpacing.sm,
+          runSpacing: EmiSpacing.sm,
+          children: [
+            TeacherStatChip(
+              label: 'Tahun ajaran',
+              value: _optional(klass.academicYear),
+            ),
+            TeacherStatChip(label: 'Siswa', value: '${klass.studentsCount}'),
+            TeacherStatChip(
+              label: 'Guru aktif',
+              value: _optional(klass.teacherName),
+            ),
+          ],
         ),
       ],
     ),
@@ -264,53 +287,21 @@ class _DetailStats extends ConsumerWidget {
         .watch(teacherClassStudentsProvider((classId: id, page: 1, search: '')))
         .valueOrNull;
     final modules = ref.watch(teacherModulesProvider(id)).valueOrNull;
-    return _Stats(
-      items: [
-        ('Sekolah', _optional(klass.schoolName)),
-        ('Guru', _optional(klass.teacherName)),
-        (
-          'Siswa',
-          '${klass.studentsCount == 0 ? students?.items.length ?? 0 : klass.studentsCount}',
+    return Wrap(
+      spacing: EmiSpacing.sm,
+      runSpacing: EmiSpacing.sm,
+      children: [
+        TeacherStatChip(label: 'Sekolah', value: _optional(klass.schoolName)),
+        TeacherStatChip(label: 'Guru', value: _optional(klass.teacherName)),
+        TeacherStatChip(
+          label: 'Siswa',
+          value:
+              '${klass.studentsCount == 0 ? students?.items.length ?? 0 : klass.studentsCount}',
         ),
-        ('Modul', '${modules?.length ?? 0}'),
+        TeacherStatChip(label: 'Modul', value: '${modules?.length ?? 0}'),
       ],
     );
   }
-}
-
-class _Nav extends StatelessWidget {
-  const _Nav({required this.selected, required this.onSelected});
-  final int selected;
-  final ValueChanged<int> onSelected;
-
-  @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-    scrollDirection: Axis.horizontal,
-    child: Row(
-      children: List.generate(5, (index) {
-        const labels = [
-          'Ringkasan',
-          'Siswa',
-          'Modul',
-          'Kuis',
-          'Budaya Mekongga',
-        ];
-        return Padding(
-          padding: const EdgeInsets.only(right: EmiSpacing.sm, bottom: 4),
-          child: OutlinedButton(
-            style: OutlinedButton.styleFrom(
-              backgroundColor: selected == index
-                  ? EmiColors.secondary
-                  : EmiColors.surface,
-              side: const BorderSide(color: EmiColors.border, width: 1.5),
-            ),
-            onPressed: () => onSelected(index),
-            child: Text(labels[index]),
-          ),
-        );
-      }),
-    ),
-  );
 }
 
 class _Summary extends ConsumerWidget {
@@ -319,30 +310,27 @@ class _Summary extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      _Section(
-        title: 'Siswa Kelas',
-        child: _StudentList(id: id, compact: true),
+      TeacherSectionHeader(
+        'Siswa Kelas',
+        icon: Icons.people_outline,
+        leading: false,
       ),
-      const SizedBox(height: EmiSpacing.md),
-      _Section(
-        title: 'Progress Belajar',
-        child: _ProgressList(id: id, limit: 8),
-      ),
-      const SizedBox(height: EmiSpacing.md),
-      _Section(
-        title: 'Modul Kelas',
-        child: _ModuleList(id: id, compact: true),
-      ),
-      const SizedBox(height: EmiSpacing.md),
-      _Section(
-        title: 'Kuis Kelas',
-        child: _QuizList(id: id, compact: true),
-      ),
-      const SizedBox(height: EmiSpacing.md),
-      const EmiCard(
+      _StudentList(id: id, compact: true),
+      TeacherSectionHeader('Progress Belajar', icon: Icons.trending_up),
+      _ProgressList(id: id, limit: 8),
+      TeacherSectionHeader('Modul Kelas', icon: Icons.menu_book_outlined),
+      _ModuleList(id: id, compact: true),
+      TeacherSectionHeader('Kuis Kelas', icon: Icons.quiz_outlined),
+      _QuizList(id: id, compact: true),
+      const SizedBox(height: EmiSpacing.sm),
+      TeacherListCard(
         child: Text(
           'Detail kelas ini berfungsi sebagai ringkasan cepat. Untuk mengelola materi atau kuis, gunakan menu Modul dan Kuis.',
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: EmiColors.textSecondary),
         ),
       ),
     ],
@@ -376,26 +364,17 @@ class _StudentsState extends ConsumerState<_Students> {
     final students = ref.watch(teacherClassStudentsProvider(query));
     return Column(
       children: [
-        TextField(
-          key: const Key('teacherClassStudentSearch'),
+        TeacherSearchField(
+          fieldKey: const Key('teacherClassStudentSearch'),
           controller: controller,
-          decoration: InputDecoration(
-            labelText: 'Cari siswa di kelas ini',
-            prefixIcon: const Icon(Icons.search),
-            suffixIcon: controller.text.isEmpty
-                ? null
-                : IconButton(
-                    tooltip: 'Hapus pencarian',
-                    onPressed: () {
-                      controller.clear();
-                      setState(() {
-                        search = '';
-                        page = 1;
-                      });
-                    },
-                    icon: const Icon(Icons.clear),
-                  ),
-          ),
+          label: 'Cari siswa di kelas ini',
+          onClear: () {
+            controller.clear();
+            setState(() {
+              search = '';
+              page = 1;
+            });
+          },
           onChanged: (value) {
             setState(() {});
             debounce?.cancel();
@@ -430,30 +409,28 @@ class _StudentsState extends ConsumerState<_Students> {
                 )
               : Column(
                   children: [
-                    _Stats(items: [('Total siswa', '${result.total}')]),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TeacherStatChip(
+                        label: 'Total siswa',
+                        value: '${result.total}',
+                      ),
+                    ),
                     const SizedBox(height: EmiSpacing.md),
                     _StudentCards(students: result.items, progress: const []),
-                    if (result.lastPage > 1)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          IconButton(
-                            onPressed: result.currentPage > 1
-                                ? () => setState(() => page--)
-                                : null,
-                            icon: const Icon(Icons.chevron_left),
-                          ),
-                          Text(
-                            'Halaman ${result.currentPage} dari ${result.lastPage}',
-                          ),
-                          IconButton(
-                            onPressed: result.currentPage < result.lastPage
-                                ? () => setState(() => page++)
-                                : null,
-                            icon: const Icon(Icons.chevron_right),
-                          ),
-                        ],
+                    if (result.lastPage > 1) ...[
+                      const SizedBox(height: EmiSpacing.xs),
+                      TeacherPaginationBar(
+                        currentPage: result.currentPage,
+                        lastPage: result.lastPage,
+                        onPrevious: result.currentPage > 1
+                            ? () => setState(() => page--)
+                            : null,
+                        onNext: result.currentPage < result.lastPage
+                            ? () => setState(() => page++)
+                            : null,
                       ),
+                    ],
                   ],
                 ),
         ),
@@ -508,27 +485,25 @@ class _StudentCards extends StatelessWidget {
                 row = item;
               }
             }
-            return InkWell(
+            return TeacherListCard(
               onTap: () => context.push('/teacher/students/${student.id}'),
-              child: _InnerCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    student.name,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  Text(student.email),
+                  Text(_status(student.status)),
+                  if (!compact) ...[
+                    const SizedBox(height: EmiSpacing.sm),
+                    Text('Bergabung: ${_date(student.joinedAt)}'),
                     Text(
-                      student.name,
-                      style: Theme.of(context).textTheme.titleMedium,
+                      'Progress: ${row == null ? 'Belum tersedia' : '${row.percent.toStringAsFixed(0)}%'}',
                     ),
-                    Text(student.email),
-                    Text(_status(student.status)),
-                    if (!compact) ...[
-                      const SizedBox(height: EmiSpacing.sm),
-                      Text('Bergabung: ${_date(student.joinedAt)}'),
-                      Text(
-                        'Progress: ${row == null ? 'Belum tersedia' : '${row.percent.toStringAsFixed(0)}%'}',
-                      ),
-                    ],
                   ],
-                ),
+                ],
               ),
             );
           },
@@ -561,7 +536,7 @@ class _ProgressList extends ConsumerWidget {
           return Column(
             children: [
               for (final row in shown) ...[
-                _InnerCard(
+                TeacherListCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -573,12 +548,14 @@ class _ProgressList extends ConsumerWidget {
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                           ),
-                          _Badge('${row.percent.toStringAsFixed(0)}%'),
+                          TeacherStatusChip(
+                            label: '${row.percent.toStringAsFixed(0)}%',
+                          ),
                         ],
                       ),
                       Text(row.className),
                       Text(
-                        'Modul: ${row.completedModules} / ${row.publishedModules} | Kuis selesai: ${row.completedQuizzes}',
+                        'Modul: ${row.completedModules} / ${row.publishedModules} • Kuis selesai: ${row.completedQuizzes}',
                       ),
                     ],
                   ),
@@ -614,14 +591,19 @@ class _Modules extends ConsumerWidget {
             )
           : Column(
               children: [
-                _Stats(
-                  items: [
-                    ('Total modul', '${items.length}'),
-                    (
-                      'Modul terbit',
-                      '${items.where((item) => item.status == 'published').length}',
+                Wrap(
+                  spacing: EmiSpacing.sm,
+                  runSpacing: EmiSpacing.sm,
+                  children: [
+                    TeacherStatChip(
+                      label: 'Total modul',
+                      value: '${items.length}',
                     ),
-                    ('Materi', 'Belum tersedia'),
+                    TeacherStatChip(
+                      label: 'Modul terbit',
+                      value:
+                          '${items.where((item) => item.status == 'published').length}',
+                    ),
                   ],
                 ),
                 const SizedBox(height: EmiSpacing.md),
@@ -658,11 +640,11 @@ class _ModuleCards extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     children: [
       for (final item in items) ...[
-        _InnerCard(
+        TeacherListCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _Badge(_status(item.status)),
+              TeacherStatusChip(label: _status(item.status)),
               const SizedBox(height: EmiSpacing.xs),
               Text(item.title, style: Theme.of(context).textTheme.titleMedium),
               Text(
@@ -723,16 +705,23 @@ class _Quizzes extends ConsumerWidget {
               )
             : Column(
                 children: [
-                  _Stats(
-                    items: [
-                      ('Total kuis', '${page.items.length}'),
-                      (
-                        'Kuis terbit',
-                        '${page.items.where((item) => item.status == 'published').length}',
+                  Wrap(
+                    spacing: EmiSpacing.sm,
+                    runSpacing: EmiSpacing.sm,
+                    children: [
+                      TeacherStatChip(
+                        label: 'Total kuis',
+                        value: '${page.items.length}',
                       ),
-                      (
-                        'Attempt',
-                        '${page.items.fold<int>(0, (sum, item) => sum + item.attemptsCount)}',
+                      TeacherStatChip(
+                        label: 'Kuis terbit',
+                        value:
+                            '${page.items.where((item) => item.status == 'published').length}',
+                      ),
+                      TeacherStatChip(
+                        label: 'Attempt',
+                        value:
+                            '${page.items.fold<int>(0, (sum, item) => sum + item.attemptsCount)}',
                       ),
                     ],
                   ),
@@ -769,19 +758,20 @@ class _QuizCards extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     children: [
       for (final item in items) ...[
-        _InnerCard(
+        TeacherListCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Wrap(
                 spacing: EmiSpacing.xs,
                 children: [
-                  _Badge(_status(item.status)),
+                  TeacherStatusChip(label: _status(item.status)),
                   if (!compact)
-                    _Badge(
-                      item.status != 'draft' || item.attemptsCount > 0
+                    TeacherStatusChip(
+                      label: item.status != 'draft' || item.attemptsCount > 0
                           ? 'Terkunci'
                           : 'Draft bisa diedit',
+                      color: TeacherStyle.tint,
                     ),
                 ],
               ),
@@ -791,11 +781,11 @@ class _QuizCards extends StatelessWidget {
                 item.description.isEmpty ? 'Belum tersedia' : item.description,
               ),
               Text(
-                'Soal: ${item.questionsCount} | Attempt: ${item.attemptsCount}',
+                'Soal: ${item.questionsCount} • Attempt: ${item.attemptsCount}',
               ),
               if (!compact) ...[
                 Text(
-                  '${item.durationMinutes} menit | Buka: ${_date(item.openAt)} | Tutup: ${_date(item.closeAt)}',
+                  '${item.durationMinutes} menit • Buka: ${_date(item.openAt)} • Tutup: ${_date(item.closeAt)}',
                 ),
                 Wrap(
                   spacing: EmiSpacing.sm,
@@ -823,121 +813,6 @@ class _QuizCards extends StatelessWidget {
         const SizedBox(height: EmiSpacing.sm),
       ],
     ],
-  );
-}
-
-class _Intro extends StatelessWidget {
-  const _Intro({required this.title, required this.description});
-  final String title;
-  final String description;
-
-  @override
-  Widget build(BuildContext context) => EmiCard(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _Badge('Guru'),
-        const SizedBox(height: EmiSpacing.sm),
-        Text(title, style: Theme.of(context).textTheme.headlineMedium),
-        Text(description),
-      ],
-    ),
-  );
-}
-
-class _Stats extends StatelessWidget {
-  const _Stats({required this.items});
-  final List<(String, String)> items;
-
-  @override
-  Widget build(BuildContext context) => Wrap(
-    spacing: EmiSpacing.sm,
-    runSpacing: EmiSpacing.sm,
-    children: [
-      for (final item in items)
-        SizedBox(
-          width: items.length == 4 ? 148 : 190,
-          child: _InnerCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.$1, style: Theme.of(context).textTheme.labelLarge),
-                const SizedBox(height: EmiSpacing.xs),
-                Text(item.$2, style: Theme.of(context).textTheme.titleLarge),
-              ],
-            ),
-          ),
-        ),
-    ],
-  );
-}
-
-class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.child});
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => EmiCard(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: EmiSpacing.md),
-        child,
-      ],
-    ),
-  );
-}
-
-class _InnerCard extends StatelessWidget {
-  const _InnerCard({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(EmiSpacing.sm),
-    decoration: BoxDecoration(
-      color: EmiColors.surfaceSoft,
-      borderRadius: BorderRadius.circular(EmiRadii.card),
-    ),
-    child: child,
-  );
-}
-
-class _Field extends StatelessWidget {
-  const _Field({required this.label, required this.value});
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) => _InnerCard(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label.toUpperCase(),
-          style: Theme.of(context).textTheme.labelLarge,
-        ),
-        Text(value),
-      ],
-    ),
-  );
-}
-
-class _Badge extends StatelessWidget {
-  const _Badge(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: EmiSpacing.sm, vertical: 5),
-    decoration: BoxDecoration(
-      color: EmiColors.secondary,
-      borderRadius: BorderRadius.circular(EmiRadii.pill),
-    ),
-    child: Text(text, style: Theme.of(context).textTheme.labelLarge),
   );
 }
 

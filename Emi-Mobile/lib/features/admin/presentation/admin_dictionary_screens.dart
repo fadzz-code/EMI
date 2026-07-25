@@ -307,7 +307,11 @@ class _AdminDictionaryFormScreenState
                             data: (page) => DropdownButtonFormField<String>(
                               key: const Key('adminField-dictionary-category'),
                               isExpanded: true,
-                              initialValue: _categoryId?.isEmpty == true
+                              initialValue:
+                                  _categoryId?.isEmpty == true ||
+                                      page.items.every(
+                                        (c) => c.id != _categoryId,
+                                      )
                                   ? null
                                   : _categoryId,
                               decoration: const InputDecoration(
@@ -711,7 +715,9 @@ class _DictionaryFilterSheetState extends State<_DictionaryFilterSheet> {
         mainAxisSize: MainAxisSize.min,
         children: [
           DropdownButtonFormField<String>(
-            initialValue: _categoryId,
+            initialValue: widget.categories.any((c) => c.id == _categoryId)
+                ? _categoryId
+                : null,
             decoration: const InputDecoration(labelText: 'Kategori'),
             items: [
               const DropdownMenuItem(

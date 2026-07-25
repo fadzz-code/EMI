@@ -26,6 +26,7 @@ class EmiScaffold extends ConsumerWidget {
     final location = GoRouterState.of(context).uri.path;
 
     return Scaffold(
+      backgroundColor: EmiColors.background,
       drawer: _StudentDrawer(user: user, location: location),
       body: SafeArea(
         child: Column(
@@ -36,7 +37,7 @@ class EmiScaffold extends ConsumerWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: EmiSpacing.md),
                 decoration: const BoxDecoration(
-                  color: EmiColors.background,
+                  color: EmiColors.surface,
                   border: Border(
                     bottom: BorderSide(color: EmiColors.border, width: 1.5),
                   ),
@@ -81,12 +82,14 @@ class _StudentDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Drawer(
+      backgroundColor: EmiColors.surface,
       child: SafeArea(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            Padding(
+            Container(
               padding: const EdgeInsets.all(EmiSpacing.md),
+              color: EmiColors.surfaceSoft,
               child: Row(
                 children: [
                   _DrawerAvatar(user: user),
@@ -113,7 +116,7 @@ class _StudentDrawer extends StatelessWidget {
                 ],
               ),
             ),
-            const Divider(height: 1),
+            const Divider(height: 1, color: EmiColors.border),
             _DrawerItem(
               label: 'Beranda',
               icon: Icons.home_outlined,
@@ -191,20 +194,26 @@ class _DrawerAvatar extends StatelessWidget {
     );
     final avatarUrl = user?.avatarUrl?.trim();
 
-    return CircleAvatar(
-      radius: 28,
-      backgroundColor: EmiColors.secondary,
-      child: avatarUrl == null || avatarUrl.isEmpty
-          ? fallback
-          : ClipOval(
-              child: Image.network(
-                avatarUrl,
-                width: 56,
-                height: 56,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Center(child: fallback),
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: EmiColors.border, width: 1.5),
+      ),
+      child: CircleAvatar(
+        radius: 28,
+        backgroundColor: EmiColors.secondary,
+        child: avatarUrl == null || avatarUrl.isEmpty
+            ? fallback
+            : ClipOval(
+                child: Image.network(
+                  avatarUrl,
+                  width: 56,
+                  height: 56,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Center(child: fallback),
+                ),
               ),
-            ),
+      ),
     );
   }
 }
@@ -226,10 +235,20 @@ class _DrawerItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       minVerticalPadding: EmiSpacing.sm,
-      leading: Icon(icon),
-      title: Text(label),
+      leading: Icon(
+        icon,
+        size: 22,
+        color: selected ? EmiColors.primary : EmiColors.textPrimary,
+      ),
+      title: Text(
+        label,
+        style: TextStyle(
+          color: selected ? EmiColors.primary : EmiColors.textPrimary,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        ),
+      ),
       selected: selected,
-      selectedTileColor: EmiColors.secondary,
+      selectedTileColor: EmiColors.primarySoft,
       onTap: () {
         Navigator.of(context).pop();
         if (!selected) context.go(route);
@@ -256,45 +275,35 @@ class _EmiBottomNav extends StatelessWidget {
     ];
 
     return Container(
-      height: 80,
+      height: 64,
       decoration: const BoxDecoration(
         color: EmiColors.surface,
         border: Border(top: BorderSide(color: EmiColors.border, width: 1.5)),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: List.generate(labels.length, (item) {
           final active = item == index;
+          final color = active ? EmiColors.primary : Colors.black54;
           return Expanded(
             child: InkWell(
-              borderRadius: BorderRadius.circular(EmiRadii.pill),
               onTap: () => onTap(item),
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: active ? EmiSpacing.md : EmiSpacing.xs,
-                  vertical: active ? 4 : EmiSpacing.xs,
-                ),
-                decoration: active
-                    ? BoxDecoration(
-                        color: EmiColors.success,
-                        border: Border.all(color: EmiColors.border, width: 1.5),
-                        borderRadius: BorderRadius.circular(EmiRadii.pill),
-                      )
-                    : null,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(icons[item], size: 20),
-                    const SizedBox(height: 4),
-                    Text(
-                      labels[item],
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.labelSmall,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icons[item], size: 22, color: color),
+                  const SizedBox(height: 2),
+                  Text(
+                    labels[item],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: color,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           );

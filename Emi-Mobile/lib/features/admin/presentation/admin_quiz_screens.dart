@@ -321,87 +321,118 @@ class _AdminQuizFormScreenState extends ConsumerState<AdminQuizFormScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(EmiSpacing.md),
                 children: [
-                  if (_error != null) _Validation(error: _error!),
-                  EmiCard(
-                    child: Column(
-                      children: [
-                        TextFormField(
-                          controller: _title,
-                          decoration: const InputDecoration(labelText: 'Judul'),
-                          validator: _req,
-                        ),
-                        TextFormField(
-                          controller: _description,
-                          decoration: const InputDecoration(
-                            labelText: 'Deskripsi',
-                          ),
-                        ),
-                        TextFormField(
-                          controller: _instructions,
-                          decoration: const InputDecoration(
-                            labelText: 'Instruksi',
-                          ),
-                        ),
-                        TextFormField(
-                          controller: _duration,
-                          decoration: const InputDecoration(
-                            labelText: 'Durasi menit',
-                          ),
-                          keyboardType: TextInputType.number,
-                          validator: _num,
-                        ),
-                        TextFormField(
-                          controller: _attempts,
-                          decoration: const InputDecoration(
-                            labelText: 'Maksimal percobaan',
-                          ),
-                          keyboardType: TextInputType.number,
-                          validator: _num,
-                        ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('Tampilkan hasil'),
-                          value: _showResult,
-                          onChanged: _saving
-                              ? null
-                              : (v) => setState(() => _showResult = v),
-                        ),
-                        DropdownButtonFormField<String>(
-                          initialValue: _status,
-                          decoration: const InputDecoration(
-                            labelText: 'Status',
-                            helperText:
-                                'Draft belum digunakan. Terbit membutuhkan pertanyaan lengkap. Arsip tetap tersimpan.',
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'draft',
-                              child: Text('Draft'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'published',
-                              child: Text('Terbit'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'archived',
-                              child: Text('Arsip'),
-                            ),
-                          ],
-                          onChanged: _saving
-                              ? null
-                              : (value) =>
-                                    setState(() => _status = value ?? 'draft'),
-                        ),
-                      ],
-                    ),
+                  if (_error != null) ...[
+                    _Validation(error: _error!),
+                    const SizedBox(height: EmiSpacing.md),
+                  ],
+                  _SectionTitle(
+                    'Identitas Template',
+                    'Judul dan deskripsi singkat membantu Admin dan Guru mengenali kuis ini.',
+                  ),
+                  TextFormField(
+                    controller: _title,
+                    decoration: const InputDecoration(labelText: 'Judul'),
+                    validator: _req,
                   ),
                   const SizedBox(height: EmiSpacing.md),
-                  FilledButton(
-                    key: const Key('adminSave-quizzes'),
-                    onPressed: _saving ? null : _save,
-                    child: Text(_saving ? 'Menyimpan...' : 'Simpan'),
+                  TextFormField(
+                    controller: _description,
+                    minLines: 2,
+                    maxLines: 4,
+                    decoration: const InputDecoration(labelText: 'Deskripsi'),
+                  ),
+                  const SizedBox(height: EmiSpacing.md),
+                  TextFormField(
+                    controller: _instructions,
+                    minLines: 2,
+                    maxLines: 4,
+                    decoration: const InputDecoration(labelText: 'Instruksi'),
+                  ),
+                  const SizedBox(height: EmiSpacing.lg),
+                  _SectionTitle(
+                    'Pengaturan Pengerjaan',
+                    'Atur durasi, jumlah percobaan, dan apakah siswa langsung melihat hasil.',
+                  ),
+                  TextFormField(
+                    controller: _duration,
+                    decoration: const InputDecoration(
+                      labelText: 'Durasi menit',
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator: _num,
+                  ),
+                  const SizedBox(height: EmiSpacing.md),
+                  TextFormField(
+                    controller: _attempts,
+                    decoration: const InputDecoration(
+                      labelText: 'Maksimal percobaan',
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator: _num,
+                  ),
+                  const SizedBox(height: EmiSpacing.md),
+                  EmiCard(
+                    child: SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Tampilkan hasil'),
+                      subtitle: const Text(
+                        'Siswa langsung melihat skor setelah selesai mengerjakan.',
+                      ),
+                      value: _showResult,
+                      onChanged: _saving
+                          ? null
+                          : (v) => setState(() => _showResult = v),
+                    ),
+                  ),
+                  const SizedBox(height: EmiSpacing.lg),
+                  _SectionTitle(
+                    'Status',
+                    'Draft belum digunakan. Terbit membutuhkan pertanyaan lengkap. Arsip tetap tersimpan.',
+                  ),
+                  DropdownButtonFormField<String>(
+                    initialValue: _status,
+                    decoration: const InputDecoration(labelText: 'Status'),
+                    items: const [
+                      DropdownMenuItem(value: 'draft', child: Text('Draft')),
+                      DropdownMenuItem(
+                        value: 'published',
+                        child: Text('Terbit'),
+                      ),
+                      DropdownMenuItem(value: 'archived', child: Text('Arsip')),
+                    ],
+                    onChanged: _saving
+                        ? null
+                        : (value) => setState(() => _status = value ?? 'draft'),
+                  ),
+                  const SizedBox(height: EmiSpacing.xl),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _saving
+                              ? null
+                              : () => _editing
+                                    ? context.go('/admin/quizzes/${widget.id}')
+                                    : context.go('/admin/quizzes'),
+                          child: const Text('Batal'),
+                        ),
+                      ),
+                      const SizedBox(width: EmiSpacing.sm),
+                      Expanded(
+                        child: FilledButton(
+                          key: const Key('adminSave-quizzes'),
+                          onPressed: _saving ? null : _save,
+                          child: Text(_saving ? 'Menyimpan...' : 'Simpan'),
+                        ),
+                      ),
+                    ],
                   ),
                   if (_editing) ...[
+                    const SizedBox(height: EmiSpacing.xl),
+                    _SectionTitle(
+                      'Kelola Isi Kuis',
+                      'Tambah atau ubah pertanyaan yang termasuk dalam template ini.',
+                    ),
                     OutlinedButton(
                       onPressed: _saving
                           ? null
@@ -410,28 +441,34 @@ class _AdminQuizFormScreenState extends ConsumerState<AdminQuizFormScreen> {
                             ),
                       child: const Text('Kelola Pertanyaan'),
                     ),
+                    const SizedBox(height: EmiSpacing.lg),
+                    _SectionTitle(
+                      'Aksi Lainnya',
+                      'Terbitkan agar dapat digunakan, atau arsipkan bila belum diperlukan.',
+                    ),
                     Wrap(
                       spacing: EmiSpacing.sm,
+                      runSpacing: EmiSpacing.sm,
                       children: [
-                        TextButton(
+                        OutlinedButton(
                           key: const Key('adminPublish-quizzes'),
                           onPressed: _saving
                               ? null
                               : () => _statusAction('publish'),
                           child: const Text('Terbitkan'),
                         ),
-                        TextButton(
+                        OutlinedButton(
                           key: const Key('adminArchive-quizzes'),
                           onPressed: _saving
                               ? null
                               : () => _statusAction('archive'),
                           child: const Text('Arsipkan'),
                         ),
-                        TextButton(
+                        OutlinedButton(
                           onPressed: _saving ? null : _showApply,
                           child: const Text('Terapkan ke Kelas'),
                         ),
-                        TextButton(
+                        OutlinedButton(
                           key: const Key('adminDelete-quizzes'),
                           onPressed: _saving ? null : _delete,
                           child: const Text('Hapus'),
@@ -1326,6 +1363,27 @@ class _Validation extends StatelessWidget {
         Text(error.message),
         for (final entry in error.fieldErrors.entries)
           Text('${entry.key}: ${entry.value.join(', ')}'),
+      ],
+    ),
+  );
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.title, this.helper);
+
+  final String title;
+  final String helper;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: EmiSpacing.md),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(height: EmiSpacing.xl),
+        Text(title, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: EmiSpacing.xs),
+        Text(helper, style: Theme.of(context).textTheme.bodySmall),
       ],
     ),
   );

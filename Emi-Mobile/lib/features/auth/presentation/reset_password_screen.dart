@@ -4,10 +4,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../core/errors/app_error.dart';
-import '../../../shared/widgets/emi_card.dart';
-import '../../../shared/widgets/error_message.dart';
 import '../data/auth_providers.dart';
+import 'auth_banner.dart';
 import 'auth_brand_mark.dart';
+import 'auth_card.dart';
+import 'auth_field.dart';
+import 'auth_style.dart';
+import 'auth_theme_scope.dart';
 import 'login_validator.dart';
 
 class ResetPasswordScreen extends ConsumerStatefulWidget {
@@ -40,134 +43,144 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: EmiColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(EmiSpacing.lg),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const AuthBrandMark(icon: Icons.key_outlined),
-                  const SizedBox(height: EmiSpacing.xl),
-                  EmiCard(
-                    padding: const EdgeInsets.all(EmiSpacing.lg),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            'Buat Kata Sandi Baru',
-                            style: Theme.of(context).textTheme.headlineMedium,
-                          ),
-                          const SizedBox(height: EmiSpacing.xs),
-                          Text(
-                            'Isi email, kode dari tautan, dan kata sandi baru.',
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: EmiColors.textSecondary),
-                          ),
-                          const SizedBox(height: EmiSpacing.lg),
-                          TextFormField(
-                            key: const Key('resetEmailField'),
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Email',
-                              prefixIcon: Icon(Icons.mail_outline, size: 20),
+    return AuthThemeScope(
+      child: Scaffold(
+        backgroundColor: AuthStyle.pageBackground,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(EmiSpacing.lg),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const AuthBrandMark(icon: Icons.key_outlined),
+                    const SizedBox(height: EmiSpacing.xl),
+                    AuthCard(
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              'Buat Kata Sandi Baru',
+                              style: Theme.of(context).textTheme.headlineMedium
+                                  ?.copyWith(color: AuthStyle.ink),
                             ),
-                            validator: _validator.email,
-                          ),
-                          const SizedBox(height: EmiSpacing.md),
-                          TextFormField(
-                            key: const Key('resetTokenField'),
-                            controller: _tokenController,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Kode dari Tautan',
-                              prefixIcon: Icon(
-                                Icons.confirmation_number_outlined,
-                                size: 20,
+                            const SizedBox(height: EmiSpacing.xs),
+                            Text(
+                              'Isi email, kode dari tautan, dan kata sandi baru.',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(color: EmiColors.textSecondary),
+                            ),
+                            if (_error != null) ...[
+                              const SizedBox(height: EmiSpacing.md),
+                              AuthBanner(message: _error!.message),
+                            ],
+                            if (_done) ...[
+                              const SizedBox(height: EmiSpacing.md),
+                              const AuthBanner(
+                                message: 'Kata sandi berhasil diubah.',
+                                tone: AuthBannerTone.success,
+                              ),
+                            ],
+                            const SizedBox(height: EmiSpacing.lg),
+                            AuthField(
+                              fieldKey: const Key('resetEmailField'),
+                              label: 'Email',
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
+                              validator: _validator.email,
+                            ),
+                            const SizedBox(height: EmiSpacing.md),
+                            AuthField(
+                              fieldKey: const Key('resetTokenField'),
+                              label: 'Kode dari Tautan',
+                              controller: _tokenController,
+                              textInputAction: TextInputAction.next,
+                              validator: (value) =>
+                                  (value?.trim().isEmpty ?? true)
+                                  ? 'Kode wajib diisi.'
+                                  : null,
+                            ),
+                            const SizedBox(height: EmiSpacing.md),
+                            AuthField(
+                              fieldKey: const Key('resetPasswordField'),
+                              label: 'Kata Sandi Baru',
+                              controller: _passwordController,
+                              obscureText: true,
+                              textInputAction: TextInputAction.next,
+                              validator: _validator.password,
+                            ),
+                            const SizedBox(height: EmiSpacing.md),
+                            AuthField(
+                              fieldKey: const Key('resetConfirmPasswordField'),
+                              label: 'Ulangi Kata Sandi',
+                              controller: _confirmController,
+                              obscureText: true,
+                              textInputAction: TextInputAction.done,
+                              validator: (value) {
+                                if ((value ?? '').isEmpty) {
+                                  return 'Ulangi kata sandi wajib diisi.';
+                                }
+                                if (value != _passwordController.text) {
+                                  return 'Kata sandi belum sesuai.';
+                                }
+                                return null;
+                              },
+                              onFieldSubmitted: (_) => _submit(),
+                            ),
+                            const SizedBox(height: EmiSpacing.lg),
+                            ElevatedButton(
+                              key: const Key('resetPasswordButton'),
+                              onPressed: _loading ? null : _submit,
+                              child: _loading
+                                  ? const SizedBox.square(
+                                      dimension: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text('Simpan Kata Sandi'),
+                            ),
+                            const SizedBox(height: EmiSpacing.md),
+                            const Divider(color: AuthStyle.divider),
+                            const SizedBox(height: EmiSpacing.md),
+                            Center(
+                              child: Wrap(
+                                alignment: WrapAlignment.center,
+                                children: [
+                                  Text(
+                                    'Sudah ingat kata sandi? ',
+                                    style: TextStyle(
+                                      color: EmiColors.textSecondary,
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: _loading
+                                        ? null
+                                        : () => context.go('/login'),
+                                    child: Text(
+                                      'Kembali ke halaman masuk',
+                                      style: TextStyle(
+                                        color: EmiColors.primary,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            validator: (value) =>
-                                (value?.trim().isEmpty ?? true)
-                                ? 'Kode wajib diisi.'
-                                : null,
-                          ),
-                          const SizedBox(height: EmiSpacing.md),
-                          TextFormField(
-                            key: const Key('resetPasswordField'),
-                            controller: _passwordController,
-                            obscureText: true,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Kata Sandi Baru',
-                              prefixIcon: Icon(Icons.lock_outline, size: 20),
-                            ),
-                            validator: _validator.password,
-                          ),
-                          const SizedBox(height: EmiSpacing.md),
-                          TextFormField(
-                            key: const Key('resetConfirmPasswordField'),
-                            controller: _confirmController,
-                            obscureText: true,
-                            textInputAction: TextInputAction.done,
-                            decoration: const InputDecoration(
-                              labelText: 'Ulangi Kata Sandi',
-                              prefixIcon: Icon(Icons.lock_outline, size: 20),
-                            ),
-                            validator: (value) {
-                              if ((value ?? '').isEmpty) {
-                                return 'Ulangi kata sandi wajib diisi.';
-                              }
-                              if (value != _passwordController.text) {
-                                return 'Kata sandi belum sesuai.';
-                              }
-                              return null;
-                            },
-                            onFieldSubmitted: (_) => _submit(),
-                          ),
-                          if (_error != null) ...[
-                            const SizedBox(height: EmiSpacing.sm),
-                            ErrorMessage(message: _error!.message),
                           ],
-                          if (_done) ...[
-                            const SizedBox(height: EmiSpacing.sm),
-                            Text(
-                              'Kata sandi berhasil diubah.',
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(color: EmiColors.success),
-                            ),
-                          ],
-                          const SizedBox(height: EmiSpacing.lg),
-                          ElevatedButton(
-                            key: const Key('resetPasswordButton'),
-                            onPressed: _loading ? null : _submit,
-                            child: _loading
-                                ? const SizedBox.square(
-                                    dimension: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Text('Simpan Kata Sandi'),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: EmiSpacing.lg),
-                  TextButton(
-                    onPressed: _loading ? null : () => context.go('/login'),
-                    child: const Text('Kembali ke Login'),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

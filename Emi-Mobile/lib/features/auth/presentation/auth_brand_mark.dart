@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/emi_theme.dart';
+import 'auth_style.dart';
 
-/// Neobrutalism-lite brand mark shared by auth screens: solid orange badge
-/// with a thin dark border, no shadow (the shadow lives on the form card
-/// below it so the two never stack per desain.md 6.4/24).
+/// Brand mark shared by auth screens: small orange square logo badge with
+/// a dark border, followed by the "EMI" wordmark — matching the reference
+/// mock's top-left lockup.
 class AuthBrandMark extends StatelessWidget {
   const AuthBrandMark({super.key, this.icon = Icons.school_outlined});
 
@@ -12,20 +13,26 @@ class AuthBrandMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 64,
-          height: 64,
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
             color: EmiColors.primary,
-            borderRadius: BorderRadius.circular(EmiRadii.pill),
-            border: Border.all(color: EmiColors.border, width: 1.5),
+            borderRadius: BorderRadius.circular(AuthStyle.badgeRadius),
+            border: Border.all(color: AuthStyle.ink, width: 2),
           ),
-          child: Icon(icon, size: 30, color: EmiColors.textPrimary),
+          child: Icon(icon, size: 22, color: AuthStyle.ink),
         ),
-        const SizedBox(height: EmiSpacing.sm),
-        Text('EMI Kolaka', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(width: EmiSpacing.sm),
+        Text(
+          'EMI',
+          style: Theme.of(
+            context,
+          ).textTheme.headlineMedium?.copyWith(color: AuthStyle.ink),
+        ),
       ],
     );
   }
