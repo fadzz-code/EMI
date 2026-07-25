@@ -156,7 +156,11 @@ export function StudentSpeaking() {
 
   async function selectCaptureSource(source: "microphone" | "esp32") {
     if (isRecording || isSubmitting || esp32.state === "recording" || esp32.state === "finalizing") return;
-    if (source === "microphone") await esp32.disconnect();
+    if (source === "microphone") {
+      await esp32.disconnect();
+    } else if (esp32.state === "disconnected" || esp32.state === "permitted") {
+      void esp32.connect(false);
+    }
     setCaptureSource(source);
   }
 

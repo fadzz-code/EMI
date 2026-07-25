@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { Esp32SerialService, ESP32_BAUD_RATE, getSerialSupport, SERIAL_CHOOSER_CANCELLED_MESSAGE, SERIAL_UNSUPPORTED_MESSAGE, type SerialNavigator, type SerialPortLike } from "./esp32-serial-service";
+import { Esp32SerialService, ESP32_BAUD_RATE, getSerialSupport, PORT_OPEN_TIMEOUT_MESSAGE, PORT_OPEN_TIMEOUT_MS, SERIAL_CHOOSER_CANCELLED_MESSAGE, SERIAL_UNSUPPORTED_MESSAGE, type SerialNavigator, type SerialPortLike } from "./esp32-serial-service";
 import { encodeSerialPacket } from "./esp32-serial-parser";
 import { pcmS16leToWav } from "./pcm-wav";
 import { speakingAttemptForm } from "./student-service";
@@ -113,6 +113,37 @@ describe("Esp32SerialService", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(end).toHaveBeenCalledOnce();
     expect(service.connected).toBe(false);
+  });
+  it("times out and reports a friendly message when open() never resolves", async () => {
+    vi.useFakeTimers();
+    try {
+      const { port } = fakePort();
+      vi.mocked(port.open).mockImplementation(() => new Promise<void>(() => undefined));
+      const api: SerialNavigator = { requestPort: vi.fn(async () => port), getPorts: vi.fn(async () => []) };
+      const service = new Esp32SerialService(() => api);
+      const assertion = expect(service.chooseOther(() => undefined)).rejects.toThrow(PORT_OPEN_TIMEOUT_MESSAGE);
+      await vi.advanceTimersByTimeAsync(PORT_OPEN_TIMEOUT_MS);
+      await assertion;
+      expect(service.connected).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it("reconnect (non-requestNew) reports permitted, not an unhandled rejection, when open() times out", async () => {
+    vi.useFakeTimers();
+    try {
+      const { port } = fakePort();
+      vi.mocked(port.open).mockImplementation(() => new Promise<void>(() => undefined));
+      const api: SerialNavigator = { requestPort: vi.fn(), getPorts: vi.fn(async () => [port]) };
+      const service = new Esp32SerialService(() => api);
+      const assertion = expect(service.reconnect(() => undefined)).resolves.toEqual({ status: "permitted" });
+      await vi.advanceTimersByTimeAsync(PORT_OPEN_TIMEOUT_MS);
+      await assertion;
+      expect(service.hasPermission).toBe(true);
+      expect(service.connected).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
   it("restores disconnect listener when reused after dispose", async () => {
     const { port } = fakePort();

@@ -5,7 +5,9 @@ export const PCM_PACKET_TYPE = 0x01;
 export const CONTROL_PACKET_TYPE = 0x02;
 export const PTT_PRESSED = 0x01;
 export const PTT_RELEASED = 0x00;
+export const PORT_OPEN_TIMEOUT_MS = 10_000;
 export const SERIAL_UNSUPPORTED_MESSAGE = "Alat Speaking EMI belum didukung di browser ini. Gunakan Chrome atau Edge desktop melalui HTTPS atau localhost.";
+export const PORT_OPEN_TIMEOUT_MESSAGE = "Alat tidak merespons. Pastikan EMI_KOLAKA menyala, tidak sedang dipakai aplikasi lain, lalu coba lagi.";
 export const SERIAL_CHOOSER_CANCELLED_MESSAGE = "Pemilihan alat dibatalkan.";
 
 export type SerialPortLike = {
@@ -93,7 +95,7 @@ export class Esp32SerialService {
     }
     if (!this.permittedPorts.includes(port)) this.permittedPorts.push(port);
     try {
-      await port.open({ baudRate: ESP32_BAUD_RATE });
+      await this.openWithTimeout(port);
     } catch (error) {
       if (!requestNew) return { status: "permitted" };
       throw error;
@@ -111,6 +113,16 @@ export class Esp32SerialService {
     }
     void this.read(port, generation, onPacket);
     return { status: "connected" };
+  }
+
+  private openWithTimeout(port: SerialPortLike) {
+    return new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error(PORT_OPEN_TIMEOUT_MESSAGE)), PORT_OPEN_TIMEOUT_MS);
+      port.open({ baudRate: ESP32_BAUD_RATE }).then(
+        () => { clearTimeout(timeout); resolve(); },
+        (error) => { clearTimeout(timeout); reject(error); },
+      );
+    });
   }
 
   disconnect() { return this.teardown("disconnect", false); }
