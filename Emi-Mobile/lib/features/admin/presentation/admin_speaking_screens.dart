@@ -12,6 +12,8 @@ import '../../../shared/widgets/status_badge.dart';
 import '../data/admin_speaking_providers.dart';
 import '../data/admin_speaking_repository.dart';
 import 'admin_shell.dart';
+import 'admin_style.dart';
+import 'admin_widgets.dart';
 
 typedef AdminSpeakingAudioPicker = Future<PlatformFile?> Function();
 
@@ -173,80 +175,98 @@ class _SpeakingTile extends StatelessWidget {
   final AdminSpeakingTemplate item;
 
   @override
-  Widget build(BuildContext context) => InkWell(
+  Widget build(BuildContext context) => AdminCard(
     onTap: () => context.push('/admin/speaking/${item.id}'),
-    child: Container(
-      padding: const EdgeInsets.all(EmiSpacing.md),
-      decoration: BoxDecoration(
-        color: EmiColors.surface,
-        border: Border.all(color: EmiColors.border, width: 1.5),
-        borderRadius: BorderRadius.circular(EmiRadii.card),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.headphones),
-          const SizedBox(width: EmiSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.title,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                Text(
-                  item.targetText,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: EmiSpacing.xs),
-                Wrap(
-                  spacing: EmiSpacing.xs,
-                  runSpacing: EmiSpacing.xs,
-                  children: [
-                    EmiStatusBadge(
-                      label: _status(item.status),
-                      tone: emiStatusToneFromKey(item.status),
-                    ),
-                    EmiStatusBadge(
-                      label: item.referenceAudioMediaId == null
-                          ? 'Tanpa audio'
-                          : 'Audio tersedia',
-                      icon: item.referenceAudioMediaId == null
-                          ? Icons.volume_off_outlined
-                          : Icons.volume_up_outlined,
-                    ),
-                  ],
-                ),
-                Text(
-                  '${_difficulty(item.difficulty)} · Diubah ${_date(item.updatedAt)}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: AdminStyle.tint,
+            borderRadius: BorderRadius.circular(EmiRadii.pill),
           ),
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'view') {
-                context.push('/admin/speaking/${item.id}');
-              }
-              if (value == 'edit') {
-                context.push('/admin/speaking/${item.id}/edit');
-              }
-              if (value == 'publish') _publish(context, item);
-              if (value == 'archive') _archive(context, item);
-            },
-            itemBuilder: (_) => [
-              const PopupMenuItem(value: 'view', child: Text('Lihat')),
-              const PopupMenuItem(value: 'edit', child: Text('Edit')),
-              if (item.status != 'published' && item.status != 'archived')
-                const PopupMenuItem(value: 'publish', child: Text('Terbitkan')),
-              if (item.status != 'archived')
-                const PopupMenuItem(value: 'archive', child: Text('Arsipkan')),
+          child: const Icon(
+            Icons.headphones_outlined,
+            color: EmiColors.primary,
+            size: 22,
+          ),
+        ),
+        const SizedBox(width: EmiSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.title,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                item.targetText,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AdminStyle.inkMuted),
+              ),
+              const SizedBox(height: EmiSpacing.xs),
+              Wrap(
+                spacing: EmiSpacing.xs,
+                runSpacing: EmiSpacing.xs,
+                children: [
+                  EmiStatusBadge(
+                    label: _status(item.status),
+                    tone: emiStatusToneFromKey(item.status),
+                  ),
+                  EmiStatusBadge(
+                    label: item.referenceAudioMediaId == null
+                        ? 'Tanpa audio'
+                        : 'Audio tersedia',
+                    icon: item.referenceAudioMediaId == null
+                        ? Icons.volume_off_outlined
+                        : Icons.volume_up_outlined,
+                  ),
+                ],
+              ),
+              const SizedBox(height: EmiSpacing.xs),
+              Text(
+                '${_difficulty(item.difficulty)} · Diubah ${_date(item.updatedAt)}',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AdminStyle.inkMuted),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
-        ],
-      ),
+        ),
+        PopupMenuButton<String>(
+          onSelected: (value) {
+            if (value == 'view') {
+              context.push('/admin/speaking/${item.id}');
+            }
+            if (value == 'edit') {
+              context.push('/admin/speaking/${item.id}/edit');
+            }
+            if (value == 'publish') _publish(context, item);
+            if (value == 'archive') _archive(context, item);
+          },
+          itemBuilder: (_) => [
+            const PopupMenuItem(value: 'view', child: Text('Lihat')),
+            const PopupMenuItem(value: 'edit', child: Text('Edit')),
+            if (item.status != 'published' && item.status != 'archived')
+              const PopupMenuItem(value: 'publish', child: Text('Terbitkan')),
+            if (item.status != 'archived')
+              const PopupMenuItem(value: 'archive', child: Text('Arsipkan')),
+          ],
+        ),
+      ],
     ),
   );
 }
@@ -271,49 +291,79 @@ class AdminSpeakingDetailScreen extends ConsumerWidget {
         data: (item) => ListView(
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
-            Text(item.title, style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: EmiSpacing.xs),
-            EmiStatusBadge(
-              label: _status(item.status),
-              tone: emiStatusToneFromKey(item.status),
+            AdminCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: EmiSpacing.sm),
+                  Wrap(
+                    spacing: EmiSpacing.xs,
+                    children: [
+                      EmiStatusBadge(
+                        label: _status(item.status),
+                        tone: emiStatusToneFromKey(item.status),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: EmiSpacing.lg),
-            Text(
-              'Kalimat Latihan',
-              style: Theme.of(context).textTheme.titleLarge,
+            const AdminSectionHeader('Audio Referensi', leading: false),
+            AdminCard(
+              child: item.referenceAudioUrl != null
+                  ? SpeakingAudioControls(
+                      source: item.referenceAudioUrl!,
+                      remote: true,
+                    )
+                  : Text(
+                      'Belum ada audio referensi.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AdminStyle.inkMuted,
+                      ),
+                    ),
             ),
-            const SizedBox(height: EmiSpacing.sm),
-            _Row(label: 'Target bacaan', value: item.targetText),
-            _Row(label: 'Terjemahan', value: item.targetTranslation ?? '-'),
-            const SizedBox(height: EmiSpacing.lg),
-            Text('Panduan', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: EmiSpacing.sm),
-            _Row(label: 'Petunjuk', value: item.promptText ?? '-'),
-            _Row(label: 'Kesulitan', value: _difficulty(item.difficulty)),
-            const SizedBox(height: EmiSpacing.lg),
-            Text(
-              'Audio Referensi',
-              style: Theme.of(context).textTheme.titleLarge,
+            const AdminSectionHeader('Kalimat Latihan'),
+            AdminCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _Row(label: 'Target bacaan', value: item.targetText),
+                  _Row(
+                    label: 'Terjemahan',
+                    value: item.targetTranslation ?? '-',
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: EmiSpacing.sm),
-            if (item.referenceAudioUrl != null)
-              SpeakingAudioControls(
-                source: item.referenceAudioUrl!,
-                remote: true,
-              )
-            else
-              const Text('Belum ada audio referensi.'),
+            const AdminSectionHeader('Panduan'),
+            AdminCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _Row(label: 'Petunjuk', value: item.promptText ?? '-'),
+                  _Row(label: 'Kesulitan', value: _difficulty(item.difficulty)),
+                ],
+              ),
+            ),
             const SizedBox(height: EmiSpacing.lg),
             FilledButton(
               onPressed: () => context.push('/admin/speaking/${item.id}/edit'),
               child: const Text('Edit Template'),
             ),
-            if (item.status != 'archived')
+            if (item.status != 'archived') ...[
+              const SizedBox(height: EmiSpacing.sm),
               OutlinedButton(
                 key: const Key('adminArchive-speaking'),
                 onPressed: () => _archive(context, item),
                 child: const Text('Arsipkan'),
               ),
+            ],
           ],
         ),
       ),
@@ -331,8 +381,14 @@ class _Row extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: Theme.of(context).textTheme.titleMedium),
-        Text(value),
+        Text(
+          label,
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: AdminStyle.inkMuted),
+        ),
+        const SizedBox(height: 2),
+        Text(value, style: const TextStyle(color: AdminStyle.ink)),
       ],
     ),
   );
@@ -417,22 +473,13 @@ class _AdminSpeakingFormScreenState
       child: ListView(
         padding: const EdgeInsets.all(EmiSpacing.md),
         children: [
-          Text(
-            'Identitas Template',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: EmiSpacing.sm),
+          const AdminSectionHeader('Identitas Template', leading: false),
           TextFormField(
             controller: _title,
             decoration: const InputDecoration(labelText: 'Judul latihan'),
             validator: _required,
           ),
-          const SizedBox(height: EmiSpacing.lg),
-          Text(
-            'Kalimat Latihan',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: EmiSpacing.sm),
+          const AdminSectionHeader('Kalimat Latihan'),
           TextFormField(
             controller: _target,
             minLines: 3,
@@ -470,9 +517,7 @@ class _AdminSpeakingFormScreenState
             onChanged: (value) =>
                 setState(() => _difficultyValue = value ?? 'beginner'),
           ),
-          const SizedBox(height: EmiSpacing.lg),
-          Text('Publikasi', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: EmiSpacing.sm),
+          const AdminSectionHeader('Publikasi'),
           DropdownButtonFormField<String>(
             initialValue: _statusValue,
             decoration: const InputDecoration(
@@ -487,12 +532,7 @@ class _AdminSpeakingFormScreenState
             onChanged: (value) =>
                 setState(() => _statusValue = value ?? 'draft'),
           ),
-          const SizedBox(height: EmiSpacing.lg),
-          Text(
-            'Audio referensi opsional',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: EmiSpacing.sm),
+          const AdminSectionHeader('Audio referensi opsional'),
           if (_audioPath != null)
             SpeakingAudioControls(source: _audioPath!, remote: false),
           if (_audioPath == null && !_clearAudio && _existingAudioUrl != null)
