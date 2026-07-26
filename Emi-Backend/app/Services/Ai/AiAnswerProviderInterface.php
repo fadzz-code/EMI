@@ -6,5 +6,5 @@ use App\Models\AiKnowledgeItem;
 
 interface AiAnswerProviderInterface
 {
-    public function generateAnswer(string $question, AiKnowledgeItem $reference, array $chunks = []): AiAnswerResult;
+    public function generateAnswer(string $question, ?AiKnowledgeItem $reference, array $chunks = []): AiAnswerResult;
 }

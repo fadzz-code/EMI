@@ -592,9 +592,33 @@ class Phase9BasisAiTest extends TestCase
             ->assertJsonPath('data.fallback_reason', 'free_ai_disabled');
     }
 
-    public function test_no_basis_ai_match_does_not_call_external_provider(): void
+    public function test_no_basis_ai_match_still_calls_external_provider_for_hybrid_grounding(): void
     {
         config(['ai.free_provider' => 'groq', 'ai.free_api_key' => 'test-key', 'ai.vector_retrieval.enabled' => false, 'ai.embedding.provider' => 'none']);
+        Http::fake([
+            'api.groq.com/*' => Http::response([
+                'choices' => [
+                    ['message' => ['content' => 'Jawaban umum tanpa dokumen lokal.']],
+                ],
+            ]),
+        ]);
+        $student = User::factory()->student()->approved()->create();
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+            'message' => 'pertanyaan luar angkasa',
+        ])->assertOk()
+            ->assertJsonPath('data.answer', 'Jawaban umum tanpa dokumen lokal.')
+            ->assertJsonPath('data.matched', false)
+            ->assertJsonPath('data.mode', 'free_ai')
+            ->assertJsonPath('data.provider', 'groq')
+            ->assertJsonPath('data.source', null);
+
+        Http::assertSentCount(1);
+    }
+
+    public function test_no_basis_ai_match_falls_back_to_default_when_provider_disabled(): void
+    {
+        config(['ai.free_provider' => 'none']);
         Http::fake();
         $student = User::factory()->student()->approved()->create();
 
@@ -602,7 +626,8 @@ class Phase9BasisAiTest extends TestCase
             'message' => 'pertanyaan luar angkasa',
         ])->assertOk()
             ->assertJsonPath('data.matched', false)
-            ->assertJsonPath('data.provider', 'default');
+            ->assertJsonPath('data.provider', 'default')
+            ->assertJsonPath('data.fallback_reason', 'free_ai_disabled');
 
         Http::assertNothingSent();
     }
