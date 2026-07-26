@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
-import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/role_dashboard_widgets.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../auth/presentation/auth_controller.dart';
@@ -13,6 +12,8 @@ import '../data/admin_providers.dart';
 import '../data/admin_repository.dart';
 import 'admin_dashboard_widgets.dart';
 import 'admin_shell.dart';
+import 'admin_style.dart';
+import 'admin_widgets.dart';
 
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
@@ -33,78 +34,94 @@ class AdminDashboardScreen extends ConsumerWidget {
             message: 'Periksa koneksi internetmu, lalu coba lagi.',
             onRetry: () => ref.invalidate(adminDashboardProvider),
           ),
-          data: (data) => ListView(
-            padding: const EdgeInsets.all(EmiSpacing.md),
-            children: [
-              AdminHeroHeader(
-                greeting: 'Selamat datang,',
-                name: user?.fullName ?? 'Admin EMI',
-                message: 'Mari periksa kegiatan EMI hari ini.',
-                icon: Icons.admin_panel_settings_outlined,
-                action: IconButton(
-                  tooltip: 'Profil',
-                  onPressed: () => context.go('/admin/profile'),
-                  icon: const Icon(Icons.account_circle_outlined),
+          data: (data) {
+            final approvals = _approvalMetric(data);
+            return ListView(
+              padding: const EdgeInsets.all(EmiSpacing.md),
+              children: [
+                AdminHeroHeader(
+                  greeting: 'Selamat datang,',
+                  name: user?.fullName ?? 'Admin EMI',
+                  message: 'Mari periksa kegiatan EMI hari ini.',
+                  icon: Icons.admin_panel_settings_outlined,
+                  action: IconButton(
+                    tooltip: 'Profil',
+                    onPressed: () => context.go('/admin/profile'),
+                    icon: const Icon(Icons.account_circle_outlined),
+                  ),
                 ),
-              ),
-              const SizedBox(height: EmiSpacing.xl),
-              if (data.items.isEmpty)
-                const FriendlyState(
-                  icon: Icons.inbox_outlined,
-                  title: 'Belum Ada Data',
-                  message:
-                      'Ringkasan akan muncul setelah data sekolah tersedia.',
-                )
-              else ...[
-                Text(
-                  'Ringkasan Utama',
-                  style: Theme.of(context).textTheme.titleMedium,
+                const SizedBox(height: EmiSpacing.lg),
+                if (data.items.isEmpty)
+                  const FriendlyState(
+                    icon: Icons.inbox_outlined,
+                    title: 'Belum Ada Data',
+                    message:
+                        'Ringkasan akan muncul setelah data sekolah tersedia.',
+                  )
+                else ...[
+                  const AdminSectionHeader(
+                    'Perlu Perhatian',
+                    icon: Icons.notifications_active_outlined,
+                    leading: false,
+                  ),
+                  _AdminApprovalActionCard(
+                    count: approvals?.value ?? 'Belum tersedia',
+                    onTap: () => context.go('/admin/approvals'),
+                  ),
+                  const AdminSectionHeader(
+                    'Ringkasan Utama',
+                    icon: Icons.insights_outlined,
+                  ),
+                  GridView.count(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: EmiSpacing.md,
+                    mainAxisSpacing: EmiSpacing.md,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisExtent: 150,
+                    children: [
+                      for (final item in data.items)
+                        AdminMetricCard(
+                          label: item.label,
+                          value: item.value,
+                          icon: _metricIcon(item),
+                          highlight: item.highlight,
+                        ),
+                    ],
+                  ),
+                ],
+                const AdminSectionHeader(
+                  'Menu Cepat',
+                  icon: Icons.grid_view_outlined,
                 ),
-                const SizedBox(height: EmiSpacing.md),
-                GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: EmiSpacing.md,
-                  mainAxisSpacing: EmiSpacing.md,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  mainAxisExtent: 150,
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: EmiSpacing.sm,
+                  runSpacing: EmiSpacing.sm,
                   children: [
-                    for (final item in data.items)
-                      AdminMetricCard(
-                        label: item.label,
-                        value: item.value,
-                        icon: _metricIcon(item),
-                        highlight: item.highlight,
+                    for (final feature in AdminFeature.values.where(
+                      (feature) => feature.isMobileImplemented,
+                    ))
+                      AdminQuickActionItem(
+                        label: feature.label,
+                        icon: _featureIcon(feature),
+                        onTap: () => context.go(feature.route),
                       ),
                   ],
                 ),
               ],
-              const SizedBox(height: EmiSpacing.xl),
-              Text(
-                'Menu Cepat',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: EmiSpacing.md),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: EmiSpacing.sm,
-                runSpacing: EmiSpacing.sm,
-                children: [
-                  for (final feature in AdminFeature.values.where(
-                    (feature) => feature.isMobileImplemented,
-                  ))
-                    AdminQuickActionItem(
-                      label: feature.label,
-                      icon: _featureIcon(feature),
-                      onTap: () => context.go(feature.route),
-                    ),
-                ],
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
+  }
+
+  AdminMetric? _approvalMetric(AdminSummary data) {
+    for (final metric in data.items) {
+      if (metric.iconName == 'approval') return metric;
+    }
+    return null;
   }
 
   IconData _metricIcon(AdminMetric metric) => switch (metric.iconName) {
@@ -126,6 +143,64 @@ class AdminDashboardScreen extends ConsumerWidget {
     AdminFeature.settings => Icons.settings_outlined,
     _ => Icons.apps_outlined,
   };
+}
+
+/// Primary action card for the Admin dashboard: the single most important
+/// task (reviewing pending registration requests). Task-first, one primary
+/// action, soft-card look with a gentle orange accent.
+class _AdminApprovalActionCard extends StatelessWidget {
+  const _AdminApprovalActionCard({required this.count, required this.onTap});
+
+  final String count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasPending = count != 'Belum tersedia' && count != '0';
+    return AdminCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(EmiSpacing.lg),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: EmiColors.primarySoft,
+              borderRadius: BorderRadius.circular(EmiRadii.pill),
+            ),
+            child: const Icon(
+              Icons.how_to_reg_outlined,
+              color: EmiColors.primary,
+            ),
+          ),
+          const SizedBox(width: EmiSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Tinjau Persetujuan',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(color: AdminStyle.ink),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  hasPending
+                      ? '$count pendaftaran menunggu diperiksa.'
+                      : 'Tidak ada pendaftaran baru saat ini.',
+                  style: const TextStyle(color: AdminStyle.inkMuted),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: EmiSpacing.sm),
+          const Icon(Icons.chevron_right, color: AdminStyle.inkMuted),
+        ],
+      ),
+    );
+  }
 }
 
 class AdminListScreen extends ConsumerWidget {
@@ -165,7 +240,7 @@ class AdminListScreen extends ConsumerWidget {
                       const SizedBox(height: EmiSpacing.md),
                   itemBuilder: (context, index) {
                     final item = data.items[index];
-                    return EmiCard(
+                    return AdminCard(
                       child: ListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text(item.title),
@@ -213,16 +288,27 @@ class AdminDetailScreen extends ConsumerWidget {
         data: (item) => ListView(
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
-            EmiCard(
+            AdminCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     item.title,
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleLarge?.copyWith(color: AdminStyle.ink),
                   ),
-                  if (item.subtitle != null) Text(_simpleLabel(item.subtitle!)),
-                  if (item.status != null) Text(_simpleLabel(item.status!)),
+                  if (item.subtitle != null) ...[
+                    const SizedBox(height: EmiSpacing.xs),
+                    Text(
+                      _simpleLabel(item.subtitle!),
+                      style: const TextStyle(color: AdminStyle.inkMuted),
+                    ),
+                  ],
+                  if (item.status != null) ...[
+                    const SizedBox(height: EmiSpacing.sm),
+                    AdminStatusChip(label: _simpleLabel(item.status!)),
+                  ],
                 ],
               ),
             ),
@@ -422,7 +508,7 @@ class _AdminClassTile extends StatelessWidget {
   final AdminClass klass;
 
   @override
-  Widget build(BuildContext context) => EmiCard(
+  Widget build(BuildContext context) => AdminCard(
     child: InkWell(
       onTap: () => context.push('/admin/classes/${klass.id}'),
       child: Row(
@@ -635,7 +721,7 @@ class _AdminSchoolTile extends StatelessWidget {
   final AdminSchool school;
 
   @override
-  Widget build(BuildContext context) => EmiCard(
+  Widget build(BuildContext context) => AdminCard(
     child: InkWell(
       onTap: () => context.push('/admin/schools/${school.id}'),
       child: Row(
@@ -699,7 +785,7 @@ class AdminSchoolDetailScreen extends ConsumerWidget {
         data: (school) => ListView(
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
-            EmiCard(
+            AdminCard(
               child: Row(
                 children: [
                   const CircleAvatar(
@@ -996,7 +1082,7 @@ class AdminClassDetailScreen extends ConsumerWidget {
         data: (klass) => ListView(
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
-            EmiCard(
+            AdminCard(
               child: Row(
                 children: [
                   const CircleAvatar(
@@ -1824,7 +1910,7 @@ class _AdminUserTile extends StatelessWidget {
   final AdminUser user;
 
   @override
-  Widget build(BuildContext context) => EmiCard(
+  Widget build(BuildContext context) => AdminCard(
     key: Key('adminUserRow-${user.id}'),
     child: InkWell(
       onTap: () => context.push('/admin/users/${user.id}'),
@@ -1889,54 +1975,74 @@ class AdminUserDetailScreen extends ConsumerWidget {
       child: Semantics(
         key: const Key('adminUserDetailScreen'),
         container: true,
-        child: detail.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, _) => FriendlyState(
-            icon: Icons.wifi_off_outlined,
-            title: 'Data belum bisa dimuat',
-            message: 'Periksa koneksi internet, lalu coba lagi.',
-            onRetry: () => ref.invalidate(adminUserDetailProvider(id)),
-          ),
-          data: (user) => ListView(
-            padding: const EdgeInsets.all(EmiSpacing.md),
-            children: [
-              _AdminUserHeader(user: user),
-              const SizedBox(height: EmiSpacing.lg),
-              _InfoSection(
-                title: 'Data Akun',
-                rows: {
-                  'Email': user.email,
-                  'Role': _roleLabel(user.role),
-                  'Status': _statusLabel(user.status),
-                  'Nomor Telepon': user.phone ?? '-',
-                },
-              ),
-              const SizedBox(height: EmiSpacing.md),
-              _InfoSection(
-                title: 'Sekolah dan Kelas',
-                rows: {
-                  'Sekolah': user.schoolName ?? 'Belum Ada Sekolah',
-                  'Kelas': user.className ?? 'Belum Ditempatkan ke Kelas',
-                },
-              ),
-              const SizedBox(height: EmiSpacing.md),
-              FilledButton(
-                key: const Key('adminUserEdit'),
-                onPressed: () => _showEditUser(context, ref, user),
-                child: const Text('Edit Data'),
-              ),
-              const SizedBox(height: EmiSpacing.sm),
-              OutlinedButton(
-                key: const Key('adminUserStatus'),
-                onPressed: () => _confirmStatus(context, ref, user),
-                child: Text(
-                  user.status == 'approved'
-                      ? 'Nonaktifkan Akun'
-                      : 'Aktifkan Akun',
+        child: Column(
+          children: [
+            Expanded(
+              child: detail.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (_, _) => FriendlyState(
+                  icon: Icons.wifi_off_outlined,
+                  title: 'Data belum bisa dimuat',
+                  message: 'Periksa koneksi internet, lalu coba lagi.',
+                  onRetry: () => ref.invalidate(adminUserDetailProvider(id)),
+                ),
+                data: (user) => ListView(
+                  padding: const EdgeInsets.all(EmiSpacing.md),
+                  children: [
+                    _AdminUserHeader(user: user),
+                    const SizedBox(height: EmiSpacing.lg),
+                    _InfoSection(
+                      title: 'Data Akun',
+                      rows: {
+                        'Email': user.email,
+                        'Role': _roleLabel(user.role),
+                        'Status': _statusLabel(user.status),
+                        'Nomor Telepon': user.phone ?? '-',
+                      },
+                    ),
+                    const SizedBox(height: EmiSpacing.md),
+                    _InfoSection(
+                      title: 'Sekolah dan Kelas',
+                      rows: {
+                        'Sekolah': user.schoolName ?? 'Belum Ada Sekolah',
+                        'Kelas': user.className ?? 'Belum Ditempatkan ke Kelas',
+                      },
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+            detail.maybeWhen(
+              data: (user) => Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  EmiSpacing.md,
+                  0,
+                  EmiSpacing.md,
+                  EmiSpacing.md,
+                ),
+                child: Column(
+                  children: [
+                    FilledButton(
+                      key: const Key('adminUserEdit'),
+                      onPressed: () => _showEditUser(context, ref, user),
+                      child: const Text('Edit Data'),
+                    ),
+                    const SizedBox(height: EmiSpacing.sm),
+                    OutlinedButton(
+                      key: const Key('adminUserStatus'),
+                      onPressed: () => _confirmStatus(context, ref, user),
+                      child: Text(
+                        user.status == 'approved'
+                            ? 'Nonaktifkan Akun'
+                            : 'Aktifkan Akun',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              orElse: () => const SizedBox.shrink(),
+            ),
+          ],
         ),
       ),
     );
@@ -2115,7 +2221,7 @@ class _AdminUserHeader extends StatelessWidget {
   final AdminUser user;
 
   @override
-  Widget build(BuildContext context) => EmiCard(
+  Widget build(BuildContext context) => AdminCard(
     child: Row(
       children: [
         CircleAvatar(
@@ -2159,7 +2265,7 @@ class _InfoSection extends StatelessWidget {
   final Map<String, String> rows;
 
   @override
-  Widget build(BuildContext context) => EmiCard(
+  Widget build(BuildContext context) => AdminCard(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2168,28 +2274,18 @@ class _InfoSection extends StatelessWidget {
         for (final row in rows.entries)
           Padding(
             padding: const EdgeInsets.only(bottom: EmiSpacing.xs),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final compact = constraints.maxWidth < 360;
-                final value = Text(
-                  row.value,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 2,
-                );
-                if (compact) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [Text(row.key), value],
-                  );
-                }
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(width: 120, child: Text(row.key)),
-                    Expanded(child: value),
-                  ],
-                );
-              },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  row.key,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: AdminStyle.inkMuted),
+                ),
+                const SizedBox(height: 2),
+                Text(row.value, style: const TextStyle(color: AdminStyle.ink)),
+              ],
             ),
           ),
       ],
