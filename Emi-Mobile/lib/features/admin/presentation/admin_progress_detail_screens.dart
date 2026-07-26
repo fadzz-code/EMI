@@ -7,12 +7,13 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../app/theme/emi_theme.dart';
-import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../data/admin_progress_models.dart';
 import '../data/admin_progress_providers.dart';
 import 'admin_reports_screen.dart';
 import 'admin_shell.dart';
+import 'admin_style.dart';
+import 'admin_widgets.dart';
 
 class AdminStudentProgressScreen extends ConsumerStatefulWidget {
   const AdminStudentProgressScreen({super.key, required this.id});
@@ -39,69 +40,106 @@ class _AdminStudentProgressScreenState
             key: const Key('adminScreen-student-progress-detail'),
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
-              Text(
-                data.student.fullName,
-                style: Theme.of(context).textTheme.headlineSmall,
+              AdminCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      data.student.fullName,
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      data.student.email.isEmpty
+                          ? 'Email tidak tersedia'
+                          : data.student.email,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AdminStyle.inkMuted,
+                      ),
+                    ),
+                    Text(
+                      '${data.progress.schoolName} • ${data.progress.className}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AdminStyle.inkMuted,
+                      ),
+                    ),
+                    Text(
+                      'Status akun: ${adminProgressStatus(data.student.status)}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AdminStyle.inkMuted,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              Text(
-                data.student.email.isEmpty
-                    ? 'Email tidak tersedia'
-                    : data.student.email,
-              ),
-              Text('${data.progress.schoolName} • ${data.progress.className}'),
-              Text('Status akun: ${adminProgressStatus(data.student.status)}'),
               const SizedBox(height: EmiSpacing.md),
               _PdfButton(
                 onPressed: () => _sharePdf(studentId: widget.id),
                 label: 'Bagikan PDF siswa',
               ),
-              const SizedBox(height: EmiSpacing.md),
               const ProgressSectionHeader('Progress belajar'),
               StudentLearningMetricGrid(progress: data.progress),
-              const SizedBox(height: EmiSpacing.lg),
               const ProgressSectionHeader('Ringkasan kuis'),
               StudentQuizMetricGrid(summary: data.quizSummary),
-              const SizedBox(height: EmiSpacing.lg),
               const ProgressSectionHeader('Riwayat kuis'),
               if (data.quizzes.items.isEmpty)
-                const EmiCard(child: Text('Riwayat kuis belum tersedia.')),
-              for (final quiz in data.quizzes.items)
-                Padding(
-                  padding: const EdgeInsets.only(top: EmiSpacing.sm),
-                  child: EmiCard(
-                    padding: const EdgeInsets.all(EmiSpacing.sm),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.quiz_outlined, size: 24),
-                        const SizedBox(width: EmiSpacing.sm),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                quiz.title,
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                              Text(
-                                '${quiz.attemptCount} percobaan • Nilai ${adminProgressPercent(quiz.bestScorePercent)}',
-                              ),
-                              Text(adminProgressDate(quiz.latestSubmittedAt)),
-                            ],
-                          ),
+                const AdminCard(child: Text('Riwayat kuis belum tersedia.')),
+              for (final quiz in data.quizzes.items) ...[
+                AdminCard(
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AdminStyle.tint,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        ProgressStatusBadge(
-                          adminProgressStatus(quiz.latestStatus),
-                          tone: emiStatusToneFromKey(quiz.latestStatus),
+                        child: const Icon(
+                          Icons.quiz_outlined,
+                          size: 22,
+                          color: EmiColors.primary,
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: EmiSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              quiz.title,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              '${quiz.attemptCount} percobaan • Nilai ${adminProgressPercent(quiz.bestScorePercent)}',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: AdminStyle.inkMuted),
+                            ),
+                            Text(
+                              adminProgressDate(quiz.latestSubmittedAt),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: AdminStyle.inkMuted),
+                            ),
+                          ],
+                        ),
+                      ),
+                      ProgressStatusBadge(
+                        adminProgressStatus(quiz.latestStatus),
+                        tone: emiStatusToneFromKey(quiz.latestStatus),
+                      ),
+                    ],
                   ),
                 ),
+                const SizedBox(height: EmiSpacing.sm),
+              ],
               _Pager(
                 meta: data.quizzes.meta,
                 onPage: (value) => setState(() => page = value),
               ),
-              const EmiCard(child: Text('Laporan speaking belum tersedia.')),
+              const SizedBox(height: EmiSpacing.sm),
+              const AdminCard(child: Text('Laporan speaking belum tersedia.')),
             ],
           ),
         ),
@@ -154,27 +192,47 @@ class _AdminClassProgressScreenState
             key: const Key('adminScreen-class-progress-detail'),
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
-              Text(
-                data.schoolClass.name,
-                style: Theme.of(context).textTheme.headlineSmall,
+              AdminCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      data.schoolClass.name,
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      data.schoolClass.schoolName,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AdminStyle.inkMuted,
+                      ),
+                    ),
+                    Text(
+                      'Tahun ajaran: ${data.schoolClass.academicYear.isEmpty ? '-' : data.schoolClass.academicYear}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AdminStyle.inkMuted,
+                      ),
+                    ),
+                    Text(
+                      'Guru: ${data.schoolClass.teacherName ?? '-'}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AdminStyle.inkMuted,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              Text(data.schoolClass.schoolName),
-              Text(
-                'Tahun ajaran: ${data.schoolClass.academicYear.isEmpty ? '-' : data.schoolClass.academicYear}',
-              ),
-              Text('Guru: ${data.schoolClass.teacherName ?? '-'}'),
               const SizedBox(height: EmiSpacing.md),
               _PdfButton(onPressed: _sharePdf, label: 'Bagikan PDF kelas'),
-              const SizedBox(height: EmiSpacing.md),
               const ProgressSectionHeader('Ringkasan'),
               ClassMetricGrid(
                 summary: data.summary,
                 speakingReports: data.speakingReports,
               ),
-              const SizedBox(height: EmiSpacing.lg),
               const ProgressSectionHeader('Siswa'),
               if (data.students.items.isEmpty)
-                const EmiCard(child: Text('Siswa tidak ditemukan.')),
+                const AdminCard(child: Text('Siswa tidak ditemukan.')),
               for (final student in data.students.items)
                 ProgressStudentItem(
                   student: student,
@@ -185,7 +243,8 @@ class _AdminClassProgressScreenState
                 meta: data.students.meta,
                 onPage: (value) => setState(() => page = value),
               ),
-              const EmiCard(child: Text('Laporan speaking belum tersedia.')),
+              const SizedBox(height: EmiSpacing.sm),
+              const AdminCard(child: Text('Laporan speaking belum tersedia.')),
             ],
           ),
         ),

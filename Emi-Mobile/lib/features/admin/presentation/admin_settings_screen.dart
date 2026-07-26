@@ -13,6 +13,7 @@ import '../../auth/presentation/auth_controller.dart';
 import '../data/admin_settings_providers.dart';
 import '../data/admin_settings_repository.dart';
 import 'admin_shell.dart';
+import 'admin_widgets.dart';
 
 typedef AdminSettingsFilePicker = Future<PlatformFile?> Function();
 
@@ -146,11 +147,18 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
             error: (error, _) => ListView(
               padding: const EdgeInsets.all(EmiSpacing.md),
               children: [
-                Text(_friendlyError(error)),
-                const SizedBox(height: EmiSpacing.md),
-                OutlinedButton(
-                  onPressed: () => ref.invalidate(adminSettingsProvider),
-                  child: const Text('Coba lagi'),
+                AdminCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(_friendlyError(error)),
+                      const SizedBox(height: EmiSpacing.sm),
+                      OutlinedButton(
+                        onPressed: () => ref.invalidate(adminSettingsProvider),
+                        child: const Text('Coba lagi'),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -290,18 +298,23 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
   );
 
   Widget _section(String title, List<Widget> children) => Padding(
-    padding: const EdgeInsets.only(bottom: EmiSpacing.lg),
+    padding: const EdgeInsets.only(bottom: EmiSpacing.md),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(title, style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: EmiSpacing.md),
-        for (var i = 0; i < children.length; i++) ...[
-          children[i],
-          if (i < children.length - 1) const SizedBox(height: EmiSpacing.md),
-        ],
-        const SizedBox(height: EmiSpacing.md),
-        const Divider(height: 1),
+        AdminSectionHeader(title, leading: false),
+        AdminCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < children.length; i++) ...[
+                children[i],
+                if (i < children.length - 1)
+                  const SizedBox(height: EmiSpacing.md),
+              ],
+            ],
+          ),
+        ),
       ],
     ),
   );
@@ -329,7 +342,17 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
 
   Widget _message(String text, Color color) => Padding(
     padding: const EdgeInsets.only(bottom: EmiSpacing.md),
-    child: Text(text, style: TextStyle(color: color)),
+    child: Container(
+      padding: const EdgeInsets.all(EmiSpacing.sm),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(EmiRadii.card),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: color, fontWeight: FontWeight.w600),
+      ),
+    ),
   );
 
   void _hydrate(AdminSettings settings, SessionUser user) {
