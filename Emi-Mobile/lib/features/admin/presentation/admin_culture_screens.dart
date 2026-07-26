@@ -14,6 +14,8 @@ import '../../../shared/widgets/status_badge.dart';
 import '../data/admin_culture_providers.dart';
 import '../data/admin_culture_repository.dart';
 import 'admin_shell.dart';
+import 'admin_style.dart';
+import 'admin_widgets.dart';
 
 typedef AdminCultureFilePicker =
     Future<PlatformFile?> Function(String contentType);
@@ -250,65 +252,94 @@ class _CultureTile extends StatelessWidget {
   const _CultureTile({required this.item});
   final AdminCultureItem item;
   @override
-  Widget build(BuildContext context) => InkWell(
+  Widget build(BuildContext context) => AdminCard(
     onTap: () => context.push('/admin/culture/${item.id}'),
-    child: Container(
-      padding: const EdgeInsets.all(EmiSpacing.md),
-      decoration: BoxDecoration(
-        color: EmiColors.surface,
-        border: Border.all(color: EmiColors.border, width: 1.5),
-        borderRadius: BorderRadius.circular(EmiRadii.card),
-      ),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 64,
-            height: 64,
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: SizedBox(
+            width: 56,
+            height: 56,
             child: item.contentType == 'image' && item.mediaUrl != null
                 ? Image.network(
                     item.mediaUrl!,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) =>
-                        const Icon(Icons.image_not_supported_outlined),
+                    errorBuilder: (_, _, _) => Container(
+                      color: AdminStyle.tint,
+                      child: const Icon(
+                        Icons.image_not_supported_outlined,
+                        color: AdminStyle.inkMuted,
+                      ),
+                    ),
                   )
-                : Icon(_contentIcon(item.contentType)),
+                : Container(
+                    color: AdminStyle.tint,
+                    child: Icon(
+                      _contentIcon(item.contentType),
+                      color: EmiColors.primary,
+                    ),
+                  ),
           ),
-          const SizedBox(width: EmiSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.title,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                Text(_category(item.contentType)),
-                const SizedBox(height: EmiSpacing.xs),
-                EmiStatusBadge(
-                  label: _status(item.status),
-                  tone: emiStatusToneFromKey(item.status),
-                ),
-                Text(
-                  'Diubah ${_date(item.updatedAt)}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ),
-          PopupMenuButton<String>(
-            onSelected: (value) => _action(context, item, value),
-            itemBuilder: (_) => [
-              const PopupMenuItem(value: 'view', child: Text('Lihat')),
-              const PopupMenuItem(value: 'edit', child: Text('Edit')),
-              if (item.status != 'published')
-                const PopupMenuItem(value: 'publish', child: Text('Terbitkan')),
-              if (item.status != 'archived')
-                const PopupMenuItem(value: 'archive', child: Text('Arsipkan')),
-              const PopupMenuItem(value: 'delete', child: Text('Hapus')),
+        ),
+        const SizedBox(width: EmiSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.title,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                _category(item.contentType),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AdminStyle.inkMuted),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: EmiSpacing.xs),
+              Wrap(
+                spacing: EmiSpacing.xs,
+                children: [
+                  EmiStatusBadge(
+                    label: _status(item.status),
+                    tone: emiStatusToneFromKey(item.status),
+                  ),
+                ],
+              ),
+              const SizedBox(height: EmiSpacing.xs),
+              Text(
+                'Diubah ${_date(item.updatedAt)}',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AdminStyle.inkMuted),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
-        ],
-      ),
+        ),
+        PopupMenuButton<String>(
+          onSelected: (value) => _action(context, item, value),
+          itemBuilder: (_) => [
+            const PopupMenuItem(value: 'view', child: Text('Lihat')),
+            const PopupMenuItem(value: 'edit', child: Text('Edit')),
+            if (item.status != 'published')
+              const PopupMenuItem(value: 'publish', child: Text('Terbitkan')),
+            if (item.status != 'archived')
+              const PopupMenuItem(value: 'archive', child: Text('Arsipkan')),
+            const PopupMenuItem(value: 'delete', child: Text('Hapus')),
+          ],
+        ),
+      ],
     ),
   );
 }
@@ -330,63 +361,117 @@ class AdminCultureDetailScreen extends ConsumerWidget {
             message: 'Silakan coba lagi.',
             onRetry: () => ref.invalidate(adminCultureDetailProvider(id)),
           ),
-          data: (item) => ListView(
-            padding: const EdgeInsets.all(EmiSpacing.md),
+          data: (item) => Column(
             children: [
-              Text(
-                item.title,
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: EmiSpacing.xs),
-              EmiStatusBadge(
-                label: _status(item.status),
-                tone: emiStatusToneFromKey(item.status),
-              ),
-              const SizedBox(height: EmiSpacing.lg),
-              Text(
-                'Informasi Konten',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              _Field(
-                label: 'Deskripsi',
-                value: item.description.isEmpty ? '-' : item.description,
-              ),
-              _Field(label: 'Kategori', value: _category(item.contentType)),
-              _Field(label: 'Urutan tampil', value: '${item.displayOrder}'),
-              const SizedBox(height: EmiSpacing.lg),
-              Text(
-                'Media atau Tautan',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              _AdminCultureMedia(item: item),
-              if (item.mediaName != null)
-                Text('${item.mediaName} · ${_size(item.mediaSize)}'),
-              const SizedBox(height: EmiSpacing.lg),
-              FilledButton(
-                onPressed: () => context.push('/admin/culture/${item.id}/edit'),
-                child: const Text('Edit Konten'),
-              ),
-              Wrap(
-                spacing: EmiSpacing.sm,
-                children: [
-                  if (item.status != 'published')
-                    OutlinedButton(
-                      key: const Key('adminPublish-culture'),
-                      onPressed: () => _action(context, item, 'publish'),
-                      child: const Text('Terbitkan'),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(EmiSpacing.md),
+                  children: [
+                    AdminCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.title,
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: EmiSpacing.sm),
+                          Wrap(
+                            spacing: EmiSpacing.xs,
+                            children: [
+                              EmiStatusBadge(
+                                label: _status(item.status),
+                                tone: emiStatusToneFromKey(item.status),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  if (item.status != 'archived')
-                    OutlinedButton(
-                      key: const Key('adminArchive-culture'),
-                      onPressed: () => _action(context, item, 'archive'),
-                      child: const Text('Arsipkan'),
+                    const AdminSectionHeader('Media atau Tautan'),
+                    AdminCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _AdminCultureMedia(item: item),
+                          if (item.mediaName != null) ...[
+                            const SizedBox(height: EmiSpacing.xs),
+                            Text(
+                              '${item.mediaName} · ${_size(item.mediaSize)}',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: AdminStyle.inkMuted),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  TextButton(
-                    key: const Key('adminDelete-culture'),
-                    onPressed: () => _action(context, item, 'delete'),
-                    child: const Text('Hapus'),
-                  ),
-                ],
+                    const AdminSectionHeader('Informasi Konten'),
+                    AdminCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _Field(
+                            label: 'Deskripsi',
+                            value: item.description.isEmpty
+                                ? '-'
+                                : item.description,
+                          ),
+                          _Field(
+                            label: 'Kategori',
+                            value: _category(item.contentType),
+                          ),
+                          _Field(
+                            label: 'Urutan tampil',
+                            value: '${item.displayOrder}',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  EmiSpacing.md,
+                  0,
+                  EmiSpacing.md,
+                  EmiSpacing.md,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FilledButton(
+                      onPressed: () =>
+                          context.push('/admin/culture/${item.id}/edit'),
+                      child: const Text('Edit Konten'),
+                    ),
+                    const SizedBox(height: EmiSpacing.sm),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: EmiSpacing.sm,
+                      children: [
+                        if (item.status != 'published')
+                          OutlinedButton(
+                            key: const Key('adminPublish-culture'),
+                            onPressed: () => _action(context, item, 'publish'),
+                            child: const Text('Terbitkan'),
+                          ),
+                        if (item.status != 'archived')
+                          OutlinedButton(
+                            key: const Key('adminArchive-culture'),
+                            onPressed: () => _action(context, item, 'archive'),
+                            child: const Text('Arsipkan'),
+                          ),
+                        TextButton(
+                          key: const Key('adminDelete-culture'),
+                          onPressed: () => _action(context, item, 'delete'),
+                          child: const Text('Hapus'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -555,12 +640,18 @@ class _Field extends StatelessWidget {
   final String value;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: EmiSpacing.sm),
+    padding: const EdgeInsets.only(bottom: EmiSpacing.sm),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: Theme.of(context).textTheme.titleMedium),
-        Text(value),
+        Text(
+          label,
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: AdminStyle.inkMuted),
+        ),
+        const SizedBox(height: 2),
+        Text(value, style: const TextStyle(color: AdminStyle.ink)),
       ],
     ),
   );
@@ -655,11 +746,7 @@ class _AdminCultureFormScreenState
       child: ListView(
         padding: const EdgeInsets.all(EmiSpacing.md),
         children: [
-          Text(
-            'Informasi Konten',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: EmiSpacing.sm),
+          const AdminSectionHeader('Informasi Konten', leading: false),
           TextFormField(
             controller: _title,
             decoration: const InputDecoration(labelText: 'Judul'),
@@ -695,12 +782,7 @@ class _AdminCultureFormScreenState
                 ? 'Masukkan angka minimal 1.'
                 : null,
           ),
-          const SizedBox(height: EmiSpacing.lg),
-          Text(
-            'Media atau Tautan',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: EmiSpacing.sm),
+          const AdminSectionHeader('Media atau Tautan'),
           if (fileType) ...[
             if (_filePath != null && _type == 'image')
               Image.file(
@@ -727,9 +809,7 @@ class _AdminCultureFormScreenState
                   ? null
                   : 'Masukkan URL HTTP/HTTPS yang valid.',
             ),
-          const SizedBox(height: EmiSpacing.lg),
-          Text('Publikasi', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: EmiSpacing.sm),
+          const AdminSectionHeader('Publikasi'),
           DropdownButtonFormField<String>(
             initialValue: _statusValue,
             decoration: const InputDecoration(
