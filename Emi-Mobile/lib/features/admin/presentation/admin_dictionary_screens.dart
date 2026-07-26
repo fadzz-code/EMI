@@ -8,11 +8,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../core/errors/app_error.dart';
-import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../data/admin_crud_providers.dart';
 import '../data/admin_crud_repository.dart';
 import 'admin_shell.dart';
+import 'admin_style.dart';
+import 'admin_widgets.dart';
 
 class AdminDictionaryScreen extends ConsumerStatefulWidget {
   const AdminDictionaryScreen({super.key});
@@ -783,18 +784,25 @@ class AdminDictionaryCategoryScreen extends ConsumerWidget {
               label: const Text('Tambah Kategori'),
             ),
             const SizedBox(height: EmiSpacing.md),
-            for (final category in page.items)
-              EmiCard(
+            for (final category in page.items) ...[
+              AdminCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       category.name,
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     if (category.description?.isNotEmpty == true) ...[
                       const SizedBox(height: EmiSpacing.xs),
-                      Text(category.description!),
+                      Text(
+                        category.description!,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AdminStyle.inkMuted,
+                        ),
+                      ),
                     ],
                     const SizedBox(height: EmiSpacing.sm),
                     Wrap(
@@ -832,6 +840,8 @@ class AdminDictionaryCategoryScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+              const SizedBox(height: EmiSpacing.sm),
+            ],
           ],
         ),
       ),
@@ -1029,11 +1039,17 @@ class _ImportResult extends StatelessWidget {
   final DictionaryImportJobAdmin job;
   final List<DictionaryImportErrorAdmin> errors;
   @override
-  Widget build(BuildContext context) => EmiCard(
+  Widget build(BuildContext context) => AdminCard(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Import Selesai'),
+        Text(
+          'Import Selesai',
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: EmiSpacing.xs),
         Text('Berhasil: ${job.insertedRows + job.updatedRows} kosakata'),
         Text('Dilewati: ${job.skippedRows} kosakata'),
         Text('Gagal: ${job.invalidRows} kosakata'),
@@ -1193,59 +1209,55 @@ class _DictionaryTile extends StatelessWidget {
   final DictionaryEntryAdmin item;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => EmiCard(
-    child: InkWell(
-      borderRadius: BorderRadius.circular(EmiRadii.card),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(EmiSpacing.md),
-        child: Column(
+  Widget build(BuildContext context) => AdminCard(
+    onTap: onTap,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    item.mekongga,
-                    style: Theme.of(context).textTheme.titleLarge,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const Icon(Icons.chevron_right),
-              ],
+            Expanded(
+              child: Text(
+                item.mekongga,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            const SizedBox(height: EmiSpacing.sm),
-            _InfoLine(icon: Icons.translate, text: item.indonesia),
-            if (item.english.isNotEmpty)
-              _InfoLine(icon: Icons.language, text: item.english),
-            const SizedBox(height: EmiSpacing.sm),
-            Wrap(
-              spacing: EmiSpacing.xs,
-              runSpacing: EmiSpacing.xs,
-              children: [
-                _Chip(text: item.categoryName ?? 'Tanpa Kategori'),
-                EmiStatusBadge(
-                  label: _statusLabel(item.status),
-                  tone: emiStatusToneFromKey(item.status),
-                ),
-                _Chip(
-                  text: item.audioUrl?.isNotEmpty == true
-                      ? 'Audio Tersedia'
-                      : 'Belum Ada Audio',
-                  icon: item.audioUrl?.isNotEmpty == true
-                      ? Icons.volume_up_outlined
-                      : Icons.volume_off_outlined,
-                  color: item.audioUrl?.isNotEmpty == true
-                      ? EmiColors.success
-                      : EmiColors.surfaceSoft,
-                ),
-              ],
+            const Icon(Icons.chevron_right, color: AdminStyle.inkMuted),
+          ],
+        ),
+        const SizedBox(height: EmiSpacing.sm),
+        _InfoLine(icon: Icons.translate, text: item.indonesia),
+        if (item.english.isNotEmpty)
+          _InfoLine(icon: Icons.language, text: item.english),
+        const SizedBox(height: EmiSpacing.sm),
+        Wrap(
+          spacing: EmiSpacing.xs,
+          runSpacing: EmiSpacing.xs,
+          children: [
+            _Chip(text: item.categoryName ?? 'Tanpa Kategori'),
+            EmiStatusBadge(
+              label: _statusLabel(item.status),
+              tone: emiStatusToneFromKey(item.status),
+            ),
+            _Chip(
+              text: item.audioUrl?.isNotEmpty == true
+                  ? 'Audio Tersedia'
+                  : 'Belum Ada Audio',
+              icon: item.audioUrl?.isNotEmpty == true
+                  ? Icons.volume_up_outlined
+                  : Icons.volume_off_outlined,
+              color: item.audioUrl?.isNotEmpty == true
+                  ? AdminStyle.statusFill('published')
+                  : AdminStyle.tint,
             ),
           ],
         ),
-      ),
+      ],
     ),
   );
 }
@@ -1476,24 +1488,8 @@ class _PageIntro extends StatelessWidget {
   final IconData icon;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: EmiSpacing.lg),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 32),
-        const SizedBox(width: EmiSpacing.md),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: Theme.of(context).textTheme.headlineSmall),
-              const SizedBox(height: EmiSpacing.xs),
-              Text(subtitle),
-            ],
-          ),
-        ),
-      ],
-    ),
+    padding: const EdgeInsets.only(bottom: EmiSpacing.md),
+    child: AdminPageHeader(icon: icon, title: title, subtitle: subtitle),
   );
 }
 
@@ -1508,23 +1504,17 @@ class _SectionCard extends StatelessWidget {
   final List<Widget> children;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: EmiSpacing.lg),
+    padding: const EdgeInsets.only(bottom: EmiSpacing.md),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: EmiColors.textPrimary.withValues(alpha: 0.7),
-            ),
-            const SizedBox(width: EmiSpacing.sm),
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-          ],
+        AdminSectionHeader(title, icon: icon, leading: false),
+        AdminCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: children,
+          ),
         ),
-        const SizedBox(height: EmiSpacing.sm),
-        ...children,
       ],
     ),
   );
@@ -1559,22 +1549,32 @@ class _InfoLine extends StatelessWidget {
 }
 
 class _Chip extends StatelessWidget {
-  const _Chip({
-    required this.text,
-    this.icon,
-    this.color = EmiColors.surfaceAccent,
-  });
+  const _Chip({required this.text, this.icon, this.color});
   final String text;
   final IconData? icon;
-  final Color color;
+  final Color? color;
   @override
-  Widget build(BuildContext context) => Chip(
-    avatar: icon == null ? null : Icon(icon, size: 16),
-    label: Text(text),
-    backgroundColor: color,
-    side: const BorderSide(color: EmiColors.border),
-    shape: RoundedRectangleBorder(
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: EmiSpacing.sm, vertical: 5),
+    decoration: BoxDecoration(
+      color: color ?? AdminStyle.tint,
       borderRadius: BorderRadius.circular(EmiRadii.pill),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (icon != null) ...[
+          Icon(icon, size: 15, color: AdminStyle.inkMuted),
+          const SizedBox(width: 4),
+        ],
+        Text(
+          text,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AdminStyle.ink,
+          ),
+        ),
+      ],
     ),
   );
 }
@@ -1587,11 +1587,12 @@ class _Error extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(EmiSpacing.md),
     children: [
-      EmiCard(
+      AdminCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(message),
+            const SizedBox(height: EmiSpacing.sm),
             OutlinedButton(onPressed: onRetry, child: const Text('Coba lagi')),
           ],
         ),
@@ -1604,14 +1605,17 @@ class _ValidationBox extends StatelessWidget {
   const _ValidationBox({required this.error});
   final AppError error;
   @override
-  Widget build(BuildContext context) => EmiCard(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(error.message),
-        for (final entry in error.fieldErrors.entries)
-          Text('${entry.key}: ${entry.value.join(', ')}'),
-      ],
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: EmiSpacing.md),
+    child: AdminCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(error.message, style: const TextStyle(color: EmiColors.error)),
+          for (final entry in error.fieldErrors.entries)
+            Text('${entry.key}: ${entry.value.join(', ')}'),
+        ],
+      ),
     ),
   );
 }
