@@ -77,7 +77,10 @@ Auth notation:
 | PATCH | `/student/lessons/{id}/progress` | `StudentProgressController@updateLesson` | Student | Mark/update lesson progress | High |  |
 | GET | `/student/progress/modules` | `StudentProgressController@modules` | Student | Module progress list | High |  |
 | GET | `/student/culture` | `StudentCultureItemController@index` | Student | Culture content | High |  |
-| POST | `/student/chatbot/messages` | `StudentChatbotController@store` | Student | Basis AI chatbot | High | Returns answer, source(s), provider/mode metadata. |
+| POST | `/student/chatbot/messages` | `StudentChatbotController@store` | Student | Basis AI chatbot | High | Rate limited (`throttle:emi-chatbot`, 15/min per user). Accepts optional `conversation_id`; retrieval runs once per message. Returns answer, source(s), provider/mode metadata, `conversation_id`. |
+| GET | `/student/chatbot/conversations` | `StudentChatbotConversationController@index` | Student | List own conversation history | High | Ownership-scoped; paginated. |
+| GET | `/student/chatbot/conversations/{id}` | `StudentChatbotConversationController@show` | Student | Conversation detail with messages | High | 404 if not owned by caller. |
+| DELETE | `/student/chatbot/conversations/{id}` | `StudentChatbotConversationController@destroy` | Student | Delete own conversation | High | Soft delete; 404 if not owned by caller. |
 | GET | `/student/quizzes` | `StudentQuizController@index` | Student | Assigned quizzes | High |  |
 | GET | `/student/quizzes/{id}` | `StudentQuizController@show` | Student | Quiz detail | High |  |
 
@@ -220,16 +223,20 @@ Auth notation:
 
 | Method | Path | Controller/action | Auth/role | Purpose | Mobile relevance | Notes |
 |---|---|---|---|---|---|---|
-| POST | `/student/chatbot/messages` | `StudentChatbotController@store` | Student | Chatbot question/answer | High | Uses dictionary, vector/keyword RAG, default fallback. |
+| POST | `/student/chatbot/messages` | `StudentChatbotController@store` | Student | Chatbot question/answer | High | Uses dictionary, vector/keyword RAG, default fallback. Rate limited; retrieval runs once; persists to owned conversation history. |
+| GET | `/student/chatbot/conversations` | `StudentChatbotConversationController@index` | Student | List own conversation history | High | Ownership-scoped; paginated. |
+| GET | `/student/chatbot/conversations/{id}` | `StudentChatbotConversationController@show` | Student | Conversation detail with messages | High | 404 if not owned by caller. |
+| DELETE | `/student/chatbot/conversations/{id}` | `StudentChatbotConversationController@destroy` | Student | Delete own conversation | High | Soft delete; 404 if not owned by caller. |
 | GET | `/admin/ai/knowledge` | `AdminAiKnowledgeController@index` | Admin | Knowledge list | Low | Web admin primary. |
-| POST | `/admin/ai/knowledge` | `AdminAiKnowledgeController@store` | Admin | Manual/link/PDF-to-content knowledge create | Low | Requires content. |
+| POST | `/admin/ai/knowledge` | `AdminAiKnowledgeController@store` | Admin | Manual/link/PDF/DOCX/TXT-to-content knowledge create | Low | Requires content. |
 | GET | `/admin/ai/knowledge/{id}` | `AdminAiKnowledgeController@show` | Admin | Knowledge detail | Low |  |
 | PUT | `/admin/ai/knowledge/{id}` | `AdminAiKnowledgeController@update` | Admin | Update knowledge | Low | Rebuilds chunks. |
 | DELETE | `/admin/ai/knowledge/{id}` | `AdminAiKnowledgeController@destroy` | Admin | Delete knowledge | Low |  |
 | POST | `/admin/ai/knowledge/{id}/publish` | `AdminAiKnowledgeController@publish` | Admin | Publish knowledge | Low | Published items used by chatbot. |
 | POST | `/admin/ai/knowledge/{id}/archive` | `AdminAiKnowledgeController@archive` | Admin | Archive knowledge | Low | Archived ignored by chatbot. |
-| POST | `/admin/ai/knowledge/extract-source` | `AdminAiKnowledgeController@extractSource` | Admin | Extract public link/PDF URL into content | Low | Short/manual edit flow. |
+| POST | `/admin/ai/knowledge/extract-source` | `AdminAiKnowledgeController@extractSource` | Admin | Extract public link/PDF URL into content | Low | SSRF-guarded (private/loopback/metadata IP blocklist, redirect re-validation). Short/manual edit flow. |
 | POST | `/admin/ai/knowledge/extract-pdf-upload` | `AdminAiKnowledgeController@extractPdfUpload` | Admin | Extract uploaded PDF into content | Low | Short PDF flow. |
+| POST | `/admin/ai/knowledge/extract-document-upload` | `AdminAiKnowledgeController@extractDocumentUpload` | Admin | Extract uploaded DOCX/TXT into content | Low | New. Mirrors PDF upload flow. |
 | POST | `/admin/ai/knowledge/import-pdf` | `AdminAiKnowledgeController@importPdf` | Admin | Page-aware PDF RAG import | Low | Stores PDF source pages and chunks; preferred for long PDFs. |
 
 ## Media / Files

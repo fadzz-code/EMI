@@ -143,17 +143,23 @@ export function DictionaryDetail({ entryId }: { entryId: string }) {
                 <h2 className="text-xl font-black text-ink">Contoh Kalimat</h2>
               </CardHeader>
               <CardContent className="grid gap-3">
-                {(entry.sentence_examples ?? []).length > 0 ? (
-                  entry.sentence_examples?.map((example, index) => (
-                    <div key={example.id} className="rounded-lg border-2 border-border bg-surface p-4">
-                      <p className="text-xs font-black uppercase text-muted">Contoh {index + 1}</p>
-                      <p className="mt-2 text-sm font-bold text-ink">Mekongga: {example.contoh_mekongga}</p>
-                      <p className="mt-1 text-sm font-bold text-muted">Indonesia: {example.contoh_indonesia}</p>
-                    </div>
-                  ))
-                ) : (
+                {entry.example_mekongga || entry.example_indonesia ? (
+                  <div className="rounded-lg border-2 border-border bg-surface p-4">
+                    <p className="text-xs font-black uppercase text-muted">Contoh Kalimat</p>
+                    <p className="mt-2 text-sm font-bold text-ink">Mekongga: {entry.example_mekongga ?? "-"}</p>
+                    <p className="mt-1 text-sm font-bold text-muted">Indonesia: {entry.example_indonesia ?? "-"}</p>
+                  </div>
+                ) : null}
+                {(entry.sentence_examples ?? []).map((example, index) => (
+                  <div key={example.id} className="rounded-lg border-2 border-border bg-surface p-4">
+                    <p className="text-xs font-black uppercase text-muted">Contoh Tambahan {index + 1}</p>
+                    <p className="mt-2 text-sm font-bold text-ink">Mekongga: {example.contoh_mekongga}</p>
+                    <p className="mt-1 text-sm font-bold text-muted">Indonesia: {example.contoh_indonesia}</p>
+                  </div>
+                ))}
+                {!entry.example_mekongga && !entry.example_indonesia && (entry.sentence_examples ?? []).length === 0 ? (
                   <p className="rounded-lg border-2 border-dashed border-border bg-surface p-4 text-sm font-bold text-muted">Belum ada contoh kalimat.</p>
-                )}
+                ) : null}
               </CardContent>
             </Card>
 

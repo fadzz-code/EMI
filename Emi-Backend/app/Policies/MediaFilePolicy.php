@@ -24,7 +24,7 @@ class MediaFilePolicy
 
         return match ($user->role) {
             'admin' => in_array($purpose, ['avatar', 'question_image', 'lesson_image', 'culture_media', 'document', 'audio', 'speaking_recording', 'speaking_reference_audio', 'login_banner'], true),
-            'teacher' => in_array($purpose, ['avatar', 'question_image', 'lesson_image', 'culture_media', 'document', 'audio'], true),
+            'teacher' => in_array($purpose, ['avatar', 'question_image', 'lesson_image', 'culture_media', 'document', 'audio', 'speaking_reference_audio'], true),
             'student' => in_array($purpose, ['avatar', 'speaking_recording'], true),
             default => false,
         };

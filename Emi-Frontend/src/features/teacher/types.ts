@@ -47,7 +47,7 @@ export type TeacherClass = SchoolClass;
 export type TeacherClassStudent = ClassStudent;
 
 export type TeacherLessonContentType = "text" | "image" | "audio" | "pdf" | "video" | "link";
-export type TeacherMediaPurpose = "lesson_image" | "audio" | "document" | "culture_media" | "question_image";
+export type TeacherMediaPurpose = "lesson_image" | "audio" | "document" | "culture_media" | "question_image" | "speaking_reference_audio";
 export type TeacherMediaVisibility = "public" | "private";
 
 export type TeacherLessonPayload = {
@@ -279,6 +279,7 @@ export type TeacherSpeakingExercisePayload = {
   target_text: string;
   prompt_text?: string | null;
   target_translation?: string | null;
+  reference_audio_media_id?: string | null;
   language_code?: string | null;
   difficulty?: string | null;
   status?: "draft" | "published";

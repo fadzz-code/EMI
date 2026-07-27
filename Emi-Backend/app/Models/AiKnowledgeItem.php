@@ -71,7 +71,7 @@ class AiKnowledgeItem extends Model
 
     public function processingStatus(): ?string
     {
-        if (! in_array($this->source_type, ['pdf', 'link'], true)) {
+        if (! in_array($this->source_type, ['pdf', 'link', 'docx', 'txt'], true)) {
             return null;
         }
 
@@ -80,7 +80,7 @@ class AiKnowledgeItem extends Model
 
     public function isReadyForPublication(): bool
     {
-        if (in_array($this->source_type, ['manual', 'link'], true)) {
+        if (in_array($this->source_type, ['manual', 'link', 'docx', 'txt'], true)) {
             return trim((string) $this->content) !== '' && $this->chunks()->exists();
         }
 

@@ -72,6 +72,7 @@ export function UserDetailScreen({ userId }: { userId: string }) {
   const [editOpen, setEditOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
   const [form, setForm] = useState<UserFormState | null>(null);
   const [targetStatus, setTargetStatus] = useState<Extract<UserStatus, "approved" | "inactive">>("approved");
   const [statusReason, setStatusReason] = useState("");
@@ -119,6 +120,16 @@ export function UserDetailScreen({ userId }: { userId: string }) {
     },
   });
 
+  const resetPasswordMutation = useMutation({
+    mutationFn: (payload: { password: string; password_confirmation: string }) =>
+      userManagementService.forcePasswordReset(token ?? "", userId, payload),
+    onSuccess: async (user) => {
+      setSuccessMessage(`Password ${user.full_name} berhasil direset. Pengguna wajib mengganti password saat login berikutnya.`);
+      setResetPasswordOpen(false);
+      await queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+  });
+
   const assignMutation = useMutation<unknown, Error, { role: UserRole; classId: string }>({
     mutationFn: ({ role, classId }: { role: UserRole; classId: string }) => {
       if (role === "teacher") {
@@ -138,7 +149,7 @@ export function UserDetailScreen({ userId }: { userId: string }) {
 
   const user = userQuery.data;
   const classes = classesQuery.data?.items ?? [];
-  const actionError = updateMutation.error ?? statusMutation.error ?? assignMutation.error;
+  const actionError = updateMutation.error ?? statusMutation.error ?? assignMutation.error ?? resetPasswordMutation.error;
   const canAssign = user?.role === "teacher" || user?.role === "student";
 
   function openEdit() {
@@ -165,6 +176,15 @@ export function UserDetailScreen({ userId }: { userId: string }) {
     statusMutation.mutate({
       status: targetStatus,
       reason: targetStatus === "inactive" ? statusReason.trim() : undefined,
+    });
+  }
+
+  function submitResetPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    resetPasswordMutation.mutate({
+      password: String(data.get("password") ?? ""),
+      password_confirmation: String(data.get("password_confirmation") ?? ""),
     });
   }
 
@@ -197,6 +217,9 @@ export function UserDetailScreen({ userId }: { userId: string }) {
               <div className="flex flex-wrap gap-2">
                 <Badge tone="neutral">{roleLabel(user.role)}</Badge>
                 <Badge tone={statusTone(user.status)}>{userStatusLabel(user.status)}</Badge>
+                {user.password_must_change ? (
+                  <Badge tone="orange">Wajib ganti password</Badge>
+                ) : null}
               </div>
               <h1 className="mt-2 text-3xl font-black text-ink">{user.full_name}</h1>
               <p className="mt-2 text-sm text-muted">{user.email}</p>
@@ -204,6 +227,9 @@ export function UserDetailScreen({ userId }: { userId: string }) {
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button onClick={openEdit} variant="secondary">
                 Edit Pengguna
+              </Button>
+              <Button onClick={() => setResetPasswordOpen(true)} variant="secondary">
+                Reset Password
               </Button>
               <Button onClick={() => setStatusOpen(true)} variant="danger">
                 Ubah Status
@@ -338,6 +364,29 @@ export function UserDetailScreen({ userId }: { userId: string }) {
               variant="danger"
             >
               Simpan Status
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal onClose={() => setResetPasswordOpen(false)} open={resetPasswordOpen} title="Reset Password Pengguna">
+        <form className="grid gap-4" onSubmit={submitResetPassword}>
+          <Alert tone="warning">
+            Admin dapat mereset password kapan saja tanpa persetujuan siapa pun. Sampaikan password baru ini
+            langsung ke pengguna. Pengguna akan diwajibkan mengganti password saat login berikutnya.
+          </Alert>
+          <FormField label="Password baru">
+            <Input autoFocus minLength={8} name="password" required type="text" />
+          </FormField>
+          <FormField label="Konfirmasi password baru">
+            <Input minLength={8} name="password_confirmation" required type="text" />
+          </FormField>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <Button onClick={() => setResetPasswordOpen(false)} type="button" variant="ghost">
+              Batal
+            </Button>
+            <Button disabled={resetPasswordMutation.isPending} type="submit" variant="secondary">
+              {resetPasswordMutation.isPending ? "Menyimpan..." : "Reset Password"}
             </Button>
           </div>
         </form>

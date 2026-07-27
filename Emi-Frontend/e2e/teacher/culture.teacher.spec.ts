@@ -8,7 +8,7 @@ test("guru mengelola konten budaya disposable lalu menghapusnya", async ({ page 
   const title = teacherData("Budaya");
   await assignedClass(page);
   await page.goto("/teacher/culture");
-  await page.getByRole("button", { name: "Kelola Media" }).click();
+  await page.getByRole("button", { name: "Tambah Media" }).click();
   await page.getByLabel("Judul").fill(title);
   await page.getByLabel("Deskripsi").fill("Konten budaya disposable Playwright");
   await page.getByLabel("Tipe konten").selectOption("link");

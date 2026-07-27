@@ -32,6 +32,7 @@ class UserResource extends JsonResource
             ] : null,
             'role' => $this->role,
             'status' => $this->status,
+            'password_must_change' => (bool) $this->password_must_change,
             'active_school' => $school ? new SchoolPublicResource($school) : null,
             'active_class' => $schoolClass ? new SchoolClassPublicResource($schoolClass) : null,
             'active_assignment' => $this->role === 'teacher' && $teacherAssignment ? [

@@ -84,6 +84,10 @@ export const schoolService = {
 
     return response.data;
   },
+
+  async forceDelete(token: string, schoolId: string) {
+    await apiClient.delete<null>(`/schools/${schoolId}/force`, { token });
+  },
 };
 
 export const classService = {
@@ -151,6 +155,10 @@ export const classService = {
     }
 
     return response.data;
+  },
+
+  async forceDelete(token: string, classId: string) {
+    await apiClient.delete<null>(`/classes/${classId}/force`, { token });
   },
 
   async students(token: string, classId: string, filters: ClassStudentFilters = {}) {
@@ -247,6 +255,16 @@ export const userManagementService = {
 
     if (!response.data) {
       throw new Error("Response status pengguna tidak tersedia.");
+    }
+
+    return response.data;
+  },
+
+  async forcePasswordReset(token: string, userId: string, payload: { password: string; password_confirmation: string }) {
+    const response = await apiClient.post<ManagedUser>(`/users/${userId}/force-password-reset`, payload, { token });
+
+    if (!response.data) {
+      throw new Error("Response reset password tidak tersedia.");
     }
 
     return response.data;

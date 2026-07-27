@@ -7,6 +7,7 @@ export type AuthUser = {
   role: UserRole;
   status: "pending" | "approved" | "rejected" | "inactive" | string;
   phone?: string | null;
+  password_must_change?: boolean;
   avatar?: {
     id: string;
     url: string;
@@ -43,6 +44,10 @@ export type RegisterPayload = {
 export type RegisterResult = {
   user_id: string;
   status: "pending" | string;
+};
+
+export type ForgotPasswordPayload = {
+  email: string;
 };
 
 export type PublicSchool = {

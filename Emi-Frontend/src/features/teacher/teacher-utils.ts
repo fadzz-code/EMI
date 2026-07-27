@@ -14,6 +14,14 @@ export function formatPercent(value: number | null | undefined) {
   return typeof value === "number" ? `${Math.round(value)}%` : "Belum tersedia";
 }
 
+export function formatScoreOutOf100(value: number | null | undefined) {
+  if (typeof value !== "number") {
+    return "Belum tersedia";
+  }
+
+  return `${Number.isInteger(value) ? value : value.toFixed(2)}/100`;
+}
+
 export function formatDate(value: string | null | undefined) {
   if (!value) {
     return "Belum tersedia";

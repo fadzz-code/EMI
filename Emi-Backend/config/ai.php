@@ -20,4 +20,9 @@ return [
         'top_k' => (int) env('AI_VECTOR_TOP_K', 5),
         'keyword_top_k' => (int) env('AI_KEYWORD_TOP_K', 5),
     ],
+
+    'pdf' => [
+        'pdftotext_path' => env('AI_PDFTOTEXT_PATH'),
+        'pdftotext_timeout_seconds' => (int) env('AI_PDFTOTEXT_TIMEOUT_SECONDS', 60),
+    ],
 ];

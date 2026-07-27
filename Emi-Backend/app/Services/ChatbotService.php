@@ -29,13 +29,24 @@ class ChatbotService
 
         $match = $this->findBestPublishedReferences($message);
 
-        if ($match === null) {
-            return $this->defaultProvider->answer(null, $message);
-        }
-
-        $providerResult = $this->providerResolver->resolve()->generateAnswer($message, $match['item'], $match['chunks']);
+        // Provider AI selalu dipanggil, walau tidak ada dokumen lokal yang
+        // relevan (Hybrid Fallback Grounding) — provider yang menentukan
+        // apakah boleh menjawab pakai pengetahuan umum/googleSearch.
+        $providerResult = $this->providerResolver->resolve()->generateAnswer(
+            $message,
+            $match['item'] ?? null,
+            $match['chunks'] ?? [],
+        );
 
         if ($providerResult->success && $providerResult->answer) {
+            if ($match === null) {
+                return $this->defaultProvider->answerFromProviderWithoutLocalMatch(
+                    $providerResult->answer,
+                    $providerResult->mode,
+                    $providerResult->provider,
+                );
+            }
+
             return $this->defaultProvider->answerFromProvider(
                 $match['item'],
                 $providerResult->answer,
@@ -44,6 +55,10 @@ class ChatbotService
                 $match['confidence'],
                 $match['chunks'],
             );
+        }
+
+        if ($match === null) {
+            return $this->defaultProvider->answer(null, $message, 0, null, $providerResult->fallbackReason);
         }
 
         return $this->defaultProvider->answerFromChunks(
@@ -61,7 +76,7 @@ class ChatbotService
             ->published()
             ->doesntHave('chunks')
             ->get()
-            ->filter(fn (AiKnowledgeItem $item): bool => $item->source_type === 'manual' || ($item->sourcePages()->doesntExist() && ! str_starts_with(trim((string) $item->content), 'Dokumen PDF telah diproses')))
+            ->filter(fn (AiKnowledgeItem $item): bool => in_array($item->source_type, ['manual', 'docx', 'txt'], true) || ($item->sourcePages()->doesntExist() && ! str_starts_with(trim((string) $item->content), 'Dokumen PDF telah diproses')))
             ->each(fn (AiKnowledgeItem $item) => $this->chunkingService->rebuild($item));
 
         $vectorMatches = (bool) config('ai.vector_retrieval.enabled', false)

@@ -21,6 +21,7 @@ class DefaultExtractiveAnswerProvider
                 'mode' => 'default_extractive',
                 'provider' => 'default',
                 'confidence' => 0,
+                'fallback_reason' => $fallbackReason,
             ];
         }
 
@@ -55,6 +56,19 @@ class DefaultExtractiveAnswerProvider
             'mode' => $mode,
             'provider' => $provider,
             'confidence' => $confidence,
+        ];
+    }
+
+    public function answerFromProviderWithoutLocalMatch(string $answer, string $mode, string $provider): array
+    {
+        return [
+            'answer' => $answer,
+            'source' => null,
+            'sources' => [],
+            'matched' => false,
+            'mode' => $mode,
+            'provider' => $provider,
+            'confidence' => 0,
         ];
     }
 

@@ -157,10 +157,32 @@ class HardeningTests(unittest.TestCase):
 
     def test_word_levenshtein(self):
         score, alignment = main.levenshtein_score("Halo, dunia baru", "halo bumi baru sekali")
-        self.assertEqual(score, 33.33)
+        self.assertEqual(score, 60.0)
         self.assertEqual(alignment["distance"], 2)
         self.assertEqual([item["type"] for item in alignment["operations"]], ["match", "substitution", "match", "insertion"])
-        self.assertEqual(alignment["0_halo"], 100)
+        self.assertEqual(alignment["0_halo"], 100.0)
+
+    def test_phoneme_partial_credit(self):
+        score, alignment = main.levenshtein_score("mekongnga", "mikongnga")
+        self.assertEqual(score, 88.89)
+        self.assertEqual([item["type"] for item in alignment["operations"]], ["substitution"])
+        self.assertEqual(alignment["operations"][0]["char_distance"], 1)
+        self.assertGreater(alignment["0_mekongnga"], 80)
+
+    def test_phoneme_perfect_match(self):
+        score, alignment = main.levenshtein_score("me kong ngga", "me kong ngga")
+        self.assertEqual(score, 100.0)
+        self.assertTrue(all(op["type"] == "match" for op in alignment["operations"]))
+
+    def test_phoneme_syllable_partial(self):
+        score, _ = main.levenshtein_score("me kong ngga", "mi kong ngga")
+        self.assertGreater(score, 60.0)
+        self.assertLess(score, 100.0)
+
+    def test_character_distance(self):
+        self.assertEqual(main.character_distance("kong", "kong"), 0)
+        self.assertEqual(main.character_distance("me", "mi"), 1)
+        self.assertEqual(main.character_distance("", "abc"), 3)
 
 
 if __name__ == "__main__":

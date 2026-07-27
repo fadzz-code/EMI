@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Archive, Hammer, Pencil, Send, Share2, Trash2 } from "lucide-react";
+import { Archive, Hammer, MoreVertical, Pencil, Send, Share2, Trash2 } from "lucide-react";
 
 import {
   Alert,
@@ -13,6 +13,8 @@ import {
   Card,
   CardContent,
   ConfirmDialog,
+  DropdownMenu,
+  DropdownMenuItem,
   EmptyState,
   ErrorState,
   FilterPanel,
@@ -273,7 +275,7 @@ export function QuizList() {
                     <col className="w-20" />
                     <col className="w-28" />
                     <col className="w-32" />
-                    <col className="w-[15.5rem]" />
+                    <col className="w-16" />
                   </colgroup>
                   <TableHeader className="hidden bg-surface-muted text-ink md:table-header-group">
                     <tr>
@@ -303,36 +305,62 @@ export function QuizList() {
                         </TableCell>
                         <TableCell className="col-span-2 border-t-0 md:table-cell md:border-t">{formatDate(quiz.created_at)}</TableCell>
                         <TableCell className="col-span-3 border-t-0 md:table-cell md:border-t">
-                          <div className="grid justify-center gap-2">
-                            <div className="flex justify-center">
-                              <Link className="inline-flex h-9 w-28 items-center justify-center gap-1.5 rounded-lg border-2 border-border bg-surface px-2 text-xs font-black text-ink hover:bg-surface-muted" href={`/admin/quizzes/${quiz.id}/builder`}>
-                                <Hammer aria-hidden="true" className="size-4 shrink-0" /> Builder
+                          <div className="flex items-center justify-center">
+                            <DropdownMenu
+                              trigger={
+                                <button
+                                  aria-label="Aksi kuis"
+                                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-border bg-surface text-ink hover:bg-surface-muted"
+                                  type="button"
+                                >
+                                  <MoreVertical aria-hidden="true" className="size-5" />
+                                </button>
+                              }
+                            >
+                              <Link
+                                className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm font-bold text-ink transition hover:bg-surface-muted"
+                                href={`/admin/quizzes/${quiz.id}/builder`}
+                              >
+                                <Hammer aria-hidden="true" className="size-4 shrink-0" />
+                                Builder Soal
                               </Link>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              <Button className="h-9 w-28 gap-1.5 px-2 py-0 text-xs" onClick={() => setEditingQuiz(quiz)} variant="secondary">
-                                <Pencil aria-hidden="true" className="size-4 shrink-0" /> Edit
-                              </Button>
-                              <Button className="h-9 w-28 gap-1.5 px-2 py-0 text-xs" disabled={deleteMutation.isPending} onClick={() => setDeleteTarget(quiz)} variant="danger">
-                                <Trash2 aria-hidden="true" className="size-4 shrink-0" /> Hapus
-                              </Button>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
+                              <DropdownMenuItem icon={<Pencil />} onClick={() => setEditingQuiz(quiz)}>
+                                Edit Metadata
+                              </DropdownMenuItem>
                               {quiz.status === "published" ? (
-                                <Button className="h-9 w-28 gap-1.5 px-2 py-0 text-xs" onClick={() => { setApplyTarget(quiz); setSelectedClassIds([]); setPublishAfterApply(true); }} variant="secondary">
-                                  <Share2 aria-hidden="true" className="size-4 shrink-0" /> Terapkan
-                                </Button>
+                                <DropdownMenuItem
+                                  icon={<Share2 />}
+                                  onClick={() => { setApplyTarget(quiz); setSelectedClassIds([]); setPublishAfterApply(true); }}
+                                >
+                                  Terapkan ke Kelas
+                                </DropdownMenuItem>
                               ) : (
-                                <Button className="h-9 w-28 gap-1.5 px-2 py-0 text-xs" disabled={publishMutation.isPending || quiz.status === "archived"} onClick={() => publishMutation.mutate(quiz.id)} variant="secondary">
-                                  <Send aria-hidden="true" className="size-4 shrink-0" /> Terbitkan
-                                </Button>
+                                <DropdownMenuItem
+                                  disabled={publishMutation.isPending || quiz.status === "archived"}
+                                  icon={<Send />}
+                                  onClick={() => publishMutation.mutate(quiz.id)}
+                                >
+                                  Terbitkan
+                                </DropdownMenuItem>
                               )}
                               {quiz.status !== "archived" ? (
-                                <Button className="h-9 w-28 gap-1.5 px-2 py-0 text-xs" disabled={archiveMutation.isPending} onClick={() => archiveMutation.mutate(quiz.id)} variant="ghost">
-                                  <Archive aria-hidden="true" className="size-4 shrink-0" /> Arsipkan
-                                </Button>
-                              ) : <span className="h-9 w-28" />}
-                            </div>
+                                <DropdownMenuItem
+                                  disabled={archiveMutation.isPending}
+                                  icon={<Archive />}
+                                  onClick={() => archiveMutation.mutate(quiz.id)}
+                                >
+                                  Arsipkan
+                                </DropdownMenuItem>
+                              ) : null}
+                              <DropdownMenuItem
+                                danger
+                                disabled={deleteMutation.isPending}
+                                icon={<Trash2 />}
+                                onClick={() => setDeleteTarget(quiz)}
+                              >
+                                Hapus
+                              </DropdownMenuItem>
+                            </DropdownMenu>
                           </div>
                         </TableCell>
                       </tr>

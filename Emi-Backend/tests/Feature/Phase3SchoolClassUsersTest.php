@@ -80,24 +80,20 @@ class Phase3SchoolClassUsersTest extends TestCase
         $this->assertSame($class->school_id, $school->id);
     }
 
-    public function test_school_deactivation_rejects_active_classes_and_keeps_record(): void
+    public function test_school_deactivation_releases_active_classes_and_keeps_record(): void
     {
         $admin = User::factory()->admin()->create();
         $school = School::factory()->create();
-        SchoolClass::factory()->create(['school_id' => $school->id, 'status' => 'active']);
-
-        $this->withToken($this->tokenFor($admin))->deleteJson("/api/v1/schools/{$school->id}")
-            ->assertConflict()
-            ->assertJsonPath('code', 'SCHOOL_HAS_ACTIVE_CLASSES');
-
-        SchoolClass::query()->where('school_id', $school->id)->update(['status' => 'inactive']);
+        $class = SchoolClass::factory()->create(['school_id' => $school->id, 'status' => 'active']);
 
         $this->withToken($this->tokenFor($admin))->deleteJson("/api/v1/schools/{$school->id}")
             ->assertOk()
             ->assertJsonPath('data.status', 'inactive');
 
         $this->assertDatabaseHas('schools', ['id' => $school->id, 'status' => 'inactive']);
+        $this->assertDatabaseHas('classes', ['id' => $class->id, 'status' => 'inactive']);
         $this->assertDatabaseHas('audit_logs', ['action' => 'school.deactivated']);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'class.deactivated']);
 
         $this->withToken($this->tokenFor($admin))->putJson("/api/v1/schools/{$school->id}", [
             'name' => $school->name,
@@ -158,8 +154,13 @@ class Phase3SchoolClassUsersTest extends TestCase
         ])->assertOk()->assertJsonPath('data.school_id', $school->id);
 
         $this->withToken($this->tokenFor($admin))->deleteJson("/api/v1/classes/{$class->id}")
-            ->assertConflict()
-            ->assertJsonPath('code', 'CLASS_HAS_ACTIVE_TEACHER');
+            ->assertOk()
+            ->assertJsonPath('data.status', 'inactive');
+        $this->assertDatabaseHas('classes', ['id' => $class->id, 'status' => 'inactive']);
+        $this->assertDatabaseHas('teacher_class_assignments', ['teacher_id' => $teacher->id, 'class_id' => $class->id, 'is_active' => false]);
+        $this->assertDatabaseHas('student_class_memberships', ['student_id' => $student->id, 'class_id' => $class->id, 'is_active' => false]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'class.teacher_released']);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'class.students_released']);
 
         $emptyClass = SchoolClass::factory()->create(['school_id' => $school->id]);
         $this->withToken($this->tokenFor($admin))->deleteJson("/api/v1/classes/{$emptyClass->id}")

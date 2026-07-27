@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\UserManagement\ForcePasswordResetRequest;
 use App\Http\Requests\UserManagement\ListUsersRequest;
 use App\Http\Requests\UserManagement\UpdateUserRequest;
 use App\Http\Requests\UserManagement\UpdateUserStatusRequest;
@@ -102,5 +103,20 @@ class UserController extends Controller
         );
 
         return ApiResponse::success('Status pengguna berhasil diperbarui.', new UserManagementResource($target));
+    }
+
+    public function forcePasswordReset(ForcePasswordResetRequest $request, string $id): JsonResponse
+    {
+        $target = User::query()->findOrFail($id);
+        Gate::authorize('forcePasswordReset', $target);
+
+        $target = $this->userManagementService->forcePasswordReset(
+            $target,
+            $request->validated('password'),
+            $request->user(),
+            $request,
+        );
+
+        return ApiResponse::success('Password pengguna berhasil direset.', new UserManagementResource($target));
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\ChatbotConversation;
 use App\Models\ClassLesson;
 use App\Models\ClassModule;
 use App\Models\ClassQuiz;
@@ -13,6 +14,7 @@ use App\Models\LessonTemplate;
 use App\Models\MediaFile;
 use App\Models\ModuleProgress;
 use App\Models\ModuleTemplate;
+use App\Models\PasswordResetRequest;
 use App\Models\QuizAnswer;
 use App\Models\QuizAttempt;
 use App\Models\QuizQuestion;
@@ -23,6 +25,7 @@ use App\Models\School;
 use App\Models\SchoolClass;
 use App\Models\SpeakingExercise;
 use App\Models\User;
+use App\Policies\ChatbotConversationPolicy;
 use App\Policies\ClassLessonPolicy;
 use App\Policies\ClassModulePolicy;
 use App\Policies\ClassQuizPolicy;
@@ -34,6 +37,7 @@ use App\Policies\LessonTemplatePolicy;
 use App\Policies\MediaFilePolicy;
 use App\Policies\ModuleProgressPolicy;
 use App\Policies\ModuleTemplatePolicy;
+use App\Policies\PasswordResetRequestPolicy;
 use App\Policies\QuizAnswerPolicy;
 use App\Policies\QuizAttemptPolicy;
 use App\Policies\QuizQuestionPolicy;
@@ -67,6 +71,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::policy(RegistrationRequest::class, RegistrationRequestPolicy::class);
+        Gate::policy(PasswordResetRequest::class, PasswordResetRequestPolicy::class);
+        Gate::policy(ChatbotConversation::class, ChatbotConversationPolicy::class);
         Gate::policy(MediaFile::class, MediaFilePolicy::class);
         Gate::policy(DictionaryCategory::class, DictionaryCategoryPolicy::class);
         Gate::policy(DictionaryEntry::class, DictionaryEntryPolicy::class);
@@ -96,6 +102,12 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('emi-register', function (Request $request) {
             return Limit::perMinute(10)->by($request->ip());
+        });
+
+        RateLimiter::for('emi-chatbot', function (Request $request) {
+            $identity = $request->user()?->id ?? $request->ip();
+
+            return Limit::perMinute(15)->by((string) $identity);
         });
     }
 }

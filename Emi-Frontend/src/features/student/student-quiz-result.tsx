@@ -10,7 +10,7 @@ import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { studentQuizService } from "./student-quiz-service";
-import { formatCount, formatDate, formatPercent, statusLabel } from "./student-utils";
+import { formatCount, formatDate, formatScoreOutOf100, statusLabel } from "./student-utils";
 
 export function StudentQuizResult({ quizId }: { quizId: string }) {
   const { token } = useAuth();
@@ -69,15 +69,19 @@ export function StudentQuizResult({ quizId }: { quizId: string }) {
             </div>
             <div className="rounded-2xl border-2 border-border bg-surface p-4 shadow-emi">
               <p className="text-xs font-black uppercase text-muted">Nilai akhir</p>
-              <p className="mt-2 text-5xl font-black text-ink">{attempt.score_percent !== null ? formatPercent(attempt.score_percent) : "-"}</p>
+              <p className="mt-2 text-5xl font-black text-ink">{attempt.score_percent !== null ? formatScoreOutOf100(attempt.score_percent) : "-"}</p>
               <p className="mt-2 text-sm font-bold text-muted">
-                {attempt.correct_count !== null ? `${formatCount(attempt.correct_count)} jawaban benar` : "Menunggu penilaian"}
+                {attempt.score_points !== null && attempt.max_points !== null
+                  ? `${attempt.score_points} dari ${attempt.max_points} poin`
+                  : attempt.correct_count !== null
+                    ? `${formatCount(attempt.correct_count)} jawaban benar`
+                    : "Menunggu penilaian"}
               </p>
             </div>
           </header>
 
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatsCard label="Nilai (Skor)" value={attempt.score_percent !== null ? formatPercent(attempt.score_percent) : "Belum tersedia"} />
+            <StatsCard label="Nilai (Skor)" value={attempt.score_percent !== null ? formatScoreOutOf100(attempt.score_percent) : "Belum tersedia"} />
             <StatsCard label="Jawaban Benar" value={attempt.correct_count !== null ? formatCount(attempt.correct_count) : "-"} />
             <StatsCard label="Jawaban Salah" value={attempt.incorrect_count !== null ? formatCount(attempt.incorrect_count) : "-"} />
             <StatsCard label="Tidak Dijawab" value={attempt.unanswered_count !== null ? formatCount(attempt.unanswered_count) : "-"} />
@@ -114,13 +118,13 @@ export function StudentQuizResult({ quizId }: { quizId: string }) {
             </div>
             <div className="rounded-2xl border-2 border-border bg-surface p-4 shadow-emi">
               <p className="text-xs font-black uppercase text-muted">Nilai terbaik</p>
-              <p className="mt-2 text-5xl font-black text-ink">{reportRow.best_score_percent !== null ? formatPercent(reportRow.best_score_percent) : "-"}</p>
+              <p className="mt-2 text-5xl font-black text-ink">{reportRow.best_score_percent !== null ? formatScoreOutOf100(reportRow.best_score_percent) : "-"}</p>
               <p className="mt-2 text-sm font-bold text-muted">{formatCount(reportRow.final_attempt_count)} percobaan selesai</p>
             </div>
           </header>
 
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatsCard label="Nilai Terbaik" value={reportRow.best_score_percent !== null ? formatPercent(reportRow.best_score_percent) : "Belum tersedia"} />
+            <StatsCard label="Nilai Terbaik" value={reportRow.best_score_percent !== null ? formatScoreOutOf100(reportRow.best_score_percent) : "Belum tersedia"} />
             <StatsCard label="Attempt" value={formatCount(reportRow.attempt_count)} />
             <StatsCard label="Attempt Final" value={formatCount(reportRow.final_attempt_count)} />
             <StatsCard label="Status Terakhir" value={statusLabel(reportRow.latest_status)} />

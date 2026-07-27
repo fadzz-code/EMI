@@ -65,6 +65,6 @@ class AdminDictionaryCategoryController extends Controller
         Gate::authorize('delete', $category);
         $this->categoryService->delete($category, $request->user(), $request);
 
-        return ApiResponse::success('Kategori kamus berhasil dinonaktifkan.', []);
+        return ApiResponse::success('Kategori kamus berhasil dihapus.', []);
     }
 }

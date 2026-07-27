@@ -73,6 +73,10 @@ function appendQuery(url: URL, query?: ApiRequestOptions["query"]) {
 
 function safeErrorMessage(status: number, fallback?: string, code?: string) {
   if (status === 401) {
+    if (code === "INVALID_CREDENTIALS") {
+      return fallback || "Email atau password yang Anda masukkan salah.";
+    }
+
     return "Sesi Anda tidak valid. Silakan login kembali.";
   }
 

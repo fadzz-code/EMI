@@ -12,6 +12,7 @@ import {
   Card,
   CardContent,
   CardHeader,
+  ConfirmDialog,
   EmptyState,
   ErrorState,
   FilterPanel,
@@ -128,6 +129,8 @@ export function SchoolsClassesScreen() {
   const [schoolForm, setSchoolForm] = useState<SchoolFormState>(defaultSchoolForm);
   const [classForm, setClassForm] = useState<ClassFormState>(defaultClassForm);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [deleteSchoolTarget, setDeleteSchoolTarget] = useState<School | null>(null);
+  const [deleteClassTarget, setDeleteClassTarget] = useState<SchoolClass | null>(null);
 
   const schoolFilters = useMemo(
     () => ({
@@ -189,6 +192,15 @@ export function SchoolsClassesScreen() {
     },
   });
 
+  const forceDeleteSchoolMutation = useMutation({
+    mutationFn: (id: string) => schoolService.forceDelete(token ?? "", id),
+    onSuccess: async () => {
+      setSuccessMessage(`Sekolah ${deleteSchoolTarget?.name ?? ""} berhasil dihapus permanen.`);
+      setDeleteSchoolTarget(null);
+      await queryClient.invalidateQueries({ queryKey: ["admin", "schools"] });
+    },
+  });
+
   const createClassMutation = useMutation({
     mutationFn: (payload: ClassPayload) => classService.create(token ?? "", payload),
     onSuccess: async (schoolClass) => {
@@ -216,13 +228,24 @@ export function SchoolsClassesScreen() {
     },
   });
 
+  const forceDeleteClassMutation = useMutation({
+    mutationFn: (id: string) => classService.forceDelete(token ?? "", id),
+    onSuccess: async () => {
+      setSuccessMessage(`Kelas ${deleteClassTarget?.name ?? ""} berhasil dihapus permanen.`);
+      setDeleteClassTarget(null);
+      await queryClient.invalidateQueries({ queryKey: ["admin", "classes"] });
+    },
+  });
+
   const actionError =
     createSchoolMutation.error ??
     updateSchoolMutation.error ??
     deactivateSchoolMutation.error ??
+    forceDeleteSchoolMutation.error ??
     createClassMutation.error ??
     updateClassMutation.error ??
-    deactivateClassMutation.error;
+    deactivateClassMutation.error ??
+    forceDeleteClassMutation.error;
 
   function openCreateSchool() {
     setEditingSchool(null);
@@ -466,7 +489,15 @@ export function SchoolsClassesScreen() {
                                 >
                                   Nonaktifkan
                                 </Button>
-                              ) : null}
+                              ) : (
+                                <Button
+                                  className="min-h-9 px-3 py-1 text-xs"
+                                  onClick={() => setDeleteSchoolTarget(school)}
+                                  variant="danger"
+                                >
+                                  Hapus
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         </tr>
@@ -583,7 +614,15 @@ export function SchoolsClassesScreen() {
                                 >
                                   Nonaktifkan
                                 </Button>
-                              ) : null}
+                              ) : (
+                                <Button
+                                  className="min-h-9 px-3 py-1 text-xs"
+                                  onClick={() => setDeleteClassTarget(schoolClass)}
+                                  variant="danger"
+                                >
+                                  Hapus
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         </tr>
@@ -725,6 +764,36 @@ export function SchoolsClassesScreen() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        confirmLabel={forceDeleteSchoolMutation.isPending ? "Menghapus..." : "Ya, Hapus Permanen"}
+        description={
+          deleteSchoolTarget
+            ? `Sekolah "${deleteSchoolTarget.name}" beserta seluruh kelas, modul, kuis, dan data terkait di dalamnya akan dihapus permanen dan tidak dapat dikembalikan.`
+            : ""
+        }
+        onCancel={() => setDeleteSchoolTarget(null)}
+        onConfirm={() => {
+          if (deleteSchoolTarget) forceDeleteSchoolMutation.mutate(deleteSchoolTarget.id);
+        }}
+        open={Boolean(deleteSchoolTarget)}
+        title="Hapus sekolah secara permanen?"
+      />
+
+      <ConfirmDialog
+        confirmLabel={forceDeleteClassMutation.isPending ? "Menghapus..." : "Ya, Hapus Permanen"}
+        description={
+          deleteClassTarget
+            ? `Kelas "${deleteClassTarget.name}" beserta seluruh modul, kuis, dan data terkait di dalamnya akan dihapus permanen dan tidak dapat dikembalikan.`
+            : ""
+        }
+        onCancel={() => setDeleteClassTarget(null)}
+        onConfirm={() => {
+          if (deleteClassTarget) forceDeleteClassMutation.mutate(deleteClassTarget.id);
+        }}
+        open={Boolean(deleteClassTarget)}
+        title="Hapus kelas secara permanen?"
+      />
     </div>
   );
 }

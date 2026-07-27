@@ -38,7 +38,12 @@ class ModuleTemplateService
 
     public function update(ModuleTemplate $template, array $data, User $actor, Request $request): ModuleTemplate
     {
-        if (($data['status'] ?? null) === 'published') {
+        $requestedStatus = $data['status'] ?? $template->status;
+        $isPublishTransition = $requestedStatus === 'published' && $template->status !== 'published';
+
+        if ($isPublishTransition) {
+            $template->fill(collect($data)->only(['title', 'description'])->all());
+
             return $this->publish($template, $actor, $request);
         }
 

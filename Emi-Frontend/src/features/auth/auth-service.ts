@@ -3,6 +3,7 @@ import { isUserRole } from "@/lib/roles";
 
 import type {
   AuthUser,
+  ForgotPasswordPayload,
   LoginPayload,
   LoginResult,
   PublicSchool,
@@ -44,6 +45,12 @@ export const authService = {
 
   async logout(token: string) {
     await apiClient.post<null>("/auth/logout", undefined, { token });
+  },
+
+  async forgotPassword(payload: ForgotPasswordPayload) {
+    const response = await apiClient.post<[]>("/auth/forgot-password", payload);
+
+    return response.message;
   },
 
   async getCurrentUser(token: string) {

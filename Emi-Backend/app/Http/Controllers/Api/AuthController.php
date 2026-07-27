@@ -12,6 +12,7 @@ use App\Http\Requests\Auth\UpdateProfileRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\AuthService;
+use App\Services\PasswordResetApprovalService;
 use App\Services\RegistrationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ class AuthController extends Controller
     public function __construct(
         private readonly RegistrationService $registrationService,
         private readonly AuthService $authService,
+        private readonly PasswordResetApprovalService $passwordResetApprovalService,
     ) {}
 
     public function register(RegisterRequest $request): JsonResponse
@@ -75,6 +77,19 @@ class AuthController extends Controller
         $this->authService->deleteAccount($request->user(), $request->validated());
 
         return ApiResponse::success('Akun berhasil dinonaktifkan.', []);
+    }
+
+    public function requestPasswordResetApproval(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user->role === 'admin') {
+            return ApiResponse::error('Admin dapat mengubah password langsung tanpa persetujuan.', 'ADMIN_NO_APPROVAL_NEEDED', 422);
+        }
+
+        $this->passwordResetApprovalService->request($user, $user, $request);
+
+        return ApiResponse::success('Permintaan reset password telah dikirim untuk disetujui guru/admin.', []);
     }
 
     private function loadProfile(User $user): User

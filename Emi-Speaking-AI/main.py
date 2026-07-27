@@ -117,6 +117,31 @@ def normalize_words(text: str) -> list[str]:
     return re.findall(r"[^\W_]+", normalized, flags=re.UNICODE)
 
 
+def character_distance(target: str, actual: str) -> int:
+    if target == actual:
+        return 0
+    if not target:
+        return len(actual)
+    if not actual:
+        return len(target)
+    previous = list(range(len(actual) + 1))
+    for i in range(1, len(target) + 1):
+        current = [i] + [0] * len(actual)
+        for j in range(1, len(actual) + 1):
+            current[j] = min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (target[i - 1] != actual[j - 1]))
+        previous = current
+    return previous[-1]
+
+
+def phoneme_similarity(target: str, actual: str) -> tuple[float, int]:
+    span = max(len(target), len(actual))
+    if span == 0:
+        return 100.0, 0
+    distance = character_distance(target, actual)
+    similarity = round(max(0.0, 1 - distance / span) * 100, 2)
+    return similarity, distance
+
+
 def levenshtein_score(target: str, transcription: str) -> tuple[float, dict[str, Any]]:
     expected = normalize_words(target)
     actual = normalize_words(transcription)
@@ -129,26 +154,31 @@ def levenshtein_score(target: str, transcription: str) -> tuple[float, dict[str,
         for j in range(1, len(actual) + 1):
             rows[i][j] = min(rows[i - 1][j] + 1, rows[i][j - 1] + 1, rows[i - 1][j - 1] + (expected[i - 1] != actual[j - 1]))
     operations: list[dict[str, Any]] = []
-    scores = [0] * len(expected)
+    scores = [0.0] * len(expected)
+    insertions = 0
     i, j = len(expected), len(actual)
     while i or j:
         if i and j and rows[i][j] == rows[i - 1][j - 1] + (expected[i - 1] != actual[j - 1]):
             kind = "match" if expected[i - 1] == actual[j - 1] else "substitution"
-            scores[i - 1] = 100 if kind == "match" else 0
-            operations.append({"type": kind, "target": expected[i - 1], "transcription": actual[j - 1], "target_index": i - 1, "transcription_index": j - 1})
+            similarity, char_distance = phoneme_similarity(expected[i - 1], actual[j - 1])
+            scores[i - 1] = similarity
+            operations.append({"type": kind, "target": expected[i - 1], "transcription": actual[j - 1], "target_index": i - 1, "transcription_index": j - 1, "score": similarity, "char_distance": char_distance})
             i -= 1
             j -= 1
         elif i and rows[i][j] == rows[i - 1][j] + 1:
-            operations.append({"type": "deletion", "target": expected[i - 1], "transcription": None, "target_index": i - 1, "transcription_index": j})
+            scores[i - 1] = 0.0
+            operations.append({"type": "deletion", "target": expected[i - 1], "transcription": None, "target_index": i - 1, "transcription_index": j, "score": 0.0, "char_distance": len(expected[i - 1])})
             i -= 1
         else:
-            operations.append({"type": "insertion", "target": None, "transcription": actual[j - 1], "target_index": i, "transcription_index": j - 1})
+            insertions += 1
+            operations.append({"type": "insertion", "target": None, "transcription": actual[j - 1], "target_index": i, "transcription_index": j - 1, "score": 0.0, "char_distance": len(actual[j - 1])})
             j -= 1
     operations.reverse()
     alignment: dict[str, Any] = {f"{index}_{word}": scores[index] for index, word in enumerate(expected)}
     alignment["operations"] = operations
     alignment["distance"] = rows[-1][-1]
-    score = 0.0 if not expected else round(max(0.0, 1 - rows[-1][-1] / len(expected)) * 100, 2)
+    denominator = len(expected) + insertions
+    score = 0.0 if denominator == 0 else round(sum(scores) / denominator, 2)
     return score, alignment
 
 
@@ -225,7 +255,7 @@ async def predict(target_text: str = Form(...), file: UploadFile = File(...)) ->
         normalized_path = prepare_audio_for_transcription(temp_path)
         transcription = transcribe(normalized_path)
         score, alignment = levenshtein_score(target_text, transcription)
-        return JSONResponse({"engine": ENGINE, "model": MODEL_NAME, "target": target_text, "transcription": transcription, "score": score, "alignment": alignment, "warnings": [WARNING], "scoring_version": "word-levenshtein-v1"})
+        return JSONResponse({"engine": ENGINE, "model": MODEL_NAME, "target": target_text, "transcription": transcription, "score": score, "alignment": alignment, "warnings": [WARNING], "scoring_version": "phoneme-levenshtein-v2"})
     except HTTPException:
         raise
     except RuntimeError as exc:

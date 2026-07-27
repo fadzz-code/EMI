@@ -36,6 +36,11 @@ class SchoolClassPolicy
         return $user->role === 'admin';
     }
 
+    public function forceDelete(User $user, SchoolClass $schoolClass): bool
+    {
+        return $user->role === 'admin';
+    }
+
     public function assignTeacher(User $user, SchoolClass $schoolClass): bool
     {
         return $user->role === 'admin';

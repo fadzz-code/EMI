@@ -85,6 +85,7 @@ class SpeakingRepository {
     required SpeakingSubmissionFile file,
     int? durationSeconds,
     ProgressCallback? onSendProgress,
+    String captureSource = 'mobile_microphone',
   }) async {
     final validation = file.validate();
     if (validation != null) {
@@ -100,7 +101,7 @@ class SpeakingRepository {
         ),
         if (durationSeconds != null)
           'audio_duration_seconds': durationSeconds.clamp(1, 30),
-        'capture_source': 'mobile_microphone',
+        'capture_source': captureSource,
       });
       final response = await _dio.post<Map<String, dynamic>>(
         '/student/speaking/exercises/$exerciseId/attempts',

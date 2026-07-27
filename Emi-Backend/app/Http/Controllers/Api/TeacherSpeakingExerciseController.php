@@ -101,7 +101,6 @@ class TeacherSpeakingExerciseController extends Controller
         $data = $request->validated();
         unset($data['created_by_id']);
         unset($data['template_exercise_id']);
-        unset($data['reference_audio_media_id']);
 
         $exercise->update($data);
 

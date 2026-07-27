@@ -96,7 +96,9 @@ export function LoginForm() {
           <input type="hidden" {...register("device_name")} />
 
           <div className="flex justify-end">
-            <button className="text-sm font-bold text-slate-500 hover:text-ink hover:underline" type="button">Lupa kata sandi?</button>
+            <Link className="text-sm font-bold text-slate-500 hover:text-ink hover:underline" href="/forgot-password">
+              Lupa kata sandi?
+            </Link>
           </div>
 
           <Button

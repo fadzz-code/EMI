@@ -76,7 +76,7 @@ export function TeacherCultureList() {
                   <h2 className="text-2xl font-black text-ink">{selectedClass?.name ?? "Kelas"}</h2>
                   <p className="mt-2 text-sm font-bold text-muted">{items.length} konten · {publishedCount} konten terbit</p>
                 </div>
-                <Button onClick={() => openBuilder()} type="button" variant="secondary">Kelola Media</Button>
+                <Button onClick={() => openBuilder()} type="button" variant="secondary">Tambah Media</Button>
               </div>
             </CardContent>
           </Card>
@@ -84,7 +84,7 @@ export function TeacherCultureList() {
           {showBuilder ? <CultureForm classId={selectedClassId} item={editing} key={editing?.id ?? `new-${selectedClassId}`} onDone={() => { setEditing(null); setShowBuilder(false); void invalidate(); }} /> : null}
 
           {mutationError ? <Alert tone="error">{getFirstApiError(mutationError)}</Alert> : null}
-          {items.length === 0 ? <Card><CardContent><EmptyState description="Belum ada konten budaya untuk kelas ini. Klik Kelola Media untuk menambah konten." title="Budaya Mekongga kosong" /></CardContent></Card> : (
+          {items.length === 0 ? <Card><CardContent><EmptyState description="Belum ada konten budaya untuk kelas ini. Klik Tambah Media untuk menambah konten." title="Budaya Mekongga kosong" /></CardContent></Card> : (
             <div className="grid gap-4 md:grid-cols-2">
               {items.map((item) => (
                 <Card className="group flex h-full flex-col transition hover:-translate-y-1 hover:shadow-emi" key={item.id}>

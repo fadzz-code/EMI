@@ -397,6 +397,10 @@ export const teacherService = {
     return this.uploadMedia(token, file, "question_image", "public");
   },
 
+  async uploadSpeakingReferenceAudio(token: string, file: File) {
+    return this.uploadMedia(token, file, "speaking_reference_audio", "public");
+  },
+
   async mediaDetail(token: string, mediaId: string) {
     const response = await apiClient.get<TeacherMediaFile>(`/media/${mediaId}`, { token });
 

@@ -81,14 +81,10 @@ class DictionaryCategoryService
         return DB::transaction(function () use ($category, $admin, $request) {
             $category = DictionaryCategory::query()->whereKey($category->id)->lockForUpdate()->firstOrFail();
 
-            if ($category->entries()->active()->exists()) {
-                throw new ApiException('Kategori masih memiliki entri aktif.', 'CATEGORY_HAS_ACTIVE_ENTRIES', 409);
-            }
-
             $oldValues = $category->only(['status']);
             $category->forceFill(['status' => 'inactive', 'updated_by' => $admin->id])->save();
             $category->delete();
-            $this->auditLogService->record('dictionary.category_deactivated', $category, $admin, $oldValues, ['status' => 'inactive'], [], $request);
+            $this->auditLogService->record('dictionary.category_deleted', $category, $admin, $oldValues, ['status' => 'inactive'], [], $request);
 
             return $category;
         });

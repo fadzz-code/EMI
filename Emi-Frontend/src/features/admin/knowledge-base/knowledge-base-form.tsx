@@ -51,16 +51,18 @@ export function KnowledgeBaseForm({
 }) {
   const [form, setForm] = useState(() => formFromItem(item));
   const [isExtracting, setIsExtracting] = useState(false);
-  const [pdfSourceMode, setPdfSourceMode] = useState<"upload" | "url" | "rag">("upload");
   const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
+  const [selectedDocumentFile, setSelectedDocumentFile] = useState<File | null>(null);
   const [extractMessage, setExtractMessage] = useState<string | null>(null);
   const [extractError, setExtractError] = useState<string | null>(null);
   const [isPdfSourceImported, setIsPdfSourceImported] = useState(false);
-  const isPdfRagCreate = !item && form.source_type === "pdf" && pdfSourceMode === "rag";
+  const [isDocumentExtracted, setIsDocumentExtracted] = useState(false);
+  const isPdfRagCreate = !item && form.source_type === "pdf";
+  const isDocumentCreate = !item && (form.source_type === "docx" || form.source_type === "txt");
 
-  async function extractSource() {
-    if (!token || (form.source_type !== "link" && form.source_type !== "pdf") || !form.source_url.trim()) {
-      return;
+  async function extractDocumentUpload() {
+    if (!token || !selectedDocumentFile) {
+      return null;
     }
 
     setIsExtracting(true);
@@ -68,49 +70,24 @@ export function KnowledgeBaseForm({
     setExtractError(null);
 
     try {
-      const result = await knowledgeBaseService.extractKnowledgeSource(token, {
-        source_type: form.source_type,
-        source_url: form.source_url.trim(),
-      });
+      const result = await knowledgeBaseService.extractDocumentUpload(token, selectedDocumentFile);
 
       setForm((current) => ({
         ...current,
         content: result.content,
-        title: current.title || result.title || current.title,
-        source_url: result.source_url ?? current.source_url,
-      }));
-      setExtractMessage("Isi sumber berhasil diambil. Periksa kembali konten sebelum menyimpan.");
-    } catch (error) {
-      const message = getFirstApiError(error);
-      setExtractError(message || "Isi sumber tidak dapat diambil. Pastikan URL publik dapat diakses dan format sumber sesuai.");
-    } finally {
-      setIsExtracting(false);
-    }
-  }
-
-  async function extractPdfUpload() {
-    if (!token || !selectedPdfFile) {
-      return;
-    }
-
-    setIsExtracting(true);
-    setExtractMessage(null);
-    setExtractError(null);
-
-    try {
-      const result = await knowledgeBaseService.extractPdfUpload(token, selectedPdfFile);
-
-      setForm((current) => ({
-        ...current,
-        content: result.content,
-        source_type: "pdf",
+        source_type: result.source_type,
         source_url: result.source_url ?? current.source_url,
         title: current.title || result.title || current.title,
       }));
-      setExtractMessage("Isi PDF berhasil diambil. Periksa kembali konten sebelum menyimpan.");
+      setIsDocumentExtracted(true);
+      setExtractMessage("Isi dokumen berhasil diambil.");
+
+      return result;
     } catch (error) {
       const message = getFirstApiError(error);
-      setExtractError(message || "Isi PDF tidak dapat dibaca. Pastikan PDF berbasis teks dan bukan hasil scan/foto.");
+      setExtractError(message || "Isi dokumen tidak dapat dibaca. Pastikan berkas DOCX/TXT tidak rusak.");
+
+      return null;
     } finally {
       setIsExtracting(false);
     }
@@ -152,8 +129,27 @@ export function KnowledgeBaseForm({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!item && form.source_type === "pdf" && pdfSourceMode === "rag") {
+    if (!item && form.source_type === "pdf") {
       await importPdfSource();
+      return;
+    }
+
+    if (isDocumentCreate && !isDocumentExtracted) {
+      const result = await extractDocumentUpload();
+
+      if (!result) {
+        return;
+      }
+
+      onSubmit({
+        title: form.title.trim() || result.title || "",
+        category: nullable(form.category),
+        content: result.content.trim(),
+        source_type: result.source_type,
+        source_url: result.source_url ?? null,
+        status: form.status,
+      });
+
       return;
     }
 
@@ -193,7 +189,7 @@ export function KnowledgeBaseForm({
           </FormField>
         </div>
       </section>
-      {!isPdfRagCreate ? (
+      {!isPdfRagCreate && !isDocumentCreate ? (
         <FormField label="Konten Pengetahuan">
           <Textarea
             className="min-h-40"
@@ -207,7 +203,9 @@ export function KnowledgeBaseForm({
         </FormField>
       ) : (
         <div className="rounded-2xl border-2 border-border bg-info p-4 text-sm font-bold leading-6 text-info-foreground">
-          Konten Pengetahuan tidak diperlukan untuk Sumber RAG. PDF akan diproses per halaman dan chunk dibuat dari teks PDF.
+          {isPdfRagCreate
+            ? "Konten Pengetahuan tidak diperlukan untuk Sumber RAG. PDF akan diproses per halaman dan chunk dibuat dari teks PDF."
+            : "Konten Pengetahuan diambil otomatis dari berkas DOCX/TXT saat disimpan. Admin dapat mengeditnya setelah tersimpan."}
         </div>
       )}
       <section className="grid gap-4 rounded-2xl border-2 border-border bg-surface-muted p-4">
@@ -230,8 +228,8 @@ export function KnowledgeBaseForm({
             value={form.source_type}
           >
             <option value="manual">Teks Manual</option>
-            <option value="link">Link</option>
-            <option value="pdf">PDF / Dokumen</option>
+            <option value="pdf">PDF</option>
+            <option value="docx">Dokumen (DOCX/TXT)</option>
           </Select>
         </FormField>
         <FormField label="Status">
@@ -248,97 +246,38 @@ export function KnowledgeBaseForm({
         </FormField>
       </div>
       </section>
-      {form.source_type !== "pdf" ? (
-        <FormField label="URL Sumber">
-          <Input
-            onChange={(event) => setForm((current) => ({ ...current, source_url: event.target.value }))}
-            placeholder="https://contoh-sumber-resmi.test"
-            required={form.source_type === "link"}
-            type="url"
-            value={form.source_url}
-          />
-          {form.source_type === "link" ? (
-            <p className="mt-2 text-xs font-bold leading-5 text-muted">
-              Gunakan link artikel atau halaman publik yang dapat diakses tanpa login.
-            </p>
-          ) : null}
-        </FormField>
-      ) : null}
       {form.source_type === "pdf" ? (
         <div className="grid gap-3 rounded-2xl border-2 border-border bg-[var(--color-primary-muted)] p-4 text-sm leading-6 text-ink">
-          <p className="font-bold">PDF dapat diambil dari upload file lokal atau dari URL PDF publik.</p>
+          <p className="font-bold">Upload PDF sebagai Sumber RAG</p>
           <p>
-            Upload PDF dari perangkat digunakan untuk mengambil isi PDF dari file lokal admin. PDF harus berbasis teks. PDF hasil scan/foto belum dapat dibaca otomatis. Setelah isi PDF diambil, admin tetap dapat mengoreksi Konten Pengetahuan sebelum diterbitkan.
+            Upload PDF dari perangkat admin. PDF harus berbasis teks. PDF hasil scan/foto belum dapat dibaca otomatis. PDF akan diproses per halaman dan chunk dibuat dari teks PDF untuk pencarian Chatbot AI.
           </p>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className="flex items-center gap-2 font-bold">
-              <input
-                checked={pdfSourceMode === "upload"}
-                onChange={() => setPdfSourceMode("upload")}
-                type="radio"
-              />
-              Ekstrak ke Konten
-            </label>
-            <label className="flex items-center gap-2 font-bold">
-              <input checked={pdfSourceMode === "rag"} onChange={() => setPdfSourceMode("rag")} type="radio" />
-              Proses Sumber RAG
-            </label>
-            <label className="flex items-center gap-2 font-bold">
-              <input checked={pdfSourceMode === "url"} onChange={() => setPdfSourceMode("url")} type="radio" />
-              Ambil dari URL PDF publik
-            </label>
-          </div>
-          {pdfSourceMode === "upload" || pdfSourceMode === "rag" ? (
-            <div className="grid gap-3">
-              <Input
-                accept="application/pdf,.pdf"
-                onChange={(event) => {
-                  setSelectedPdfFile(event.target.files?.[0] ?? null);
-                  setIsPdfSourceImported(false);
-                }}
-                type="file"
-              />
-              <div>
-                {pdfSourceMode === "rag" ? (
-                  <Button disabled={isExtracting || !selectedPdfFile || !form.title.trim() || isPdfSourceImported} onClick={importPdfSource} type="button" variant="secondary">
-                    {isExtracting ? "Memproses PDF..." : isPdfSourceImported ? "PDF Sumber RAG Sudah Diproses" : "Upload PDF Besar sebagai Sumber"}
-                  </Button>
-                ) : (
-                  <Button disabled={isExtracting || !selectedPdfFile} onClick={extractPdfUpload} type="button" variant="secondary">
-                    {isExtracting ? "Membaca isi PDF..." : "Ambil Isi PDF"}
-                  </Button>
-                )}
-              </div>
-            </div>
-          ) : (
-            <FormField label="URL PDF Publik">
-              <Input
-                onChange={(event) => setForm((current) => ({ ...current, source_url: event.target.value }))}
-                placeholder="https://contoh-sumber-resmi.test/dokumen.pdf"
-                type="url"
-                value={form.source_url}
-              />
-              <div className="mt-3">
-                <Button disabled={isExtracting || !form.source_url.trim()} onClick={extractSource} type="button" variant="secondary">
-                  {isExtracting ? "Mengambil isi sumber..." : "Ambil Isi Sumber"}
-                </Button>
-              </div>
-            </FormField>
-          )}
+          <Input
+            accept="application/pdf,.pdf"
+            onChange={(event) => {
+              setSelectedPdfFile(event.target.files?.[0] ?? null);
+              setIsPdfSourceImported(false);
+            }}
+            type="file"
+          />
           {extractMessage ? <Alert tone="success">{extractMessage}</Alert> : null}
           {extractError ? <Alert tone="error">{extractError}</Alert> : null}
         </div>
       ) : null}
-      {form.source_type === "link" ? (
+      {form.source_type === "docx" || form.source_type === "txt" ? (
         <div className="grid gap-3 rounded-2xl border-2 border-border bg-[var(--color-primary-muted)] p-4 text-sm leading-6 text-ink">
-          <p className="font-bold">
-            Link tidak otomatis digunakan chatbot hanya karena URL disimpan. Gunakan tombol &quot;Ambil Isi Sumber&quot; agar isi sumber masuk ke Konten Pengetahuan. Admin tetap dapat mengoreksi konten sebelum diterbitkan.
+          <p className="font-bold">Upload Dokumen (DOCX/TXT)</p>
+          <p>
+            Upload berkas DOCX atau TXT dari perangkat untuk mengambil isi teksnya secara otomatis. Setelah isi dokumen diambil, admin tetap dapat mengoreksi Konten Pengetahuan sebelum diterbitkan.
           </p>
-          <div>
-            <Button disabled={isExtracting || !form.source_url.trim()} onClick={extractSource} type="button" variant="secondary">
-              {isExtracting ? "Mengambil isi sumber..." : "Ambil Isi Sumber"}
-            </Button>
-          </div>
+          <Input
+            accept=".docx,.txt,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            onChange={(event) => {
+              setSelectedDocumentFile(event.target.files?.[0] ?? null);
+              setIsDocumentExtracted(false);
+            }}
+            type="file"
+          />
           {extractMessage ? <Alert tone="success">{extractMessage}</Alert> : null}
           {extractError ? <Alert tone="error">{extractError}</Alert> : null}
         </div>
@@ -350,8 +289,26 @@ export function KnowledgeBaseForm({
         <Button onClick={onCancel} type="button" variant="ghost">
           Batal
         </Button>
-        <Button disabled={isSubmitting || (isPdfRagCreate && isPdfSourceImported)} type="submit">
-          {isPdfRagCreate ? "Proses PDF sebagai Sumber RAG" : item ? "Simpan Perubahan" : "Simpan Pengetahuan"}
+        <Button
+          disabled={
+            isSubmitting ||
+            isExtracting ||
+            (isPdfRagCreate && (!selectedPdfFile || isPdfSourceImported)) ||
+            (isDocumentCreate && !selectedDocumentFile)
+          }
+          type="submit"
+        >
+          {isPdfRagCreate
+            ? isExtracting
+              ? "Memproses PDF..."
+              : "Proses PDF sebagai Sumber RAG"
+            : isDocumentCreate
+              ? isExtracting
+                ? "Memproses dokumen..."
+                : "Proses Dokumen"
+              : item
+                ? "Simpan Perubahan"
+                : "Simpan Pengetahuan"}
         </Button>
       </div>
     </form>

@@ -12,7 +12,7 @@ import { teacherRoutes } from "@/lib/routes";
 
 import { teacherService } from "./teacher-service";
 import type { TeacherQuizAnswer, TeacherQuizAttempt, TeacherQuizQuestion } from "./types";
-import { formatCount, formatDate, formatOptional, formatPercent, statusLabel } from "./teacher-utils";
+import { formatCount, formatDate, formatOptional, formatPercent, formatScoreOutOf100, statusLabel } from "./teacher-utils";
 
 function studentName(attempt: TeacherQuizAttempt) {
   return attempt.student?.full_name ?? attempt.student?.name ?? attempt.student?.email ?? attempt.student_id ?? "Siswa";
@@ -96,9 +96,9 @@ export function TeacherQuizResults({ classQuizId }: { classQuizId: string }) {
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatsCard helper="Percobaan siswa" label="Total attempt" value={formatCount(reportQuery.data?.attempts_count ?? attemptsQuery.data?.meta?.total)} />
         <StatsCard helper="Submitted/expired" label="Selesai" value={formatCount(reportQuery.data?.submitted_count)} />
-        <StatsCard helper="Rata-rata" label="Skor rata-rata" value={formatPercent(reportQuery.data?.average_score_percent)} />
-        <StatsCard helper="Tertinggi" label="Skor tertinggi" value={formatPercent(reportQuery.data?.highest_score_percent)} />
-        <StatsCard helper="Terendah" label="Skor terendah" value={formatPercent(reportQuery.data?.lowest_score_percent)} />
+        <StatsCard helper="Rata-rata" label="Skor rata-rata" value={formatScoreOutOf100(reportQuery.data?.average_score_percent)} />
+        <StatsCard helper="Tertinggi" label="Skor tertinggi" value={formatScoreOutOf100(reportQuery.data?.highest_score_percent)} />
+        <StatsCard helper="Terendah" label="Skor terendah" value={formatScoreOutOf100(reportQuery.data?.lowest_score_percent)} />
       </section>
       {reportQuery.isError ? <Alert tone="warning">Ringkasan report tidak dapat dimuat: {getFirstApiError(reportQuery.error)}</Alert> : null}
 
@@ -126,7 +126,7 @@ export function TeacherQuizResults({ classQuizId }: { classQuizId: string }) {
                     <h3 className="mt-2 font-black text-ink">{studentName(attempt)}</h3>
                     <p className="text-sm text-muted">{formatOptional(attempt.student?.email)}</p>
                     <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-4">
-                      <div><dt className="font-black text-muted">Skor</dt><dd>{formatPercent(attempt.score_percent)}</dd></div>
+                      <div><dt className="font-black text-muted">Skor</dt><dd>{formatScoreOutOf100(attempt.score_percent)}</dd></div>
                       <div><dt className="font-black text-muted">Poin</dt><dd>{formatOptional(attempt.score_points)} / {formatOptional(attempt.max_points)}</dd></div>
                       <div><dt className="font-black text-muted">Mulai</dt><dd>{formatDate(attempt.started_at)}</dd></div>
                       <div><dt className="font-black text-muted">Submit</dt><dd>{formatDate(attempt.submitted_at)}</dd></div>
@@ -150,7 +150,7 @@ export function TeacherQuizResults({ classQuizId }: { classQuizId: string }) {
               <div className="grid gap-4">
                 <div className="rounded-xl border-2 border-border bg-surface-muted p-4">
                   <h3 className="font-black text-ink">{studentName(selectedAttempt)}</h3>
-                  <p className="text-sm text-muted">Status: {statusLabel(selectedAttempt.status)} | Skor: {formatPercent(selectedAttempt.score_percent)}</p>
+                  <p className="text-sm text-muted">Status: {statusLabel(selectedAttempt.status)} | Skor: {formatScoreOutOf100(selectedAttempt.score_percent)}</p>
                 </div>
                 {selectedAttempt.answers?.length ? selectedAttempt.answers.map((answer) => {
                   const question = questionsById.get(answer.quiz_question_id);
