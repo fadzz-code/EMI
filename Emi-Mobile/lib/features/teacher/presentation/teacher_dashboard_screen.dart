@@ -55,7 +55,7 @@ class TeacherDashboardScreen extends ConsumerWidget {
                 message:
                     'Periksa materi dan kuis terbaru sebelum memulai pembelajaran.',
               ),
-              TeacherSectionHeader('Ringkasan', leading: true),
+              const TeacherSectionHeader('Ringkasan', leading: true),
               LayoutBuilder(
                 builder: (context, constraints) => GridView.count(
                   crossAxisCount: constraints.maxWidth >= 720 ? 4 : 2,
@@ -63,7 +63,7 @@ class TeacherDashboardScreen extends ConsumerWidget {
                   mainAxisSpacing: EmiSpacing.md,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  mainAxisExtent: 150,
+                  mainAxisExtent: constraints.maxWidth < 360 ? 164 : 148,
                   children: [
                     TeacherDashboardMetricTile(
                       icon: Icons.school_outlined,
@@ -87,32 +87,48 @@ class TeacherDashboardScreen extends ConsumerWidget {
                 'Tindakan Cepat',
                 subtitle: 'Akses pintas tugas Guru.',
               ),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: EmiSpacing.sm,
-                runSpacing: EmiSpacing.sm,
-                children: [
-                  TeacherQuickAction(
-                    label: 'Modul Kelas',
-                    icon: Icons.menu_book_outlined,
-                    onTap: () => context.go('/teacher/modules'),
-                  ),
-                  TeacherQuickAction(
-                    label: 'Kuis Kelas',
-                    icon: Icons.quiz_outlined,
-                    onTap: () => context.go('/teacher/quizzes'),
-                  ),
-                  TeacherQuickAction(
-                    label: 'Progress',
-                    icon: Icons.trending_up_outlined,
-                    onTap: () => context.go('/teacher/progress'),
-                  ),
-                  TeacherQuickAction(
-                    label: 'Hasil Speaking',
-                    icon: Icons.mic_none_outlined,
-                    onTap: () => context.go('/teacher/speaking/attempts'),
-                  ),
-                ],
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = (constraints.maxWidth - EmiSpacing.sm) / 2;
+                  return Wrap(
+                    spacing: EmiSpacing.sm,
+                    runSpacing: EmiSpacing.sm,
+                    children: [
+                      SizedBox(
+                        width: width,
+                        child: TeacherQuickAction(
+                          label: 'Modul Kelas',
+                          icon: Icons.menu_book_outlined,
+                          onTap: () => context.go('/teacher/modules'),
+                        ),
+                      ),
+                      SizedBox(
+                        width: width,
+                        child: TeacherQuickAction(
+                          label: 'Kuis Kelas',
+                          icon: Icons.quiz_outlined,
+                          onTap: () => context.go('/teacher/quizzes'),
+                        ),
+                      ),
+                      SizedBox(
+                        width: width,
+                        child: TeacherQuickAction(
+                          label: 'Progress',
+                          icon: Icons.trending_up_outlined,
+                          onTap: () => context.go('/teacher/progress'),
+                        ),
+                      ),
+                      SizedBox(
+                        width: width,
+                        child: TeacherQuickAction(
+                          label: 'Hasil Speaking',
+                          icon: Icons.mic_none_outlined,
+                          onTap: () => context.go('/teacher/speaking/attempts'),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
               TeacherSectionHeader('Aktivitas Terbaru'),
               if (summary.activities.isEmpty)

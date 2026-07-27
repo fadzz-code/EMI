@@ -121,6 +121,8 @@ class SpeakingAttempt {
     final analysis = json['analysis'];
     final review = json['review'];
     final recording = json['recording'];
+    final audioMedia = json['audio_media'];
+    final media = json['media'];
     return SpeakingAttempt(
       id: json['id'] as String? ?? '',
       exerciseId: json['exercise_id'] as String? ?? '',
@@ -139,9 +141,12 @@ class SpeakingAttempt {
       teacherFeedback:
           (json['teacher_feedback'] ?? _mapValue(review, 'feedback'))
               as String?,
-      audioMediaId:
-          (json['audio_media_id'] ?? _mapValue(recording, 'media_id'))
-              as String?,
+      audioMediaId: _string(
+        json['audio_media_id'] ??
+            _mapValue(recording, 'media_id') ??
+            _mapValue(audioMedia, 'id') ??
+            _mapValue(media, 'id'),
+      ),
       audioUrl: json['audio_url'] as String?,
       createdAt: DateTime.tryParse(json['created_at'] as String? ?? ''),
       updatedAt: DateTime.tryParse(json['updated_at'] as String? ?? ''),
@@ -153,6 +158,8 @@ class SpeakingAttempt {
 
   static Object? _mapValue(Object? value, String key) =>
       value is Map<String, dynamic> ? value[key] : null;
+
+  static String? _string(Object? value) => value is String ? value : null;
 
   static double? _double(Object? value) {
     if (value is num) return value.toDouble();

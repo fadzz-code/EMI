@@ -66,6 +66,19 @@ dev_dependencies:
   freezed: 2.5.8
   json_serializable: 6.9.5
   mocktail: 1.0.4
+  flutter_launcher_icons: ^0.14.4
+
+# Launcher icon generation. Drop the EMI logo at assets/icon/emi_icon.png
+# (min. 512x512, no transparency for the Play Store icon), then run:
+#   flutter pub get
+#   dart run flutter_launcher_icons
+# This replaces the default Flutter launcher icon which Google Play rejects.
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/emi_icon.png"
+  adaptive_icon_background: "#FF8A3D"
+  adaptive_icon_foreground: "assets/icon/emi_icon_foreground.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

@@ -37,77 +37,55 @@ class TeacherShell extends ConsumerWidget {
           context.go(fallbackRoute!);
         }
       },
-      child: Scaffold(
-        backgroundColor: TeacherStyle.pageBackground,
-        drawer: _TeacherDrawer(user: user, location: location),
-        body: SafeArea(
-          child: Column(
-            children: [
-              Container(
-                height: 64,
-                padding: const EdgeInsets.symmetric(horizontal: EmiSpacing.md),
-                decoration: BoxDecoration(
-                  color: TeacherStyle.pageBackground,
-                  boxShadow: TeacherStyle.softShadow(opacity: 0.04),
-                ),
-                child: Row(
-                  children: [
-                    if (fallbackRoute == null)
-                      Builder(
-                        builder: (context) => IconButton(
-                          key: const Key('teacherMenuButton'),
-                          onPressed: () => Scaffold.of(context).openDrawer(),
-                          icon: const Icon(
-                            Icons.menu_rounded,
-                            color: TeacherStyle.ink,
-                          ),
-                        ),
-                      )
-                    else
-                      IconButton(
-                        key: const Key('teacherBackButton'),
-                        tooltip: 'Kembali',
-                        onPressed: () async {
-                          if (onBack != null) {
-                            await onBack!();
-                          } else if (context.canPop()) {
-                            context.pop();
-                          } else {
-                            context.go(fallbackRoute!);
-                          }
-                        },
-                        icon: const Icon(
-                          Icons.arrow_back_rounded,
-                          color: TeacherStyle.ink,
-                        ),
-                      ),
-                    const SizedBox(width: EmiSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: TeacherStyle.ink,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+      child: Theme(
+        data: TeacherStyle.theme(context),
+        child: Scaffold(
+          backgroundColor: TeacherStyle.pageBackground,
+          drawer: _TeacherDrawer(user: user, location: location),
+          appBar: AppBar(
+            backgroundColor: TeacherStyle.pageBackground,
+            surfaceTintColor: Colors.transparent,
+            scrolledUnderElevation: 0,
+            leadingWidth: 64,
+            leading: fallbackRoute == null
+                ? Builder(
+                    builder: (context) => IconButton(
+                      key: const Key('teacherMenuButton'),
+                      tooltip: 'Menu',
+                      onPressed: () => Scaffold.of(context).openDrawer(),
+                      icon: const Icon(Icons.menu_rounded),
                     ),
-                    ...actions,
-                    if (fallbackRoute == null)
-                      IconButton(
-                        tooltip: 'Profil',
-                        onPressed: () => context.go('/teacher/profile'),
-                        icon: const Icon(
-                          Icons.account_circle_outlined,
-                          color: TeacherStyle.ink,
-                        ),
-                      ),
-                  ],
+                  )
+                : IconButton(
+                    key: const Key('teacherBackButton'),
+                    tooltip: 'Kembali',
+                    onPressed: () async {
+                      if (onBack != null) {
+                        await onBack!();
+                      } else if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go(fallbackRoute!);
+                      }
+                    },
+                    icon: const Icon(Icons.arrow_back_rounded),
+                  ),
+            title: Text(title, overflow: TextOverflow.ellipsis),
+            actions: [
+              ...actions,
+              if (fallbackRoute == null)
+                IconButton(
+                  tooltip: 'Profil',
+                  onPressed: () => context.go('/teacher/profile'),
+                  icon: const Icon(Icons.account_circle_outlined),
                 ),
-              ),
-              Expanded(child: child),
-              if (fallbackRoute == null) _TeacherBottomNav(location: location),
+              const SizedBox(width: 4),
             ],
           ),
+          body: SafeArea(top: false, child: child),
+          bottomNavigationBar: fallbackRoute == null
+              ? _TeacherBottomNav(location: location)
+              : null,
         ),
       ),
     );
@@ -142,63 +120,23 @@ class _TeacherBottomNav extends StatelessWidget {
       ),
       (Icons.quiz_outlined, Icons.quiz_rounded, 'Kuis', '/teacher/quizzes'),
     ];
-    return Container(
-      padding: const EdgeInsets.fromLTRB(EmiSpacing.sm, 8, EmiSpacing.sm, 8),
-      decoration: BoxDecoration(
-        color: TeacherStyle.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
+    final selectedIndex = items.indexWhere(
+      (item) => location == item.$4 || location.startsWith('${item.$4}/'),
+    );
+    return NavigationBar(
+      height: 72,
+      backgroundColor: TeacherStyle.surface,
+      indicatorColor: TeacherStyle.tintStrong,
+      selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
+      onDestinationSelected: (index) => context.go(items[index].$4),
+      destinations: [
+        for (final item in items)
+          NavigationDestination(
+            icon: Icon(item.$1),
+            selectedIcon: Icon(item.$2, color: EmiColors.primary),
+            label: item.$3,
           ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: items.map((item) {
-          final selected =
-              location == item.$4 || location.startsWith('${item.$4}/');
-          return Expanded(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(EmiRadii.pill),
-              onTap: () => context.go(item.$4),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                decoration: BoxDecoration(
-                  color: selected ? TeacherStyle.tint : Colors.transparent,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      selected ? item.$2 : item.$1,
-                      color: selected
-                          ? EmiColors.primary
-                          : TeacherStyle.inkMuted,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      item.$3,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: selected
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                        color: selected
-                            ? EmiColors.primary
-                            : TeacherStyle.inkMuted,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
+      ],
     );
   }
 }

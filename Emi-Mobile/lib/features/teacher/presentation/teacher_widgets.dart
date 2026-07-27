@@ -34,8 +34,8 @@ class TeacherPageHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               color: TeacherStyle.tint,
               borderRadius: BorderRadius.circular(EmiRadii.pill),
@@ -234,9 +234,10 @@ class TeacherSegmentedTabs extends StatelessWidget {
                 onTap: () => onSelected(index),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
+                  constraints: const BoxConstraints(minHeight: 48),
                   padding: const EdgeInsets.symmetric(
                     horizontal: EmiSpacing.md,
-                    vertical: EmiSpacing.xs,
+                    vertical: EmiSpacing.sm,
                   ),
                   decoration: BoxDecoration(
                     color: selected == index

@@ -14,6 +14,7 @@ import '../../../shared/widgets/status_badge.dart';
 import '../data/admin_modules_providers.dart';
 import '../data/admin_modules_repository.dart';
 import 'admin_shell.dart';
+import 'admin_widgets.dart';
 
 class AdminModulesScreen extends ConsumerStatefulWidget {
   const AdminModulesScreen({super.key});
@@ -205,20 +206,14 @@ class _ModuleTile extends StatelessWidget {
   final AdminModuleItem item;
 
   @override
-  Widget build(BuildContext context) => InkWell(
+  Widget build(BuildContext context) => AdminCard(
     onTap: () => context.push('/admin/modules/${item.id}'),
-    borderRadius: BorderRadius.circular(EmiRadii.card),
-    child: Container(
-      constraints: const BoxConstraints(minHeight: 88),
-      padding: const EdgeInsets.symmetric(
-        horizontal: EmiSpacing.md,
-        vertical: EmiSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        color: EmiColors.surface,
-        borderRadius: BorderRadius.circular(EmiRadii.card),
-        border: Border.all(color: EmiColors.border, width: 1.5),
-      ),
+    padding: const EdgeInsets.symmetric(
+      horizontal: EmiSpacing.md,
+      vertical: EmiSpacing.sm,
+    ),
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 72),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

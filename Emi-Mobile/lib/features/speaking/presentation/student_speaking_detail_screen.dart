@@ -164,7 +164,7 @@ class _StudentSpeakingDetailScreenState
                 },
                 onOpenSettings: openAppSettings,
               ),
-              if (recorder.path != null) ...[
+              if (recorder.path != null && !recorder.recording) ...[
                 const SizedBox(height: EmiSpacing.md),
                 _AudioBox(
                   title: 'Preview Rekaman',

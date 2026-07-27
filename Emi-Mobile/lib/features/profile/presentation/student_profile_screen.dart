@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../app/theme/emi_theme.dart';
+import '../../../shared/legal/privacy_policy.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
 import '../../../shared/widgets/student_style.dart';
 import '../../../shared/widgets/student_widgets.dart';
@@ -128,6 +129,16 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
           ),
         ),
         const SizedBox(height: EmiSpacing.lg),
+        SizedBox(
+          width: double.infinity,
+          child: TextButton.icon(
+            key: const Key('privacyPolicyLink'),
+            onPressed: () => openPrivacyPolicy(context),
+            icon: const Icon(Icons.privacy_tip_outlined),
+            label: const Text('Kebijakan Privasi'),
+          ),
+        ),
+        const SizedBox(height: EmiSpacing.sm),
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(

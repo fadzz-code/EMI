@@ -29,13 +29,13 @@ class AdminHeroHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(EmiSpacing.lg),
       decoration: BoxDecoration(
-        color: EmiColors.secondary,
-        borderRadius: BorderRadius.circular(AdminStyle.heroRadius),
-        border: Border.all(
-          color: AdminStyle.ink,
-          width: AdminStyle.heroBorderWidth,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFFB877), Color(0xFFFF8A3D)],
         ),
-        boxShadow: const [AdminStyle.heroShadow],
+        borderRadius: BorderRadius.circular(AdminStyle.heroRadius),
+        boxShadow: AdminStyle.heroGlow(),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -44,11 +44,10 @@ class AdminHeroHeader extends StatelessWidget {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: EmiColors.surface,
+              color: Colors.white.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(EmiRadii.pill),
-              border: Border.all(color: AdminStyle.ink, width: 1.5),
             ),
-            child: Icon(icon, size: 30, color: AdminStyle.ink),
+            child: Icon(icon, size: 30, color: Colors.white),
           ),
           const SizedBox(width: EmiSpacing.md),
           Expanded(
@@ -57,20 +56,24 @@ class AdminHeroHeader extends StatelessWidget {
               children: [
                 Text(
                   greeting,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: AdminStyle.ink),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.9),
+                  ),
                 ),
                 Text(
                   name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(color: AdminStyle.ink),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: EmiSpacing.xs),
-                Text(message, style: const TextStyle(color: AdminStyle.ink)),
+                Text(
+                  message,
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.92)),
+                ),
               ],
             ),
           ),
@@ -103,28 +106,40 @@ class AdminMetricCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(EmiSpacing.md),
       decoration: BoxDecoration(
-        color: highlight ? EmiColors.surfaceAccent : EmiColors.surface,
+        color: AdminStyle.surface,
         borderRadius: BorderRadius.circular(AdminStyle.cardRadius),
-        border: Border.all(
-          color: AdminStyle.ink,
-          width: AdminStyle.cardBorderWidth,
-        ),
-        boxShadow: highlight ? const [AdminStyle.metricShadow] : null,
+        boxShadow: AdminStyle.softShadow(),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(icon, color: EmiColors.primary),
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: highlight ? EmiColors.primarySoft : AdminStyle.tint,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 18, color: EmiColors.primary),
+          ),
           Flexible(
             child: Text(
               value,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleLarge,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: highlight ? EmiColors.primary : AdminStyle.ink,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
-          Text(label, maxLines: 2, overflow: TextOverflow.ellipsis),
+          Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: AdminStyle.inkMuted),
+          ),
         ],
       ),
     );
@@ -162,11 +177,10 @@ class AdminQuickActionItem extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: EmiColors.surfaceSoft,
+                  color: AdminStyle.tint,
                   borderRadius: BorderRadius.circular(EmiRadii.pill),
-                  border: Border.all(color: AdminStyle.ink, width: 1.5),
                 ),
-                child: Icon(icon, color: AdminStyle.ink),
+                child: Icon(icon, color: EmiColors.primary),
               ),
               const SizedBox(height: EmiSpacing.xs),
               SizedBox(
@@ -176,6 +190,7 @@ class AdminQuickActionItem extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
+                  style: const TextStyle(color: AdminStyle.ink),
                 ),
               ),
             ],

@@ -163,42 +163,36 @@ class TeacherQuickAction extends StatelessWidget {
   Widget build(BuildContext context) => Material(
     color: TeacherStyle.surface,
     borderRadius: BorderRadius.circular(TeacherStyle.cardRadius),
-    elevation: 0,
     child: InkWell(
       borderRadius: BorderRadius.circular(TeacherStyle.cardRadius),
       onTap: onTap,
       child: Container(
-        width: 92,
-        height: 112,
-        padding: const EdgeInsets.all(EmiSpacing.xs),
+        constraints: const BoxConstraints(minHeight: 72),
+        padding: const EdgeInsets.all(EmiSpacing.sm),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(TeacherStyle.cardRadius),
           boxShadow: TeacherStyle.softShadow(),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Row(
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 48,
+              height: 48,
               decoration: const BoxDecoration(
                 color: TeacherStyle.tint,
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: EmiColors.primary),
             ),
-            const SizedBox(height: EmiSpacing.xs),
-            SizedBox(
-              height: 36,
+            const SizedBox(width: EmiSpacing.sm),
+            Expanded(
               child: Text(
                 label,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: TeacherStyle.ink,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),

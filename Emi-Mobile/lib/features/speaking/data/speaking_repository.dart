@@ -64,6 +64,7 @@ class SpeakingRepository {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         '/media/$mediaId/temporary-url',
+        data: const {'expires_in_minutes': 15, 'disposition': 'inline'},
       );
       final data = response.data?['data'];
       if (data is Map<String, dynamic>) {

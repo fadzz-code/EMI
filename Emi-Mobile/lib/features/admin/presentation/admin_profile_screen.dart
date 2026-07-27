@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/emi_theme.dart';
+import '../../../shared/legal/privacy_policy.dart';
 import '../../auth/domain/session_user.dart';
 import '../../auth/presentation/auth_controller.dart';
 import 'admin_shell.dart';
@@ -134,6 +135,13 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
                 ? null
                 : () => ref.read(authControllerProvider.notifier).logout(),
             child: const Text('Logout'),
+          ),
+          const SizedBox(height: EmiSpacing.sm),
+          TextButton.icon(
+            key: const Key('privacyPolicyLink'),
+            onPressed: () => openPrivacyPolicy(context),
+            icon: const Icon(Icons.privacy_tip_outlined),
+            label: const Text('Kebijakan Privasi'),
           ),
         ],
       ),

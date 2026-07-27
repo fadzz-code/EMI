@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:just_audio/just_audio.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
@@ -243,10 +244,27 @@ class _AttemptList extends StatelessWidget {
   }
 }
 
-class _AttemptDetail extends StatelessWidget {
+class _AttemptDetail extends ConsumerStatefulWidget {
   const _AttemptDetail({required this.attempt});
 
   final SpeakingAttempt attempt;
+
+  @override
+  ConsumerState<_AttemptDetail> createState() => _AttemptDetailState();
+}
+
+class _AttemptDetailState extends ConsumerState<_AttemptDetail> {
+  final _player = AudioPlayer();
+  var _loading = false;
+  String? _audioError;
+
+  SpeakingAttempt get attempt => widget.attempt;
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -303,12 +321,78 @@ class _AttemptDetail extends StatelessWidget {
                   _row(context, 'Nilai guru', '${attempt.teacherScore}'),
                 if (attempt.teacherFeedback != null)
                   _row(context, 'Feedback guru', attempt.teacherFeedback!),
+                if (attempt.audioUrl != null || attempt.audioMediaId != null)
+                  StreamBuilder<PlayerState>(
+                    stream: _player.playerStateStream,
+                    builder: (context, snapshot) {
+                      final playing = snapshot.data?.playing == true;
+                      return Row(
+                        children: [
+                          IconButton.filled(
+                            onPressed: _loading ? null : () => _toggle(playing),
+                            icon: _loading
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Icon(
+                                    playing ? Icons.pause : Icons.play_arrow,
+                                  ),
+                          ),
+                          const SizedBox(width: EmiSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              _audioError ?? 'Rekaman siswa',
+                              style: TextStyle(
+                                color: _audioError == null
+                                    ? StudentStyle.ink
+                                    : EmiColors.error,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _toggle(bool playing) async {
+    setState(() {
+      _loading = true;
+      _audioError = null;
+    });
+    try {
+      if (playing) {
+        await _player.pause();
+      } else {
+        if (_player.audioSource == null) {
+          final directUrl = attempt.audioUrl;
+          final url = directUrl != null && directUrl.isNotEmpty
+              ? directUrl
+              : await ref
+                    .read(speakingRepositoryProvider)
+                    .temporaryMediaUrl(attempt.audioMediaId!);
+          await _player.setUrl(url);
+        }
+        await _player.play();
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _audioError = 'Audio gagal diputar. Coba lagi.');
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Widget _row(BuildContext context, String label, String value) {

@@ -118,7 +118,7 @@ class _ExercisesState extends ConsumerState<_Exercises> {
             child: _error(
               'Speaking Belum Bisa Dimuat',
               'Periksa koneksi internet Anda, lalu coba lagi.',
-              () => ref.invalidate(
+              () => ref.refresh(
                 teacherSpeakingExercisesProvider((
                   classroomId: classroom,
                   status: status,
@@ -669,7 +669,7 @@ class _AttemptsState extends ConsumerState<_Attempts> {
               child: _error(
                 'Hasil Speaking Belum Bisa Dimuat',
                 'Hasil speaking siswa belum bisa dimuat. Silakan coba lagi.',
-                () => ref.invalidate(teacherSpeakingAttemptsProvider),
+                () => ref.refresh(teacherSpeakingAttemptsProvider),
               ),
             ),
             data: (all) {
