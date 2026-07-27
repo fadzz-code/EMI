@@ -583,7 +583,7 @@ class _HardwareCaptureCard extends StatelessWidget {
         data.state == HardwareCaptureState.recording ||
         data.state == HardwareCaptureState.finalizing;
 
-    return EmiCard(
+    return StudentCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
