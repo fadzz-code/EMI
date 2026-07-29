@@ -6,6 +6,7 @@ import '../../features/admin/presentation/admin_approvals_screens.dart';
 import '../../features/admin/presentation/admin_culture_screens.dart';
 import '../../features/admin/presentation/admin_culture_templates_screens.dart';
 import '../../features/admin/presentation/admin_dictionary_screens.dart';
+import '../../features/admin/presentation/admin_knowledge_screens.dart';
 import '../../features/admin/presentation/admin_modules_screens.dart';
 import '../../features/admin/presentation/admin_quiz_screens.dart';
 import '../../features/admin/presentation/admin_profile_screen.dart';
@@ -21,6 +22,7 @@ import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/auth/presentation/reset_password_screen.dart';
+import '../../features/chatbot/presentation/student_chatbot_screen.dart';
 import '../../features/culture/data/culture_models.dart';
 import '../../features/culture/presentation/student_culture_detail_screen.dart';
 import '../../features/culture/presentation/student_culture_list_screen.dart';
@@ -346,6 +348,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const StudentProgressScreen(),
       ),
       GoRoute(
+        path: '/student/chatbot',
+        builder: (_, _) => const StudentChatbotScreen(),
+      ),
+      GoRoute(
         path: '/student/culture',
         builder: (_, _) => const StudentCultureListScreen(),
       ),
@@ -459,6 +465,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/admin/dictionary/:id',
         builder: (_, state) =>
             AdminDictionaryDetailScreen(id: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
+        path: '/admin/knowledge',
+        builder: (_, _) => const AdminKnowledgeScreen(),
+      ),
+      GoRoute(
+        path: '/admin/knowledge/create',
+        builder: (_, _) => const AdminKnowledgeFormScreen(),
+      ),
+      GoRoute(
+        path: '/admin/knowledge/:id/edit',
+        builder: (_, state) =>
+            AdminKnowledgeFormScreen(id: state.pathParameters['id']),
+      ),
+      GoRoute(
+        path: '/admin/knowledge/:id',
+        builder: (_, state) =>
+            AdminKnowledgeDetailScreen(id: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
         path: '/admin/modules',

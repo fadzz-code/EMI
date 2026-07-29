@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AdminAiKnowledgeController;
 use App\Http\Controllers\Api\AdminCultureItemController;
 use App\Http\Controllers\Api\AdminCultureTemplateController;
 use App\Http\Controllers\Api\AdminCultureTemplateItemController;
@@ -139,6 +140,19 @@ Route::prefix('v1')->group(function () {
         Route::get('dictionary/imports/{id}', [DictionaryImportController::class, 'show']);
         Route::get('dictionary/imports/{id}/errors', [DictionaryImportController::class, 'errors']);
         Route::post('dictionary/imports/{id}/confirm', [DictionaryImportController::class, 'confirm']);
+
+        Route::post('ai/knowledge/extract-source', [AdminAiKnowledgeController::class, 'extractSource']);
+        Route::post('ai/knowledge/extract-pdf-upload', [AdminAiKnowledgeController::class, 'extractPdfUpload']);
+        Route::post('ai/knowledge/extract-document-upload', [AdminAiKnowledgeController::class, 'extractDocumentUpload']);
+        Route::post('ai/knowledge/import-pdf', [AdminAiKnowledgeController::class, 'importPdf']);
+        Route::get('ai/knowledge', [AdminAiKnowledgeController::class, 'index']);
+        Route::post('ai/knowledge', [AdminAiKnowledgeController::class, 'store']);
+        Route::get('ai/knowledge/{id}', [AdminAiKnowledgeController::class, 'show']);
+        Route::put('ai/knowledge/{id}', [AdminAiKnowledgeController::class, 'update']);
+        Route::delete('ai/knowledge/{id}', [AdminAiKnowledgeController::class, 'destroy']);
+        Route::post('ai/knowledge/{id}/publish', [AdminAiKnowledgeController::class, 'publish']);
+        Route::post('ai/knowledge/{id}/archive', [AdminAiKnowledgeController::class, 'archive']);
+        Route::post('ai/knowledge/{id}/retry-processing', [AdminAiKnowledgeController::class, 'retryProcessing']);
 
         Route::get('module-templates', [AdminModuleTemplateController::class, 'index']);
         Route::post('module-templates', [AdminModuleTemplateController::class, 'store']);

@@ -266,6 +266,7 @@ enum AdminFeature {
   classes('Kelas & Penempatan', '/classes', '/admin/classes'),
   users('Guru & Siswa', '/users', '/admin/users'),
   dictionary('Kamus', '/admin/dictionary/entries', '/admin/dictionary'),
+  knowledge('Basis AI', '/admin/ai/knowledge', '/admin/knowledge'),
   modules('Modul', '/admin/module-templates', '/admin/modules'),
   quizzes('Kuis', '/admin/quiz-templates', '/admin/quizzes'),
   speaking('Template Speaking', '/admin/speaking/exercises', '/admin/speaking'),
