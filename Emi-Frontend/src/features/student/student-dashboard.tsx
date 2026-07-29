@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { BookCheck, BookOpen, ClipboardList, LibraryBig, MessageSquare, Mic } from "lucide-react";
+import { BookCheck, BookOpen, ClipboardList, LibraryBig, Mic } from "lucide-react";
 
 import {
   Alert,
@@ -22,7 +22,6 @@ const quickActions = [
   { href: "/student/modules", label: "Modul", title: "Lanjutkan materi", description: "Buka daftar modul dan materi.", icon: BookOpen },
   { href: "/student/quizzes", label: "Kuis", title: "Kerjakan kuis", description: "Cek kuis dan tugas aktif.", icon: ClipboardList },
   { href: "/student/dictionary", label: "Kamus", title: "Cari kosakata", description: "Temukan arti kata Mekongga.", icon: LibraryBig },
-  { href: "/student/chatbot", label: "Basis AI", title: "Tanya AI", description: "Tanya asisten cerdas EMI.", icon: MessageSquare },
   { href: "/student/speaking", label: "Speaking", title: "Latihan speaking", description: "Latih dan rekam pelafalan.", icon: Mic },
 ];
 

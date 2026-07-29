@@ -6,7 +6,6 @@ import {
   UserCheck, 
   School, 
   LibraryBig, 
-  BrainCircuit, 
   BookOpen, 
   Globe, 
   Activity,
@@ -53,13 +52,6 @@ const quickActions = [
     icon: LibraryBig,
     tone: "surface",
     description: "CSV dan ZIP audio kosakata.",
-  },
-  {
-    href: "/admin/knowledge-base",
-    label: "Basis AI/RAG",
-    icon: BrainCircuit,
-    tone: "dark",
-    description: "Kelola knowledge manual, link, dan PDF.",
   },
   {
     href: "/admin/modules",

@@ -26,5 +26,4 @@ test("admin dashboard dan navigasi bertahan setelah reload", async ({ page }) =>
   await expect(page.getByText("Beranda Admin", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Pengaturan" })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("link", { name: "Basis AI" })).toBeVisible();
 });

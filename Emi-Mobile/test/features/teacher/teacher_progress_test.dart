@@ -268,10 +268,6 @@ void main() {
         )
         .toList();
     expect(positions, orderedEquals([...positions]..sort()));
-    expect(
-      find.descendant(of: drawer, matching: find.text('Chatbot')),
-      findsNothing,
-    );
   });
 
   testWidgets('dashboard exposes Progress quick action', (tester) async {

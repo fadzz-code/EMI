@@ -44,7 +44,7 @@ class StudentDashboardScreen extends ConsumerWidget {
                   onTapModules: () => context.go('/student/modules'),
                   onTapDictionary: () => context.go('/student/dictionary'),
                   onTapQuizzes: () => context.go('/student/quizzes'),
-                  onTapChatbot: () => context.go('/student/chatbot'),
+
                   onTapProfile: () => context.go('/student/profile'),
                 ),
               ],
@@ -209,14 +209,14 @@ class _QuickMenu extends StatelessWidget {
     required this.onTapModules,
     required this.onTapDictionary,
     required this.onTapQuizzes,
-    required this.onTapChatbot,
+
     required this.onTapProfile,
   });
 
   final VoidCallback onTapModules;
   final VoidCallback onTapDictionary;
   final VoidCallback onTapQuizzes;
-  final VoidCallback onTapChatbot;
+
   final VoidCallback onTapProfile;
 
   @override
@@ -256,11 +256,7 @@ class _QuickMenu extends StatelessWidget {
               icon: Icons.trending_up_outlined,
               onTap: () => context.go('/student/progress'),
             ),
-            _QuickMenuItem(
-              label: 'Chatbot',
-              icon: Icons.auto_awesome_outlined,
-              onTap: onTapChatbot,
-            ),
+
             _QuickMenuItem(
               key: const Key('studentQuickMenuProfile'),
               label: 'Profil',

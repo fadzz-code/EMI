@@ -3,8 +3,6 @@ import {
   School,
   BookOpen,
   LibraryBig,
-  BrainCircuit,
-  MessageSquare,
   Mic,
   Globe,
   Settings,
@@ -71,7 +69,6 @@ export const roleNavItems: Record<UserRole, NavItem[]> = {
     { label: "Sekolah & Kelas", href: "/admin/schools-classes", status: "ready", icon: School },
     { label: "Guru & Siswa", href: "/admin/users", status: "ready", icon: Users },
     { label: "Kamus", href: "/admin/dictionary", status: "ready", icon: LibraryBig },
-    { label: "Basis AI", href: "/admin/knowledge-base", status: "ready", icon: BrainCircuit },
     { label: "Modul", href: "/admin/modules", status: "ready", icon: BookOpen },
     { label: "Kuis", href: "/admin/quizzes", status: "ready", icon: FileText },
     { label: "Template Speaking", href: "/admin/speaking/exercises", shortLabel: "Speaking", status: "ready", icon: ListChecks },
@@ -101,7 +98,6 @@ export const roleNavItems: Record<UserRole, NavItem[]> = {
     { label: "Latihan Speaking", href: "/student/speaking", shortLabel: "Speaking", status: "ready", icon: Mic },
     { label: "Kuis", href: "/student/quizzes", status: "ready", icon: FileText },
     { label: "Budaya Mekongga", href: "/student/culture", status: "ready", icon: Globe },
-    { label: "Chatbot AI", href: "/student/chatbot", shortLabel: "Chatbot", status: "ready", icon: MessageSquare },
     { label: "Progres Belajar", href: "/student/progress", status: "ready", icon: TrendingUp },
     { label: "Profil", href: "/student/profile", status: "ready", icon: User },
   ],
@@ -118,7 +114,6 @@ export const roleMobileNavItems: Record<UserRole, NavItem[]> = {
     "/admin/dashboard",
     "/admin/approvals",
     "/admin/schools-classes",
-    "/admin/knowledge-base",
     "/admin/progress",
   ]),
   teacher: pickNavItems(roleNavItems.teacher, [
@@ -133,7 +128,6 @@ export const roleMobileNavItems: Record<UserRole, NavItem[]> = {
     "/student/modules",
     "/student/dictionary",
     "/student/speaking",
-    "/student/chatbot",
   ]),
 };
 

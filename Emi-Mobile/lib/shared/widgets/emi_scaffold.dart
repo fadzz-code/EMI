@@ -146,12 +146,7 @@ class _StudentDrawer extends StatelessWidget {
               route: '/student/progress',
               selected: location == '/student/progress',
             ),
-            _DrawerItem(
-              label: 'Chatbot',
-              icon: Icons.auto_awesome_outlined,
-              route: '/student/chatbot',
-              selected: location == '/student/chatbot',
-            ),
+
             _DrawerItem(
               label: 'Budaya Mekongga',
               icon: Icons.public_outlined,

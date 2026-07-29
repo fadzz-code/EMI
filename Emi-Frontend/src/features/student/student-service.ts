@@ -1,8 +1,6 @@
 import { apiClient } from "@/lib/api-client";
 
 import type {
-  ChatbotConversationDetail,
-  ChatbotConversationSummary,
   LessonContent,
   LessonProgress,
   PaginatedResult,
@@ -11,7 +9,6 @@ import type {
   StudentModule,
   StudentCultureItem,
   StudentProgressReport,
-  StudentChatbotResponse,
   SpeakingAttempt,
   SpeakingExercise,
 } from "./types";
@@ -39,20 +36,6 @@ export const studentService = {
 
     if (!response.data) {
       throw new Error("Ringkasan dashboard siswa tidak tersedia.");
-    }
-
-    return response.data;
-  },
-
-  async sendChatbotMessage(token: string, message: string, conversationId?: string | null) {
-    const response = await apiClient.post<StudentChatbotResponse>(
-      "/student/chatbot/messages",
-      { message, conversation_id: conversationId ?? undefined },
-      { token },
-    );
-
-    if (!response.data) {
-      throw new Error("Respons Chatbot AI tidak tersedia.");
     }
 
     return response.data;
@@ -180,26 +163,4 @@ export const studentService = {
     return response.data;
   },
 
-  async chatbotConversations(token: string, status?: "active" | "archived") {
-    const response = await apiClient.get<ChatbotConversationSummary[]>("/student/chatbot/conversations", {
-      token,
-      query: { status, per_page: 30 },
-    });
-
-    return paginated(response.data, response.meta);
-  },
-
-  async chatbotConversationDetail(token: string, conversationId: string) {
-    const response = await apiClient.get<ChatbotConversationDetail>(`/student/chatbot/conversations/${conversationId}`, { token });
-
-    if (!response.data) {
-      throw new Error("Detail percakapan tidak tersedia.");
-    }
-
-    return response.data;
-  },
-
-  async deleteChatbotConversation(token: string, conversationId: string) {
-    await apiClient.delete(`/student/chatbot/conversations/${conversationId}`, { token });
-  },
 };

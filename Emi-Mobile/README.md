@@ -139,7 +139,6 @@ lib/
 - `/student/quizzes/:quizId`
 - `/student/quizzes/:quizId/attempt`
 - `/student/progress`
-- `/student/chatbot`
 - `/student/culture`
 - `/student/culture/:cultureId`
 - `/student/speaking`
@@ -196,7 +195,6 @@ lib/
 - Edit profil.
 - Ganti password.
 - Upload dan hapus avatar.
-- Chatbot siswa.
 - Sidebar navigasi siswa.
 - Daftar dan detail Budaya Mekongga.
 - Daftar, detail, rekam, submit, status, hasil AI, feedback guru, dan riwayat Speaking siswa.
@@ -223,12 +221,12 @@ lib/
 - Splash lalu login page tampil tanpa crash.
 - Login akun siswa production.
 - Buka bottom nav: Beranda, Modul, Kamus, Kuis, Profil.
-- Buka sidebar: Progress, Chatbot, Budaya, Speaking.
+- Buka sidebar: Progress, Budaya, Speaking.
 - Verifikasi Modul/Lesson/Progress lesson.
 - Verifikasi Kamus audio.
 - Verifikasi Kuis attempt/submit/result.
 - Verifikasi Profil edit/password/avatar, termasuk picker cancel.
-- Verifikasi Chatbot dan Budaya data nyata.
+- Verifikasi Budaya data nyata.
 - Verifikasi Speaking: izin mikrofon, record, preview, submit, status AI, feedback guru.
 - Cek tidak ada overflow, loading tanpa akhir, route ganda, atau crash.
 

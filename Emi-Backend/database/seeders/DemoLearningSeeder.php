@@ -86,7 +86,7 @@ class DemoLearningSeeder extends Seeder
                 ['title' => 'Ungkapan Terima Kasih', 'description' => 'Cara berterima kasih dengan sopan.', 'body' => 'Materi demo memakai kata morini sebagai terima kasih. Arti perlu validasi narasumber.'],
             ]],
             ['title' => 'Demo: Bahasa dan Budaya Sehari-hari', 'description' => 'Modul demo hubungan bahasa, budaya, dan EMI.', 'lessons' => [
-                ['title' => 'Belajar Bahasa Daerah di EMI', 'description' => 'Alur belajar di EMI.', 'body' => 'Siswa belajar dari modul, kamus, kuis, speaking, chatbot, dan laporan progres.'],
+                ['title' => 'Belajar Bahasa Daerah di EMI', 'description' => 'Alur belajar di EMI.', 'body' => 'Siswa belajar dari modul, kamus, kuis, speaking, latihan, dan laporan progres.'],
                 ['title' => 'Nilai Sopan Santun', 'description' => 'Bahasa dipakai sesuai konteks.', 'body' => 'Sopan santun penting dalam percakapan dengan guru, orang tua, dan teman.'],
                 ['title' => 'Mengenal Budaya Mekongga', 'description' => 'Pengantar budaya Mekongga.', 'body' => 'Konten budaya demo memberi konteks penggunaan bahasa Mekongga. Detail perlu validasi narasumber.'],
             ]],
