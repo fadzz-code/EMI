@@ -1,6 +1,8 @@
 import { apiClient } from "@/lib/api-client";
 
 import type {
+  ChatbotConversationDetail,
+  ChatbotConversationSummary,
   LessonContent,
   LessonProgress,
   PaginatedResult,
@@ -9,6 +11,7 @@ import type {
   StudentModule,
   StudentCultureItem,
   StudentProgressReport,
+  StudentChatbotResponse,
   SpeakingAttempt,
   SpeakingExercise,
 } from "./types";
@@ -39,6 +42,18 @@ export const studentService = {
     }
 
     return response.data;
+  },
+
+  async sendChatbotMessage(token: string, message: string, conversationId?: string | null) {
+    return {
+      answer: "Fitur AI ini sedang dimatikan untuk eksperimen. Backend AI tidak disertakan.",
+      matched: false,
+      source: null,
+      sources: [],
+      mode: "hybrid",
+      provider: "none",
+      conversation_id: conversationId ?? "dummy-conversation-id",
+    } as StudentChatbotResponse;
   },
 
   async modules(token: string, filters: { search?: string; status?: string } = {}) {
@@ -163,4 +178,23 @@ export const studentService = {
     return response.data;
   },
 
+  async chatbotConversations(token: string, status?: "active" | "archived") {
+    return paginated<ChatbotConversationSummary>([], { current_page: 1, last_page: 1, total: 0 });
+  },
+
+  async chatbotConversationDetail(token: string, conversationId: string) {
+    return {
+      id: conversationId,
+      title: "Percakapan Dummy",
+      status: "active",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      last_message_at: new Date().toISOString(),
+      messages: [],
+    } as any;
+  },
+
+  async deleteChatbotConversation(token: string, conversationId: string) {
+    return;
+  },
 };

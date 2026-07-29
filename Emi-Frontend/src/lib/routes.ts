@@ -14,6 +14,8 @@ import {
   TrendingUp,
   CheckCircle,
   KeyRound,
+  BrainCircuit,
+  MessageSquare,
 } from "lucide-react";
 
 import type { UserRole } from "./roles";
@@ -73,6 +75,7 @@ export const roleNavItems: Record<UserRole, NavItem[]> = {
     { label: "Kuis", href: "/admin/quizzes", status: "ready", icon: FileText },
     { label: "Template Speaking", href: "/admin/speaking/exercises", shortLabel: "Speaking", status: "ready", icon: ListChecks },
     { label: "Budaya Mekongga", href: "/admin/culture/templates", status: "ready", icon: Globe },
+    { label: "Basis AI", href: "/admin/knowledge-base", status: "ready", icon: BrainCircuit },
     { label: "Progress", href: "/admin/progress", status: "ready", icon: TrendingUp },
     { label: "Pengaturan", href: "/admin/settings", status: "ready", icon: Settings },
     { label: "Reset Password", href: "/admin/password-resets", status: "ready", icon: KeyRound },
@@ -98,6 +101,7 @@ export const roleNavItems: Record<UserRole, NavItem[]> = {
     { label: "Latihan Speaking", href: "/student/speaking", shortLabel: "Speaking", status: "ready", icon: Mic },
     { label: "Kuis", href: "/student/quizzes", status: "ready", icon: FileText },
     { label: "Budaya Mekongga", href: "/student/culture", status: "ready", icon: Globe },
+    { label: "Chatbot AI", href: "/student/chatbot", shortLabel: "Chatbot", status: "ready", icon: MessageSquare },
     { label: "Progres Belajar", href: "/student/progress", status: "ready", icon: TrendingUp },
     { label: "Profil", href: "/student/profile", status: "ready", icon: User },
   ],
