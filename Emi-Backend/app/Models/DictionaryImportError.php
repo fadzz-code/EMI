@@ -19,6 +19,7 @@ class DictionaryImportError extends Model
         'import_job_id',
         'row_number',
         'field',
+        'sheet',
         'code',
         'message',
         'raw_data',

@@ -216,7 +216,7 @@ export function DictionaryList() {
             href="/admin/dictionary/import"
           >
             <Download aria-hidden="true" className="mr-2 size-4" />
-            Impor CSV/ZIP
+            Impor Excel
           </Link>
           <Button onClick={openCreateCategory} variant="secondary">
             Tambah Kategori

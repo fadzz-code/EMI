@@ -135,6 +135,7 @@ Route::prefix('v1')->group(function () {
         Route::get('dictionary/entries/{id}', [AdminDictionaryEntryController::class, 'show']);
         Route::put('dictionary/entries/{id}', [AdminDictionaryEntryController::class, 'update']);
         Route::delete('dictionary/entries/{id}', [AdminDictionaryEntryController::class, 'destroy']);
+        Route::get('dictionary/imports/xlsx-template', [DictionaryImportController::class, 'excelTemplate']);
         Route::get('dictionary/imports/template', [DictionaryImportController::class, 'template']);
         Route::get('dictionary/imports/{import_type}/template', [DictionaryImportController::class, 'template']);
         Route::post('dictionary/imports/preview', [DictionaryImportController::class, 'preview']);

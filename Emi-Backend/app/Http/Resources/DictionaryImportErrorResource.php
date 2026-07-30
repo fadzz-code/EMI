@@ -13,6 +13,7 @@ class DictionaryImportErrorResource extends JsonResource
             'id' => $this->id,
             'row_number' => $this->row_number,
             'field' => $this->field,
+            'sheet' => $this->sheet,
             'code' => $this->code,
             'message' => $this->message,
             'raw_data' => $this->raw_data,

@@ -64,18 +64,34 @@ export type MediaFile = {
   created_at?: string | null;
 };
 
-export type DictionaryImportType = "vocabulary" | "sentence_examples";
+export type DictionaryImportType = "vocabulary" | "sentence_examples" | "combined";
 
-export type DictionaryImportSummary = {
+export type DictionaryImportSourceFormat = "csv" | "xlsx";
+
+export type DictionaryImportResultSummary = {
+  inserted?: number;
+  updated?: number;
+  skipped?: number;
+};
+
+export type DictionaryImportSheetSummary = {
   total_rows?: number;
   valid_rows?: number;
   invalid_rows?: number;
+  warning_count?: number;
   new_rows?: number;
   duplicate_rows?: number;
+  [key: string]: unknown;
+};
+
+export type DictionaryImportSummary = DictionaryImportSheetSummary & {
   audio_referenced?: number;
   audio_missing?: number;
   unused_audio_files?: number;
-  [key: string]: unknown;
+  vocabulary?: DictionaryImportSheetSummary;
+  sentence_examples?: DictionaryImportSheetSummary;
+  vocabulary_result?: DictionaryImportResultSummary;
+  sentence_examples_result?: DictionaryImportResultSummary;
 };
 
 export type DictionaryImportJob = {
@@ -83,6 +99,7 @@ export type DictionaryImportJob = {
   status: DictionaryImportStatus;
   duplicate_strategy: DuplicateStrategy;
   import_type?: DictionaryImportType;
+  source_format?: DictionaryImportSourceFormat;
   csv_original_name?: string | null;
   csv_size_bytes?: number | null;
   audio_zip_original_name?: string | null;
@@ -107,6 +124,7 @@ export type DictionaryImportJob = {
 export type DictionaryImportError = {
   id: string;
   row_number?: number | null;
+  sheet?: string | null;
   field?: string | null;
   code?: string | null;
   message: string;

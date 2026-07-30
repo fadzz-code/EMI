@@ -47,6 +47,10 @@ class DictionaryImportProcessingService
             $job = $job->refresh();
             $analysis = $this->previewService->analyzeJob($job, false);
 
+            if ($job->import_type === 'combined') {
+                return $this->processCombinedWorkbook($job, $actor, $analysis);
+            }
+
             if ($job->import_type === 'sentence_examples') {
                 return $this->processSentenceExamples($job, $actor, $analysis);
             }
@@ -69,8 +73,15 @@ class DictionaryImportProcessingService
 
                         $processedTriples[$row['triple_key']] = true;
                         $data = $row['data'];
-                        $audioMediaId = null;
+                        $existing = DictionaryEntry::query()->whereKey($row['existing_id'])->first();
 
+                        if ($existing && $job->duplicate_strategy === 'skip') {
+                            $skipped++;
+
+                            continue;
+                        }
+
+                        $audioMediaId = null;
                         if (($data['audio_filename'] ?? '') !== '' && isset($analysis['zip_files'][$data['audio_filename']])) {
                             $audioMediaId = $mediaByFilename[$data['audio_filename']] ??= $this->createAudioMedia($job, $actor, $data['audio_filename'], $analysis['zip_files'][$data['audio_filename']]['path']);
                         }
@@ -86,14 +97,6 @@ class DictionaryImportProcessingService
                             'audio_media_id' => $audioMediaId,
                             'status' => 'active',
                         ];
-
-                        $existing = DictionaryEntry::query()->whereKey($row['existing_id'])->first();
-
-                        if ($existing && $job->duplicate_strategy === 'skip') {
-                            $skipped++;
-
-                            continue;
-                        }
 
                         if ($existing && $job->duplicate_strategy === 'update') {
                             $existing->fill($this->dictionaryEntryService->payload(array_merge($payload, [
@@ -156,6 +159,176 @@ class DictionaryImportProcessingService
                 $this->fileService->cleanupDirectory($analysis['zip_temp_dir'] ?? null);
             }
         }
+    }
+
+    private function processCombinedWorkbook(DictionaryImportJob $job, $actor, array $analysis): DictionaryImportJob
+    {
+        $mediaByFilename = [];
+        $vocabInserted = 0;
+        $vocabUpdated = 0;
+        $vocabSkipped = 0;
+        $processedTriples = [];
+        $entryIdByMekongga = [];
+        $chunkSize = max(1, (int) config('dictionary.chunk_size'));
+
+        foreach (array_chunk($analysis['rows']['vocabulary'], $chunkSize) as $chunk) {
+            DB::transaction(function () use ($chunk, $job, $actor, &$mediaByFilename, &$vocabInserted, &$vocabUpdated, &$vocabSkipped, &$processedTriples, &$entryIdByMekongga, $analysis): void {
+                foreach ($chunk as $row) {
+                    if (isset($processedTriples[$row['triple_key']])) {
+                        $vocabSkipped++;
+
+                        continue;
+                    }
+
+                    $processedTriples[$row['triple_key']] = true;
+                    $data = $row['data'];
+                    $existing = DictionaryEntry::query()->whereKey($row['existing_id'])->first();
+
+                    if ($existing && $job->duplicate_strategy === 'skip') {
+                        $vocabSkipped++;
+                        $entryIdByMekongga[$row['mekongga_normalized']] = $existing->id;
+
+                        continue;
+                    }
+
+                    $audioMediaId = null;
+                    if (($data['audio_filename'] ?? '') !== '' && isset($analysis['zip_files'][$data['audio_filename']])) {
+                        $audioMediaId = $mediaByFilename[$data['audio_filename']] ??= $this->createAudioMedia($job, $actor, $data['audio_filename'], $analysis['zip_files'][$data['audio_filename']]['path']);
+                    }
+
+                    $payload = [
+                        'category_id' => $row['category_id'],
+                        'code' => $data['kode'],
+                        'indonesia' => $data['indonesia'],
+                        'english' => $data['english'],
+                        'mekongga' => $data['mekongga'],
+                        'example_mekongga' => null,
+                        'example_indonesia' => null,
+                        'audio_media_id' => $audioMediaId,
+                        'status' => 'active',
+                    ];
+
+                    if ($existing && $job->duplicate_strategy === 'update') {
+                        $existing->fill($this->dictionaryEntryService->payload(array_merge($payload, [
+                            'audio_media_id' => $audioMediaId ?? $existing->audio_media_id,
+                        ])) + [
+                            'updated_by' => $actor->id,
+                            'source_import_job_id' => $job->id,
+                        ])->save();
+                        $vocabUpdated++;
+                        $entryIdByMekongga[$row['mekongga_normalized']] = $existing->id;
+
+                        continue;
+                    }
+
+                    if (! $existing) {
+                        $entry = DictionaryEntry::query()->create($this->dictionaryEntryService->payload($payload) + [
+                            'created_by' => $actor->id,
+                            'source_import_job_id' => $job->id,
+                        ]);
+                        $vocabInserted++;
+                        $entryIdByMekongga[$row['mekongga_normalized']] = $entry->id;
+
+                        continue;
+                    }
+
+                    $entryIdByMekongga[$row['mekongga_normalized']] = $existing->id;
+                }
+            });
+        }
+
+        $sentenceInserted = 0;
+        $sentenceUpdated = 0;
+        $sentenceSkipped = 0;
+        $processedPairs = [];
+
+        foreach (array_chunk($analysis['rows']['sentence_examples'], $chunkSize) as $chunk) {
+            DB::transaction(function () use ($chunk, $job, $actor, &$sentenceInserted, &$sentenceUpdated, &$sentenceSkipped, &$processedPairs, $entryIdByMekongga): void {
+                foreach ($chunk as $row) {
+                    if (isset($processedPairs[$row['pair_key']])) {
+                        $sentenceSkipped++;
+
+                        continue;
+                    }
+
+                    $entryId = $row['entry_id'] ?? ($row['pending_vocab_mekongga'] !== null ? ($entryIdByMekongga[$row['pending_vocab_mekongga']] ?? null) : null);
+
+                    if ($entryId === null) {
+                        $sentenceSkipped++;
+
+                        continue;
+                    }
+
+                    $processedPairs[$row['pair_key']] = true;
+                    $data = $row['data'];
+                    $existing = DictionarySentenceExample::query()->whereKey($row['existing_id'])->first();
+                    $payload = [
+                        'dictionary_entry_id' => $entryId,
+                        'code' => $data['kode'],
+                        'example_mekongga' => $data['contoh_mekongga'],
+                        'example_indonesia' => $data['contoh_indonesia'],
+                        'example_mekongga_normalized' => app(DictionaryNormalizer::class)->normalize($data['contoh_mekongga']),
+                        'example_indonesia_normalized' => app(DictionaryNormalizer::class)->normalize($data['contoh_indonesia']),
+                        'status' => 'active',
+                    ];
+
+                    if ($existing && $job->duplicate_strategy === 'skip') {
+                        $sentenceSkipped++;
+
+                        continue;
+                    }
+
+                    if ($existing && $job->duplicate_strategy === 'update') {
+                        $existing->fill($payload + [
+                            'updated_by' => $actor->id,
+                            'source_import_job_id' => $job->id,
+                        ])->save();
+                        $sentenceUpdated++;
+
+                        continue;
+                    }
+
+                    if (! $existing) {
+                        DictionarySentenceExample::query()->create($payload + [
+                            'created_by' => $actor->id,
+                            'source_import_job_id' => $job->id,
+                        ]);
+                        $sentenceInserted++;
+                    }
+                }
+            });
+        }
+
+        $status = $job->invalid_rows > 0 ? 'completed_with_errors' : 'completed';
+        $job->forceFill([
+            'status' => $status,
+            'inserted_rows' => $vocabInserted + $sentenceInserted,
+            'updated_rows' => $vocabUpdated + $sentenceUpdated,
+            'skipped_rows' => $vocabSkipped + $sentenceSkipped,
+            'summary' => array_merge((array) $job->summary, [
+                'vocabulary_result' => [
+                    'inserted' => $vocabInserted,
+                    'updated' => $vocabUpdated,
+                    'skipped' => $vocabSkipped,
+                ],
+                'sentence_examples_result' => [
+                    'inserted' => $sentenceInserted,
+                    'updated' => $sentenceUpdated,
+                    'skipped' => $sentenceSkipped,
+                ],
+            ]),
+            'completed_at' => now(),
+        ])->save();
+
+        $this->auditLogService->record(
+            $status === 'completed' ? 'dictionary.import_completed' : 'dictionary.import_completed_with_errors',
+            $job,
+            $actor,
+            null,
+            $job->only(['status', 'inserted_rows', 'updated_rows', 'skipped_rows']),
+        );
+
+        return $job->refresh();
     }
 
     private function processSentenceExamples(DictionaryImportJob $job, $actor, array $analysis): DictionaryImportJob

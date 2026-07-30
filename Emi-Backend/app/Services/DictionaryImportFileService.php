@@ -6,6 +6,8 @@ use App\Exceptions\ApiException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Reader\Xlsx as XlsxReader;
 use SplFileObject;
 use ZipArchive;
 
@@ -101,6 +103,113 @@ class DictionaryImportFileService
         return $rows;
     }
 
+    public function isXlsx(string $originalName): bool
+    {
+        return str_ends_with(mb_strtolower($originalName), '.xlsx');
+    }
+
+    public function parseXlsxWorkbook(string $path): array
+    {
+        if (! class_exists(IOFactory::class)) {
+            throw new ApiException('Library Excel belum tersedia.', 'XLSX_LIBRARY_MISSING', 500);
+        }
+
+        try {
+            $reader = new XlsxReader;
+            $reader->setReadDataOnly(true);
+            $spreadsheet = $reader->load($path);
+        } catch (\Throwable) {
+            throw new ApiException('File Excel tidak valid atau rusak.', 'INVALID_XLSX', 422);
+        }
+
+        $vocabularySheetName = (string) config('dictionary.xlsx_sheets.vocabulary');
+        $sentenceSheetName = (string) config('dictionary.xlsx_sheets.sentence_examples');
+
+        $vocabularySheet = $spreadsheet->getSheetByName($vocabularySheetName);
+        $sentenceSheet = $spreadsheet->getSheetByName($sentenceSheetName);
+
+        if (! $vocabularySheet || ! $sentenceSheet) {
+            throw new ApiException(
+                "Workbook harus memiliki sheet \"{$vocabularySheetName}\" dan \"{$sentenceSheetName}\". Gunakan template resmi yang bisa diunduh dari halaman ini.",
+                'INVALID_XLSX_SHEETS',
+                422,
+            );
+        }
+
+        return [
+            'vocabulary' => $this->extractSheetRows($vocabularySheet->toArray(null, true, true, false), config('dictionary.xlsx_headers.vocabulary'), 'vocabulary'),
+            'sentence_examples' => $this->extractSheetRows($sentenceSheet->toArray(null, true, true, false), config('dictionary.xlsx_headers.sentence_examples'), 'sentence_examples'),
+        ];
+    }
+
+    /**
+     * @param  array<int, array<int, mixed>>  $sheetRows  Raw rows as returned by Worksheet::toArray()
+     * @param  array<int, string>  $expectedHeader
+     * @return array<int, array{row_number: int, data: array<string, string>}>
+     */
+    private function extractSheetRows(array $sheetRows, array $expectedHeader, string $sheetKey): array
+    {
+        $rows = [];
+        $rowNumber = 0;
+        $header = null;
+
+        foreach ($sheetRows as $rawRow) {
+            $rowNumber++;
+            $row = array_map(fn ($value) => is_string($value) ? trim($value) : (string) ($value ?? ''), $rawRow);
+
+            if ($header === null) {
+                $header = array_map(fn ($value) => trim((string) $value), array_slice($row, 0, count($expectedHeader)));
+                $this->validateXlsxHeader($header, $expectedHeader, $sheetKey);
+
+                continue;
+            }
+
+            if ($this->isEmptyRow($row)) {
+                continue;
+            }
+
+            if (array_filter(array_slice($row, count($expectedHeader)), fn ($value) => trim((string) $value) !== '') !== []) {
+                $sheetLabel = $sheetKey === 'vocabulary' ? config('dictionary.xlsx_sheets.vocabulary') : config('dictionary.xlsx_sheets.sentence_examples');
+                throw new ApiException("Sheet \"{$sheetLabel}\" memiliki kolom tambahan yang tidak diizinkan.", 'INVALID_XLSX_EXTRA_COLUMNS', 422);
+            }
+
+            $normalizedKeys = $sheetKey === 'vocabulary'
+                ? ['indonesia', 'mekongga', 'english', 'kategori', 'audio_filename']
+                : ['contoh_indonesia', 'contoh_mekongga', 'related_mekongga'];
+
+            $data = array_combine($normalizedKeys, array_slice(array_pad($row, count($normalizedKeys), ''), 0, count($normalizedKeys)));
+
+            $rows[] = [
+                'row_number' => $rowNumber,
+                'data' => $data,
+            ];
+
+            if (count($rows) > (int) config('dictionary.max_rows')) {
+                throw new ApiException('Jumlah baris pada sheet melebihi batas.', 'XLSX_ROW_LIMIT_EXCEEDED', 422);
+            }
+        }
+
+        if ($header === null) {
+            throw new ApiException('Header sheet Excel tidak valid.', 'INVALID_XLSX_HEADER', 422);
+        }
+
+        return $rows;
+    }
+
+    private function validateXlsxHeader(array $header, array $expected, string $sheetKey): void
+    {
+        $trimmedExpected = array_slice($expected, 0, count($header));
+
+        if ($header !== $trimmedExpected) {
+            $sheetLabel = $sheetKey === 'vocabulary' ? config('dictionary.xlsx_sheets.vocabulary') : config('dictionary.xlsx_sheets.sentence_examples');
+            throw new ApiException(
+                "Kolom pada sheet \"{$sheetLabel}\" tidak sesuai template. Unduh ulang template terbaru dan jangan mengubah urutan kolom.",
+                'INVALID_XLSX_HEADER',
+                422,
+            );
+        }
+    }
+
     public function extractZipAudio(?string $zipPath): array
     {
         if ($zipPath === null) {
@@ -184,6 +293,11 @@ class DictionaryImportFileService
             'temp_dir' => $tempDir,
             'files' => $files,
         ];
+    }
+
+    public function deleteImportDirectory(string $jobId): void
+    {
+        Storage::disk(config('dictionary.import_disk'))->deleteDirectory("dictionary/imports/{$jobId}");
     }
 
     public function cleanupDirectory(?string $dir): void

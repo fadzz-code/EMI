@@ -24,4 +24,24 @@ return [
             'contoh_indonesia',
         ],
     ],
+
+    'xlsx_sheets' => [
+        'vocabulary' => 'Kosakata',
+        'sentence_examples' => 'Contoh Kalimat',
+    ],
+    'xlsx_headers' => [
+        'vocabulary' => [
+            'Indonesia',
+            'Mekongga',
+            'Inggris',
+            'Kategori',
+            'Audio (opsional)',
+        ],
+        'sentence_examples' => [
+            'Bahasa Indonesia',
+            'Bahasa Mekongga',
+            'Kata Mekongga Terkait',
+        ],
+    ],
+    'max_xlsx_kb' => (int) env('DICTIONARY_IMPORT_MAX_XLSX_KB', 20480),
 ];

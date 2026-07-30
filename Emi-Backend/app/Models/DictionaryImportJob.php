@@ -19,6 +19,7 @@ class DictionaryImportJob extends Model
         'status',
         'duplicate_strategy',
         'import_type',
+        'source_format',
         'csv_disk',
         'csv_path',
         'csv_original_name',

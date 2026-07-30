@@ -35,24 +35,36 @@ import {
   importStatusLabel,
   statusTone,
 } from "./dictionary-utils";
-import type { DictionaryImportJob, DictionaryImportType, DuplicateStrategy } from "./types";
+import type { DictionaryImportJob, DictionaryImportSheetSummary, DuplicateStrategy } from "./types";
 
 function numberValue(value?: number | null) {
   return String(value ?? 0);
 }
 
-function summaryValue(job: DictionaryImportJob | null, key: string) {
-  const value = job?.summary?.[key];
+function summaryValue(summary: DictionaryImportSheetSummary | null | undefined, key: string) {
+  const value = summary?.[key];
 
   return typeof value === "number" ? String(value) : "-";
+}
+
+function SheetSummary({ label, summary }: { label: string; summary?: DictionaryImportSheetSummary }) {
+  return (
+    <div className="grid gap-3 rounded-lg border-2 border-border bg-surface p-4">
+      <h3 className="font-black text-ink">{label}</h3>
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <StatsCard label="Total Baris" value={summaryValue(summary, "total_rows")} />
+        <StatsCard label="Baris Valid" value={summaryValue(summary, "valid_rows")} />
+        <StatsCard label="Baris Tidak Valid" value={summaryValue(summary, "invalid_rows")} />
+        <StatsCard label="Duplikat" value={summaryValue(summary, "duplicate_rows")} />
+      </div>
+    </div>
+  );
 }
 
 export function DictionaryImport() {
   const { token } = useAuth();
   const queryClient = useQueryClient();
-  const [importType, setImportType] = useState<DictionaryImportType>("vocabulary");
-  const [csvFile, setCsvFile] = useState<File | null>(null);
-  const [audioZip, setAudioZip] = useState<File | null>(null);
+  const [excelFile, setExcelFile] = useState<File | null>(null);
   const [duplicateStrategy, setDuplicateStrategy] = useState<DuplicateStrategy>("skip");
   const [page, setPage] = useState(1);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -63,15 +75,16 @@ export function DictionaryImport() {
     queryKey: ["admin", "dictionary", "imports", page],
     queryFn: () => dictionaryService.listImports(token ?? "", { page, per_page: 10 }),
     enabled: Boolean(token),
+    refetchInterval: (query) =>
+      query.state.data?.items.some((job) => job.status === "queued" || job.status === "processing")
+        ? 2_000
+        : false,
   });
 
-  const selectedJob = useMemo(() => {
-    if (previewJob && previewJob.id === selectedJobId) {
-      return previewJob;
-    }
-
-    return importsQuery.data?.items.find((job) => job.id === selectedJobId) ?? previewJob;
-  }, [importsQuery.data?.items, previewJob, selectedJobId]);
+  const selectedJob = useMemo(
+    () => importsQuery.data?.items.find((job) => job.id === selectedJobId) ?? previewJob,
+    [importsQuery.data?.items, previewJob, selectedJobId],
+  );
 
   const errorsQuery = useQuery({
     queryKey: ["admin", "dictionary", "imports", selectedJobId, "errors"],
@@ -81,15 +94,13 @@ export function DictionaryImport() {
 
   const previewMutation = useMutation({
     mutationFn: () => {
-      if (!csvFile) {
-        throw new Error("CSV wajib dipilih.");
+      if (!excelFile) {
+        throw new Error("File Excel wajib dipilih.");
       }
 
       return dictionaryService.previewImport(token ?? "", {
-        csvFile,
-        audioZip: importType === "vocabulary" ? audioZip : null,
+        csvFile: excelFile,
         duplicateStrategy,
-        importType,
       });
     },
     onSuccess: async (job) => {
@@ -111,12 +122,12 @@ export function DictionaryImport() {
   });
 
   const templateMutation = useMutation({
-    mutationFn: (type: DictionaryImportType) => dictionaryService.downloadTemplate(token ?? "", type),
-    onSuccess: (blob, type) => {
+    mutationFn: () => dictionaryService.downloadTemplate(token ?? ""),
+    onSuccess: (blob) => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = type === "sentence_examples" ? "template-contoh-kalimat-bahasa-mekongga.csv" : "template-kata-bahasa-mekongga.csv";
+      link.download = "template-import-kamus-emi.xlsx";
       link.click();
       URL.revokeObjectURL(url);
     },
@@ -140,8 +151,8 @@ export function DictionaryImport() {
           <Badge tone="blue">Admin</Badge>
           <h1 className="mt-2 text-3xl font-black text-ink">Impor Kamus</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-            Buat pratinjau CSV dan ZIP audio terlebih dahulu, lalu konfirmasi hanya
-            jika ringkasan baris valid sudah sesuai.
+            Buat pratinjau Excel terlebih dahulu, lalu konfirmasi hanya jika ringkasan
+            Kosakata dan Contoh Kalimat sudah sesuai.
           </p>
         </div>
 
@@ -157,78 +168,35 @@ export function DictionaryImport() {
           </CardHeader>
           <CardContent>
             <form className="grid gap-4" onSubmit={submitPreview}>
-              <div className="grid gap-4 md:grid-cols-2">
-                {([
-                  ["vocabulary", "Import Kosakata", "Untuk data kata utama dan ZIP audio opsional."],
-                  ["sentence_examples", "Import Contoh Kalimat", "Untuk menempelkan banyak contoh kalimat ke kode kosakata yang sudah ada."],
-                ] as const).map(([type, title, description]) => (
-                  <div key={type} className={`flex h-full min-h-48 flex-col rounded-[var(--radius-card)] border-2 p-4 transition hover:-translate-y-0.5 hover:shadow-emi ${importType === type ? "border-primary bg-[var(--color-primary-muted)]" : "border-border bg-surface"}`}>
-                    <button
-                      className="block w-full text-left"
-                      onClick={() => {
-                        setImportType(type);
-                        setCsvFile(null);
-                        setAudioZip(null);
-                      }}
-                      type="button"
-                    >
-                      <p className="text-lg font-black text-ink">{title}</p>
-                      <p className="mt-1 text-xs font-bold leading-5 text-muted">{description}</p>
-                    </button>
-                    <Button
-                      className="mt-auto w-full"
-                      disabled={templateMutation.isPending}
-                      onClick={() => {
-                        setImportType(type);
-                        setCsvFile(null);
-                        setAudioZip(null);
-                        templateMutation.mutate(type);
-                      }}
-                      type="button"
-                      variant="secondary"
-                    >
-                      Download Template {type === "vocabulary" ? "Kosakata" : "Contoh Kalimat"}
-                    </Button>
-                  </div>
-                ))}
+              <div className="flex h-full min-h-48 flex-col rounded-[var(--radius-card)] border-2 border-primary bg-[var(--color-primary-muted)] p-4">
+                <div className="block w-full text-left">
+                  <p className="text-lg font-black text-ink">Import Excel</p>
+                  <p className="mt-1 text-xs font-bold leading-5 text-muted">Untuk data kata utama, contoh kalimat, dan ZIP audio (tersemat jika pakai ZIP).</p>
+                </div>
+                <Button
+                  className="mt-auto w-full"
+                  disabled={templateMutation.isPending}
+                  onClick={() => templateMutation.mutate()}
+                  type="button"
+                  variant="secondary"
+                >
+                  Download Template
+                </Button>
               </div>
-              <FormField label="File CSV">
+              <FormField label="File Excel">
                 <UploadComponent
-                  accept=".csv,text/csv"
-                  onChange={(event) => setCsvFile(event.target.files?.[0] ?? null)}
+                  accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  onChange={(event) => setExcelFile(event.target.files?.[0] ?? null)}
                   required
                 />
               </FormField>
-              {csvFile ? (
+              {excelFile ? (
                 <FilePreview
-                  name={csvFile.name}
-                  size={formatBytes(csvFile.size)}
-                  type="CSV"
+                  name={excelFile.name}
+                  size={formatBytes(excelFile.size)}
+                  type="XLSX"
                 />
               ) : null}
-
-              {importType === "vocabulary" ? (
-                <>
-                  <FormField label="ZIP audio (opsional)">
-                    <UploadComponent
-                      accept=".zip,application/zip,application/x-zip-compressed"
-                      onChange={(event) => setAudioZip(event.target.files?.[0] ?? null)}
-                    />
-                    <p className="mt-2 text-xs font-bold leading-5 text-muted">
-                      ZIP audio bersifat opsional untuk Kosakata. Jika tidak diunggah, data kata tetap bisa diimpor tanpa audio. Jika ingin menyertakan audio, pastikan nama file di CSV sama persis dengan nama file di ZIP.
-                    </p>
-                  </FormField>
-                  {audioZip ? (
-                    <FilePreview
-                      name={audioZip.name}
-                      size={formatBytes(audioZip.size)}
-                      type="ZIP"
-                    />
-                  ) : null}
-                </>
-              ) : (
-                <Alert tone="info">Import Contoh Kalimat hanya memakai CSV sesuai template client dan tidak memakai ZIP audio.</Alert>
-              )}
 
               <FormField label="Strategi duplikat">
                 <Select
@@ -241,7 +209,7 @@ export function DictionaryImport() {
                 </Select>
               </FormField>
 
-              <Button disabled={!csvFile || previewMutation.isPending} type="submit">
+              <Button disabled={!excelFile || previewMutation.isPending} type="submit">
                 Buat Pratinjau
               </Button>
             </form>
@@ -267,10 +235,11 @@ export function DictionaryImport() {
                   <StatsCard label="Baris Valid" value={numberValue(selectedJob.valid_rows)} />
                   <StatsCard label="Baris Tidak Valid" value={numberValue(selectedJob.invalid_rows)} />
                   <StatsCard label="Peringatan" value={numberValue(selectedJob.warning_count)} />
-                  <StatsCard label="Baru" value={summaryValue(selectedJob, "new_rows")} />
-                  <StatsCard label="Duplikat" value={summaryValue(selectedJob, "duplicate_rows")} />
-                  <StatsCard label="Audio Dirujuk" value={summaryValue(selectedJob, "audio_referenced")} />
-                  <StatsCard label="Audio Hilang" value={summaryValue(selectedJob, "audio_missing")} />
+                </div>
+
+                <div className="grid gap-4 xl:grid-cols-2">
+                  <SheetSummary label="Kosakata" summary={selectedJob.summary?.vocabulary} />
+                  <SheetSummary label="Contoh Kalimat" summary={selectedJob.summary?.sentence_examples} />
                 </div>
 
                 {selectedJob.failure_message ? (
@@ -278,16 +247,31 @@ export function DictionaryImport() {
                 ) : null}
 
                 <div className="grid gap-3 rounded-lg border-2 border-border bg-surface p-4 text-sm font-bold text-ink md:grid-cols-2">
-                  <p>CSV: {selectedJob.csv_original_name ?? "-"} ({formatBytes(selectedJob.csv_size_bytes)})</p>
-                  <p>ZIP: {selectedJob.audio_zip_original_name ?? "-"} ({formatBytes(selectedJob.audio_zip_size_bytes)})</p>
-                  <p>Jenis: {selectedJob.import_type === "sentence_examples" ? "Contoh Kalimat" : "Kosakata"}</p>
+                  <p>Excel: {selectedJob.csv_original_name ?? "-"} ({formatBytes(selectedJob.csv_size_bytes)})</p>
+                  <p>Format: {selectedJob.source_format?.toUpperCase() ?? "-"}</p>
+                  <p>Jenis: {selectedJob.import_type === "combined" ? "Gabungan" : selectedJob.import_type === "sentence_examples" ? "Contoh Kalimat" : "Kosakata"}</p>
                   <p>Strategi: {duplicateStrategyLabel(selectedJob.duplicate_strategy)}</p>
                   <p>Dibuat: {formatDateTime(selectedJob.created_at)}</p>
                   <p>Ditambahkan: {numberValue(selectedJob.inserted_rows)}</p>
                   <p>Diperbarui: {numberValue(selectedJob.updated_rows)}</p>
                   <p>Dilewati: {numberValue(selectedJob.skipped_rows)}</p>
-                  <p>Audio Tidak Terpakai: {summaryValue(selectedJob, "unused_audio_files")}</p>
                 </div>
+
+                {selectedJob.summary?.vocabulary_result || selectedJob.summary?.sentence_examples_result ? (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {([
+                      ["Kosakata", selectedJob.summary?.vocabulary_result],
+                      ["Contoh Kalimat", selectedJob.summary?.sentence_examples_result],
+                    ] as const).map(([label, result]) => (
+                      <div key={label} className="rounded-lg border-2 border-border bg-surface p-4 text-sm font-bold text-ink">
+                        <h3 className="mb-2 font-black">Hasil {label}</h3>
+                        <p>Ditambahkan: {numberValue(result?.inserted)}</p>
+                        <p>Diperbarui: {numberValue(result?.updated)}</p>
+                        <p>Dilewati: {numberValue(result?.skipped)}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
 
                 <div className="flex flex-wrap items-center gap-3">
                   <Button
@@ -313,7 +297,7 @@ export function DictionaryImport() {
               </div>
             ) : (
               <EmptyState
-                description="Unggah CSV untuk membuat pratinjau, atau pilih riwayat impor di bawah."
+                description="Unggah Excel untuk membuat pratinjau, atau pilih riwayat impor di bawah."
                 title="Belum ada pratinjau dipilih"
               />
             )}
@@ -415,6 +399,7 @@ export function DictionaryImport() {
                 <Table>
                   <TableHeader>
                     <tr>
+                      <th className="px-4 py-3">Sheet</th>
                       <th className="px-4 py-3">Baris</th>
                       <th className="px-4 py-3">Kolom</th>
                       <th className="px-4 py-3">Kode</th>
@@ -424,6 +409,7 @@ export function DictionaryImport() {
                   <tbody>
                     {(errorsQuery.data?.items ?? []).map((error) => (
                       <tr key={error.id}>
+                        <TableCell>{error.sheet ?? "-"}</TableCell>
                         <TableCell>{error.row_number ?? "-"}</TableCell>
                         <TableCell>{error.field ?? "-"}</TableCell>
                         <TableCell>{error.code ?? "-"}</TableCell>

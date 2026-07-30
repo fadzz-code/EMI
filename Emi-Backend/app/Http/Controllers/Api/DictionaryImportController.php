@@ -11,9 +11,11 @@ use App\Http\Requests\Dictionary\PreviewDictionaryImportRequest;
 use App\Http\Resources\DictionaryImportErrorResource;
 use App\Http\Resources\DictionaryImportJobResource;
 use App\Models\DictionaryImportJob;
+use App\Services\DictionaryExcelTemplateService;
 use App\Services\DictionaryImportPreviewService;
 use App\Services\DictionaryImportService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -22,7 +24,21 @@ class DictionaryImportController extends Controller
     public function __construct(
         private readonly DictionaryImportPreviewService $previewService,
         private readonly DictionaryImportService $importService,
+        private readonly DictionaryExcelTemplateService $excelTemplateService,
     ) {}
+
+    public function excelTemplate(): Response
+    {
+        Gate::authorize('create', DictionaryImportJob::class);
+        $spreadsheet = $this->excelTemplateService->build();
+        $bytes = $this->excelTemplateService->write($spreadsheet);
+
+        return response($bytes, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="template-import-kamus-emi.xlsx"',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
 
     public function template(string $import_type = 'vocabulary'): StreamedResponse
     {
@@ -58,12 +74,16 @@ class DictionaryImportController extends Controller
     public function preview(PreviewDictionaryImportRequest $request): JsonResponse
     {
         Gate::authorize('create', DictionaryImportJob::class);
+        $csvFile = $request->file('csv_file');
+        $isXlsx = str_ends_with(mb_strtolower($csvFile->getClientOriginalName()), '.xlsx');
+        $defaultImportType = $isXlsx ? 'combined' : 'vocabulary';
+
         $job = $this->previewService->preview(
             $request->user(),
-            $request->file('csv_file'),
+            $csvFile,
             $request->file('audio_zip'),
             $request->validated('duplicate_strategy') ?? 'skip',
-            $request->validated('import_type') ?? 'vocabulary',
+            $request->validated('import_type') ?? $defaultImportType,
             $request,
         );
 

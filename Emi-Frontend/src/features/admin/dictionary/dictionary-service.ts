@@ -11,7 +11,6 @@ import type {
   DictionaryImportError,
   DictionaryImportFilters,
   DictionaryImportJob,
-  DictionaryImportType,
   DuplicateStrategy,
   MediaFile,
   PaginatedResult,
@@ -188,16 +187,16 @@ export const dictionaryService = {
     return response.data;
   },
 
-  async downloadTemplate(token: string, importType: DictionaryImportType) {
-    const response = await fetch(`${env.apiBaseUrl}/admin/dictionary/imports/${importType}/template`, {
+  async downloadTemplate(token: string) {
+    const response = await fetch(`${env.apiBaseUrl}/admin/dictionary/imports/xlsx-template`, {
       headers: {
-        Accept: "text/csv",
+        Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         Authorization: `Bearer ${token}`,
       },
     });
 
     if (!response.ok) {
-      throw new Error("Template CSV gagal diunduh.");
+      throw new Error("Template Excel gagal diunduh.");
     }
 
     return response.blob();
@@ -207,19 +206,13 @@ export const dictionaryService = {
     token: string,
     params: {
       csvFile: File;
-      audioZip?: File | null;
       duplicateStrategy: DuplicateStrategy;
-      importType: DictionaryImportType;
     },
   ) {
     const formData = new FormData();
     formData.append("csv_file", params.csvFile);
     formData.append("duplicate_strategy", params.duplicateStrategy);
-    formData.append("import_type", params.importType);
-
-    if (params.audioZip) {
-      formData.append("audio_zip", params.audioZip);
-    }
+    formData.append("import_type", "combined");
 
     const response = await apiRequest<DictionaryImportJob>(
       "/admin/dictionary/imports/preview",
