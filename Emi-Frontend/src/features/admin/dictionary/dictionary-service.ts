@@ -282,14 +282,26 @@ export const dictionaryService = {
   },
 
   async deleteImport(token: string, jobId: string) {
-    await apiClient.delete<[]>(`/admin/dictionary/imports/${jobId}`, { token });
+    await apiRequest<[]>(`/admin/dictionary/imports/${jobId}`, {
+      method: "DELETE",
+      body: { confirm: true },
+      token,
+    });
   },
 
   async deleteImportError(token: string, jobId: string, errorId: string) {
-    await apiClient.delete<[]>(`/admin/dictionary/imports/${jobId}/errors/${errorId}`, { token });
+    await apiRequest<[]>(`/admin/dictionary/imports/${jobId}/errors/${errorId}`, {
+      method: "DELETE",
+      body: { confirm: true },
+      token,
+    });
   },
 
   async clearImportErrors(token: string, jobId: string) {
-    await apiClient.delete<[]>(`/admin/dictionary/imports/${jobId}/errors`, { token });
+    await apiRequest<[]>(`/admin/dictionary/imports/${jobId}/errors`, {
+      method: "DELETE",
+      body: { confirm: true },
+      token,
+    });
   },
 };

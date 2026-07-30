@@ -250,6 +250,25 @@ class DictionaryExcelImportTest extends TestCase
         ]);
     }
 
+    public function test_blank_audio_without_zip_does_not_create_audio_warning(): void
+    {
+        $admin = User::factory()->admin()->create();
+        DictionaryCategory::factory()->create(['name' => 'Verba', 'slug' => 'verba', 'created_by' => $admin->id]);
+
+        $response = $this->withToken($this->tokenFor($admin))->post('/api/v1/admin/dictionary/imports/preview', [
+            'csv_file' => $this->buildWorkbook([['Makan', 'Monga', 'Eat', 'Verba', '']], []),
+        ])->assertCreated();
+
+        $response->assertJsonPath('data.warning_count', 0)
+            ->assertJsonPath('data.summary.audio.files_found', 0)
+            ->assertJsonPath('data.summary.audio.matched', 0)
+            ->assertJsonPath('data.summary.audio.missing', 0);
+        $this->assertDatabaseMissing('dictionary_import_errors', [
+            'import_job_id' => $response->json('data.id'),
+            'code' => 'AUDIO_AUTO_NOT_FOUND',
+        ]);
+    }
+
     public function test_blank_audio_resolves_canonical_mekongga_filename_and_reports_audio_summary(): void
     {
         $admin = User::factory()->admin()->create();

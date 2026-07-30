@@ -645,6 +645,10 @@ class DictionaryImportPreviewService
                 : [null, $this->error($rowNumber, 'audio_filename', 'AUDIO_FILE_NOT_FOUND', "Audio \"{$explicit}\" tidak ditemukan karena ZIP audio tidak diunggah atau file tidak ada di ZIP. Kata tetap bisa diimpor tanpa audio.", $data, false, $sheet)];
         }
 
+        if ($zipFiles === []) {
+            return [null, null];
+        }
+
         $key = $this->audioKey($mekongga);
         $matches = array_values(array_filter(array_keys($zipFiles), fn ($filename) => $this->audioKey(pathinfo($filename, PATHINFO_FILENAME)) === $key));
         sort($matches, SORT_STRING);
