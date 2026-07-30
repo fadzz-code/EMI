@@ -142,7 +142,10 @@ Route::prefix('v1')->group(function () {
         Route::get('dictionary/imports', [DictionaryImportController::class, 'index']);
         Route::get('dictionary/imports/{id}', [DictionaryImportController::class, 'show']);
         Route::get('dictionary/imports/{id}/errors', [DictionaryImportController::class, 'errors']);
+        Route::delete('dictionary/imports/{id}/errors/{errorId}', [DictionaryImportController::class, 'destroyError']);
+        Route::delete('dictionary/imports/{id}/errors', [DictionaryImportController::class, 'destroyErrors']);
         Route::post('dictionary/imports/{id}/confirm', [DictionaryImportController::class, 'confirm']);
+        Route::delete('dictionary/imports/{id}', [DictionaryImportController::class, 'destroy']);
         Route::post('ai/knowledge/extract-source', [AdminAiKnowledgeController::class, 'extractSource']);
         Route::post('ai/knowledge/extract-pdf-upload', [AdminAiKnowledgeController::class, 'extractPdfUpload']);
         Route::post('ai/knowledge/extract-document-upload', [AdminAiKnowledgeController::class, 'extractDocumentUpload']);

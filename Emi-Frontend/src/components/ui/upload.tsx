@@ -11,7 +11,7 @@ export function UploadComponent({
   return (
     <label
       className={cn(
-        "grid cursor-pointer gap-2 rounded-lg border-2 border-dashed border-ink bg-white p-5 text-sm font-bold text-ink transition hover:bg-yellow-50",
+        "grid min-w-0 cursor-pointer gap-2 overflow-hidden rounded-lg border-2 border-dashed border-ink bg-white p-5 text-sm font-bold text-ink transition hover:bg-yellow-50 [&_input]:min-w-0 [&_input]:max-w-full",
         className,
       )}
     >

@@ -12,7 +12,7 @@ class PreviewDictionaryImportRequest extends ApiFormRequest
     {
         return [
             'csv_file' => ['required', 'file', 'extensions:csv,xlsx'],
-            'audio_zip' => ['sometimes', 'file', 'max:'.config('dictionary.max_zip_kb')],
+            'audio_zip' => ['sometimes', 'file', 'extensions:zip', 'max:'.config('dictionary.max_zip_kb')],
             'import_type' => ['sometimes', Rule::in(['vocabulary', 'sentence_examples', 'combined'])],
             'duplicate_strategy' => ['sometimes', Rule::in(['skip', 'update', 'reject'])],
             'csv_disk' => ['prohibited'],

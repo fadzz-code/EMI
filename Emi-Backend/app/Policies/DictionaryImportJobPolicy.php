@@ -26,4 +26,9 @@ class DictionaryImportJobPolicy
     {
         return $user->role === 'admin';
     }
+
+    public function delete(User $user, DictionaryImportJob $job): bool
+    {
+        return $user->role === 'admin';
+    }
 }

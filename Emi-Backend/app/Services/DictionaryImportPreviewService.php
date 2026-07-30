@@ -136,6 +136,7 @@ class DictionaryImportPreviewService
                 'audio_referenced' => $vocabAnalysis['summary']['audio_referenced'],
                 'audio_missing' => $vocabAnalysis['summary']['audio_missing'],
                 'unused_audio_files' => $vocabAnalysis['summary']['unused_audio_files'],
+                'audio' => $vocabAnalysis['summary']['audio'],
                 'sample_rows' => array_slice(array_merge($vocabAnalysis['summary']['sample_rows'], $sentenceAnalysis['summary']['sample_rows']), 0, config('dictionary.sample_limit')),
                 'sample_errors' => array_slice(array_merge($vocabAnalysis['summary']['sample_errors'], $sentenceAnalysis['summary']['sample_errors']), 0, config('dictionary.sample_limit')),
                 'vocabulary' => $vocabAnalysis['summary'],
@@ -203,16 +204,13 @@ class DictionaryImportPreviewService
                 }
             }
 
-            $audioFilename = $data['audio_filename'] ?? '';
-
-            if ($audioFilename !== '') {
-                if (basename($audioFilename) !== $audioFilename) {
-                    $rowErrors[] = $this->error($row['row_number'], 'audio_filename', 'UNSAFE_ZIP_ENTRY', 'Nama audio tidak boleh berisi path.', $data, true, 'vocabulary');
-                } elseif (! isset($zipFiles[$audioFilename])) {
-                    $rowErrors[] = $this->error($row['row_number'], 'audio_filename', 'AUDIO_FILE_NOT_FOUND', "Audio \"{$audioFilename}\" tidak ditemukan karena ZIP audio tidak diunggah atau file tidak ada di ZIP. Kata tetap bisa diimpor tanpa audio.", $data, false, 'vocabulary');
-                } else {
-                    $audioReferenced[$audioFilename] = true;
-                }
+            [$resolvedAudio, $audioError] = $this->resolveAudio($data['audio_filename'] ?? '', $data['mekongga'] ?? '', $zipFiles, $row['row_number'], $data, 'vocabulary');
+            $data['audio_filename'] = $resolvedAudio ?? '';
+            if ($audioError) {
+                $rowErrors[] = $audioError;
+            }
+            if ($resolvedAudio !== null) {
+                $audioReferenced[$resolvedAudio] = true;
             }
 
             $fatalRowErrors = array_filter($rowErrors, fn ($error) => $error['is_error']);
@@ -263,9 +261,10 @@ class DictionaryImportPreviewService
                 'new_rows' => count(array_filter($validRows, fn ($row) => $row['existing_id'] === null)),
                 'duplicate_rows' => $duplicateRows + $dbDuplicates,
                 'audio_referenced' => count($audioReferenced),
-                'audio_missing' => count(array_filter($errors, fn ($error) => $error['code'] === 'AUDIO_FILE_NOT_FOUND')),
+                'audio_missing' => count(array_filter($errors, fn ($error) => in_array($error['code'], ['AUDIO_FILE_NOT_FOUND', 'AUDIO_AUTO_NOT_FOUND'], true))),
                 'unused_audio_files' => count($unusedAudio),
-                'warning_count' => count($unusedAudio) + count(array_filter($errors, fn ($error) => in_array($error['code'], ['CSV_DUPLICATE_SKIPPED', 'AUDIO_FILE_NOT_FOUND'], true))),
+                'audio' => $this->audioSummary($zipFiles, $audioReferenced, $errors, $unusedAudio),
+                'warning_count' => count($unusedAudio) + count(array_filter($errors, fn ($error) => in_array($error['code'], ['CSV_DUPLICATE_SKIPPED', 'AUDIO_FILE_NOT_FOUND', 'AUDIO_AUTO_NOT_FOUND', 'AUDIO_AUTO_AMBIGUOUS'], true))),
                 'sample_rows' => $sampleRows,
                 'sample_errors' => $sampleErrors,
             ],
@@ -466,16 +465,13 @@ class DictionaryImportPreviewService
                 }
             }
 
-            $audioFilename = $data['audio_filename'] ?? '';
-
-            if ($audioFilename !== '') {
-                if (basename($audioFilename) !== $audioFilename) {
-                    $rowErrors[] = $this->error($row['row_number'], 'audio_filename', 'UNSAFE_ZIP_ENTRY', 'Nama audio tidak boleh berisi path.', $data);
-                } elseif (! isset($zipFiles[$audioFilename])) {
-                    $rowErrors[] = $this->error($row['row_number'], 'audio_filename', 'AUDIO_FILE_NOT_FOUND', "Audio \"{$audioFilename}\" tidak ditemukan karena ZIP audio tidak diunggah atau file tidak ada di ZIP. Kata tetap bisa diimpor tanpa audio.", $data, false);
-                } else {
-                    $audioReferenced[$audioFilename] = true;
-                }
+            [$resolvedAudio, $audioError] = $this->resolveAudio($data['audio_filename'] ?? '', $data['mekongga'] ?? '', $zipFiles, $row['row_number'], $data);
+            $data['audio_filename'] = $resolvedAudio ?? '';
+            if ($audioError) {
+                $rowErrors[] = $audioError;
+            }
+            if ($resolvedAudio !== null) {
+                $audioReferenced[$resolvedAudio] = true;
             }
 
             $fatalRowErrors = array_filter($rowErrors, fn ($error) => $error['is_error']);
@@ -525,9 +521,10 @@ class DictionaryImportPreviewService
                 'new_rows' => count(array_filter($validRows, fn ($row) => $row['existing_id'] === null)),
                 'duplicate_rows' => $duplicateRows + $dbDuplicates,
                 'audio_referenced' => count($audioReferenced),
-                'audio_missing' => count(array_filter($errors, fn ($error) => $error['code'] === 'AUDIO_FILE_NOT_FOUND')),
+                'audio_missing' => count(array_filter($errors, fn ($error) => in_array($error['code'], ['AUDIO_FILE_NOT_FOUND', 'AUDIO_AUTO_NOT_FOUND'], true))),
                 'unused_audio_files' => count($unusedAudio),
-                'warning_count' => count($unusedAudio) + count(array_filter($errors, fn ($error) => in_array($error['code'], ['CSV_DUPLICATE_SKIPPED', 'AUDIO_FILE_NOT_FOUND'], true))),
+                'audio' => $this->audioSummary($zipFiles, $audioReferenced, $errors, $unusedAudio),
+                'warning_count' => count($unusedAudio) + count(array_filter($errors, fn ($error) => in_array($error['code'], ['CSV_DUPLICATE_SKIPPED', 'AUDIO_FILE_NOT_FOUND', 'AUDIO_AUTO_NOT_FOUND', 'AUDIO_AUTO_AMBIGUOUS'], true))),
                 'sample_rows' => $sampleRows,
                 'sample_errors' => $sampleErrors,
             ],
@@ -633,6 +630,49 @@ class DictionaryImportPreviewService
                 'sample_rows' => $sampleRows,
                 'sample_errors' => $sampleErrors,
             ],
+        ];
+    }
+
+    private function resolveAudio(string $explicit, string $mekongga, array $zipFiles, int $rowNumber, array $data, ?string $sheet = null): array
+    {
+        if ($explicit !== '') {
+            if (basename($explicit) !== $explicit) {
+                return [null, $this->error($rowNumber, 'audio_filename', 'UNSAFE_ZIP_ENTRY', 'Nama audio tidak boleh berisi path.', $data, true, $sheet)];
+            }
+
+            return isset($zipFiles[$explicit])
+                ? [$explicit, null]
+                : [null, $this->error($rowNumber, 'audio_filename', 'AUDIO_FILE_NOT_FOUND', "Audio \"{$explicit}\" tidak ditemukan karena ZIP audio tidak diunggah atau file tidak ada di ZIP. Kata tetap bisa diimpor tanpa audio.", $data, false, $sheet)];
+        }
+
+        $key = $this->audioKey($mekongga);
+        $matches = array_values(array_filter(array_keys($zipFiles), fn ($filename) => $this->audioKey(pathinfo($filename, PATHINFO_FILENAME)) === $key));
+        sort($matches, SORT_STRING);
+
+        if (count($matches) === 1) {
+            return [$matches[0], null];
+        }
+
+        if ($matches === []) {
+            return [null, $this->error($rowNumber, 'audio_filename', 'AUDIO_AUTO_NOT_FOUND', "Audio untuk kata Mekongga \"{$mekongga}\" tidak ditemukan.", $data, false, $sheet)];
+        }
+
+        return [null, $this->error($rowNumber, 'audio_filename', 'AUDIO_AUTO_AMBIGUOUS', "Audio untuk kata Mekongga \"{$mekongga}\" ambigu.", $data, false, $sheet)];
+    }
+
+    private function audioKey(string $value): string
+    {
+        return preg_replace('/[^\pL\pN]+/u', '', $this->normalizer->normalize($value)) ?: '';
+    }
+
+    private function audioSummary(array $zipFiles, array $referenced, array $errors, array $unused): array
+    {
+        return [
+            'files_found' => count($zipFiles),
+            'matched' => count($referenced),
+            'missing' => count(array_filter($errors, fn ($error) => in_array($error['code'], ['AUDIO_FILE_NOT_FOUND', 'AUDIO_AUTO_NOT_FOUND'], true))),
+            'ambiguous' => count(array_filter($errors, fn ($error) => $error['code'] === 'AUDIO_AUTO_AMBIGUOUS')),
+            'unused' => count($unused),
         ];
     }
 

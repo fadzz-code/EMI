@@ -206,11 +206,15 @@ export const dictionaryService = {
     token: string,
     params: {
       csvFile: File;
+      audioZip?: File | null;
       duplicateStrategy: DuplicateStrategy;
     },
   ) {
     const formData = new FormData();
     formData.append("csv_file", params.csvFile);
+    if (params.audioZip) {
+      formData.append("audio_zip", params.audioZip);
+    }
     formData.append("duplicate_strategy", params.duplicateStrategy);
     formData.append("import_type", "combined");
 
@@ -275,5 +279,17 @@ export const dictionaryService = {
     );
 
     return paginated(response.data, response.meta);
+  },
+
+  async deleteImport(token: string, jobId: string) {
+    await apiClient.delete<[]>(`/admin/dictionary/imports/${jobId}`, { token });
+  },
+
+  async deleteImportError(token: string, jobId: string, errorId: string) {
+    await apiClient.delete<[]>(`/admin/dictionary/imports/${jobId}/errors/${errorId}`, { token });
+  },
+
+  async clearImportErrors(token: string, jobId: string) {
+    await apiClient.delete<[]>(`/admin/dictionary/imports/${jobId}/errors`, { token });
   },
 };

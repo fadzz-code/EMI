@@ -127,6 +127,7 @@ class DictionaryImportProcessingService
                 'inserted_rows' => $inserted,
                 'updated_rows' => $updated,
                 'skipped_rows' => $skipped,
+                'summary' => $this->withAudioResult((array) $job->summary, count($mediaByFilename)),
                 'completed_at' => now(),
             ])->save();
 
@@ -305,7 +306,7 @@ class DictionaryImportProcessingService
             'inserted_rows' => $vocabInserted + $sentenceInserted,
             'updated_rows' => $vocabUpdated + $sentenceUpdated,
             'skipped_rows' => $vocabSkipped + $sentenceSkipped,
-            'summary' => array_merge((array) $job->summary, [
+            'summary' => array_merge($this->withAudioResult((array) $job->summary, count($mediaByFilename)), [
                 'vocabulary_result' => [
                     'inserted' => $vocabInserted,
                     'updated' => $vocabUpdated,
@@ -406,6 +407,16 @@ class DictionaryImportProcessingService
         );
 
         return $job->refresh();
+    }
+
+    private function withAudioResult(array $summary, int $installed): array
+    {
+        if (isset($summary['audio'])) {
+            $summary['audio']['installed'] = $installed;
+            $summary['audio']['result'] = $installed > 0 ? 'installed' : 'none';
+        }
+
+        return $summary;
     }
 
     private function createAudioMedia(DictionaryImportJob $job, $actor, string $filename, string $path): string

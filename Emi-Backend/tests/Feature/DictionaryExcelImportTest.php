@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\DictionaryCategory;
 use App\Models\DictionaryEntry;
+use App\Models\DictionaryImportError;
 use App\Models\DictionaryImportJob;
 use App\Models\DictionarySentenceExample;
 use App\Models\User;
@@ -14,6 +15,7 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Tests\TestCase;
+use ZipArchive;
 
 class DictionaryExcelImportTest extends TestCase
 {
@@ -248,6 +250,69 @@ class DictionaryExcelImportTest extends TestCase
         ]);
     }
 
+    public function test_blank_audio_resolves_canonical_mekongga_filename_and_reports_audio_summary(): void
+    {
+        $admin = User::factory()->admin()->create();
+        DictionaryCategory::factory()->create(['name' => 'Verba', 'slug' => 'verba', 'created_by' => $admin->id]);
+
+        $response = $this->withToken($this->tokenFor($admin))->post('/api/v1/admin/dictionary/imports/preview', [
+            'csv_file' => $this->buildWorkbook([['Makan', 'Mo-Ng_Ga!', 'Eat', 'Verba', '']], []),
+            'audio_zip' => $this->zipFile(['mo ng.ga.mp3' => "\xFF\xFB\x90\x64".str_repeat("\x00", 1024)]),
+        ])->assertCreated();
+
+        $response->assertJsonPath('data.summary.audio.files_found', 1)
+            ->assertJsonPath('data.summary.audio.matched', 1)
+            ->assertJsonPath('data.summary.audio.missing', 0)
+            ->assertJsonPath('data.summary.audio.ambiguous', 0)
+            ->assertJsonPath('data.summary.audio.unused', 0);
+
+        $jobId = $response->json('data.id');
+        $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/dictionary/imports/{$jobId}/confirm")->assertAccepted();
+        $this->artisan('queue:work', ['--once' => true, '--queue' => 'default']);
+        $this->assertSame(1, DictionaryImportJob::query()->findOrFail($jobId)->summary['audio']['installed']);
+    }
+
+    public function test_automatic_audio_match_is_deterministically_ambiguous_without_guessing(): void
+    {
+        $admin = User::factory()->admin()->create();
+        DictionaryCategory::factory()->create(['name' => 'Verba', 'slug' => 'verba', 'created_by' => $admin->id]);
+
+        $response = $this->withToken($this->tokenFor($admin))->post('/api/v1/admin/dictionary/imports/preview', [
+            'csv_file' => $this->buildWorkbook([['Makan', 'Mo Ng_a!', 'Eat', 'Verba', '']], []),
+            'audio_zip' => $this->zipFile([
+                'MO-NGA.mp3' => "\xFF\xFB\x90\x64".str_repeat("\x00", 1024),
+                'mo.ng a.MP3' => "\xFF\xFB\x90\x64".str_repeat("\x00", 1024),
+            ]),
+        ])->assertCreated();
+
+        $response->assertJsonPath('data.summary.audio.matched', 0)
+            ->assertJsonPath('data.summary.audio.ambiguous', 1)
+            ->assertJsonPath('data.summary.audio.unused', 2);
+        $this->assertDatabaseHas('dictionary_import_errors', [
+            'import_job_id' => $response->json('data.id'),
+            'code' => 'AUDIO_AUTO_AMBIGUOUS',
+        ]);
+    }
+
+    public function test_history_and_job_scoped_errors_require_confirmation_and_active_history_is_denied(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $job = DictionaryImportJob::factory()->create(['uploaded_by' => $admin->id, 'status' => 'preview_ready']);
+        $error = DictionaryImportError::factory()->create(['import_job_id' => $job->id]);
+
+        $this->withToken($this->tokenFor($admin))->deleteJson("/api/v1/admin/dictionary/imports/{$job->id}/errors/{$error->id}")->assertUnprocessable();
+        $this->withToken($this->tokenFor($admin))->deleteJson("/api/v1/admin/dictionary/imports/{$job->id}/errors/{$error->id}", ['confirm' => true])->assertOk();
+        $this->assertDatabaseMissing('dictionary_import_errors', ['id' => $error->id]);
+
+        foreach (['previewing', 'queued', 'processing'] as $status) {
+            $job->update(['status' => $status]);
+            $this->withToken($this->tokenFor($admin))->deleteJson("/api/v1/admin/dictionary/imports/{$job->id}", ['confirm' => true])
+                ->assertConflict()->assertJsonPath('code', 'ACTIVE_IMPORT_CANNOT_BE_DELETED');
+            $this->withToken($this->tokenFor($admin))->deleteJson("/api/v1/admin/dictionary/imports/{$job->id}/errors", ['confirm' => true])
+                ->assertConflict()->assertJsonPath('code', 'ACTIVE_IMPORT_CANNOT_BE_DELETED');
+        }
+    }
+
     public function test_invalid_xlsx_sheet_names_are_rejected_with_clear_message(): void
     {
         $admin = User::factory()->admin()->create();
@@ -300,6 +365,19 @@ class DictionaryExcelImportTest extends TestCase
         file_put_contents($path, $bytes);
 
         return new UploadedFile($path, 'kamus.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
+    }
+
+    private function zipFile(array $files): UploadedFile
+    {
+        $path = tempnam(sys_get_temp_dir(), 'emi_zip_');
+        $zip = new ZipArchive;
+        $zip->open($path, ZipArchive::OVERWRITE);
+        foreach ($files as $name => $content) {
+            $zip->addFromString($name, $content);
+        }
+        $zip->close();
+
+        return new UploadedFile($path, 'audio.zip', 'application/zip', null, true);
     }
 
     private function temporaryFile(string $contents): string

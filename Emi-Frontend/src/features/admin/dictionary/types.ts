@@ -72,6 +72,19 @@ export type DictionaryImportResultSummary = {
   inserted?: number;
   updated?: number;
   skipped?: number;
+  installed?: number;
+  missing?: number;
+  duplicate?: number;
+  ambiguous?: number;
+};
+
+export type DictionaryImportAudioSummary = {
+  files_found?: number;
+  matched?: number;
+  missing?: number;
+  ambiguous?: number;
+  unused?: number;
+  installed?: number;
 };
 
 export type DictionaryImportSheetSummary = {
@@ -88,10 +101,12 @@ export type DictionaryImportSummary = DictionaryImportSheetSummary & {
   audio_referenced?: number;
   audio_missing?: number;
   unused_audio_files?: number;
+  audio?: DictionaryImportAudioSummary;
   vocabulary?: DictionaryImportSheetSummary;
   sentence_examples?: DictionaryImportSheetSummary;
   vocabulary_result?: DictionaryImportResultSummary;
   sentence_examples_result?: DictionaryImportResultSummary;
+  audio_result?: DictionaryImportResultSummary;
 };
 
 export type DictionaryImportJob = {

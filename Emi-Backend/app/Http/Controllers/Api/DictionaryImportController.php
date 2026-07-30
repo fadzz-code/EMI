@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Dictionary\ConfirmDictionaryImportRequest;
+use App\Http\Requests\Dictionary\DeleteDictionaryImportRequest;
 use App\Http\Requests\Dictionary\ListDictionaryImportErrorsRequest;
 use App\Http\Requests\Dictionary\ListDictionaryImportsRequest;
 use App\Http\Requests\Dictionary\PreviewDictionaryImportRequest;
@@ -141,5 +142,32 @@ class DictionaryImportController extends Controller
         $job = $this->importService->confirm($job, $request->user(), $request);
 
         return ApiResponse::success('Import kamus masuk antrean pemrosesan.', new DictionaryImportJobResource($job), 202);
+    }
+
+    public function destroy(DeleteDictionaryImportRequest $request, string $id): JsonResponse
+    {
+        $job = DictionaryImportJob::query()->findOrFail($id);
+        Gate::authorize('delete', $job);
+        $this->importService->deleteHistory($job, $request->user(), $request);
+
+        return ApiResponse::success('Riwayat import kamus berhasil dihapus.');
+    }
+
+    public function destroyError(DeleteDictionaryImportRequest $request, string $id, string $errorId): JsonResponse
+    {
+        $job = DictionaryImportJob::query()->findOrFail($id);
+        Gate::authorize('delete', $job);
+        $this->importService->deleteError($job, $errorId, $request->user(), $request);
+
+        return ApiResponse::success('Error import kamus berhasil dihapus.');
+    }
+
+    public function destroyErrors(DeleteDictionaryImportRequest $request, string $id): JsonResponse
+    {
+        $job = DictionaryImportJob::query()->findOrFail($id);
+        Gate::authorize('delete', $job);
+        $count = $this->importService->deleteErrors($job, $request->user(), $request);
+
+        return ApiResponse::success('Semua error import kamus berhasil dihapus.', ['deleted' => $count]);
     }
 }
