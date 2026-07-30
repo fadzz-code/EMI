@@ -121,7 +121,13 @@ export function TeacherSpeakingResults() {
     ].filter(Boolean).join(" ").toLowerCase().includes(keyword));
   }, [attempts, search]);
 
-  const alignmentRows = (Array.isArray(selectedAttempt?.ai_alignment) ? [] : Object.entries(selectedAttempt?.ai_alignment ?? {})).filter(([, value]) => typeof value === "number").slice(0, 8);
+  const alignmentRows = (Array.isArray(selectedAttempt?.ai_alignment) ? [] : Object.entries(selectedAttempt?.ai_alignment ?? {}))
+    .filter(([key, value]) => typeof value === "number" && /^\d+_/.test(key))
+    .map(([key, value]) => {
+      const word = key.replace(/^\d+_/, "");
+      return { word, value: Math.round(value as number) };
+    })
+    .slice(0, 8);
   const reviewedCount = attempts.filter((attempt) => attempt.status === "reviewed" || attempt.teacher_score !== null).length;
   const pendingReviewCount = attempts.filter((attempt) => attempt.status === "completed" && attempt.teacher_score === null).length;
   const failedCount = attempts.filter((attempt) => attempt.status === "failed").length;
@@ -206,19 +212,24 @@ export function TeacherSpeakingResults() {
                 <div className="grid gap-3 md:grid-cols-2">
                   <p className="rounded-xl border-2 border-border bg-surface-muted p-3 text-sm"><span className="font-black">Skor awal AI:</span> {score(selectedAttempt.ai_score)}</p>
                   <p className="rounded-xl border-2 border-border bg-surface-muted p-3 text-sm"><span className="font-black">Skor guru:</span> {score(selectedAttempt.teacher_score)}</p>
-                  <p className="rounded-xl border-2 border-border bg-surface-muted p-3 text-sm md:col-span-2"><span className="font-black">Transkripsi AI:</span> {selectedAttempt.ai_transcription ?? "-"}</p>
                 </div>
                 {selectedAttempt.ai_error ? <Alert tone="error">AI gagal menganalisis: {selectedAttempt.ai_error}</Alert> : null}
                 <AudioPlayer src={audioUrl ?? undefined} title="Audio asli siswa" />
                 {!audioUrl ? <p className="text-sm font-bold text-muted">Audio private akan diputar setelah URL sementara tersedia untuk guru.</p> : null}
-                {alignmentRows.length > 0 ? (
-                  <div className="rounded-xl border border-border bg-surface-muted p-4">
-                    <h3 className="font-black text-ink">Ringkasan alignment AI</h3>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {alignmentRows.map(([key, value]) => <Badge key={key} tone={value >= 80 ? "blue" : "yellow"}>{key}: {Math.round(value)}</Badge>)}
+                <div className="rounded-xl border-2 border-border bg-surface p-4">
+                  <h3 className="font-black text-ink">Perbandingan ucapan</h3>
+                  <p className="mt-1 text-xs font-semibold text-muted">Bandingkan hasil ucapan siswa yang dikenali AI dengan target teks per kata.</p>
+                  <p className="mt-3 text-sm"><span className="font-black">Transkripsi AI:</span> {selectedAttempt.ai_transcription ?? "-"}</p>
+                  {alignmentRows.length > 0 ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {alignmentRows.map(({ word, value }) => (
+                        <Badge key={word} tone={value >= 80 ? "blue" : value >= 50 ? "yellow" : "orange"}>
+                          {word}: {value}%
+                        </Badge>
+                      ))}
                     </div>
-                  </div>
-                ) : null}
+                  ) : null}
+                </div>
                 <form className="grid gap-4" onSubmit={submitFeedback}>
                   <FormField label="Skor guru (0-100)"><Input max={100} min={0} onChange={(event) => setTeacherScore(event.target.value)} required type="number" value={teacherScore} /></FormField>
                   <p className="rounded-xl border border-border bg-surface-muted p-3 text-sm text-muted">
