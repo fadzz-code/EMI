@@ -329,5 +329,10 @@ Route::prefix('v1')->group(function () {
         Route::get('password-reset-requests/{id}', [TeacherPasswordResetRequestController::class, 'show']);
         Route::post('password-reset-requests/{id}/approve', [TeacherPasswordResetRequestController::class, 'approve']);
         Route::post('password-reset-requests/{id}/reject', [TeacherPasswordResetRequestController::class, 'reject']);
+
+        Route::post('chatbot/messages', [StudentChatbotController::class, 'store'])->middleware('throttle:emi-chatbot');
+        Route::get('chatbot/conversations', [StudentChatbotConversationController::class, 'index']);
+        Route::get('chatbot/conversations/{id}', [StudentChatbotConversationController::class, 'show']);
+        Route::delete('chatbot/conversations/{id}', [StudentChatbotConversationController::class, 'destroy']);
     });
 });

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClipboardCheck } from "lucide-react";
 
-import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState } from "@/components/ui";
+import { Alert, Badge, Button, Card, CardContent, CardHeader, ConfirmDialog, EmptyState, ErrorState, Input, LoadingState } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
@@ -29,6 +29,7 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
   const [shortAnswers, setShortAnswers] = useState<Record<string, string>>({});
   const [finalizeError, setFinalizeError] = useState<unknown>();
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
   const shortAnswerRef = useRef("");
   const dirtyQuestionIdRef = useRef<string | undefined>(undefined);
   const finalizingRef = useRef(false);
@@ -137,6 +138,19 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
     }
   }
 
+  function isQuestionAnswered(question: { id: string; question_type: string }) {
+    if (question.question_type === "multiple_choice") {
+      const answered = selectedOptions[question.id] ?? attempt?.answers?.find((answer) => answer.quiz_question_id === question.id)?.selected_option_id;
+      return Boolean(answered);
+    }
+
+    const answered = shortAnswers[question.id] ?? attempt?.answers?.find((answer) => answer.quiz_question_id === question.id)?.answer_text;
+    return Boolean(answered && answered.trim() !== "");
+  }
+
+  const answeredCount = questions.filter(isQuestionAnswered).length;
+  const unansweredCount = questions.length - answeredCount;
+
   return (
     <div className="grid gap-8">
       {isLoading ? <LoadingState title="Memuat soal kuis" /> : null}
@@ -166,9 +180,7 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
             <Button
               className="w-full sm:w-auto"
               disabled={saveAnswerMutation.isPending || submitMutation.isPending || isFinalizing}
-              onClick={() => {
-                if (window.confirm("Apakah Anda yakin ingin mengumpulkan kuis ini sekarang?")) void finalize();
-              }}
+              onClick={() => setConfirmSubmitOpen(true)}
             >
               Kumpulkan Kuis
             </Button>
@@ -241,6 +253,24 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
       ) : !isLoading && !isError && (!attempt || attempt.status === "in_progress") ? (
         <EmptyState description="Soal tidak ditemukan untuk kuis ini." title="Data kuis tidak lengkap" />
       ) : null}
+
+      <ConfirmDialog
+        confirmLabel={isFinalizing ? "Mengumpulkan..." : "Ya, Kumpulkan"}
+        confirmVariant={unansweredCount > 0 ? "danger" : "primary"}
+        description={
+          unansweredCount > 0
+            ? `Kamu baru menjawab ${answeredCount} dari ${questions.length} soal. Masih ada ${unansweredCount} soal yang belum dijawab. Setelah dikumpulkan, kuis tidak bisa diubah lagi.`
+            : `Kamu sudah menjawab semua ${questions.length} soal. Setelah dikumpulkan, jawaban tidak bisa diubah lagi.`
+        }
+        isConfirming={isFinalizing}
+        onCancel={() => setConfirmSubmitOpen(false)}
+        onConfirm={() => {
+          setConfirmSubmitOpen(false);
+          void finalize();
+        }}
+        open={confirmSubmitOpen}
+        title="Kumpulkan kuis sekarang?"
+      />
     </div>
   );
 }

@@ -25,12 +25,18 @@ export function TeacherClassStudents({ classId }: { classId: string }) {
   });
 
   const students = studentsQuery.data?.items ?? [];
+  const progressValues = students
+    .map((student) => student.overall_learning_progress_percent)
+    .filter((value): value is number => typeof value === "number");
+  const averageProgress = progressValues.length > 0
+    ? progressValues.reduce((sum, value) => sum + value, 0) / progressValues.length
+    : null;
 
   return (
     <div className="grid gap-8">
-      <Link className="inline-flex min-h-11 w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-foreground transition hover:-translate-y-0.5 hover:bg-surface-muted hover:shadow-emi" href={teacherRoutes.classes}>
+      <Link className="inline-flex min-h-11 w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-foreground transition hover:-translate-y-0.5 hover:bg-surface-muted hover:shadow-emi" href={teacherRoutes.classDetail(classId)}>
         <ArrowLeft className="size-4" strokeWidth={2.5} />
-        Kembali ke Daftar Kelas
+        Kembali ke Detail Kelas
       </Link>
       <PageHeader badge="Guru" description="Daftar siswa aktif di kelas yang ditetapkan untuk Anda." title="Siswa Kelas" />
 
@@ -46,8 +52,8 @@ export function TeacherClassStudents({ classId }: { classId: string }) {
           <div className="grid gap-6">
             <section className="grid gap-4 sm:grid-cols-3">
               <StatsCard helper="Siswa aktif di kelas" label="Total siswa" value={formatCount(studentsQuery.data?.meta?.total)} />
-              <StatsCard helper="Halaman saat ini" label="Progress tersedia" value={formatCount(students.length)} />
-              <StatsCard helper="Data canonical progress" label="Catatan" value="Real" />
+              <StatsCard helper="Siswa yang tampil di halaman ini" label="Ditampilkan" value={formatCount(students.length)} />
+              <StatsCard helper="Rata-rata progress belajar kelas ini" label="Rata-rata Progress" value={formatPercent(averageProgress)} />
             </section>
             <div className="grid gap-4 md:grid-cols-2">
               {students.map((student) => (

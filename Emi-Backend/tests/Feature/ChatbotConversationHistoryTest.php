@@ -170,6 +170,63 @@ class ChatbotConversationHistoryTest extends TestCase
         ])->assertForbidden();
     }
 
+    public function test_student_cannot_use_teacher_chatbot_endpoints(): void
+    {
+        $student = User::factory()->student()->approved()->create();
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/teacher/chatbot/messages', [
+            'message' => 'Halo',
+        ])->assertForbidden();
+    }
+
+    public function test_teacher_can_use_own_chatbot_endpoints_with_isolated_conversation(): void
+    {
+        $teacher = User::factory()->teacher()->approved()->create();
+        AiKnowledgeItem::factory()->published()->create([
+            'title' => 'Sejarah Mekongga',
+            'content' => 'Sejarah Kerajaan Mekongga berkembang di wilayah Kolaka. Informasi ini berasal dari Basis AI EMI.',
+        ]);
+
+        $response = $this->withToken($this->tokenFor($teacher))->postJson('/api/v1/teacher/chatbot/messages', [
+            'message' => 'Apa sejarah Mekongga?',
+        ])->assertOk();
+
+        $conversationId = $response->json('data.conversation_id');
+        $this->assertNotNull($conversationId);
+        $this->assertDatabaseHas('chatbot_conversations', [
+            'id' => $conversationId,
+            'user_id' => $teacher->id,
+            'status' => 'active',
+        ]);
+
+        $this->withToken($this->tokenFor($teacher))->getJson('/api/v1/teacher/chatbot/conversations')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $conversationId);
+
+        $this->withToken($this->tokenFor($teacher))->getJson("/api/v1/teacher/chatbot/conversations/{$conversationId}")
+            ->assertOk()
+            ->assertJsonPath('data.id', $conversationId);
+
+        $this->withToken($this->tokenFor($teacher))->deleteJson("/api/v1/teacher/chatbot/conversations/{$conversationId}")
+            ->assertOk();
+
+        $this->assertSoftDeleted('chatbot_conversations', ['id' => $conversationId]);
+    }
+
+    public function test_teacher_cannot_access_a_students_conversation_via_teacher_chatbot_endpoints(): void
+    {
+        $student = User::factory()->student()->approved()->create();
+        $teacher = User::factory()->teacher()->approved()->create();
+        $conversation = ChatbotConversation::query()->create([
+            'user_id' => $student->id,
+            'title' => 'Percakapan siswa',
+            'status' => 'active',
+        ]);
+
+        $this->withToken($this->tokenFor($teacher))->getJson("/api/v1/teacher/chatbot/conversations/{$conversation->id}")
+            ->assertNotFound();
+    }
+
     public function test_retrieval_runs_exactly_once_per_message(): void
     {
         $student = User::factory()->student()->approved()->create();

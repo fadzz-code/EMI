@@ -57,6 +57,46 @@ export function statusLabel(status: string | null | undefined) {
   return formatOptional(status);
 }
 
+export function contentTypeLabel(type: string | null | undefined) {
+  if (type === "text") {
+    return "Teks";
+  }
+
+  if (type === "image") {
+    return "Gambar";
+  }
+
+  if (type === "audio") {
+    return "Audio";
+  }
+
+  if (type === "pdf") {
+    return "PDF";
+  }
+
+  if (type === "video") {
+    return "Video";
+  }
+
+  if (type === "link") {
+    return "Link";
+  }
+
+  return "Materi";
+}
+
+export function questionTypeLabel(type: string | null | undefined) {
+  if (type === "multiple_choice") {
+    return "Pilihan ganda";
+  }
+
+  if (type === "short_answer") {
+    return "Isian singkat";
+  }
+
+  return formatOptional(type);
+}
+
 export function activityLabel(type: string | null | undefined) {
   if (type === "module_completed") {
     return "Modul selesai";

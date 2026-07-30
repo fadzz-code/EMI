@@ -8,6 +8,7 @@ export * from "./dropdown-menu";
 export * from "./file-preview";
 export * from "./filter-panel";
 export * from "./form-field";
+export * from "./info-popover";
 export * from "./input";
 export * from "./modal";
 export * from "./mobile-role-navigation";

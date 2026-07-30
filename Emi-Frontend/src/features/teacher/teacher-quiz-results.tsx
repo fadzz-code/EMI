@@ -12,7 +12,7 @@ import { teacherRoutes } from "@/lib/routes";
 
 import { teacherService } from "./teacher-service";
 import type { TeacherQuizAnswer, TeacherQuizAttempt, TeacherQuizQuestion } from "./types";
-import { formatCount, formatDate, formatOptional, formatPercent, formatScoreOutOf100, statusLabel } from "./teacher-utils";
+import { formatCount, formatDate, formatOptional, formatPercent, formatScoreOutOf100, questionTypeLabel, statusLabel } from "./teacher-utils";
 
 function studentName(attempt: TeacherQuizAttempt) {
   return attempt.student?.full_name ?? attempt.student?.name ?? attempt.student?.email ?? attempt.student_id ?? "Siswa";
@@ -156,7 +156,7 @@ export function TeacherQuizResults({ classQuizId }: { classQuizId: string }) {
                   const question = questionsById.get(answer.quiz_question_id);
                   return (
                     <div className="rounded-xl border-2 border-border bg-surface p-4" key={answer.id}>
-                      <div className="flex flex-wrap gap-2"><Badge tone="neutral">{formatOptional(question?.question_type)}</Badge>{typeof answer.is_correct === "boolean" ? <Badge tone={answer.is_correct ? "blue" : "orange"}>{answer.is_correct ? "Benar" : "Salah"}</Badge> : null}</div>
+                      <div className="flex flex-wrap gap-2"><Badge tone="neutral">{questionTypeLabel(question?.question_type)}</Badge>{typeof answer.is_correct === "boolean" ? <Badge tone={answer.is_correct ? "blue" : "orange"}>{answer.is_correct ? "Benar" : "Salah"}</Badge> : null}</div>
                       <h4 className="mt-2 font-black text-ink">{question?.order_number}. {question?.question_text ?? answer.quiz_question_id}</h4>
                       <p className="mt-2 text-sm text-ink"><span className="font-black">Jawaban siswa:</span> {answerLabel(answer, question)}</p>
                       <p className="mt-1 text-sm text-muted">Poin: {formatOptional(answer.awarded_points)} / {formatOptional(answer.max_points)}{typeof answer.similarity_score === "number" ? ` | Similarity: ${formatPercent(answer.similarity_score)}` : ""}</p>

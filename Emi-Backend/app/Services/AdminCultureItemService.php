@@ -105,7 +105,32 @@ class AdminCultureItemService
         $item = $this->masterItem($groupId);
         $this->validatePublishReadiness($item->toArray(), $actor);
 
+        DB::transaction(function () use ($item, $groupId, $actor) {
+            $this->syncMissingClassItems($item, $groupId, $actor);
+        });
+
         return $this->setStatus($groupId, 'published', $actor, $request, 'admin_culture_item.published');
+    }
+
+    /**
+     * Ensures every currently active class has a copy of this admin content.
+     * Classes created after the original broadcast (or otherwise missed) are
+     * backfilled here so publishing always makes the content visible in
+     * every active class, not just the ones that existed at creation time.
+     */
+    private function syncMissingClassItems(AdminCultureItem $master, string $groupId, User $actor): void
+    {
+        $existingClassIds = ClassCultureItem::query()
+            ->where('created_scope', 'admin')
+            ->where('admin_group_id', $groupId)
+            ->pluck('class_id')
+            ->all();
+
+        $missingClasses = $this->activeClasses()->reject(fn (SchoolClass $class) => in_array($class->id, $existingClassIds, true));
+
+        foreach ($missingClasses as $class) {
+            ClassCultureItem::query()->create($this->attributesForClass($class->id, $groupId, $master->only(['title', 'description', 'content_type', 'media_id', 'external_url', 'display_order']), $actor));
+        }
     }
 
     public function archive(string $groupId, User $actor, Request $request): array

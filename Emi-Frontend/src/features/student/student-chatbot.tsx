@@ -345,9 +345,14 @@ export function StudentChatbot() {
               placeholder="Tanyakan materi, kosakata, atau budaya Mekongga..."
               value={message}
             />
-            <Button aria-label="Kirim pertanyaan" className="size-10 shrink-0 rounded-full p-0" disabled={isPending} type="submit">
+            <button
+              aria-label="Kirim pertanyaan"
+              className="flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-border bg-primary text-primary-foreground shadow-emi transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isPending}
+              type="submit"
+            >
               <SendHorizontal className="size-5" strokeWidth={3} />
-            </Button>
+            </button>
           </div>
 
           <p className="mt-1.5 text-center text-[10px] font-semibold text-muted">
@@ -362,13 +367,25 @@ export function StudentChatbot() {
           <aside className="relative ml-auto flex h-full w-80 max-w-[85%] flex-col rounded-l-[var(--radius-card)] border-l-2 border-border bg-surface shadow-emi">
             <div className="flex items-center justify-between gap-2 border-b-2 border-border p-4">
               <p className="text-sm font-black uppercase tracking-[0.06em] text-muted">Riwayat</p>
-              <div className="flex items-center gap-1">
-                <Button aria-label="Sesi baru" className="size-9 rounded-full p-0" onClick={startNewSession} type="button" variant="secondary">
+              <div className="flex items-center gap-2">
+                <button
+                  aria-label="Mulai sesi baru"
+                  className="flex size-9 items-center justify-center rounded-full border-2 border-border bg-accent text-accent-foreground shadow-emi transition hover:-translate-y-0.5"
+                  onClick={startNewSession}
+                  title="Mulai sesi baru"
+                  type="button"
+                >
                   <MessageSquarePlus className="size-4" strokeWidth={2.5} />
-                </Button>
-                <Button aria-label="Tutup riwayat" className="size-9 rounded-full p-0" onClick={() => setHistoryOpen(false)} type="button" variant="secondary">
+                </button>
+                <button
+                  aria-label="Tutup riwayat"
+                  className="flex size-9 items-center justify-center rounded-full border-2 border-border bg-surface text-ink transition hover:-translate-y-0.5 hover:bg-surface-muted"
+                  onClick={() => setHistoryOpen(false)}
+                  title="Tutup riwayat"
+                  type="button"
+                >
                   <X className="size-4" strokeWidth={2.5} />
-                </Button>
+                </button>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-3">

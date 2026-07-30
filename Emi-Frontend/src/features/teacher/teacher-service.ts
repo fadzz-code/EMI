@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/api-client";
+import type { ChatbotConversationDetail, ChatbotConversationSummary, DictionaryEntry, DictionaryEntryFilters, StudentChatbotResponse } from "@/features/student/types";
 
 import { teacherProgressRequestQuery } from "./teacher-workflow";
 import type {
@@ -14,12 +15,14 @@ import type {
   TeacherProgressClassSummary,
   TeacherProgressStudentRow,
   TeacherMediaFile,
+  TeacherLessonContent,
   TeacherLessonPayload,
   TeacherMediaPurpose,
   TeacherMediaVisibility,
   TeacherQuizAttempt,
   TeacherQuizQuestion,
   TeacherQuizReport,
+  TeacherQuizResultRow,
   TeacherUserProfile,
   TeacherSpeakingAttempt,
   TeacherSpeakingExercise,
@@ -109,6 +112,16 @@ export const teacherService = {
     return response.data;
   },
 
+  async createClassModule(token: string, classId: string, payload: { title: string; description?: string | null; sort_order?: number }) {
+    const response = await apiClient.post<TeacherClassModule>(`/classes/${classId}/modules`, payload, { token });
+
+    if (!response.data) {
+      throw new Error("Gagal membuat modul.");
+    }
+
+    return response.data;
+  },
+
   async updateClassModule(token: string, moduleId: string, payload: Partial<TeacherClassModule>) {
     const response = await apiClient.put<TeacherClassModule>(`/class-modules/${moduleId}`, payload, { token });
 
@@ -119,11 +132,35 @@ export const teacherService = {
     return response.data;
   },
 
+  async deleteClassModule(token: string, moduleId: string) {
+    await apiClient.delete(`/class-modules/${moduleId}`, { token });
+  },
+
   async publishClassModule(token: string, moduleId: string) {
     const response = await apiClient.post<TeacherClassModule>(`/class-modules/${moduleId}/publish`, {}, { token });
 
     if (!response.data) {
       throw new Error("Gagal mempublikasikan modul.");
+    }
+
+    return response.data;
+  },
+
+  async archiveClassModule(token: string, moduleId: string) {
+    const response = await apiClient.post<TeacherClassModule>(`/class-modules/${moduleId}/archive`, {}, { token });
+
+    if (!response.data) {
+      throw new Error("Gagal mengarsipkan modul.");
+    }
+
+    return response.data;
+  },
+
+  async createClassLesson(token: string, moduleId: string, payload: TeacherLessonPayload) {
+    const response = await apiClient.post<TeacherClassLesson>(`/class-modules/${moduleId}/lessons`, payload, { token });
+
+    if (!response.data) {
+      throw new Error("Gagal membuat materi.");
     }
 
     return response.data;
@@ -144,6 +181,30 @@ export const teacherService = {
 
     if (!response.data) {
       throw new Error("Gagal memperbarui materi.");
+    }
+
+    return response.data;
+  },
+
+  async deleteClassLesson(token: string, lessonId: string) {
+    await apiClient.delete(`/class-lessons/${lessonId}`, { token });
+  },
+
+  async archiveClassLesson(token: string, lessonId: string) {
+    const response = await apiClient.post<TeacherClassLesson>(`/class-lessons/${lessonId}/archive`, {}, { token });
+
+    if (!response.data) {
+      throw new Error("Gagal mengarsipkan materi.");
+    }
+
+    return response.data;
+  },
+
+  async classLessonContent(token: string, lessonId: string) {
+    const response = await apiClient.get<TeacherLessonContent>(`/class-lessons/${lessonId}/content-url`, { token });
+
+    if (!response.data) {
+      throw new Error("Konten materi tidak tersedia.");
     }
 
     return response.data;
@@ -374,6 +435,18 @@ export const teacherService = {
     return student;
   },
 
+  async studentQuizHistory(token: string, studentId: string) {
+    const response = await apiClient.get<{ rows?: TeacherQuizResultRow[] }>(
+      "/teacher/reports/quiz-results",
+      {
+        token,
+        query: { student_id: studentId, per_page: 100 },
+      },
+    );
+
+    return response.data?.rows ?? [];
+  },
+
   async uploadMedia(token: string, file: File, purpose: TeacherMediaPurpose, visibility: TeacherMediaVisibility = "private") {
     const formData = new FormData();
     formData.append("file", file, file.name);
@@ -465,6 +538,16 @@ export const teacherService = {
     return response.data;
   },
 
+  async speakingExerciseDetail(token: string, exerciseId: string) {
+    const response = await apiClient.get<TeacherSpeakingExercise>(`/teacher/speaking/exercises/${exerciseId}`, { token });
+    if (!response.data) throw new Error("Target speaking tidak tersedia.");
+    return response.data;
+  },
+
+  async deleteSpeakingExercise(token: string, exerciseId: string) {
+    await apiClient.delete(`/teacher/speaking/exercises/${exerciseId}`, { token });
+  },
+
   async speakingAttempts(token: string) {
     const response = await apiClient.get<TeacherSpeakingAttempt[]>("/teacher/speaking/attempts", { token });
     return response.data ?? [];
@@ -501,6 +584,70 @@ export const teacherService = {
 
     if (!response.data) {
       throw new Error("Profil guru tidak tersedia.");
+    }
+
+    return response.data;
+  },
+
+  async sendChatbotMessage(token: string, message: string, conversationId?: string | null) {
+    const response = await apiClient.post<StudentChatbotResponse>(
+      "/teacher/chatbot/messages",
+      { message, conversation_id: conversationId ?? undefined },
+      { token },
+    );
+
+    if (!response.data) {
+      throw new Error("Respons Chatbot AI tidak tersedia.");
+    }
+
+    return response.data;
+  },
+
+  async chatbotConversations(token: string, status?: "active" | "archived") {
+    const response = await apiClient.get<ChatbotConversationSummary[]>("/teacher/chatbot/conversations", {
+      token,
+      query: { status, per_page: 30 },
+    });
+
+    return paginated(response.data, response.meta);
+  },
+
+  async chatbotConversationDetail(token: string, conversationId: string) {
+    const response = await apiClient.get<ChatbotConversationDetail>(`/teacher/chatbot/conversations/${conversationId}`, { token });
+
+    if (!response.data) {
+      throw new Error("Detail percakapan tidak tersedia.");
+    }
+
+    return response.data;
+  },
+
+  async deleteChatbotConversation(token: string, conversationId: string) {
+    await apiClient.delete(`/teacher/chatbot/conversations/${conversationId}`, { token });
+  },
+
+  async dictionaryEntries(token: string, filters: DictionaryEntryFilters = {}) {
+    const response = await apiClient.get<DictionaryEntry[]>("/dictionary", {
+      token,
+      query: {
+        search: filters.search,
+        language: filters.language ?? "all",
+        category_id: filters.category_id,
+        page: filters.page ?? 1,
+        per_page: filters.per_page ?? 12,
+        sort_by: "indonesia",
+        sort_direction: "asc",
+      },
+    });
+
+    return paginated(response.data, response.meta);
+  },
+
+  async dictionaryEntryDetail(token: string, entryId: string) {
+    const response = await apiClient.get<DictionaryEntry>(`/dictionary/${entryId}`, { token });
+
+    if (!response.data) {
+      throw new Error("Detail kamus tidak tersedia.");
     }
 
     return response.data;

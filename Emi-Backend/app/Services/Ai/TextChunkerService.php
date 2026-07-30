@@ -7,9 +7,9 @@ class TextChunkerService
     /**
      * Memotong teks menjadi potongan-potongan (chunks) dengan ukuran tertentu.
      *
-     * @param string $text Teks mentah yang akan dipotong.
-     * @param int $chunkSize Ukuran target per chunk dalam karakter (default 700).
-     * @param int $overlap Karakter yang tumpang tindih antar chunk (default 70).
+     * @param  string  $text  Teks mentah yang akan dipotong.
+     * @param  int  $chunkSize  Ukuran target per chunk dalam karakter (default 700).
+     * @param  int  $overlap  Karakter yang tumpang tindih antar chunk (default 70).
      * @return array<string> Daftar potongan teks.
      */
     public function chunk(string $text, int $chunkSize = 700, int $overlap = 70): array
@@ -49,7 +49,7 @@ class TextChunkerService
             $chunk = mb_substr($cleanText, $start, $actualLength);
             $trimmedChunk = trim($chunk);
 
-            if (!empty($trimmedChunk)) {
+            if (! empty($trimmedChunk)) {
                 $chunks[] = $trimmedChunk;
             }
 
@@ -74,6 +74,7 @@ class TextChunkerService
         // Prioritas 2: Akhir kalimat (. , ! , ?) diikuti spasi atau newline
         if (preg_match_all('/[.!?]\s+/u', $text, $matches, PREG_OFFSET_CAPTURE)) {
             $lastMatch = end($matches[0]);
+
             return $lastMatch[1] + mb_strlen($lastMatch[0]);
         }
 

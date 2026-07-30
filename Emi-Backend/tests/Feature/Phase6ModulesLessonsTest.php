@@ -272,7 +272,20 @@ class Phase6ModulesLessonsTest extends TestCase
             ->assertConflict()
             ->assertJsonPath('code', 'MEDIA_IN_USE');
 
+        $this->withToken($this->tokenFor($teacherA))->deleteJson("/api/v1/class-lessons/{$lessonId}")
+            ->assertConflict()
+            ->assertJsonPath('code', 'LESSON_MUST_BE_ARCHIVED');
+        $this->withToken($this->tokenFor($teacherA))->deleteJson("/api/v1/class-modules/{$moduleId}")
+            ->assertConflict()
+            ->assertJsonPath('code', 'MODULE_MUST_BE_ARCHIVED');
+
         $this->withToken($this->tokenFor($studentA))->postJson("/api/v1/student/modules/{$moduleId}/start")->assertOk();
+        $this->withToken($this->tokenFor($studentA))->patchJson("/api/v1/student/lessons/{$lessonId}/progress", [
+            'status' => 'in_progress',
+            'progress_percent' => 50,
+        ])->assertOk();
+        $this->withToken($this->tokenFor($teacherA))->postJson("/api/v1/class-lessons/{$lessonId}/archive")->assertOk();
+        $this->withToken($this->tokenFor($teacherA))->postJson("/api/v1/class-modules/{$moduleId}/archive")->assertOk();
         $this->withToken($this->tokenFor($teacherA))->deleteJson("/api/v1/class-lessons/{$lessonId}")
             ->assertConflict()
             ->assertJsonPath('code', 'LESSON_HAS_PROGRESS');
@@ -282,6 +295,78 @@ class Phase6ModulesLessonsTest extends TestCase
 
         $this->assertDatabaseHas('audit_logs', ['action' => 'class_module.created']);
         $this->assertDatabaseHas('audit_logs', ['action' => 'class_lesson.created']);
+    }
+
+    public function test_teacher_can_delete_published_module_and_lesson_after_archiving_when_no_student_progress(): void
+    {
+        $admin = User::factory()->admin()->create();
+        [$class] = $this->classes($admin, 1);
+        $teacher = $this->teacherFor($class, $admin);
+
+        $moduleId = $this->withToken($this->tokenFor($teacher))->postJson("/api/v1/classes/{$class->id}/modules", [
+            'title' => 'Modul Tanpa Progress',
+        ])->assertCreated()->json('data.id');
+
+        $lessonId = $this->withToken($this->tokenFor($teacher))->postJson("/api/v1/class-modules/{$moduleId}/lessons", [
+            'title' => 'Teks',
+            'content_type' => 'text',
+            'content_body' => 'Isi materi',
+            'status' => 'published',
+        ])->assertCreated()->json('data.id');
+        $this->withToken($this->tokenFor($teacher))->postJson("/api/v1/class-modules/{$moduleId}/publish")->assertOk();
+
+        $this->withToken($this->tokenFor($teacher))->deleteJson("/api/v1/class-lessons/{$lessonId}")
+            ->assertConflict()
+            ->assertJsonPath('code', 'LESSON_MUST_BE_ARCHIVED');
+        $this->withToken($this->tokenFor($teacher))->deleteJson("/api/v1/class-modules/{$moduleId}")
+            ->assertConflict()
+            ->assertJsonPath('code', 'MODULE_MUST_BE_ARCHIVED');
+
+        $this->withToken($this->tokenFor($teacher))->postJson("/api/v1/class-lessons/{$lessonId}/archive")->assertOk();
+        $this->withToken($this->tokenFor($teacher))->postJson("/api/v1/class-modules/{$moduleId}/archive")->assertOk();
+
+        $this->withToken($this->tokenFor($teacher))->deleteJson("/api/v1/class-lessons/{$lessonId}")->assertOk();
+        $this->withToken($this->tokenFor($teacher))->deleteJson("/api/v1/class-modules/{$moduleId}")->assertOk();
+
+        $this->assertSoftDeleted('class_lessons', ['id' => $lessonId]);
+        $this->assertSoftDeleted('class_modules', ['id' => $moduleId]);
+    }
+
+    public function test_deleting_lesson_or_module_renumbers_remaining_sort_order_sequentially(): void
+    {
+        $admin = User::factory()->admin()->create();
+        [$class] = $this->classes($admin, 1);
+        $teacher = $this->teacherFor($class, $admin);
+
+        $moduleOneId = $this->withToken($this->tokenFor($teacher))->postJson("/api/v1/classes/{$class->id}/modules", ['title' => 'Modul 1'])
+            ->assertCreated()->json('data.id');
+        $moduleTwoId = $this->withToken($this->tokenFor($teacher))->postJson("/api/v1/classes/{$class->id}/modules", ['title' => 'Modul 2'])
+            ->assertCreated()->json('data.id');
+        $moduleThreeId = $this->withToken($this->tokenFor($teacher))->postJson("/api/v1/classes/{$class->id}/modules", ['title' => 'Modul 3'])
+            ->assertCreated()->json('data.id');
+        $this->assertDatabaseHas('class_modules', ['id' => $moduleOneId, 'sort_order' => 1]);
+        $this->assertDatabaseHas('class_modules', ['id' => $moduleTwoId, 'sort_order' => 2]);
+        $this->assertDatabaseHas('class_modules', ['id' => $moduleThreeId, 'sort_order' => 3]);
+
+        $lessonOneId = $this->withToken($this->tokenFor($teacher))->postJson("/api/v1/class-modules/{$moduleOneId}/lessons", [
+            'title' => 'Materi 1',
+            'content_type' => 'text',
+            'content_body' => 'Isi materi 1',
+        ])->assertCreated()->json('data.id');
+        $lessonTwoId = $this->withToken($this->tokenFor($teacher))->postJson("/api/v1/class-modules/{$moduleOneId}/lessons", [
+            'title' => 'Materi 2',
+            'content_type' => 'text',
+            'content_body' => 'Isi materi 2',
+        ])->assertCreated()->json('data.id');
+        $this->assertDatabaseHas('class_lessons', ['id' => $lessonOneId, 'sort_order' => 1]);
+        $this->assertDatabaseHas('class_lessons', ['id' => $lessonTwoId, 'sort_order' => 2]);
+
+        $this->withToken($this->tokenFor($teacher))->deleteJson("/api/v1/class-lessons/{$lessonOneId}")->assertOk();
+        $this->assertDatabaseHas('class_lessons', ['id' => $lessonTwoId, 'sort_order' => 1]);
+
+        $this->withToken($this->tokenFor($teacher))->deleteJson("/api/v1/class-modules/{$moduleOneId}")->assertOk();
+        $this->assertDatabaseHas('class_modules', ['id' => $moduleTwoId, 'sort_order' => 1]);
+        $this->assertDatabaseHas('class_modules', ['id' => $moduleThreeId, 'sort_order' => 2]);
     }
 
     public function test_student_progress_is_idempotent_recalculated_and_scoped(): void

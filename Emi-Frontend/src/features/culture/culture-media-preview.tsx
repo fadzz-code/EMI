@@ -42,7 +42,7 @@ export function CultureMediaPreview({ item }: { item: CulturePreviewItem }) {
   }
 
   if (item.content_type === "pdf") {
-    return <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3"><Badge tone="neutral">PDF</Badge><span className="text-sm font-bold text-slate-600">{item.media?.original_name ?? "Dokumen PDF"}</span><OpenContentLink label="Buka PDF" url={url} /></div>;
+    return <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3"><Badge className="shrink-0" tone="neutral">PDF</Badge><span className="min-w-0 flex-1 truncate text-sm font-bold text-slate-600" title={item.media?.original_name ?? "Dokumen PDF"}>{item.media?.original_name ?? "Dokumen PDF"}</span><OpenContentLink label="Buka PDF" url={url} /></div>;
   }
 
   return <OpenContentLink label={openLabel(item.content_type)} url={url} />;

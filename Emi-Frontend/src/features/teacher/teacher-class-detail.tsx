@@ -1,12 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 
 import { Alert, Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
-import { teacherRoutes } from "@/lib/routes";
 
 import { TeacherClassNav } from "./teacher-class-nav";
 import { teacherService } from "./teacher-service";
@@ -49,10 +47,6 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
 
   return (
     <div className="grid gap-8">
-      <Link className="w-fit rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-ink transition hover:-translate-y-0.5 hover:bg-surface-muted hover:shadow-emi" href={teacherRoutes.classes}>
-        Kembali ke Kelas Saya
-      </Link>
-
       {classQuery.isLoading ? <LoadingState title="Memuat detail kelas" /> : null}
       {classQuery.isError ? (
         <ErrorState

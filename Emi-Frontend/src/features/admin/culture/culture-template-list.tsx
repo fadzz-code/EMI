@@ -11,6 +11,7 @@ import {
   Card,
   CardContent,
   CardHeader,
+  ConfirmDialog,
   EmptyState,
   ErrorState,
   FilePreview,
@@ -57,6 +58,8 @@ export function AdminCultureTemplateList() {
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingItem, setEditingItem] = useState<AdminGlobalCultureItem | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [publishTarget, setPublishTarget] = useState<AdminGlobalCultureItem | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdminGlobalCultureItem | null>(null);
 
   const itemsQuery = useQuery({ queryKey: ["admin", "culture", "global-items"], queryFn: () => adminCultureService.globalItems(token ?? ""), enabled: Boolean(token) });
   const classesQuery = useQuery({ queryKey: ["admin", "classes"], queryFn: () => classService.list(token ?? "", { per_page: 100 }), enabled: Boolean(token) });
@@ -69,13 +72,15 @@ export function AdminCultureTemplateList() {
     mutationFn: (itemId: string) => adminCultureService.deleteGlobalItem(token ?? "", itemId),
     onSuccess: () => {
       setSuccessMsg("Konten budaya berhasil dihapus dari semua kelas.");
+      setDeleteTarget(null);
       invalidate();
     },
   });
   const publishMutation = useMutation({
     mutationFn: (itemId: string) => adminCultureService.publishGlobalItem(token ?? "", itemId),
     onSuccess: () => {
-      setSuccessMsg("Konten budaya berhasil diterbitkan untuk semua kelas.");
+      setSuccessMsg("Konten budaya berhasil diterbitkan ke semua kelas aktif.");
+      setPublishTarget(null);
       invalidate();
     },
   });
@@ -100,6 +105,9 @@ export function AdminCultureTemplateList() {
       </div>
       <p className="text-sm leading-6 font-semibold text-muted">Konten yang disimpan admin akan tersedia sebagai materi budaya untuk kelas-kelas aktif.</p>
       {successMsg ? <Alert tone="success">{successMsg}</Alert> : null}
+      {publishMutation.error ? <Alert tone="error">{getFirstApiError(publishMutation.error)}</Alert> : null}
+      {archiveMutation.error ? <Alert tone="error">{getFirstApiError(archiveMutation.error)}</Alert> : null}
+      {deleteMutation.error ? <Alert tone="error">{getFirstApiError(deleteMutation.error)}</Alert> : null}
 
       {itemsQuery.isLoading || classesQuery.isLoading ? <LoadingState title="Memuat Budaya Mekongga" /> : null}
       {itemsQuery.isError ? <ErrorState description={getFirstApiError(itemsQuery.error)} onRetry={() => void itemsQuery.refetch()} title="Gagal memuat konten budaya" /> : null}
@@ -124,18 +132,18 @@ export function AdminCultureTemplateList() {
           {items.length === 0 ? <Card><CardContent><EmptyState description="Belum ada konten budaya. Klik Tambah Konten Budaya untuk menambah konten ke semua kelas." title="Konten budaya kosong" /></CardContent></Card> : (
             <div className="grid gap-4 md:grid-cols-2">
               {items.map((item) => (
-                <Card className="flex h-full flex-col transition hover:-translate-y-1 hover:shadow-emi" key={item.id}>
-                  <CardHeader><div className="flex flex-wrap gap-2"><Badge tone={item.status === "published" ? "blue" : "neutral"}>{statusLabel(item.status)}</Badge><Badge tone="neutral">{contentTypeLabel(String(item.content_type))}</Badge></div><h2 className="mt-2 text-xl font-black text-ink">{item.title}</h2></CardHeader>
-                  <CardContent className="flex flex-1 flex-col">
-                    <p className="text-sm font-semibold text-muted">{item.description ?? "Tanpa deskripsi"}</p>
+                <Card className="flex h-full min-w-0 flex-col overflow-hidden transition hover:-translate-y-1 hover:shadow-emi" key={item.id}>
+                  <CardHeader className="min-w-0"><div className="flex flex-wrap gap-2"><Badge tone={item.status === "published" ? "blue" : "neutral"}>{statusLabel(item.status)}</Badge><Badge tone="neutral">{contentTypeLabel(String(item.content_type))}</Badge></div><h2 className="mt-2 truncate text-xl font-black text-ink" title={item.title}>{item.title}</h2></CardHeader>
+                  <CardContent className="flex min-w-0 flex-1 flex-col">
+                    <p className="line-clamp-2 text-sm font-semibold text-muted">{item.description ?? "Tanpa deskripsi"}</p>
                     <p className="mt-2 text-xs font-black uppercase text-muted">Global untuk semua kelas</p>
                     <p className="mt-2 text-sm font-bold text-muted">{item.classes_count ?? 0} kelas - {item.published_classes_count ?? 0} kelas terbit</p>
                     <CultureMediaPreview item={item} />
                     <div className="mt-auto flex flex-wrap gap-2 pt-4">
                       <Button className="gap-2" type="button" variant="secondary" onClick={() => openBuilder(item)}><FilePenLine className="size-4" />Edit</Button>
-                      {item.status !== "published" ? <Button className="gap-2" type="button" onClick={() => publishMutation.mutate(item.id)}><Send className="size-4" />Terbitkan</Button> : null}
+                      {item.status !== "published" ? <Button className="gap-2" type="button" onClick={() => setPublishTarget(item)}><Send className="size-4" />Terbitkan</Button> : null}
                       {item.status !== "archived" ? <Button className="gap-2" type="button" variant="secondary" onClick={() => archiveMutation.mutate(item.id)}><Archive className="size-4" />Arsipkan</Button> : null}
-                      <Button className="gap-2" type="button" variant="danger" onClick={() => { if (confirm("Hapus konten budaya ini dari semua kelas?")) deleteMutation.mutate(item.id); }}><Trash2 className="size-4" />Hapus</Button>
+                      <Button className="gap-2" type="button" variant="danger" onClick={() => setDeleteTarget(item)}><Trash2 className="size-4" />Hapus</Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -144,6 +152,27 @@ export function AdminCultureTemplateList() {
           )}
         </div>
       ) : null}
+
+      <ConfirmDialog
+        confirmLabel={publishMutation.isPending ? "Menerbitkan..." : "Terapkan"}
+        confirmVariant="primary"
+        description={publishTarget ? `Terbitkan "${publishTarget.title}" ke semua kelas aktif (${classCount} kelas)? Konten akan langsung terlihat oleh guru dan siswa di setiap kelas.` : ""}
+        isConfirming={publishMutation.isPending}
+        onCancel={() => setPublishTarget(null)}
+        onConfirm={() => { if (publishTarget) publishMutation.mutate(publishTarget.id); }}
+        open={Boolean(publishTarget)}
+        title="Terbitkan ke semua kelas?"
+      />
+
+      <ConfirmDialog
+        confirmLabel={deleteMutation.isPending ? "Menghapus..." : "Hapus Konten"}
+        description={deleteTarget ? `Konten budaya "${deleteTarget.title}" akan dihapus secara permanen dari semua kelas.` : ""}
+        isConfirming={deleteMutation.isPending}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => { if (deleteTarget) deleteMutation.mutate(deleteTarget.id); }}
+        open={Boolean(deleteTarget)}
+        title="Hapus konten budaya?"
+      />
     </div>
   );
 }

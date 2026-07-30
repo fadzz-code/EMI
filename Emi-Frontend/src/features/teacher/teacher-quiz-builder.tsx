@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, BarChart3, LockKeyhole } from "lucide-react";
+import { ArrowLeft, BarChart3, Eye, LockKeyhole } from "lucide-react";
 
 import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState, PageHeader, Textarea } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -13,7 +13,7 @@ import { teacherRoutes } from "@/lib/routes";
 import { TeacherQuizQuestionForm } from "./teacher-quiz-question-form";
 import { teacherService } from "./teacher-service";
 import type { TeacherClassQuiz, TeacherQuizQuestion } from "./types";
-import { statusLabel } from "./teacher-utils";
+import { questionTypeLabel, statusLabel } from "./teacher-utils";
 
 const lockedMessage = "Konten kuis terkunci karena kuis sudah dipublikasikan atau sudah memiliki percobaan siswa. Buat kuis draft baru atau gunakan kuis yang belum dipublikasikan untuk mengubah soal.";
 
@@ -62,10 +62,11 @@ export function TeacherQuizBuilder({ classQuizId }: { classQuizId: string }) {
   const quiz = quizQuery.data;
   const questions = quiz?.questions ?? [];
   const locked = quiz ? isQuizLocked(quiz) : false;
+  const canPublish = quiz ? quiz.status === "draft" || quiz.status === "archived" : false;
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-wrap gap-3"><Link className="inline-flex w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 py-2 text-sm font-black text-ink transition-colors hover:bg-surface-muted" href={teacherRoutes.quizzes}><ArrowLeft className="size-4" />Kembali ke Daftar Kuis</Link><Link className="inline-flex w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-primary px-3 py-2 text-sm font-black text-primary-foreground shadow-emi transition-transform hover:-translate-y-0.5" href={teacherRoutes.quizResults(classQuizId)}><BarChart3 className="size-4" />Lihat Hasil</Link></div>
+      <div className="flex flex-wrap gap-3"><Link className="inline-flex w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 py-2 text-sm font-black text-ink transition-colors hover:bg-surface-muted" href={teacherRoutes.quizzes}><ArrowLeft className="size-4" />Kembali ke Daftar Kuis</Link><Link className="inline-flex w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 py-2 text-sm font-black text-ink transition-colors hover:bg-surface-muted" href={teacherRoutes.quizPreview(classQuizId)}><Eye className="size-4" />Preview Kuis</Link><Link className="inline-flex w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-primary px-3 py-2 text-sm font-black text-primary-foreground shadow-emi transition-transform hover:-translate-y-0.5" href={teacherRoutes.quizResults(classQuizId)}><BarChart3 className="size-4" />Lihat Hasil</Link></div>
       <PageHeader badge="Guru" description="Atur informasi kuis, jadwal pengerjaan, visibilitas hasil, dan daftar soal kelas." title="Quiz Builder" />
 
       {quizQuery.isLoading ? <LoadingState title="Memuat detail kuis" /> : null}
@@ -111,7 +112,7 @@ export function TeacherQuizBuilder({ classQuizId }: { classQuizId: string }) {
                 <label className="flex items-center gap-2 text-sm font-black text-ink"><input defaultChecked={quiz.show_result} name="show_result" type="checkbox" /> Tampilkan hasil ke siswa</label>
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Button disabled={updateMutation.isPending || publishMutation.isPending} type="submit">{updateMutation.isPending ? "Menyimpan..." : locked ? "Simpan Visibilitas Hasil" : "Simpan"}</Button>
-                  {!locked ? <Button disabled={publishMutation.isPending || updateMutation.isPending} onClick={() => { setSuccessMsg(null); publishMutation.mutate(); }} type="button" variant="secondary">{publishMutation.isPending ? "Menerbitkan..." : "Publish"}</Button> : null}
+                  {canPublish ? <Button disabled={publishMutation.isPending || updateMutation.isPending} onClick={() => { setSuccessMsg(null); publishMutation.mutate(); }} type="button" variant="secondary">{publishMutation.isPending ? "Menerbitkan..." : quiz?.status === "archived" ? "Terbitkan Ulang" : "Publish"}</Button> : null}
                 </div>
               </form>
             </CardContent>
@@ -125,7 +126,7 @@ export function TeacherQuizBuilder({ classQuizId }: { classQuizId: string }) {
                 <div className="grid gap-3">
                   {questions.map((question) => (
                     <div className="rounded-xl border-2 border-border bg-surface-muted p-4" key={question.id}>
-                      <div className="flex items-start justify-between gap-3"><div><p className="font-black text-ink">{question.order_number}. {question.question_text}</p><p className="text-xs font-bold text-muted">{question.question_type} | {question.points ?? 0} poin</p></div><Badge>{question.options?.length ?? 0} opsi</Badge></div>
+                      <div className="flex items-start justify-between gap-3"><div><p className="font-black text-ink">{question.order_number}. {question.question_text}</p><p className="text-xs font-bold text-muted">{questionTypeLabel(question.question_type)} · {question.points ?? 0} poin</p></div><Badge>{question.options?.length ?? 0} opsi</Badge></div>
                       {question.options?.length ? <ol className="mt-2 grid gap-1 text-sm text-muted">{question.options.map((option) => <li key={`${question.id}-${option.order_number}`}>{option.order_number}. {option.option_text}{option.is_correct ? " (benar)" : ""}</li>)}</ol> : null}
                       {question.image_media?.url ? (
                         // eslint-disable-next-line @next/next/no-img-element

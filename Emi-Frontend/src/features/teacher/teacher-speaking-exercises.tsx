@@ -1,13 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
-import { ListChecks, Pencil, Plus, Archive } from "lucide-react";
+import { Archive, Eye, ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
 
-import { Alert, AudioPlayer, Badge, Button, Card, CardContent, EmptyState, ErrorState, FormField, Input, LoadingState, Modal, Select, Textarea } from "@/components/ui";
+import { Alert, AudioPlayer, Badge, Button, Card, CardContent, ConfirmDialog, EmptyState, ErrorState, FormField, Input, LoadingState, Modal, Select, Textarea } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
+import { teacherRoutes } from "@/lib/routes";
 
 import { teacherService } from "./teacher-service";
+import { speakingExerciseLifecycle } from "./teacher-workflow";
 import type { TeacherClass, TeacherSpeakingExercise, TeacherSpeakingExercisePayload, TeacherSpeakingTemplate } from "./types";
 
 type FormState = {
@@ -96,6 +99,10 @@ export function TeacherSpeakingExercises() {
   const [error, setError] = useState<string | null>(null);
   const [templateError, setTemplateError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<TeacherSpeakingExercise | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<TeacherSpeakingExercise | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
 
   const classNameById = useMemo(() => new Map(classes.map((item) => [item.id, item.name])), [classes]);
@@ -260,15 +267,33 @@ export function TeacherSpeakingExercises() {
     }
   }
 
-  async function archiveExercise(exercise: TeacherSpeakingExercise) {
-    if (!token) return;
-    if (!window.confirm(`Arsipkan target speaking "${exercise.title}"?`)) return;
+  async function confirmArchiveExercise() {
+    if (!token || !archiveTarget) return;
+    setIsArchiving(true);
     try {
-      await teacherService.archiveSpeakingExercise(token, exercise.id);
+      await teacherService.archiveSpeakingExercise(token, archiveTarget.id);
       setMessage("Target speaking berhasil diarsipkan.");
+      setArchiveTarget(null);
       await reloadExercises({ classroom_id: selectedClassId || undefined, status: statusFilter || undefined });
     } catch (err) {
       setError(getFirstApiError(err));
+    } finally {
+      setIsArchiving(false);
+    }
+  }
+
+  async function confirmDeleteExercise() {
+    if (!token || !deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await teacherService.deleteSpeakingExercise(token, deleteTarget.id);
+      setMessage("Target speaking berhasil dihapus.");
+      setDeleteTarget(null);
+      await reloadExercises({ classroom_id: selectedClassId || undefined, status: statusFilter || undefined });
+    } catch (err) {
+      setError(getFirstApiError(err));
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -352,14 +377,29 @@ export function TeacherSpeakingExercises() {
               </div>
               {exercise.prompt_text ? <p className="mt-3 text-sm font-semibold leading-6 text-muted">{exercise.prompt_text}</p> : null}
               <div className="mt-auto flex flex-wrap gap-2 pt-5">
+                <Link
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-ink transition hover:-translate-y-0.5 hover:bg-surface-muted"
+                  href={teacherRoutes.speakingExercisePreview(exercise.id)}
+                >
+                  <Eye className="size-4" strokeWidth={2.5} /> Preview
+                </Link>
                 <Button onClick={() => openEdit(exercise)} type="button" variant="secondary">
                   <Pencil className="mr-2 size-4" /> Edit
                 </Button>
                 {exercise.status !== "archived" ? (
-                  <Button onClick={() => void archiveExercise(exercise)} type="button" variant="ghost">
+                  <Button onClick={() => setArchiveTarget(exercise)} type="button" variant="ghost">
                     <Archive className="mr-2 size-4" /> Arsipkan
                   </Button>
                 ) : null}
+                <Button
+                  disabled={speakingExerciseLifecycle(exercise) !== "delete"}
+                  onClick={() => setDeleteTarget(exercise)}
+                  title={speakingExerciseLifecycle(exercise) !== "delete" ? "Target yang sudah memiliki hasil siswa harus diarsipkan, tidak bisa dihapus." : undefined}
+                  type="button"
+                  variant="danger"
+                >
+                  <Trash2 className="mr-2 size-4" /> Hapus
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -459,6 +499,27 @@ export function TeacherSpeakingExercises() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        confirmLabel={isArchiving ? "Mengarsipkan..." : "Arsipkan Target"}
+        confirmVariant="secondary"
+        description={archiveTarget ? `Arsipkan target speaking "${archiveTarget.title}"? Target tidak akan tampil lagi untuk siswa.` : ""}
+        isConfirming={isArchiving}
+        onCancel={() => setArchiveTarget(null)}
+        onConfirm={() => void confirmArchiveExercise()}
+        open={Boolean(archiveTarget)}
+        title="Arsipkan target speaking?"
+      />
+
+      <ConfirmDialog
+        confirmLabel={isDeleting ? "Menghapus..." : "Hapus Target"}
+        description={deleteTarget ? `Target speaking "${deleteTarget.title}" akan dihapus secara permanen.` : ""}
+        isConfirming={isDeleting}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => void confirmDeleteExercise()}
+        open={Boolean(deleteTarget)}
+        title="Hapus target speaking?"
+      />
     </div>
   );
 }

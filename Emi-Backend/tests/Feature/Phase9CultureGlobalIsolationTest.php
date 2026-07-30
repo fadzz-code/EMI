@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AdminCultureItem;
 use App\Models\ClassCultureItem;
 use App\Models\CultureTemplate;
 use App\Models\MediaFile;
@@ -142,6 +143,28 @@ class Phase9CultureGlobalIsolationTest extends TestCase
         $this->assertNotNull(AdminCultureItem::query()->where('admin_group_id', $id)->firstOrFail()->archived_at);
         $this->admin($admin)->postJson("/api/v1/admin/culture/items/{$id}/publish")->assertOk();
         $this->assertNull(AdminCultureItem::query()->where('admin_group_id', $id)->firstOrFail()->archived_at);
+    }
+
+    public function test_publishing_backfills_classes_created_after_the_item_and_missed_by_earlier_broadcast(): void
+    {
+        $admin = User::factory()->admin()->create();
+        [$classA] = $this->classes($admin, 1);
+        $teacherA = $this->teacherFor($classA, $admin);
+        $id = $this->createItem($admin);
+
+        // A new class is created after the admin culture item already exists,
+        // so it was never included in the original all-active-classes broadcast.
+        $classB = SchoolClass::factory()->create(['school_id' => $classA->school_id, 'created_by' => $admin->id, 'name' => 'Kelas Baru']);
+        $teacherB = $this->teacherFor($classB, $admin);
+
+        $this->assertDatabaseMissing('class_culture_items', ['admin_group_id' => $id, 'class_id' => $classB->id]);
+
+        $this->admin($admin)->postJson("/api/v1/admin/culture/items/{$id}/publish")->assertOk();
+
+        $this->assertDatabaseHas('class_culture_items', ['admin_group_id' => $id, 'class_id' => $classA->id, 'status' => 'published']);
+        $this->assertDatabaseHas('class_culture_items', ['admin_group_id' => $id, 'class_id' => $classB->id, 'status' => 'published']);
+        $this->admin($teacherA)->getJson("/api/v1/classes/{$classA->id}/culture")->assertOk()->assertJsonCount(1, 'data');
+        $this->admin($teacherB)->getJson("/api/v1/classes/{$classB->id}/culture")->assertOk()->assertJsonCount(1, 'data');
     }
 
     public function test_publish_invalid_and_direct_published_create_or_update_are_rejected(): void

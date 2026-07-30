@@ -72,14 +72,29 @@ class ClassLessonService
 
     public function delete(ClassLesson $lesson, User $actor, Request $request): void
     {
-        if ($lesson->status !== 'draft' || $lesson->progress()->exists()) {
-            throw new ApiException('Materi memiliki progress dan harus diarsipkan.', 'LESSON_HAS_PROGRESS', 409);
+        if ($lesson->status === 'published') {
+            throw new ApiException('Materi yang masih published harus diarsipkan terlebih dahulu sebelum dihapus.', 'LESSON_MUST_BE_ARCHIVED', 409);
+        }
+
+        if ($lesson->progress()->exists()) {
+            throw new ApiException('Materi memiliki progress siswa dan tidak dapat dihapus.', 'LESSON_HAS_PROGRESS', 409);
         }
 
         $module = $lesson->classModule;
-        $lesson->delete();
-        $this->auditLogService->record('class_lesson.deleted', $lesson, $actor, null, ['deleted_at' => now()->toISOString()], [], $request);
+
+        DB::transaction(function () use ($lesson, $module, $actor, $request) {
+            $lesson->delete();
+            $this->auditLogService->record('class_lesson.deleted', $lesson, $actor, null, ['deleted_at' => now()->toISOString()], [], $request);
+            $this->renumber($module);
+        });
+
         $this->progressService->recalculateModuleProgressForAllStudents($module);
+    }
+
+    private function renumber(ClassModule $module): void
+    {
+        $module->lessons()->orderBy('sort_order')->get(['id'])->values()
+            ->each(fn (ClassLesson $lesson, int $index) => ClassLesson::query()->whereKey($lesson->id)->update(['sort_order' => $index + 1]));
     }
 
     public function reorder(ClassModule $module, array $lessonIds, User $actor, Request $request): void

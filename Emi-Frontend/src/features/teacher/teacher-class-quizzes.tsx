@@ -31,8 +31,8 @@ export function TeacherClassQuizzes({ classId }: { classId: string }) {
 
   return (
     <div className="grid gap-6">
-      <Link className="inline-flex w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 py-2 text-sm font-black text-ink transition-colors hover:bg-surface-muted" href={teacherRoutes.classes}>
-        <ArrowLeft className="size-4" />Kembali ke Daftar Kelas
+      <Link className="inline-flex w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 py-2 text-sm font-black text-ink transition-colors hover:bg-surface-muted" href={teacherRoutes.classDetail(classId)}>
+        <ArrowLeft className="size-4" />Kembali ke Detail Kelas
       </Link>
       <PageHeader badge="Guru" description="Kelola kuis kelas, pantau attempt siswa, dan buka hasil penilaian." title="Kuis Kelas" />
 
@@ -73,7 +73,7 @@ export function TeacherClassQuizzes({ classId }: { classId: string }) {
                         <div className="rounded-xl border-2 border-border bg-surface-muted p-3"><dt className="font-black uppercase text-muted">Buka</dt><dd className="mt-1 font-bold text-ink">{formatDate(quiz.open_at)}</dd></div>
                         <div className="rounded-xl border-2 border-border bg-surface-muted p-3"><dt className="font-black uppercase text-muted">Tutup</dt><dd className="mt-1 font-bold text-ink">{formatDate(quiz.close_at)}</dd></div>
                       </dl>
-                      <div className="mt-auto flex flex-wrap gap-2 pt-4"><Link className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-primary px-4 py-2 text-sm font-black text-primary-foreground shadow-emi transition-transform hover:-translate-y-0.5" href={teacherRoutes.quizBuilder(quiz.id)}>{locked ? <LockKeyhole className="size-4" /> : <Pencil className="size-4" />}{locked ? "Lihat Detail" : "Buka Builder"}</Link><Link className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-ink transition-colors hover:bg-surface-muted" href={teacherRoutes.quizResults(quiz.id)}><BarChart3 className="size-4" />Hasil</Link></div>
+                      <div className="mt-auto flex flex-wrap gap-2 pt-4"><Link className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-primary px-4 py-2 text-sm font-black text-primary-foreground shadow-emi transition-transform hover:-translate-y-0.5" href={teacherRoutes.quizBuilder(quiz.id)}><Pencil className="size-4" />Edit Kuis</Link><Link className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-ink transition-colors hover:bg-surface-muted" href={teacherRoutes.quizResults(quiz.id)}><BarChart3 className="size-4" />Hasil</Link></div>
                     </CardContent>
                   </Card>
                 );

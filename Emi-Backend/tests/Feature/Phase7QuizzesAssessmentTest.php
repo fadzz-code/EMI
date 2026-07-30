@@ -451,10 +451,31 @@ class Phase7QuizzesAssessmentTest extends TestCase
         $this->assertDatabaseHas('quiz_attempts', ['class_quiz_id' => $published->id, 'student_id' => $student->id]);
         $this->withToken($this->tokenFor($teacher))->deleteJson("/api/v1/class-quizzes/{$publishedWithoutAttempt->id}")
             ->assertConflict()
-            ->assertJsonPath('code', 'QUIZ_MUST_BE_DRAFT');
+            ->assertJsonPath('code', 'QUIZ_MUST_BE_ARCHIVED');
 
         $this->withToken($this->tokenFor($teacher))->deleteJson("/api/v1/class-quizzes/{$draft->id}")->assertOk();
         $this->assertSoftDeleted('class_quizzes', ['id' => $draft->id]);
+
+        $this->withToken($this->tokenFor($teacher))->postJson("/api/v1/class-quizzes/{$publishedWithoutAttempt->id}/archive")->assertOk();
+        $this->withToken($this->tokenFor($teacher))->deleteJson("/api/v1/class-quizzes/{$publishedWithoutAttempt->id}")->assertOk();
+        $this->assertSoftDeleted('class_quizzes', ['id' => $publishedWithoutAttempt->id]);
+    }
+
+    public function test_teacher_can_republish_archived_quiz(): void
+    {
+        $admin = User::factory()->admin()->create();
+        [$class] = $this->classes($admin, 1);
+        $teacher = $this->teacherFor($class, $admin);
+        $quiz = $this->publishedQuiz($class, $teacher);
+
+        $this->withToken($this->tokenFor($teacher))->postJson("/api/v1/class-quizzes/{$quiz->id}/archive")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'archived');
+
+        $this->withToken($this->tokenFor($teacher))->postJson("/api/v1/class-quizzes/{$quiz->id}/publish")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published')
+            ->assertJsonPath('data.archived_at', null);
     }
 
     private function publishedQuiz(SchoolClass $class, User $admin, array $attributes = []): ClassQuiz

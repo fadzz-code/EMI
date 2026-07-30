@@ -72,7 +72,7 @@ export function StudentQuizResult({ quizId }: { quizId: string }) {
               <p className="mt-2 text-5xl font-black text-ink">{attempt.score_percent !== null ? formatScoreOutOf100(attempt.score_percent) : "-"}</p>
               <p className="mt-2 text-sm font-bold text-muted">
                 {attempt.score_points !== null && attempt.max_points !== null
-                  ? `${attempt.score_points} dari ${attempt.max_points} poin`
+                  ? `Poin didapat ${attempt.score_points}, dari ${attempt.max_points} poin`
                   : attempt.correct_count !== null
                     ? `${formatCount(attempt.correct_count)} jawaban benar`
                     : "Menunggu penilaian"}

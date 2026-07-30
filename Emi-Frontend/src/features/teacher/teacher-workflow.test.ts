@@ -19,9 +19,11 @@ describe("teacher workflow", () => {
     expect(progressStudentIdentity({ full_name: "Nama Sama" })).toBeNull();
   });
 
-  it("deletes only draft quizzes without attempts", () => {
+  it("deletes draft or archived quizzes without attempts", () => {
     expect(quizLifecycle({ status: "draft", attempts_count: 0 })).toBe("delete");
     expect(quizLifecycle({ status: "draft", attempts_count: 1 })).toBe("archive");
+    expect(quizLifecycle({ status: "archived", attempts_count: 0 })).toBe("delete");
+    expect(quizLifecycle({ status: "archived", attempts_count: 1 })).toBe("archive");
     expect(quizLifecycle({ status: "published", attempts_count: 0 })).toBe("archive");
   });
 });

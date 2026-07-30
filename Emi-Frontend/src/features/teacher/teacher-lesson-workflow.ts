@@ -39,11 +39,12 @@ export function isValidLessonMedia(type: TeacherLessonContentType, file: Pick<Fi
 }
 
 export function lessonPayload(form: TeacherLessonForm): TeacherLessonPayload {
+  const parsedSortOrder = Number.parseInt(form.sort_order, 10);
   const base = {
     title: form.title.trim(),
     description: form.description.trim() || null,
     content_type: form.content_type,
-    sort_order: Number.parseInt(form.sort_order, 10),
+    sort_order: Number.isNaN(parsedSortOrder) ? undefined : parsedSortOrder,
   };
   if (form.content_type === "text") return { ...base, content_body: form.content_body.trim(), media_id: null, external_url: null };
   if (form.content_type === "video" || form.content_type === "link") return { ...base, content_body: null, media_id: null, external_url: form.external_url.trim() };
@@ -55,7 +56,7 @@ export function validateLessonForm(form: TeacherLessonForm): string | null {
   if (form.content_type === "text" && !form.content_body.trim()) return "Isi materi teks wajib diisi.";
   if ((form.content_type === "video" || form.content_type === "link") && !/^https:\/\//i.test(form.external_url.trim())) return "URL materi wajib menggunakan HTTPS.";
   if (mediaPurposeForLesson(form.content_type) && !form.media_id) return "Unggah file yang sesuai sebelum menyimpan materi.";
-  if (!Number.isInteger(Number(form.sort_order)) || Number(form.sort_order) < 1) return "Urutan tampil minimal 1.";
+  if (form.sort_order.trim() !== "" && (!Number.isInteger(Number(form.sort_order)) || Number(form.sort_order) < 1)) return "Urutan tampil minimal 1.";
   return null;
 }
 

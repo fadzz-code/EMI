@@ -24,6 +24,7 @@ class TeacherSpeakingExerciseController extends Controller
 
         $exercises = SpeakingExercise::query()
             ->with(['referenceAudio', 'classroom.school', 'creator'])
+            ->withCount('attempts')
             ->whereIn('classroom_id', $classIds)
             ->when($status, fn ($query) => $query->where('status', $status))
             ->when($classroomId, fn ($query) => $query->where('classroom_id', $classroomId))
@@ -91,7 +92,7 @@ class TeacherSpeakingExerciseController extends Controller
     {
         $this->authorizeTeacherExercise($request, $exercise);
 
-        return ApiResponse::success('Detail target speaking berhasil diambil.', new SpeakingExerciseResource($exercise->load(['classroom.school', 'creator'])));
+        return ApiResponse::success('Detail target speaking berhasil diambil.', new SpeakingExerciseResource($exercise->load(['classroom.school', 'creator'])->loadCount('attempts')));
     }
 
     public function update(UpdateTeacherSpeakingExerciseRequest $request, SpeakingExercise $exercise): JsonResponse

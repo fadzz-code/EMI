@@ -1,38 +1,82 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Archive, ArrowLeft, Pencil, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
 
-import { Badge, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, PageHeader, StatsCard } from "@/components/ui";
+import { Alert, Badge, Button, Card, CardContent, CardHeader, ConfirmDialog, EmptyState, ErrorState, LoadingState, Modal, PageHeader, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 import { teacherRoutes } from "@/lib/routes";
 
 import { TeacherClassNav } from "./teacher-class-nav";
+import { TeacherModuleCreateForm } from "./teacher-module-create";
 import { teacherService } from "./teacher-service";
 import { formatCount, formatDate, formatOptional, statusLabel } from "./teacher-utils";
+import { moduleLifecycle } from "./teacher-workflow";
+import type { TeacherClassModule } from "./types";
 
 export function TeacherClassModules({ classId }: { classId: string }) {
   const { token } = useAuth();
+  const queryClient = useQueryClient();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<TeacherClassModule | null>(null);
+
   const modulesQuery = useQuery({
     queryKey: ["teacher", "classes", classId, "modules", "page"],
     queryFn: () => teacherService.classModules(token ?? "", classId),
     enabled: Boolean(token && classId),
   });
 
+  async function invalidateModules() {
+    await queryClient.invalidateQueries({ queryKey: ["teacher", "classes", classId, "modules"] });
+  }
+
+  const createMutation = useMutation({
+    mutationFn: (payload: { title: string; description?: string | null; sort_order?: number }) =>
+      teacherService.createClassModule(token ?? "", classId, payload),
+    onSuccess: async () => {
+      setCreateOpen(false);
+      await invalidateModules();
+    },
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: (moduleId: string) => teacherService.archiveClassModule(token ?? "", moduleId),
+    onSuccess: async () => {
+      await invalidateModules();
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (moduleId: string) => teacherService.deleteClassModule(token ?? "", moduleId),
+    onSuccess: async () => {
+      setDeleteTarget(null);
+      await invalidateModules();
+    },
+  });
+
   const modules = modulesQuery.data?.items ?? [];
   const publishedCount = modules.filter((module) => module.status === "published").length;
+  const actionError = archiveMutation.error ?? deleteMutation.error;
 
   return (
     <div className="grid gap-8">
-      <Link className="group inline-flex min-h-11 w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-primary transition hover:-translate-y-0.5 hover:bg-[var(--color-primary-muted)] hover:shadow-emi" href={teacherRoutes.classes}>
-        <ArrowLeft className="size-5" strokeWidth={2.5} /> Kembali ke Daftar Kelas
+      <Link className="group inline-flex min-h-11 w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-primary transition hover:-translate-y-0.5 hover:bg-[var(--color-primary-muted)] hover:shadow-emi" href={teacherRoutes.classDetail(classId)}>
+        <ArrowLeft className="size-5" strokeWidth={2.5} /> Kembali ke Detail Kelas
       </Link>
-      <PageHeader badge="Guru" description="Kelola modul pembelajaran yang sudah tersedia untuk kelas Anda." title="Modul Kelas" />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <PageHeader badge="Guru" description="Kelola modul pembelajaran untuk kelas ini. Perubahan hanya berlaku untuk kelas ini." title="Modul Kelas" />
+        <Button onClick={() => setCreateOpen(true)} type="button">
+          <Plus className="size-4" strokeWidth={2.5} />
+          Tambah Modul
+        </Button>
+      </div>
 
       <TeacherClassNav classId={classId} />
 
+      {actionError ? <Alert tone="error">{getFirstApiError(actionError)}</Alert> : null}
       {modulesQuery.isLoading ? <LoadingState title="Memuat modul kelas" /> : null}
       {modulesQuery.isError ? <ErrorState description={getFirstApiError(modulesQuery.error)} onRetry={() => void modulesQuery.refetch()} title="Gagal memuat modul" /> : null}
 
@@ -73,6 +117,29 @@ export function TeacherClassModules({ classId }: { classId: string }) {
                       </div>
                     </dl>
                     <ModuleLessons token={token ?? ""} moduleId={module.id} />
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {module.status !== "archived" ? (
+                        <button
+                          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 text-xs font-black text-ink transition hover:-translate-y-0.5 hover:bg-surface-muted disabled:opacity-50"
+                          disabled={archiveMutation.isPending}
+                          onClick={() => {
+                            if (confirm(`Arsipkan modul "${module.title}"? Modul tidak akan terlihat oleh siswa.`)) archiveMutation.mutate(module.id);
+                          }}
+                          type="button"
+                        >
+                          <Archive className="size-4" strokeWidth={2.5} /> Arsipkan
+                        </button>
+                      ) : null}
+                      <button
+                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-danger/40 bg-surface px-3 text-xs font-black text-danger transition hover:-translate-y-0.5 hover:border-danger disabled:opacity-50"
+                        disabled={deleteMutation.isPending || moduleLifecycle(module) !== "delete"}
+                        onClick={() => setDeleteTarget(module)}
+                        title={moduleLifecycle(module) !== "delete" ? "Modul yang masih published harus diarsipkan terlebih dahulu sebelum dihapus." : undefined}
+                        type="button"
+                      >
+                        <Trash2 className="size-4" strokeWidth={2.5} /> Hapus
+                      </button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -80,6 +147,26 @@ export function TeacherClassModules({ classId }: { classId: string }) {
           </div>
         )
       ) : null}
+
+      <Modal onClose={() => setCreateOpen(false)} open={createOpen} title="Tambah Modul Kelas">
+        <TeacherModuleCreateForm
+          error={createMutation.error}
+          isSubmitting={createMutation.isPending}
+          onCancel={() => setCreateOpen(false)}
+          onSubmit={(payload) => createMutation.mutate(payload)}
+        />
+      </Modal>
+
+      <ConfirmDialog
+        confirmLabel={deleteMutation.isPending ? "Menghapus..." : "Hapus Modul"}
+        description={deleteTarget ? `Modul "${deleteTarget.title}" akan dihapus secara permanen dan hanya berlaku untuk kelas ini.` : ""}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) deleteMutation.mutate(deleteTarget.id);
+        }}
+        open={Boolean(deleteTarget)}
+        title="Hapus modul?"
+      />
     </div>
   );
 }

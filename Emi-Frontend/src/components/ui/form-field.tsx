@@ -5,7 +5,7 @@ export function FormField({
   error,
   children,
 }: {
-  label: string;
+  label: ReactNode;
   error?: string;
   children: ReactNode;
 }) {

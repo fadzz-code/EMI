@@ -3,14 +3,15 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, FileDown } from "lucide-react";
 
-import { Badge, Card, CardContent, EmptyState, ErrorState, LoadingState, PageHeader, Pagination, StatsCard } from "@/components/ui";
+import { Badge, Button, Card, CardContent, EmptyState, ErrorState, LoadingState, PageHeader, Pagination, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 import { teacherRoutes } from "@/lib/routes";
 
 import { teacherService } from "./teacher-service";
+import { TeacherClassProgressPrintReport } from "./teacher-print-report";
 import { formatCount, formatOptional, formatPercent } from "./teacher-utils";
 import { teacherProgressKey } from "./teacher-workflow";
 
@@ -32,13 +33,23 @@ export function TeacherProgressReport() {
   const students = progressQuery.data?.items ?? [];
   const summary = summaryQuery.data?.summary;
 
+  function printReport() {
+    window.print();
+  }
+
   return (
     <div className="grid gap-8">
-      <PageHeader
-        badge="Laporan"
-        description={`Laporan progress belajar siswa untuk kelas aktif: ${user?.active_class?.name ?? "-"}`}
-        title="Laporan Progress Siswa"
-      />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <PageHeader
+          badge="Laporan"
+          description={`Laporan progress belajar siswa untuk kelas aktif: ${user?.active_class?.name ?? "-"}`}
+          title="Laporan Progress Siswa"
+        />
+        <Button disabled={progressQuery.isLoading || summaryQuery.isLoading} onClick={printReport} type="button">
+          <FileDown className="size-4" strokeWidth={2.5} />
+          Cetak PDF
+        </Button>
+      </div>
 
       {progressQuery.isLoading || summaryQuery.isLoading ? <LoadingState title="Memuat laporan progress" /> : null}
       {summaryQuery.isError ? <ErrorState description={getFirstApiError(summaryQuery.error)} onRetry={() => void summaryQuery.refetch()} title="Gagal memuat ringkasan kelas" /> : null}
@@ -155,6 +166,8 @@ export function TeacherProgressReport() {
           </div>
         )
       ) : null}
+
+      <TeacherClassProgressPrintReport className={user?.active_class?.name} students={students} summary={summary} />
     </div>
   );
 }

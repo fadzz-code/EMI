@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ChartNoAxesColumnIncreasing } from "lucide-react";
+import { ArrowLeft, ChartNoAxesColumnIncreasing, FileDown } from "lucide-react";
 
-import { Card, CardContent, CardHeader, ErrorState, LoadingState, PageHeader, StatsCard } from "@/components/ui";
+import { Button, Card, CardContent, CardHeader, ErrorState, LoadingState, PageHeader, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 import { teacherRoutes } from "@/lib/routes";
 
 import { teacherService } from "./teacher-service";
+import { TeacherStudentPrintReport } from "./teacher-print-report";
 import { formatCount, formatOptional, formatPercent } from "./teacher-utils";
 import { teacherProgressKey } from "./teacher-workflow";
 
@@ -22,18 +23,35 @@ export function TeacherStudentDetail({ studentId }: { studentId: string }) {
     enabled: Boolean(token && studentId && classId),
   });
 
+  const quizHistoryQuery = useQuery({
+    queryKey: ["teacher", "quiz-history", studentId],
+    queryFn: () => teacherService.studentQuizHistory(token ?? "", studentId),
+    enabled: Boolean(token && studentId),
+  });
+
   const student = studentQuery.data;
+  const quizRows = quizHistoryQuery.data ?? [];
+
+  function printReport() {
+    window.print();
+  }
 
   return (
     <div className="grid gap-8">
-      <Link
-        className="inline-flex min-h-11 w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-foreground transition hover:-translate-y-0.5 hover:bg-surface-muted hover:shadow-emi"
-        href={teacherRoutes.students}
-      >
-        <ArrowLeft className="size-4" strokeWidth={2.5} />
-        Kembali ke Daftar Siswa
-      </Link>
-      
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <Link
+          className="inline-flex min-h-11 w-fit items-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-foreground transition hover:-translate-y-0.5 hover:bg-surface-muted hover:shadow-emi"
+          href={teacherRoutes.students}
+        >
+          <ArrowLeft className="size-4" strokeWidth={2.5} />
+          Kembali ke Daftar Siswa
+        </Link>
+        <Button disabled={studentQuery.isLoading} onClick={printReport} type="button">
+          <FileDown className="size-4" strokeWidth={2.5} />
+          Cetak Rapor PDF
+        </Button>
+      </div>
+
       {studentQuery.isLoading ? <LoadingState title="Memuat detail siswa" /> : null}
       {studentQuery.isError ? (
         <ErrorState
@@ -114,6 +132,8 @@ export function TeacherStudentDetail({ studentId }: { studentId: string }) {
           </section>
         </>
       ) : null}
+
+      <TeacherStudentPrintReport className={user?.active_class?.name} quizRows={quizRows} student={student} />
     </div>
   );
 }

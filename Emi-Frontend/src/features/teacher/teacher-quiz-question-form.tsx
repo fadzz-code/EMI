@@ -1,9 +1,9 @@
 "use client";
 
-import { type Dispatch, type FormEvent, type SetStateAction, useState } from "react";
+import { type ChangeEvent, type Dispatch, type FormEvent, type SetStateAction, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
-import { Alert, Button, Card, CardContent, CardHeader, FilePreview, FormField, Input, Select, Textarea, UploadComponent } from "@/components/ui";
+import { Alert, Button, Card, CardContent, CardHeader, FormField, InfoPopover, Input, Select, Textarea } from "@/components/ui";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { teacherService } from "./teacher-service";
@@ -39,6 +39,10 @@ function toForm(question: TeacherQuizQuestion | null, defaultOrder: number): Que
   };
 }
 
+function existingImageUrl(question: TeacherQuizQuestion | null) {
+  return question?.image_media?.url ?? null;
+}
+
 function nullable(value: string) {
   const trimmed = value.trim();
   return trimmed === "" ? null : trimmed;
@@ -55,30 +59,47 @@ function optionsPayload(options: OptionForm[]) {
 export function TeacherQuizQuestionForm({ classQuizId, defaultOrder, editingQuestion, onCancelEdit, onSaved, token }: { classQuizId: string; defaultOrder: number; editingQuestion: TeacherQuizQuestion | null; onCancelEdit: () => void; onSaved: () => void; token: string }) {
   const [form, setForm] = useState<QuestionFormState>(() => toForm(editingQuestion, defaultOrder));
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(() => existingImageUrl(editingQuestion));
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  const uploadSequence = useRef(0);
 
   const saveMutation = useMutation({
     mutationFn: (payload: Partial<TeacherQuizQuestion>) => editingQuestion ? teacherService.updateQuizQuestion(token, editingQuestion.id, payload) : teacherService.createQuizQuestion(token, classQuizId, payload),
     onSuccess: onSaved,
   });
 
-  async function uploadImage() {
-    if (!imageFile) {
+  async function chooseImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    const sequence = uploadSequence.current + 1;
+    uploadSequence.current = sequence;
+    setUploadError(null);
+
+    if (!file) {
       return;
     }
-    setUploadError(null);
-    setUploadSuccess(null);
+
+    setImageFile(file);
+    setImagePreviewUrl(URL.createObjectURL(file));
     setIsUploading(true);
+
     try {
-      const media = await teacherService.uploadQuestionImage(token, imageFile);
+      const media = await teacherService.uploadQuestionImage(token, file);
+      if (sequence !== uploadSequence.current) {
+        return;
+      }
       setForm((current) => ({ ...current, image_media_id: media.id }));
-      setUploadSuccess(`Gambar ${media.original_name ?? imageFile.name} berhasil diunggah.`);
     } catch (error) {
+      if (sequence !== uploadSequence.current) {
+        return;
+      }
       setUploadError(getFirstApiError(error));
+      setImageFile(null);
+      setImagePreviewUrl(existingImageUrl(editingQuestion));
     } finally {
-      setIsUploading(false);
+      if (sequence === uploadSequence.current) {
+        setIsUploading(false);
+      }
     }
   }
 
@@ -118,7 +139,6 @@ export function TeacherQuizQuestionForm({ classQuizId, defaultOrder, editingQues
         <form className="grid gap-4" onSubmit={submit}>
           {saveMutation.error ? <Alert tone="error">{getFirstApiError(saveMutation.error)}</Alert> : null}
           {uploadError ? <Alert tone="error">{uploadError}</Alert> : null}
-          {uploadSuccess ? <Alert tone="success">{uploadSuccess}</Alert> : null}
 
           <div className="grid gap-4 md:grid-cols-[1fr_160px_140px]">
             <FormField label="Tipe soal">
@@ -133,12 +153,22 @@ export function TeacherQuizQuestionForm({ classQuizId, defaultOrder, editingQues
 
           <FormField label="Teks soal"><Textarea className="min-h-32" onChange={(event) => setForm((current) => ({ ...current, question_text: event.target.value }))} required value={form.question_text} /></FormField>
 
-          <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
-            <FormField label="Image media ID"><Input onChange={(event) => setForm((current) => ({ ...current, image_media_id: event.target.value }))} placeholder="Opsional, terisi otomatis setelah upload" value={form.image_media_id} /></FormField>
-            <div className="flex gap-2"><Button disabled={!imageFile || isUploading} onClick={uploadImage} type="button" variant="secondary">{isUploading ? "Upload..." : "Upload Gambar"}</Button>{form.image_media_id ? <Button onClick={() => setForm((current) => ({ ...current, image_media_id: "" }))} type="button" variant="ghost">Lepas</Button> : null}</div>
-          </div>
-          <UploadComponent accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" onChange={(event) => setImageFile(event.target.files?.[0] ?? null)} />
-          {imageFile ? <FilePreview name={imageFile.name} size={`${Math.ceil(imageFile.size / 1024)} KB`} type={imageFile.type || "Gambar"} /> : null}
+          <FormField label="Gambar soal (opsional)">
+            <label className="grid cursor-pointer gap-2 rounded-lg border-2 border-dashed border-ink bg-white p-5 text-sm font-bold text-ink transition hover:bg-yellow-50">
+              <span>{isUploading ? "Mengunggah gambar..." : "Pilih file gambar"}</span>
+              <input accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" className="text-sm" disabled={isUploading} onChange={chooseImage} type="file" />
+            </label>
+          </FormField>
+          {imagePreviewUrl ? (
+            <div className="flex flex-col gap-2 rounded-lg border-2 border-ink bg-white p-3 sm:flex-row sm:items-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img alt="Pratinjau gambar soal" className="max-h-40 w-fit rounded-lg border-2 border-border object-contain" src={imagePreviewUrl} />
+              <div className="text-sm">
+                <p className="font-black text-ink">{imageFile ? imageFile.name : "Gambar tersimpan"}</p>
+                {imageFile ? <p className="text-xs text-slate-500">{Math.ceil(imageFile.size / 1024)} KB · {imageFile.type || "image"}</p> : null}
+              </div>
+            </div>
+          ) : null}
 
           {isMultipleChoice ? <MultipleChoiceFields form={form} setForm={setForm} /> : <ShortAnswerFields form={form} setForm={setForm} />}
 
@@ -173,8 +203,12 @@ function ShortAnswerFields({ form, setForm }: { form: QuestionFormState; setForm
   return (
     <div className="grid gap-4 rounded-xl border-2 border-border bg-[var(--color-primary-muted)] p-4 md:grid-cols-3">
       <FormField label="Jawaban benar"><Input onChange={(event) => setForm((current) => ({ ...current, correct_answer_text: event.target.value }))} required value={form.correct_answer_text} /></FormField>
-      <FormField label="Fuzzy matching"><Select onChange={(event) => setForm((current) => ({ ...current, use_fuzzy_matching: event.target.value as "true" | "false" }))} value={form.use_fuzzy_matching}><option value="false">Tidak</option><option value="true">Ya</option></Select></FormField>
-      <FormField label="Threshold fuzzy"><Input disabled={form.use_fuzzy_matching === "false"} max={100} min={1} onChange={(event) => setForm((current) => ({ ...current, fuzzy_threshold: event.target.value }))} type="number" value={form.fuzzy_threshold} /></FormField>
+      <FormField label={<span className="flex items-center gap-1.5">Koreksi jawaban mirip<InfoPopover label="Info koreksi jawaban mirip"><p className="font-black text-ink">Apa ini?</p><p className="mt-1">Kalau diaktifkan (Ya), sistem tetap menganggap jawaban siswa benar walau ada typo kecil atau penulisan yang sedikit berbeda dari jawaban baku.</p><p className="mt-2">Kalau dimatikan (Tidak), jawaban siswa harus sama persis huruf demi huruf dengan jawaban benar.</p></InfoPopover></span>}>
+        <Select onChange={(event) => setForm((current) => ({ ...current, use_fuzzy_matching: event.target.value as "true" | "false" }))} value={form.use_fuzzy_matching}><option value="false">Tidak, harus persis sama</option><option value="true">Ya, boleh sedikit beda</option></Select>
+      </FormField>
+      <FormField label={<span className="flex items-center gap-1.5">Tingkat kemiripan<InfoPopover label="Info tingkat kemiripan"><p className="font-black text-ink">Semakin besar angkanya, semakin ketat.</p><p className="mt-1">Nilai tinggi (mendekati 100): jawaban siswa harus sangat mirip dengan jawaban benar, hanya typo kecil yang ditoleransi.</p><p className="mt-2">Nilai rendah: sistem lebih longgar dan menerima jawaban yang berbeda cukup jauh dari jawaban benar.</p><p className="mt-2 font-bold">Rekomendasi: 80-90.</p></InfoPopover></span>}>
+        <Input disabled={form.use_fuzzy_matching === "false"} max={100} min={1} onChange={(event) => setForm((current) => ({ ...current, fuzzy_threshold: event.target.value }))} type="number" value={form.fuzzy_threshold} />
+      </FormField>
     </div>
   );
 }

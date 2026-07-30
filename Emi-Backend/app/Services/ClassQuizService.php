@@ -70,9 +70,6 @@ class ClassQuizService
     {
         $quiz->load('schoolClass.school', 'questions.options', 'questions.imageMedia');
         $this->assertActiveClass($quiz->schoolClass);
-        if ($quiz->status === 'archived') {
-            throw new ApiException('Kuis archived tidak dapat dipublish.', 'QUIZ_ARCHIVED', 409);
-        }
         if ($quiz->questions->isEmpty()) {
             throw new ApiException('Kuis harus memiliki soal.', 'QUIZ_HAS_NO_QUESTIONS', 409);
         }
@@ -99,10 +96,10 @@ class ClassQuizService
     public function delete(ClassQuiz $quiz, User $actor, Request $request): void
     {
         if ($quiz->attempts()->exists()) {
-            throw new ApiException('Kuis memiliki attempt dan harus diarsipkan.', 'QUIZ_HAS_ATTEMPTS', 409);
+            throw new ApiException('Kuis memiliki attempt dan harus tetap diarsipkan.', 'QUIZ_HAS_ATTEMPTS', 409);
         }
-        if ($quiz->status !== 'draft') {
-            throw new ApiException('Hanya draft kuis yang dapat dihapus.', 'QUIZ_MUST_BE_DRAFT', 409);
+        if ($quiz->status === 'published') {
+            throw new ApiException('Kuis yang masih published harus diarsipkan terlebih dahulu sebelum dihapus.', 'QUIZ_MUST_BE_ARCHIVED', 409);
         }
         $quiz->delete();
         $this->auditLogService->record('class_quiz.deleted', $quiz, $actor, null, ['deleted_at' => now()->toISOString()], [], $request);

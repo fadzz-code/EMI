@@ -9,7 +9,9 @@ use Throwable;
 class GeminiEmbeddingService
 {
     protected string $apiKey;
+
     protected string $model;
+
     protected int $timeoutSeconds;
 
     public function __construct()
@@ -23,13 +25,13 @@ class GeminiEmbeddingService
     /**
      * Mengubah teks menjadi array Float Vector menggunakan Gemini API.
      *
-     * @param string $text
      * @return array<float> Array dari nilai vektor (misal: 768 dimensi).
      */
     public function generateEmbedding(string $text): array
     {
         if (empty($this->apiKey)) {
             Log::error('Gemini Embedding Error: GEMINI_API_KEY belum diatur di file .env');
+
             return [];
         }
 
@@ -45,9 +47,9 @@ class GeminiEmbeddingService
             'model' => "models/{$this->model}",
             'content' => [
                 'parts' => [
-                    ['text' => $cleanedText]
-                ]
-            ]
+                    ['text' => $cleanedText],
+                ],
+            ],
         ];
 
         try {
@@ -57,15 +59,15 @@ class GeminiEmbeddingService
 
             if ($response->successful()) {
                 $values = data_get($response->json(), 'embedding.values', []);
-                if (is_array($values) && !empty($values)) {
+                if (is_array($values) && ! empty($values)) {
                     return $values;
                 }
             }
 
-            Log::error("Gemini Embedding API Error (Status {$response->status()}): " . $response->body());
+            Log::error("Gemini Embedding API Error (Status {$response->status()}): ".$response->body());
 
         } catch (Throwable $e) {
-            Log::error("Gemini Embedding Exception: " . $e->getMessage());
+            Log::error('Gemini Embedding Exception: '.$e->getMessage());
         }
 
         return [];

@@ -57,7 +57,7 @@ export type TeacherLessonPayload = {
   content_body: string | null;
   media_id: string | null;
   external_url: string | null;
-  sort_order: number;
+  sort_order?: number;
 };
 
 export type TeacherLessonForm = {
@@ -68,6 +68,17 @@ export type TeacherLessonForm = {
   media_id: string;
   external_url: string;
   sort_order: string;
+};
+
+export type TeacherLessonContent = {
+  type: TeacherLessonContentType;
+  content_body?: string | null;
+  url?: string | null;
+  media?: {
+    id: string;
+    mime_type: string;
+    visibility: TeacherMediaVisibility;
+  } | null;
 };
 
 export type TeacherClassLesson = {
@@ -270,6 +281,7 @@ export type TeacherSpeakingExercise = SpeakingExercise & {
     school?: { id?: string; name?: string } | null;
   } | null;
   created_by?: { id?: string; full_name?: string | null } | null;
+  attempts_count?: number;
 };
 
 export type TeacherSpeakingExercisePayload = {
@@ -338,6 +350,20 @@ export type TeacherProgressStudentRow = {
   published_quizzes?: number;
   quizzes_attempted?: number;
   quizzes_completed?: number;
+  average_best_quiz_score_percent?: number | null;
+};
+
+export type TeacherQuizResultRow = {
+  quiz: { id: string; title: string; show_result: boolean };
+  student: { id: string; full_name: string };
+  school: { id: string; name: string };
+  class: { id: string; name: string };
+  best_attempt_number: number | null;
+  attempt_count: number;
+  final_attempt_count: number;
+  best_score_percent: number | null;
+  latest_status?: string | null;
+  latest_submitted_at?: string | null;
 };
 
 export type PaginatedResult<T> = {
