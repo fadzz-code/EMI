@@ -7,8 +7,9 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../core/errors/app_error.dart';
-import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
+import '../../../shared/widgets/student_style.dart';
+import '../../../shared/widgets/student_widgets.dart';
 import '../data/speaking_models.dart';
 import '../data/speaking_providers.dart';
 import '../data/speaking_repository.dart';
@@ -126,7 +127,6 @@ class _StudentSpeakingDetailScreenState
         child: exercise.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => _ErrorState(
-            message: error.toString(),
             onRetry: () =>
                 ref.invalidate(speakingExerciseProvider(widget.exerciseId)),
           ),
@@ -150,8 +150,7 @@ class _StudentSpeakingDetailScreenState
                 const SizedBox(height: EmiSpacing.md),
               _CaptureSourceSwitch(
                 source: _captureSource,
-                disabled:
-                    recorder.recording || hardwareBusy || _submitting,
+                disabled: recorder.recording || hardwareBusy || _submitting,
                 onChanged: (source) async {
                   if (source == _captureSource) return;
                   if (source == _CaptureSource.microphone) {
@@ -161,9 +160,7 @@ class _StudentSpeakingDetailScreenState
                   } else {
                     await ref
                         .read(
-                          speakingRecorderProvider(
-                            widget.exerciseId,
-                          ).notifier,
+                          speakingRecorderProvider(widget.exerciseId).notifier,
                         )
                         .deleteRecording();
                   }
@@ -179,9 +176,7 @@ class _StudentSpeakingDetailScreenState
                     await _previewPlayer.pause();
                     await ref
                         .read(
-                          speakingRecorderProvider(
-                            widget.exerciseId,
-                          ).notifier,
+                          speakingRecorderProvider(widget.exerciseId).notifier,
                         )
                         .start();
                   },
@@ -194,9 +189,7 @@ class _StudentSpeakingDetailScreenState
                     await _previewPlayer.stop();
                     await ref
                         .read(
-                          speakingRecorderProvider(
-                            widget.exerciseId,
-                          ).notifier,
+                          speakingRecorderProvider(widget.exerciseId).notifier,
                         )
                         .deleteRecording();
                   },
@@ -212,7 +205,8 @@ class _StudentSpeakingDetailScreenState
                   onOpenSettings: openAppSettings,
                 ),
               if (_captureSource == _CaptureSource.microphone &&
-                  recorder.path != null) ...[
+                  recorder.path != null &&
+                  !recorder.recording) ...[
                 const SizedBox(height: EmiSpacing.md),
                 _AudioBox(
                   title: 'Preview Rekaman',
@@ -258,9 +252,13 @@ class _StudentSpeakingDetailScreenState
               if (attempt != null) ...[
                 const SizedBox(height: EmiSpacing.md),
                 attempt.when(
-                  loading: () => const EmiCard(child: Text('Memuat status...')),
+                  loading: () => const StudentCard(
+                    child: Text(
+                      'Memuat status...',
+                      style: TextStyle(color: StudentStyle.inkMuted),
+                    ),
+                  ),
                   error: (error, _) => _ErrorState(
-                    message: error.toString(),
                     onRetry: () =>
                         ref.invalidate(speakingAttemptProvider(_attemptId!)),
                   ),
@@ -345,23 +343,58 @@ class _ExerciseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EmiCard(
+    return StudentCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(exercise.title, style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            exercise.title,
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(color: StudentStyle.ink),
+          ),
           const SizedBox(height: EmiSpacing.sm),
-          if (exercise.promptText != null) Text(exercise.promptText!),
+          if (exercise.promptText != null)
+            Text(
+              exercise.promptText!,
+              style: const TextStyle(color: StudentStyle.inkMuted),
+            ),
           if (exercise.targetText != null) ...[
             const SizedBox(height: EmiSpacing.md),
-            Text('Target', style: Theme.of(context).textTheme.labelLarge),
-            Text(
-              exercise.targetText!,
-              style: Theme.of(context).textTheme.titleMedium,
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(EmiSpacing.md),
+              decoration: BoxDecoration(
+                color: StudentStyle.tint,
+                borderRadius: BorderRadius.circular(EmiRadii.card),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Target',
+                    style: TextStyle(
+                      color: StudentStyle.inkMuted,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    exercise.targetText!,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(color: StudentStyle.ink),
+                  ),
+                  if (exercise.targetTranslation != null)
+                    Text(
+                      exercise.targetTranslation!,
+                      style: const TextStyle(color: StudentStyle.inkMuted),
+                    ),
+                ],
+              ),
             ),
           ],
-          if (exercise.targetTranslation != null)
-            Text(exercise.targetTranslation!),
         ],
       ),
     );
@@ -385,19 +418,44 @@ class _RecorderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EmiCard(
+    return StudentCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Rekam Suara', style: Theme.of(context).textTheme.titleMedium),
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: StudentStyle.tint,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.mic, color: EmiColors.primary),
+              ),
+              const SizedBox(width: EmiSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Rekam Suara',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(color: StudentStyle.ink),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: EmiSpacing.sm),
-          Text('Durasi: ${state.duration.inSeconds}s / 30s'),
+          Text(
+            'Durasi: ${state.duration.inSeconds}s / 30s',
+            style: const TextStyle(color: StudentStyle.inkMuted),
+          ),
           if (state.permissionDenied) ...[
             const SizedBox(height: EmiSpacing.sm),
             Text(
               state.permanentlyDenied
                   ? 'Izin mikrofon diblokir.'
                   : 'Izin mikrofon ditolak.',
+              style: const TextStyle(color: EmiColors.error),
             ),
           ],
           const SizedBox(height: EmiSpacing.md),
@@ -525,7 +583,7 @@ class _HardwareCaptureCard extends StatelessWidget {
         data.state == HardwareCaptureState.recording ||
         data.state == HardwareCaptureState.finalizing;
 
-    return EmiCard(
+    return StudentCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -537,10 +595,7 @@ class _HardwareCaptureCard extends StatelessWidget {
           Text(_statusLabel),
           if (data.error != null) ...[
             const SizedBox(height: EmiSpacing.sm),
-            Text(
-              data.error!,
-              style: const TextStyle(color: EmiColors.error),
-            ),
+            Text(data.error!, style: const TextStyle(color: EmiColors.error)),
           ],
           const SizedBox(height: EmiSpacing.md),
           Wrap(
@@ -607,7 +662,7 @@ class _AudioBoxState extends State<_AudioBox> {
 
   @override
   Widget build(BuildContext context) {
-    return EmiCard(
+    return StudentCard(
       child: Row(
         children: [
           StreamBuilder<PlayerState>(
@@ -616,18 +671,33 @@ class _AudioBoxState extends State<_AudioBox> {
               final playing = snapshot.data?.playing == true;
               return IconButton.filled(
                 onPressed: _loading ? null : () => _toggle(playing),
+                style: IconButton.styleFrom(
+                  backgroundColor: EmiColors.primary,
+                  foregroundColor: Colors.white,
+                ),
                 icon: _loading
                     ? const SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : Icon(playing ? Icons.pause : Icons.play_arrow),
               );
             },
           ),
           const SizedBox(width: EmiSpacing.md),
-          Expanded(child: Text(_error ?? widget.title)),
+          Expanded(
+            child: Text(
+              _error ?? widget.title,
+              style: TextStyle(
+                color: _error != null ? EmiColors.error : StudentStyle.ink,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -689,19 +759,34 @@ class _SubmitCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EmiCard(
+    return StudentCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          FilledButton.icon(
-            onPressed: submitting ? null : onSubmit,
-            icon: const Icon(Icons.cloud_upload_outlined),
-            label: Text(submitting ? 'Mengirim...' : 'Submit Attempt'),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: submitting ? null : onSubmit,
+              icon: const Icon(Icons.cloud_upload_outlined),
+              label: Text(submitting ? 'Mengirim...' : 'Kumpulkan Rekaman'),
+            ),
           ),
-          if (submitting)
-            LinearProgressIndicator(value: progress == 0 ? null : progress),
-          if (error != null)
+          if (submitting) ...[
+            const SizedBox(height: EmiSpacing.sm),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(EmiRadii.pill),
+              child: LinearProgressIndicator(
+                value: progress == 0 ? null : progress,
+                minHeight: 8,
+                backgroundColor: StudentStyle.tintStrong,
+                valueColor: const AlwaysStoppedAnimation(EmiColors.primary),
+              ),
+            ),
+          ],
+          if (error != null) ...[
+            const SizedBox(height: EmiSpacing.sm),
             Text(error!, style: const TextStyle(color: EmiColors.error)),
+          ],
         ],
       ),
     );
@@ -730,7 +815,7 @@ class _AttemptResultCardState extends ConsumerState<_AttemptResultCard> {
   @override
   Widget build(BuildContext context) {
     final attempt = widget.attempt;
-    return EmiCard(
+    return StudentCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -739,14 +824,16 @@ class _AttemptResultCardState extends ConsumerState<_AttemptResultCard> {
               Expanded(
                 child: Text(
                   'Status: ${attempt.status}',
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(color: StudentStyle.ink),
                 ),
               ),
               OutlinedButton.icon(
                 onPressed: () =>
                     ref.invalidate(speakingAttemptProvider(attempt.id)),
                 icon: const Icon(Icons.refresh),
-                label: const Text('Refresh'),
+                label: const Text('Muat Ulang'),
               ),
             ],
           ),
@@ -761,18 +848,45 @@ class _AttemptResultCardState extends ConsumerState<_AttemptResultCard> {
               beforePlay: () async {},
             ),
           ],
-          if (attempt.isProcessing)
-            Text(widget.pollingMessage ?? 'Analisis AI sedang diproses.'),
-          if (attempt.aiScore != null) Text('Skor AI: ${attempt.aiScore}'),
+          if (attempt.isProcessing) ...[
+            const SizedBox(height: EmiSpacing.sm),
+            Text(
+              widget.pollingMessage ?? 'Analisis AI sedang diproses.',
+              style: const TextStyle(color: StudentStyle.inkMuted),
+            ),
+          ],
+          if (attempt.aiScore != null)
+            _row(context, 'Skor AI', '${attempt.aiScore}'),
           if (attempt.aiTranscription != null)
-            Text('Transkripsi: ${attempt.aiTranscription}'),
+            _row(context, 'Transkripsi', attempt.aiTranscription!),
           if (attempt.aiAlignment != null)
-            Text('Detail analisis: ${attempt.aiAlignment}'),
-          if (attempt.aiError != null) Text('Error AI: ${attempt.aiError}'),
+            _row(context, 'Detail analisis', '${attempt.aiAlignment}'),
+          if (attempt.aiError != null)
+            _row(context, 'Error AI', attempt.aiError!),
           if (attempt.teacherScore != null)
-            Text('Nilai guru: ${attempt.teacherScore}'),
+            _row(context, 'Nilai guru', '${attempt.teacherScore}'),
           if (attempt.teacherFeedback != null)
-            Text('Feedback guru: ${attempt.teacherFeedback}'),
+            _row(context, 'Feedback guru', attempt.teacherFeedback!),
+        ],
+      ),
+    );
+  }
+
+  Widget _row(BuildContext context, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(top: EmiSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: StudentStyle.inkMuted,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+          Text(value, style: const TextStyle(color: StudentStyle.ink)),
         ],
       ),
     );
@@ -780,9 +894,8 @@ class _AttemptResultCardState extends ConsumerState<_AttemptResultCard> {
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
+  const _ErrorState({required this.onRetry});
 
-  final String message;
   final VoidCallback onRetry;
 
   @override
@@ -790,19 +903,11 @@ class _ErrorState extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(EmiSpacing.md),
       children: [
-        EmiCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(message),
-              const SizedBox(height: EmiSpacing.sm),
-              OutlinedButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Coba lagi'),
-              ),
-            ],
-          ),
+        StudentPlaceholder(
+          icon: Icons.cloud_off_outlined,
+          title: 'Latihan Belum Bisa Dimuat',
+          message: 'Periksa koneksi internetmu, lalu coba lagi.',
+          onRetry: onRetry,
         ),
       ],
     );

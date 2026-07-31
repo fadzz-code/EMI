@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/emi_theme.dart';
-import '../../../shared/widgets/emi_card.dart';
+import '../../../shared/legal/privacy_policy.dart';
 import '../../auth/domain/session_user.dart';
 import '../../auth/presentation/auth_controller.dart';
 import 'admin_shell.dart';
+import 'admin_style.dart';
+import 'admin_widgets.dart';
 
 class AdminProfileScreen extends ConsumerStatefulWidget {
   const AdminProfileScreen({super.key});
@@ -41,18 +43,72 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
       child: ListView(
         padding: const EdgeInsets.all(EmiSpacing.md),
         children: [
-          if (auth.error != null) EmiCard(child: Text(auth.error!.message)),
-          EmiCard(
-            child: Column(
+          if (auth.error != null) ...[
+            AdminCard(
+              child: Text(
+                auth.error!.message,
+                style: const TextStyle(color: EmiColors.error),
+              ),
+            ),
+            const SizedBox(height: EmiSpacing.md),
+          ],
+          AdminCard(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  user?.fullName ?? 'Admin',
-                  style: Theme.of(context).textTheme.titleLarge,
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: AdminStyle.tint,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      (user?.fullName.isNotEmpty == true
+                              ? user!.fullName[0]
+                              : 'A')
+                          .toUpperCase(),
+                      style: const TextStyle(
+                        color: EmiColors.primary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 22,
+                      ),
+                    ),
+                  ),
                 ),
-                Text(user?.email ?? 'Belum tersedia'),
-                Text('Telepon: ${user?.phone ?? 'Belum tersedia'}'),
-                const Text('Peran: Admin'),
+                const SizedBox(width: EmiSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user?.fullName ?? 'Admin',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        user?.email ?? 'Belum tersedia',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AdminStyle.inkMuted,
+                        ),
+                      ),
+                      Text(
+                        'Telepon: ${user?.phone ?? 'Belum tersedia'}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AdminStyle.inkMuted,
+                        ),
+                      ),
+                      const SizedBox(height: EmiSpacing.xs),
+                      const Text(
+                        'Peran: Admin',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -65,6 +121,7 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
             icon: const Icon(Icons.edit_outlined),
             label: const Text('Edit Profil'),
           ),
+          const SizedBox(height: EmiSpacing.sm),
           OutlinedButton.icon(
             key: const Key('adminChangePassword'),
             onPressed: user == null || auth.isLoading ? null : _changePassword,
@@ -78,6 +135,13 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
                 ? null
                 : () => ref.read(authControllerProvider.notifier).logout(),
             child: const Text('Logout'),
+          ),
+          const SizedBox(height: EmiSpacing.sm),
+          TextButton.icon(
+            key: const Key('privacyPolicyLink'),
+            onPressed: () => openPrivacyPolicy(context),
+            icon: const Icon(Icons.privacy_tip_outlined),
+            label: const Text('Kebijakan Privasi'),
           ),
         ],
       ),

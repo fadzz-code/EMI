@@ -1,0 +1,1 @@
+﻿PLACEHOLDER - replace emi_icon.png (512x512, no transparency) and emi_icon_foreground.png (adaptive icon foreground, transparent bg) with real EMI logo assets, then run: flutter pub get && dart run flutter_launcher_icons

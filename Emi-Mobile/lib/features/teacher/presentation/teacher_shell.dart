@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/emi_theme.dart';
 import '../../auth/domain/session_user.dart';
 import '../../auth/presentation/auth_controller.dart';
+import 'teacher_style.dart';
 
 class TeacherShell extends ConsumerWidget {
   const TeacherShell({
@@ -36,67 +37,55 @@ class TeacherShell extends ConsumerWidget {
           context.go(fallbackRoute!);
         }
       },
-      child: Scaffold(
-        drawer: _TeacherDrawer(user: user, location: location),
-        body: SafeArea(
-          child: Column(
-            children: [
-              Container(
-                height: 64,
-                padding: const EdgeInsets.symmetric(horizontal: EmiSpacing.md),
-                decoration: const BoxDecoration(
-                  color: EmiColors.background,
-                  border: Border(
-                    bottom: BorderSide(color: EmiColors.border, width: 2),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    if (fallbackRoute == null)
-                      Builder(
-                        builder: (context) => IconButton(
-                          key: const Key('teacherMenuButton'),
-                          onPressed: () => Scaffold.of(context).openDrawer(),
-                          icon: const Icon(Icons.menu),
-                        ),
-                      )
-                    else
-                      IconButton(
-                        key: const Key('teacherBackButton'),
-                        tooltip: 'Kembali',
-                        onPressed: () async {
-                          if (onBack != null) {
-                            await onBack!();
-                          } else if (context.canPop()) {
-                            context.pop();
-                          } else {
-                            context.go(fallbackRoute!);
-                          }
-                        },
-                        icon: const Icon(Icons.arrow_back),
-                      ),
-                    const SizedBox(width: EmiSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleLarge,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+      child: Theme(
+        data: TeacherStyle.theme(context),
+        child: Scaffold(
+          backgroundColor: TeacherStyle.pageBackground,
+          drawer: _TeacherDrawer(user: user, location: location),
+          appBar: AppBar(
+            backgroundColor: TeacherStyle.pageBackground,
+            surfaceTintColor: Colors.transparent,
+            scrolledUnderElevation: 0,
+            leadingWidth: 64,
+            leading: fallbackRoute == null
+                ? Builder(
+                    builder: (context) => IconButton(
+                      key: const Key('teacherMenuButton'),
+                      tooltip: 'Menu',
+                      onPressed: () => Scaffold.of(context).openDrawer(),
+                      icon: const Icon(Icons.menu_rounded),
                     ),
-                    ...actions,
-                    if (fallbackRoute == null)
-                      IconButton(
-                        tooltip: 'Profil',
-                        onPressed: () => context.go('/teacher/profile'),
-                        icon: const Icon(Icons.account_circle_outlined),
-                      ),
-                  ],
+                  )
+                : IconButton(
+                    key: const Key('teacherBackButton'),
+                    tooltip: 'Kembali',
+                    onPressed: () async {
+                      if (onBack != null) {
+                        await onBack!();
+                      } else if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go(fallbackRoute!);
+                      }
+                    },
+                    icon: const Icon(Icons.arrow_back_rounded),
+                  ),
+            title: Text(title, overflow: TextOverflow.ellipsis),
+            actions: [
+              ...actions,
+              if (fallbackRoute == null)
+                IconButton(
+                  tooltip: 'Profil',
+                  onPressed: () => context.go('/teacher/profile'),
+                  icon: const Icon(Icons.account_circle_outlined),
                 ),
-              ),
-              Expanded(child: child),
-              if (fallbackRoute == null) _TeacherBottomNav(location: location),
+              const SizedBox(width: 4),
             ],
           ),
+          body: SafeArea(top: false, child: child),
+          bottomNavigationBar: fallbackRoute == null
+              ? _TeacherBottomNav(location: location)
+              : null,
         ),
       ),
     );
@@ -113,58 +102,41 @@ class _TeacherBottomNav extends StatelessWidget {
     final items = [
       (
         Icons.dashboard_outlined,
-        Icons.dashboard,
+        Icons.dashboard_rounded,
         'Beranda',
         '/teacher/dashboard',
       ),
-      (Icons.groups_outlined, Icons.groups, 'Kelas', '/teacher/classes'),
-      (Icons.menu_book_outlined, Icons.menu_book, 'Modul', '/teacher/modules'),
-      (Icons.quiz_outlined, Icons.quiz, 'Kuis', '/teacher/quizzes'),
+      (
+        Icons.groups_outlined,
+        Icons.groups_rounded,
+        'Kelas',
+        '/teacher/classes',
+      ),
+      (
+        Icons.menu_book_outlined,
+        Icons.menu_book_rounded,
+        'Modul',
+        '/teacher/modules',
+      ),
+      (Icons.quiz_outlined, Icons.quiz_rounded, 'Kuis', '/teacher/quizzes'),
     ];
-    return Container(
-      decoration: const BoxDecoration(
-        color: EmiColors.surface,
-        border: Border(top: BorderSide(color: EmiColors.border, width: 2)),
-      ),
-      padding: const EdgeInsets.fromLTRB(EmiSpacing.xs, 6, EmiSpacing.xs, 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: items.map((item) {
-          final selected =
-              location == item.$4 || location.startsWith('${item.$4}/');
-          return Expanded(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(EmiRadii.pill),
-              onTap: () => context.go(item.$4),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      selected ? item.$2 : item.$1,
-                      color: selected ? EmiColors.textPrimary : Colors.black54,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      item.$3,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: selected
-                            ? FontWeight.w800
-                            : FontWeight.w600,
-                        color: selected
-                            ? EmiColors.textPrimary
-                            : Colors.black54,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
+    final selectedIndex = items.indexWhere(
+      (item) => location == item.$4 || location.startsWith('${item.$4}/'),
+    );
+    return NavigationBar(
+      height: 72,
+      backgroundColor: TeacherStyle.surface,
+      indicatorColor: TeacherStyle.tintStrong,
+      selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
+      onDestinationSelected: (index) => context.go(items[index].$4),
+      destinations: [
+        for (final item in items)
+          NavigationDestination(
+            icon: Icon(item.$1),
+            selectedIcon: Icon(item.$2, color: EmiColors.primary),
+            label: item.$3,
+          ),
+      ],
     );
   }
 }
@@ -177,34 +149,63 @@ class _TeacherDrawer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => Drawer(
+    backgroundColor: TeacherStyle.surface,
     child: SafeArea(
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(EmiSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Container(
+            padding: const EdgeInsets.all(EmiSpacing.lg),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [EmiColors.primary, Color(0xFFFFA968)],
+              ),
+            ),
+            child: Row(
               children: [
                 CircleAvatar(
                   radius: 28,
+                  backgroundColor: Colors.white,
+                  foregroundColor: EmiColors.primary,
                   child: Text(
                     (user?.fullName.isNotEmpty ?? false)
                         ? user!.fullName.characters.first
                         : 'G',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                 ),
-                const SizedBox(height: EmiSpacing.sm),
-                Text(
-                  user?.fullName ?? 'Guru EMI',
-                  style: Theme.of(context).textTheme.titleMedium,
+                const SizedBox(width: EmiSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user?.fullName ?? 'Guru EMI',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleMedium?.copyWith(color: Colors.white),
+                      ),
+                      if (user?.email != null)
+                        Text(
+                          user!.email,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                          ),
+                        ),
+                      Text(
+                        'Guru',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                if (user?.email != null) Text(user!.email),
-                const Text('Guru'),
               ],
             ),
           ),
-          const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.fromLTRB(
               EmiSpacing.md,
@@ -214,7 +215,9 @@ class _TeacherDrawer extends ConsumerWidget {
             ),
             child: Text(
               'Menu EMI',
-              style: Theme.of(context).textTheme.labelLarge,
+              style: Theme.of(
+                context,
+              ).textTheme.labelLarge?.copyWith(color: TeacherStyle.inkMuted),
             ),
           ),
           _Item(
@@ -249,6 +252,18 @@ class _TeacherDrawer extends ConsumerWidget {
             selected: location.startsWith('/teacher/culture'),
           ),
           _Item(
+            label: 'Kamus',
+            icon: Icons.menu_book_outlined,
+            route: '/teacher/dictionary',
+            selected: location.startsWith('/teacher/dictionary'),
+          ),
+          _Item(
+            label: 'Chatbot AI',
+            icon: Icons.auto_awesome_outlined,
+            route: '/teacher/chatbot',
+            selected: location.startsWith('/teacher/chatbot'),
+          ),
+          _Item(
             label: 'Speaking',
             icon: Icons.mic_none_outlined,
             route: '/teacher/speaking',
@@ -260,11 +275,20 @@ class _TeacherDrawer extends ConsumerWidget {
             route: '/teacher/progress',
             selected: location.startsWith('/teacher/progress'),
           ),
-          const Divider(height: 1),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: EmiSpacing.xs),
+            child: Divider(height: 1, color: TeacherStyle.tint),
+          ),
           ListTile(
             key: const Key('teacherLogoutButton'),
-            leading: const Icon(Icons.logout),
-            title: const Text('Keluar'),
+            leading: const Icon(
+              Icons.logout_rounded,
+              color: TeacherStyle.inkMuted,
+            ),
+            title: const Text(
+              'Keluar',
+              style: TextStyle(color: TeacherStyle.inkMuted),
+            ),
             onTap: () async {
               Navigator.of(context).pop();
               await ref.read(authControllerProvider.notifier).logout();
@@ -290,14 +314,30 @@ class _Item extends StatelessWidget {
   final bool selected;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    leading: Icon(icon),
-    title: Text(label),
-    selected: selected,
-    selectedTileColor: EmiColors.secondary,
-    onTap: () {
-      Navigator.of(context).pop();
-      if (route != null && !selected) context.go(route!);
-    },
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: EmiSpacing.sm, vertical: 2),
+    child: Material(
+      color: selected ? TeacherStyle.tint : Colors.transparent,
+      borderRadius: BorderRadius.circular(14),
+      child: ListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        leading: Icon(
+          icon,
+          color: selected ? EmiColors.primary : TeacherStyle.ink,
+        ),
+        title: Text(
+          label,
+          style: TextStyle(
+            color: selected ? EmiColors.primary : TeacherStyle.ink,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+        selected: selected,
+        onTap: () {
+          Navigator.of(context).pop();
+          if (route != null && !selected) context.go(route!);
+        },
+      ),
+    ),
   );
 }

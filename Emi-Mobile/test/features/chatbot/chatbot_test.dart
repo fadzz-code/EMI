@@ -85,9 +85,22 @@ void main() {
     late RequestOptions savedOptions;
     final repository = ChatbotRepository(
       _dio((options, handler) {
-        calls += 1;
-        savedOptions = options;
-        savedHandler = handler;
+        // The controller also fires a background
+        // GET .../conversations call on construction; only count the
+        // message POST calls this test cares about.
+        if (options.path.endsWith('/messages')) {
+          calls += 1;
+          savedOptions = options;
+          savedHandler = handler;
+          return;
+        }
+        handler.resolve(
+          Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {'success': true, 'message': 'OK', 'data': []},
+          ),
+        );
       }),
       const DioErrorMapper(),
     );
@@ -119,6 +132,272 @@ void main() {
 
     expect(controller.state.messages, hasLength(2));
     expect(controller.state.isSending, isFalse);
+    controller.dispose();
+  });
+
+  test('repository sends message to teacher endpoint when scoped', () async {
+    final repository = ChatbotRepository(
+      _dio((options, handler) {
+        expect(options.path, '/teacher/chatbot/messages');
+        handler.resolve(
+          Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'success': true,
+              'message': 'OK',
+              'data': {
+                'answer': 'Jawaban guru',
+                'matched': false,
+                'mode': 'default_extractive',
+                'provider': 'default',
+                'source': null,
+              },
+            },
+          ),
+        );
+      }),
+      const DioErrorMapper(),
+      basePath: '/teacher/chatbot',
+    );
+
+    final response = await repository.sendMessage('Apa itu Mekongga?');
+
+    expect(response.answer, 'Jawaban guru');
+  });
+
+  test('repository sends conversation_id when continuing a thread', () async {
+    final repository = ChatbotRepository(
+      _dio((options, handler) {
+        expect(options.data, {
+          'message': 'Lanjut',
+          'conversation_id': 'conv-1',
+        });
+        handler.resolve(
+          Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'success': true,
+              'message': 'OK',
+              'data': {
+                'answer': 'Jawaban',
+                'matched': false,
+                'mode': 'default_extractive',
+                'provider': 'default',
+                'source': null,
+                'conversation_id': 'conv-1',
+              },
+            },
+          ),
+        );
+      }),
+      const DioErrorMapper(),
+    );
+
+    final response = await repository.sendMessage(
+      'Lanjut',
+      conversationId: 'conv-1',
+    );
+
+    expect(response.conversationId, 'conv-1');
+  });
+
+  test('repository lists conversation summaries', () async {
+    final repository = ChatbotRepository(
+      _dio((options, handler) {
+        expect(options.path, '/student/chatbot/conversations');
+        handler.resolve(
+          Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'success': true,
+              'message': 'OK',
+              'data': [
+                {
+                  'id': 'conv-1',
+                  'title': 'Apa itu Mekongga?',
+                  'status': 'active',
+                  'last_message_at': '2026-07-30T10:00:00Z',
+                  'created_at': '2026-07-30T09:00:00Z',
+                },
+              ],
+            },
+          ),
+        );
+      }),
+      const DioErrorMapper(),
+    );
+
+    final conversations = await repository.listConversations();
+
+    expect(conversations, hasLength(1));
+    expect(conversations.first.id, 'conv-1');
+    expect(conversations.first.title, 'Apa itu Mekongga?');
+  });
+
+  test('repository loads conversation detail with citations', () async {
+    final repository = ChatbotRepository(
+      _dio((options, handler) {
+        expect(options.path, '/student/chatbot/conversations/conv-1');
+        handler.resolve(
+          Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'success': true,
+              'message': 'OK',
+              'data': {
+                'id': 'conv-1',
+                'title': 'Apa itu Mekongga?',
+                'status': 'active',
+                'messages': [
+                  {
+                    'id': 'msg-1',
+                    'role': 'user',
+                    'content': 'Apa itu Mekongga?',
+                    'citations': [],
+                  },
+                  {
+                    'id': 'msg-2',
+                    'role': 'assistant',
+                    'content': 'Mekongga adalah...',
+                    'citations': [
+                      {'id': 'src-1', 'title': 'Kosakata Mekongga'},
+                    ],
+                  },
+                ],
+              },
+            },
+          ),
+        );
+      }),
+      const DioErrorMapper(),
+    );
+
+    final detail = await repository.getConversation('conv-1');
+
+    expect(detail.messages, hasLength(2));
+    expect(detail.messages.last.role, ChatbotMessageRole.assistant);
+    expect(detail.messages.last.citations.single.title, 'Kosakata Mekongga');
+  });
+
+  test('repository deletes a conversation', () async {
+    var deleted = false;
+    final repository = ChatbotRepository(
+      _dio((options, handler) {
+        expect(options.path, '/student/chatbot/conversations/conv-1');
+        deleted = true;
+        handler.resolve(
+          Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {'success': true, 'message': 'OK', 'data': []},
+          ),
+        );
+      }),
+      const DioErrorMapper(),
+    );
+
+    await repository.deleteConversation('conv-1');
+
+    expect(deleted, isTrue);
+  });
+
+  test('controller openConversation loads history and sets active thread', () async {
+    final repository = ChatbotRepository(
+      _dio((options, handler) {
+        if (options.path.endsWith('/conversations')) {
+          handler.resolve(
+            Response(
+              requestOptions: options,
+              statusCode: 200,
+              data: {'success': true, 'message': 'OK', 'data': []},
+            ),
+          );
+          return;
+        }
+        handler.resolve(
+          Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'success': true,
+              'message': 'OK',
+              'data': {
+                'id': 'conv-1',
+                'title': 'Riwayat',
+                'status': 'active',
+                'messages': [
+                  {
+                    'id': 'msg-1',
+                    'role': 'user',
+                    'content': 'Halo',
+                    'citations': [],
+                  },
+                ],
+              },
+            },
+          ),
+        );
+      }),
+      const DioErrorMapper(),
+    );
+    final controller = ChatbotController(repository);
+
+    await controller.openConversation('conv-1');
+
+    expect(controller.state.activeConversationId, 'conv-1');
+    expect(controller.state.messages, hasLength(1));
+    expect(controller.state.isLoadingHistory, isFalse);
+    controller.dispose();
+  });
+
+  test('controller startNewSession clears active thread and messages', () async {
+    final repository = ChatbotRepository(
+      _dio((options, handler) {
+        if (options.path.endsWith('/conversations')) {
+          handler.resolve(
+            Response(
+              requestOptions: options,
+              statusCode: 200,
+              data: {'success': true, 'message': 'OK', 'data': []},
+            ),
+          );
+          return;
+        }
+        handler.resolve(
+          Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'success': true,
+              'message': 'OK',
+              'data': {
+                'answer': 'Jawaban',
+                'matched': false,
+                'mode': 'default_extractive',
+                'provider': 'default',
+                'source': null,
+                'conversation_id': 'conv-2',
+              },
+            },
+          ),
+        );
+      }),
+      const DioErrorMapper(),
+    );
+    final controller = ChatbotController(repository);
+
+    await controller.send('Halo');
+    expect(controller.state.activeConversationId, 'conv-2');
+    expect(controller.state.messages, isNotEmpty);
+
+    controller.startNewSession();
+
+    expect(controller.state.activeConversationId, isNull);
+    expect(controller.state.messages, isEmpty);
     controller.dispose();
   });
 

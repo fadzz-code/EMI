@@ -58,6 +58,28 @@ void main() {
     expect(page.items.single.aiScore, 91);
     expect(page.items.single.teacherFeedback, 'Jelas');
     expect(page.items.single.audioMediaId, 'media-2');
+    expect(
+      SpeakingAttempt.fromJson({'audio_media_id': 'direct'}).audioMediaId,
+      'direct',
+    );
+    expect(
+      SpeakingAttempt.fromJson({
+        'audio_media': {'id': 'audio-nested'},
+      }).audioMediaId,
+      'audio-nested',
+    );
+    expect(
+      SpeakingAttempt.fromJson({
+        'media': {'id': 'media-nested'},
+      }).audioMediaId,
+      'media-nested',
+    );
+    expect(
+      SpeakingAttempt.fromJson({
+        'audio_media': {'id': 42},
+      }).audioMediaId,
+      isNull,
+    );
   });
 
   test('normalizes multipart filename mime and size validation', () {
@@ -128,6 +150,10 @@ void main() {
           return;
         }
         if (options.path == '/media/media-1/temporary-url') {
+          expect(options.data, {
+            'expires_in_minutes': 15,
+            'disposition': 'inline',
+          });
           handler.resolve(
             Response(
               requestOptions: options,

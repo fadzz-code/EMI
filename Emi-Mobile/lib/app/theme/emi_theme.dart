@@ -4,6 +4,7 @@ class EmiColors {
   const EmiColors._();
 
   static const primary = Color(0xFFFF8A3D);
+  static const primarySoft = Color(0xFFFFF0E4);
   static const secondary = Color(0xFFFDD758);
   static const background = Color(0xFFFEF8F1);
   static const backgroundWarm = Color(0xFFFFF9F2);
@@ -11,7 +12,10 @@ class EmiColors {
   static const surfaceSoft = Color(0xFFFFF1EB);
   static const surfaceAccent = Color(0xFFFEEAE0);
   static const textPrimary = Color(0xFF1D1B17);
+  static const textSecondary = Color(0xFF6F5548);
+  static const textMuted = Color(0xFF927B70);
   static const border = Color(0xFF1D1B17);
+  static const divider = Color(0xFFD8C8BE);
   static const success = Color(0xFF5BBE5D);
   static const warning = Color(0xFFFDD758);
   static const error = Color(0xFFBA1A1A);
@@ -20,9 +24,10 @@ class EmiColors {
 class EmiRadii {
   const EmiRadii._();
 
-  static const card = 12.0;
+  static const card = 14.0;
   static const button = 12.0;
   static const input = 12.0;
+  static const dialog = 16.0;
   static const pill = 9999.0;
 }
 
@@ -41,7 +46,7 @@ class EmiShadows {
 
   static const hard = BoxShadow(
     color: EmiColors.border,
-    offset: Offset(4, 4),
+    offset: Offset(3, 4),
     blurRadius: 0,
     spreadRadius: 0,
   );
@@ -87,11 +92,11 @@ class EmiTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: EmiColors.surface,
-        border: _inputBorder(),
-        enabledBorder: _inputBorder(),
-        focusedBorder: _inputBorder(width: 3),
+        border: _inputBorder(color: EmiColors.divider),
+        enabledBorder: _inputBorder(color: EmiColors.divider),
+        focusedBorder: _inputBorder(color: EmiColors.primary, width: 2),
         errorBorder: _inputBorder(color: EmiColors.error),
-        focusedErrorBorder: _inputBorder(color: EmiColors.error, width: 3),
+        focusedErrorBorder: _inputBorder(color: EmiColors.error, width: 2),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -104,7 +109,7 @@ class EmiTheme {
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(EmiRadii.button),
-            side: const BorderSide(color: EmiColors.border, width: 2),
+            side: const BorderSide(color: EmiColors.border, width: 1.5),
           ),
           textStyle: const TextStyle(fontWeight: FontWeight.w800),
         ),
@@ -114,7 +119,7 @@ class EmiTheme {
 
   static OutlineInputBorder _inputBorder({
     Color color = EmiColors.border,
-    double width = 2,
+    double width = 1.5,
   }) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(EmiRadii.input),

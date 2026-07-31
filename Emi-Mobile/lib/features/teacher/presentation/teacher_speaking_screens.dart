@@ -7,11 +7,12 @@ import 'package:just_audio/just_audio.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../core/errors/app_error.dart';
-import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/role_dashboard_widgets.dart';
 import '../data/teacher_providers.dart';
 import '../data/teacher_repository.dart';
 import 'teacher_shell.dart';
+import 'teacher_style.dart';
+import 'teacher_widgets.dart';
 
 class TeacherSpeakingScreen extends StatefulWidget {
   const TeacherSpeakingScreen({super.key, this.attempts = false});
@@ -70,52 +71,38 @@ class _ExercisesState extends ConsumerState<_Exercises> {
     return ListView(
       padding: const EdgeInsets.all(EmiSpacing.md),
       children: [
-        Text(
-          'Latihan Speaking',
-          style: Theme.of(context).textTheme.headlineSmall,
+        const TeacherPageHeader(
+          icon: Icons.record_voice_over_outlined,
+          title: 'Latihan Speaking',
+          subtitle: 'Kelola latihan pengucapan untuk kelas Anda.',
         ),
-        const Text('Kelola latihan pengucapan untuk kelas Anda.'),
         const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            SizedBox(
-              width: 180,
-              child: classes.maybeWhen(
-                data: (p) => DropdownButtonFormField(
-                  isExpanded: true,
-                  initialValue: classroom,
-                  decoration: const InputDecoration(labelText: 'Kelas'),
-                  items: [
-                    const DropdownMenuItem(
-                      value: '',
-                      child: Text('Semua kelas'),
-                    ),
-                    ...p.items.map(
-                      (e) => DropdownMenuItem(value: e.id, child: Text(e.name)),
-                    ),
-                  ],
-                  onChanged: (v) => setState(() => classroom = v ?? ''),
-                ),
-                orElse: () => const SizedBox.shrink(),
+        classes.maybeWhen(
+          data: (p) => DropdownButtonFormField(
+            isExpanded: true,
+            initialValue: classroom,
+            decoration: const InputDecoration(labelText: 'Kelas'),
+            items: [
+              const DropdownMenuItem(value: '', child: Text('Semua kelas')),
+              ...p.items.map(
+                (e) => DropdownMenuItem(value: e.id, child: Text(e.name)),
               ),
-            ),
-            SizedBox(
-              width: 160,
-              child: DropdownButtonFormField(
-                isExpanded: true,
-                initialValue: status,
-                decoration: const InputDecoration(labelText: 'Status'),
-                items: const [
-                  DropdownMenuItem(value: '', child: Text('Semua status')),
-                  DropdownMenuItem(value: 'draft', child: Text('Draft')),
-                  DropdownMenuItem(value: 'published', child: Text('Terbit')),
-                ],
-                onChanged: (v) => setState(() => status = v ?? ''),
-              ),
-            ),
+            ],
+            onChanged: (v) => setState(() => classroom = v ?? ''),
+          ),
+          orElse: () => const SizedBox.shrink(),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField(
+          isExpanded: true,
+          initialValue: status,
+          decoration: const InputDecoration(labelText: 'Status'),
+          items: const [
+            DropdownMenuItem(value: '', child: Text('Semua status')),
+            DropdownMenuItem(value: 'draft', child: Text('Draft')),
+            DropdownMenuItem(value: 'published', child: Text('Terbit')),
           ],
+          onChanged: (v) => setState(() => status = v ?? ''),
         ),
         const SizedBox(height: 12),
         FilledButton.icon(
@@ -131,7 +118,7 @@ class _ExercisesState extends ConsumerState<_Exercises> {
             child: _error(
               'Speaking Belum Bisa Dimuat',
               'Periksa koneksi internet Anda, lalu coba lagi.',
-              () => ref.invalidate(
+              () => ref.refresh(
                 teacherSpeakingExercisesProvider((
                   classroomId: classroom,
                   status: status,
@@ -158,58 +145,65 @@ class _ExercisesState extends ConsumerState<_Exercises> {
                         .map(
                           (e) => Padding(
                             padding: const EdgeInsets.only(bottom: 8),
-                            child: EmiCard(
+                            child: TeacherListCard(
                               padding: EdgeInsets.zero,
-                              child: Material(
-                                type: MaterialType.transparency,
-                                child: ListTile(
-                                  leading: const Icon(
+                              onTap: () => context.push(
+                                '/teacher/speaking/exercises/${e.id}',
+                              ),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: TeacherStyle.tint,
+                                  foregroundColor: EmiColors.primary,
+                                  child: const Icon(
                                     Icons.record_voice_over_outlined,
                                   ),
-                                  title: Text(e.title),
-                                  subtitle: Text(
-                                    [
-                                      if (e.classroomName != null)
-                                        e.classroomName!,
-                                      if (e.attemptsCount != null)
-                                        '${e.attemptsCount} hasil',
-                                    ].join(' · '),
+                                ),
+                                title: Text(
+                                  e.title,
+                                  style: const TextStyle(
+                                    color: TeacherStyle.ink,
                                   ),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Chip(label: Text(_status(e.status))),
-                                      PopupMenuButton<String>(
-                                        onSelected: (value) {
-                                          if (value == 'edit') {
-                                            context.push(
-                                              '/teacher/speaking/exercises/${e.id}/edit',
-                                            );
-                                          } else if (value == 'delete') {
-                                            _delete(e);
-                                          }
-                                        },
-                                        itemBuilder: (_) => const [
-                                          PopupMenuItem(
-                                            value: 'edit',
-                                            child: Text('Edit'),
+                                ),
+                                subtitle: Text(
+                                  [
+                                    if (e.classroomName != null)
+                                      e.classroomName!,
+                                    if (e.attemptsCount != null)
+                                      '${e.attemptsCount} hasil',
+                                  ].join(' · '),
+                                  style: const TextStyle(
+                                    color: TeacherStyle.inkMuted,
+                                  ),
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    TeacherStatusChip(label: _status(e.status)),
+                                    PopupMenuButton<String>(
+                                      onSelected: (value) {
+                                        if (value == 'edit') {
+                                          context.push(
+                                            '/teacher/speaking/exercises/${e.id}/edit',
+                                          );
+                                        } else if (value == 'delete') {
+                                          _delete(e);
+                                        }
+                                      },
+                                      itemBuilder: (_) => const [
+                                        PopupMenuItem(
+                                          value: 'edit',
+                                          child: Text('Edit'),
+                                        ),
+                                        PopupMenuItem(
+                                          value: 'delete',
+                                          child: Text(
+                                            'Hapus Latihan',
+                                            style: TextStyle(color: Colors.red),
                                           ),
-                                          PopupMenuItem(
-                                            value: 'delete',
-                                            child: Text(
-                                              'Hapus Latihan',
-                                              style: TextStyle(
-                                                color: Colors.red,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                  onTap: () => context.push(
-                                    '/teacher/speaking/exercises/${e.id}',
-                                  ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -251,30 +245,47 @@ class TeacherSpeakingExerciseDetailScreen extends ConsumerWidget {
           data: (e) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
-              Text(e.title, style: Theme.of(context).textTheme.headlineSmall),
-              _field('Kelas', e.classroomName ?? 'Kelas Anda'),
-              _field('Teks target', e.targetText),
-              if (e.targetTranslation != null)
-                _field('Terjemahan', e.targetTranslation!),
-              if (e.promptText != null) _field('Petunjuk', e.promptText!),
-              if (e.difficulty != null)
-                _field('Kesulitan', _difficulty(e.difficulty!)),
-              _field('Status', _status(e.status)),
-              if (e.updatedAt != null) _field('Diperbarui', _date(e.updatedAt)),
-              if (e.attemptsCount != null)
-                _field('Jumlah hasil', '${e.attemptsCount}'),
-              const SizedBox(height: 16),
+              TeacherPageHeader(
+                icon: Icons.record_voice_over_outlined,
+                title: e.title,
+                subtitle: e.classroomName ?? 'Kelas Anda',
+              ),
+              const SizedBox(height: EmiSpacing.md),
+              TeacherListCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _field('Teks target', e.targetText),
+                    if (e.targetTranslation != null)
+                      _field('Terjemahan', e.targetTranslation!),
+                    if (e.promptText != null) _field('Petunjuk', e.promptText!),
+                    if (e.difficulty != null)
+                      _field('Kesulitan', _difficulty(e.difficulty!)),
+                    _field('Status', _status(e.status)),
+                    if (e.updatedAt != null)
+                      _field('Diperbarui', _date(e.updatedAt)),
+                    if (e.attemptsCount != null)
+                      _field('Jumlah hasil', '${e.attemptsCount}'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: EmiSpacing.lg),
               FilledButton(
                 onPressed: () =>
                     context.push('/teacher/speaking/exercises/$id/edit'),
                 child: const Text('Edit Latihan'),
               ),
+              const SizedBox(height: EmiSpacing.sm),
               OutlinedButton(
                 onPressed: () => _archive(context, ref, e),
                 child: const Text('Arsipkan'),
               ),
-              TextButton(
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
+              const SizedBox(height: EmiSpacing.sm),
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: EmiColors.error,
+                  side: const BorderSide(color: EmiColors.error),
+                ),
                 onPressed: () => _delete(context, ref, e),
                 child: const Text('Hapus Latihan'),
               ),
@@ -613,25 +624,31 @@ class _Attempts extends ConsumerStatefulWidget {
 }
 
 class _AttemptsState extends ConsumerState<_Attempts> {
+  final searchController = TextEditingController();
   String search = '', review = '';
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(EmiSpacing.md),
     children: [
-      Text(
-        'Hasil Speaking Siswa',
-        style: Theme.of(context).textTheme.headlineSmall,
+      const TeacherPageHeader(
+        icon: Icons.record_voice_over_outlined,
+        title: 'Hasil Speaking Siswa',
+        subtitle: 'Dengarkan hasil dan berikan penilaian.',
       ),
-      const Text('Dengarkan hasil dan berikan penilaian.'),
-      const SizedBox(height: 12),
-      TextField(
-        decoration: const InputDecoration(
-          labelText: 'Cari siswa atau latihan',
-          prefixIcon: Icon(Icons.search),
-        ),
+      const SizedBox(height: EmiSpacing.md),
+      TeacherSearchField(
+        controller: searchController,
+        label: 'Cari siswa atau latihan',
         onChanged: (v) => setState(() => search = v.toLowerCase()),
       ),
-      const SizedBox(height: 8),
+      const SizedBox(height: EmiSpacing.sm),
       DropdownButtonFormField(
         initialValue: review,
         decoration: const InputDecoration(labelText: 'Status penilaian'),
@@ -642,17 +659,17 @@ class _AttemptsState extends ConsumerState<_Attempts> {
         ],
         onChanged: (v) => setState(() => review = v ?? ''),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: EmiSpacing.md),
       ref
           .watch(teacherSpeakingAttemptsProvider)
           .when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (_, _) => SizedBox(
-              height: 240,
+              height: 320,
               child: _error(
                 'Hasil Speaking Belum Bisa Dimuat',
                 'Hasil speaking siswa belum bisa dimuat. Silakan coba lagi.',
-                () => ref.invalidate(teacherSpeakingAttemptsProvider),
+                () => ref.refresh(teacherSpeakingAttemptsProvider),
               ),
             ),
             data: (all) {
@@ -683,29 +700,35 @@ class _AttemptsState extends ConsumerState<_Attempts> {
                     .map(
                       (a) => Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: EmiCard(
+                        child: TeacherListCard(
                           padding: EdgeInsets.zero,
-                          child: Material(
-                            type: MaterialType.transparency,
-                            child: ListTile(
-                              title: Text(a.studentName),
-                              subtitle: Text(
-                                [
-                                  a.exerciseTitle,
-                                  if (a.classroomName != null) a.classroomName!,
-                                  if (a.aiScore != null)
-                                    'Skor AI ${a.aiScore!.toStringAsFixed(0)}',
-                                  a.teacherScore == null
-                                      ? 'Belum dinilai'
-                                      : 'Sudah dinilai',
-                                  _date(a.createdAt),
-                                ].join(' · '),
+                          onTap: () => context.push(
+                            '/teacher/speaking/attempts/${a.id}',
+                          ),
+                          child: ListTile(
+                            title: Text(
+                              a.studentName,
+                              style: const TextStyle(color: TeacherStyle.ink),
+                            ),
+                            subtitle: Text(
+                              [
+                                a.exerciseTitle,
+                                if (a.classroomName != null) a.classroomName!,
+                                if (a.aiScore != null)
+                                  'Skor AI ${a.aiScore!.toStringAsFixed(0)}',
+                                a.teacherScore == null
+                                    ? 'Belum dinilai'
+                                    : 'Sudah dinilai',
+                                _date(a.createdAt),
+                              ].join(' · '),
+                              style: const TextStyle(
+                                color: TeacherStyle.inkMuted,
                               ),
-                              isThreeLine: true,
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => context.push(
-                                '/teacher/speaking/attempts/${a.id}',
-                              ),
+                            ),
+                            isThreeLine: true,
+                            trailing: const Icon(
+                              Icons.chevron_right,
+                              color: TeacherStyle.inkMuted,
                             ),
                           ),
                         ),
@@ -768,29 +791,40 @@ class _AttemptDetailState
                   child: ListView(
                     padding: const EdgeInsets.all(EmiSpacing.md),
                     children: [
-                      Text(
-                        a.studentName,
-                        style: Theme.of(context).textTheme.headlineSmall,
+                      TeacherPageHeader(
+                        icon: Icons.person_outline,
+                        title: a.studentName,
+                        subtitle: a.exerciseTitle,
                       ),
-                      _field('Latihan', a.exerciseTitle),
-                      if (a.classroomName != null)
-                        _field('Kelas', a.classroomName!),
-                      _field('Tanggal', _date(a.createdAt)),
-                      _field(
-                        'Status',
-                        a.teacherScore == null
-                            ? 'Belum dinilai'
-                            : 'Sudah dinilai',
+                      const SizedBox(height: EmiSpacing.md),
+                      TeacherListCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (a.classroomName != null)
+                              _field('Kelas', a.classroomName!),
+                            _field('Tanggal', _date(a.createdAt)),
+                            _field(
+                              'Status',
+                              a.teacherScore == null
+                                  ? 'Belum dinilai'
+                                  : 'Sudah dinilai',
+                            ),
+                            if (a.transcription != null)
+                              _field('Transkripsi AI', a.transcription!),
+                            if (a.aiScore != null)
+                              _field('Skor AI', a.aiScore!.toStringAsFixed(0)),
+                            if (a.status != null)
+                              _field('Status analisis', _analysis(a.status!)),
+                            if (a.captureSource != null)
+                              _field(
+                                'Sumber rekaman',
+                                _source(a.captureSource!),
+                              ),
+                          ],
+                        ),
                       ),
-                      if (a.transcription != null)
-                        _field('Transkripsi AI', a.transcription!),
-                      if (a.aiScore != null)
-                        _field('Skor AI', a.aiScore!.toStringAsFixed(0)),
-                      if (a.status != null)
-                        _field('Status analisis', _analysis(a.status!)),
-                      if (a.captureSource != null)
-                        _field('Sumber rekaman', _source(a.captureSource!)),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: EmiSpacing.md),
                       FilledButton.icon(
                         onPressed: audioLoading || a.audioMediaId == null
                             ? null
@@ -809,12 +843,11 @@ class _AttemptDetailState
                       if (audioError != null)
                         Text(
                           audioError!,
-                          style: const TextStyle(color: Colors.red),
+                          style: const TextStyle(color: EmiColors.error),
                         ),
-                      const SizedBox(height: 20),
-                      Text(
+                      TeacherSectionHeader(
                         'Penilaian Guru',
-                        style: Theme.of(context).textTheme.titleLarge,
+                        icon: Icons.rate_review_outlined,
                       ),
                       TextFormField(
                         controller: score,
@@ -1009,8 +1042,14 @@ Widget _field(String label, String value) => Padding(
   child: Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-      Text(value),
+      Text(
+        label,
+        style: const TextStyle(
+          fontWeight: FontWeight.w700,
+          color: TeacherStyle.inkMuted,
+        ),
+      ),
+      Text(value, style: const TextStyle(color: TeacherStyle.ink)),
     ],
   ),
 );

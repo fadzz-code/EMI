@@ -6,8 +6,10 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../app/theme/emi_theme.dart';
-import '../../../shared/widgets/emi_card.dart';
+import '../../../shared/legal/privacy_policy.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
+import '../../../shared/widgets/student_style.dart';
+import '../../../shared/widgets/student_widgets.dart';
 import '../../auth/domain/session_user.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../teacher/presentation/teacher_shell.dart';
@@ -57,7 +59,11 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
       padding: const EdgeInsets.all(EmiSpacing.md),
       children: [
         if (auth.error != null) ...[
-          EmiCard(child: Text(auth.error!.message)),
+          StudentPlaceholder(
+            icon: Icons.error_outline,
+            title: 'Terjadi Kesalahan',
+            message: auth.error!.message,
+          ),
           const SizedBox(height: EmiSpacing.md),
         ],
         _ProfileHeader(
@@ -70,8 +76,11 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
               ? null
               : _confirmDeleteAvatar,
         ),
-        const SizedBox(height: EmiSpacing.lg),
-        EmiCard(
+        const StudentSectionHeader(
+          'Informasi Akun',
+          icon: Icons.badge_outlined,
+        ),
+        StudentCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -88,33 +97,61 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
           ),
         ),
         const SizedBox(height: EmiSpacing.lg),
-        ElevatedButton.icon(
-          onPressed: user == null || auth.isLoading
-              ? null
-              : () => _showEditProfile(user),
-          icon: const Icon(Icons.edit_outlined),
-          label: const Text('Edit Profil'),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: user == null || auth.isLoading
+                ? null
+                : () => _showEditProfile(user),
+            icon: const Icon(Icons.edit_outlined),
+            label: const Text('Edit Profil'),
+          ),
         ),
         const SizedBox(height: EmiSpacing.sm),
-        OutlinedButton.icon(
-          onPressed: user == null || auth.isLoading
-              ? null
-              : _showChangePassword,
-          icon: const Icon(Icons.lock_outline),
-          label: const Text('Ganti Password'),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: user == null || auth.isLoading
+                ? null
+                : _showChangePassword,
+            icon: const Icon(Icons.lock_outline),
+            label: const Text('Ganti Password'),
+          ),
+        ),
+        const SizedBox(height: EmiSpacing.sm),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: auth.isLoading
+                ? null
+                : () => ref.read(authControllerProvider.notifier).logout(),
+            child: const Text('Logout'),
+          ),
         ),
         const SizedBox(height: EmiSpacing.lg),
-        OutlinedButton.icon(
-          onPressed: user == null || auth.isLoading ? null : _showDeleteAccount,
-          icon: const Icon(Icons.delete_forever_outlined),
-          label: const Text('Hapus Akun'),
+        SizedBox(
+          width: double.infinity,
+          child: TextButton.icon(
+            key: const Key('privacyPolicyLink'),
+            onPressed: () => openPrivacyPolicy(context),
+            icon: const Icon(Icons.privacy_tip_outlined),
+            label: const Text('Kebijakan Privasi'),
+          ),
         ),
         const SizedBox(height: EmiSpacing.sm),
-        OutlinedButton(
-          onPressed: auth.isLoading
-              ? null
-              : () => ref.read(authControllerProvider.notifier).logout(),
-          child: const Text('Logout'),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: EmiColors.error,
+              side: const BorderSide(color: EmiColors.error),
+            ),
+            onPressed: user == null || auth.isLoading
+                ? null
+                : _showDeleteAccount,
+            icon: const Icon(Icons.delete_forever_outlined),
+            label: const Text('Hapus Akun'),
+          ),
         ),
       ],
     );
@@ -398,7 +435,7 @@ class _ProfileHeader extends StatelessWidget {
             backgroundImage: FileImage(File(previewPath!)),
           );
 
-    return EmiCard(
+    return StudentCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -423,9 +460,14 @@ class _ProfileHeader extends StatelessWidget {
                   children: [
                     Text(
                       user?.fullName ?? '-',
-                      style: Theme.of(context).textTheme.titleLarge,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleLarge?.copyWith(color: StudentStyle.ink),
                     ),
-                    Text(user?.email ?? '-'),
+                    Text(
+                      user?.email ?? '-',
+                      style: const TextStyle(color: StudentStyle.inkMuted),
+                    ),
                   ],
                 ),
               ),
@@ -435,7 +477,7 @@ class _ProfileHeader extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: ElevatedButton.icon(
+                child: FilledButton.icon(
                   onPressed: isBusy ? null : onPick,
                   icon: const Icon(Icons.photo_library_outlined),
                   label: const Text('Pilih Avatar'),
@@ -466,12 +508,17 @@ class _NetworkAvatar extends StatelessWidget {
       (user?.fullName.isNotEmpty ?? false)
           ? user!.fullName.characters.first
           : '?',
+      style: const TextStyle(
+        color: EmiColors.primary,
+        fontWeight: FontWeight.w800,
+        fontSize: 24,
+      ),
     );
     final avatarUrl = user?.avatarUrl?.trim();
 
     return CircleAvatar(
       radius: 36,
-      backgroundColor: EmiColors.secondary,
+      backgroundColor: StudentStyle.tint,
       child: avatarUrl == null || avatarUrl.isEmpty
           ? fallback
           : ClipOval(
@@ -500,8 +547,15 @@ class _ProfileRow extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: Theme.of(context).textTheme.labelLarge),
-          Text(value),
+          Text(
+            label,
+            style: const TextStyle(
+              color: StudentStyle.inkMuted,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+          Text(value, style: const TextStyle(color: StudentStyle.ink)),
         ],
       ),
     );

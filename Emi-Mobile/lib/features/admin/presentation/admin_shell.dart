@@ -6,6 +6,7 @@ import '../../../app/theme/emi_theme.dart';
 import '../../auth/domain/session_user.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../data/admin_providers.dart';
+import 'admin_style.dart';
 
 class AdminShell extends ConsumerWidget {
   const AdminShell({
@@ -43,6 +44,7 @@ class AdminShell extends ConsumerWidget {
       },
       child: Scaffold(
         key: Key('adminScreen-$domain'),
+        backgroundColor: AdminStyle.pageBackground,
         drawer: _AdminDrawer(user: user, location: location),
         bottomNavigationBar: showQuickNavigation
             ? SafeArea(
@@ -53,43 +55,56 @@ class AdminShell extends ConsumerWidget {
         body: SafeArea(
           child: Column(
             children: [
-              Container(
-                height: 64,
-                padding: const EdgeInsets.symmetric(horizontal: EmiSpacing.md),
-                decoration: const BoxDecoration(
-                  color: EmiColors.background,
-                  border: Border(
-                    bottom: BorderSide(color: EmiColors.border, width: 2),
-                  ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  EmiSpacing.md,
+                  EmiSpacing.xs,
+                  EmiSpacing.md,
+                  0,
                 ),
-                child: Row(
-                  children: [
-                    if (fallbackRoute == null)
-                      Builder(
-                        builder: (context) => IconButton(
-                          key: const Key('adminMenuButton'),
-                          onPressed: () => Scaffold.of(context).openDrawer(),
-                          icon: const Icon(Icons.menu),
+                child: Container(
+                  height: 56,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: EmiSpacing.xs,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AdminStyle.surface,
+                    borderRadius: BorderRadius.circular(AdminStyle.cardRadius),
+                    boxShadow: AdminStyle.softShadow(),
+                  ),
+                  child: Row(
+                    children: [
+                      if (fallbackRoute == null)
+                        Builder(
+                          builder: (context) => IconButton(
+                            key: const Key('adminMenuButton'),
+                            onPressed: () => Scaffold.of(context).openDrawer(),
+                            icon: const Icon(Icons.menu, color: AdminStyle.ink),
+                          ),
+                        )
+                      else
+                        IconButton(
+                          key: const Key('adminBackButton'),
+                          tooltip: 'Kembali',
+                          onPressed:
+                              onBack ?? () => _back(context, fallbackRoute!),
+                          icon: const Icon(
+                            Icons.arrow_back,
+                            color: AdminStyle.ink,
+                          ),
                         ),
-                      )
-                    else
-                      IconButton(
-                        key: const Key('adminBackButton'),
-                        tooltip: 'Kembali',
-                        onPressed:
-                            onBack ?? () => _back(context, fallbackRoute!),
-                        icon: const Icon(Icons.arrow_back),
+                      const SizedBox(width: EmiSpacing.xs),
+                      Expanded(
+                        child: Text(
+                          title,
+                          key: Key('adminTitle-$domain'),
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(color: AdminStyle.ink),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    const SizedBox(width: EmiSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        title,
-                        key: Key('adminTitle-$domain'),
-                        style: Theme.of(context).textTheme.titleLarge,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               Expanded(child: child),
@@ -118,12 +133,19 @@ class _AdminDrawer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Drawer(
+      backgroundColor: AdminStyle.pageBackground,
       child: SafeArea(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            Padding(
+            Container(
+              margin: const EdgeInsets.all(EmiSpacing.sm),
               padding: const EdgeInsets.all(EmiSpacing.md),
+              decoration: BoxDecoration(
+                color: AdminStyle.surface,
+                borderRadius: BorderRadius.circular(AdminStyle.cardRadius),
+                boxShadow: AdminStyle.softShadow(),
+              ),
               child: Row(
                 children: [
                   _Avatar(user: user),
@@ -134,17 +156,29 @@ class _AdminDrawer extends ConsumerWidget {
                       children: [
                         Text(
                           user?.fullName ?? 'Admin EMI',
-                          style: Theme.of(context).textTheme.titleMedium,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(color: AdminStyle.ink),
                         ),
-                        if (user?.email != null) Text(user!.email),
-                        const Text('Admin'),
+                        Text(
+                          'Ruang Admin',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: EmiColors.primary),
+                        ),
+                        if (user?.email != null)
+                          Text(
+                            user!.email,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: AdminStyle.inkMuted),
+                          ),
                       ],
                     ),
                   ),
                 ],
               ),
             ),
-            const Divider(height: 1),
+            const SizedBox(height: EmiSpacing.xs),
             _Item(
               label: 'Beranda',
               icon: Icons.home_outlined,
@@ -200,11 +234,20 @@ class _AdminDrawer extends ConsumerWidget {
                 route: feature.route,
                 selected: location.startsWith(feature.route),
               ),
-            const Divider(height: 1),
+            _Item(
+              label: 'Profil',
+              icon: Icons.person_outline,
+              route: '/admin/profile',
+              selected: location.startsWith('/admin/profile'),
+            ),
+            const Divider(height: 1, color: AdminStyle.tintStrong),
             ListTile(
               key: const Key('adminLogoutButton'),
-              leading: const Icon(Icons.logout),
-              title: const Text('Keluar'),
+              leading: const Icon(Icons.logout, color: EmiColors.error),
+              title: const Text(
+                'Keluar',
+                style: TextStyle(color: EmiColors.error),
+              ),
               onTap: () async {
                 Navigator.of(context).pop();
                 await ref.read(authControllerProvider.notifier).logout();
@@ -269,32 +312,77 @@ class AdminQuickNavigation extends StatelessWidget {
         'adminQuickSettings',
       ),
     ];
-    return SizedBox(
-      height: 64,
-      child: Row(
-        children: [
-          for (final item in items)
-            Expanded(
-              child: InkWell(
-                key: Key(item.$5),
-                onTap: item.$4 ? null : () => context.go(item.$3),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(item.$2, size: 22),
-                    const SizedBox(height: 2),
-                    Text(
-                      item.$1,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelSmall,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        EmiSpacing.md,
+        0,
+        EmiSpacing.md,
+        EmiSpacing.xs,
+      ),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 60),
+        decoration: BoxDecoration(
+          color: AdminStyle.surface,
+          borderRadius: BorderRadius.circular(EmiRadii.pill),
+          boxShadow: AdminStyle.softShadow(opacity: 0.08),
+        ),
+        child: Row(
+          children: [
+            for (final item in items)
+              Expanded(
+                child: InkWell(
+                  key: Key(item.$5),
+                  borderRadius: BorderRadius.circular(EmiRadii.pill),
+                  onTap: item.$4 ? null : () => context.go(item.$3),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: EmiSpacing.md,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: item.$4
+                                ? EmiColors.primarySoft
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(EmiRadii.pill),
+                          ),
+                          child: Icon(
+                            item.$2,
+                            size: 22,
+                            color: item.$4
+                                ? EmiColors.primary
+                                : AdminStyle.inkMuted,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          item.$1,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textScaler: TextScaler.noScaling,
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: item.$4
+                                    ? EmiColors.primary
+                                    : AdminStyle.inkMuted,
+                                fontWeight: item.$4
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                              ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -351,11 +439,15 @@ class _Avatar extends StatelessWidget {
       (user?.fullName.isNotEmpty ?? false)
           ? user!.fullName.characters.first
           : 'A',
+      style: const TextStyle(
+        color: EmiColors.primary,
+        fontWeight: FontWeight.w800,
+      ),
     );
     final url = user?.avatarUrl?.trim();
     return CircleAvatar(
       radius: 28,
-      backgroundColor: EmiColors.secondary,
+      backgroundColor: AdminStyle.tint,
       child: url == null || url.isEmpty
           ? fallback
           : ClipOval(
@@ -395,10 +487,20 @@ class _Item extends StatelessWidget {
           left: indented ? EmiSpacing.lg : EmiSpacing.md,
           right: EmiSpacing.md,
         ),
-        leading: Icon(icon, size: 22),
-        title: Text(label),
+        leading: Icon(
+          icon,
+          size: 22,
+          color: selected ? EmiColors.primary : AdminStyle.inkMuted,
+        ),
+        title: Text(
+          label,
+          style: TextStyle(
+            color: selected ? EmiColors.primary : AdminStyle.ink,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
         selected: selected,
-        selectedTileColor: EmiColors.secondary,
+        selectedTileColor: EmiColors.primarySoft,
         onTap: () {
           Navigator.of(context).pop();
           if (!selected) context.go(route);

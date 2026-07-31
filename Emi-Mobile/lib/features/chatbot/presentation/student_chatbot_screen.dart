@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/emi_theme.dart';
-import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
+import '../../../shared/widgets/student_style.dart';
+import '../../../shared/widgets/student_widgets.dart';
 import '../data/chatbot_models.dart';
 import 'chatbot_controller.dart';
+import 'chatbot_history_panel.dart';
 
 class StudentChatbotScreen extends ConsumerStatefulWidget {
   const StudentChatbotScreen({super.key});
@@ -47,6 +49,11 @@ class _StudentChatbotScreenState extends ConsumerState<StudentChatbotScreen> {
       title: 'Chatbot AI',
       child: Column(
         children: [
+          _ChatbotToolbar(
+            onHistory: () => _openHistory(context),
+            onNewSession: () =>
+                ref.read(chatbotControllerProvider.notifier).startNewSession(),
+          ),
           Expanded(
             child: ListView(
               controller: _scrollController,
@@ -56,7 +63,6 @@ class _StudentChatbotScreenState extends ConsumerState<StudentChatbotScreen> {
                 if (state.error != null) ...[
                   const SizedBox(height: EmiSpacing.md),
                   _ErrorCard(
-                    message: state.error!.message,
                     onRetry: state.pendingMessage == null
                         ? null
                         : () => ref
@@ -65,7 +71,13 @@ class _StudentChatbotScreenState extends ConsumerState<StudentChatbotScreen> {
                   ),
                 ],
                 const SizedBox(height: EmiSpacing.md),
-                if (state.messages.isEmpty) const _EmptyChat(),
+                if (state.isLoadingHistory)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: EmiSpacing.md),
+                    child: _LoadingHistoryBubble(),
+                  ),
+                if (state.messages.isEmpty && !state.isLoadingHistory)
+                  const _EmptyChat(),
                 for (final message in state.messages) _ChatBubble(message),
                 if (state.isSending) const _TypingBubble(),
               ],
@@ -83,6 +95,19 @@ class _StudentChatbotScreenState extends ConsumerState<StudentChatbotScreen> {
 
   void _send() {
     ref.read(chatbotControllerProvider.notifier).send(_messageController.text);
+  }
+
+  void _openHistory(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ChatbotHistoryPanel(
+        provider: chatbotControllerProvider,
+        notifierRead: () =>
+            ref.read(chatbotControllerProvider.notifier),
+      ),
+    );
   }
 
   void _updateStickiness() {
@@ -103,32 +128,88 @@ class _StudentChatbotScreenState extends ConsumerState<StudentChatbotScreen> {
   }
 }
 
+class _ChatbotToolbar extends StatelessWidget {
+  const _ChatbotToolbar({required this.onHistory, required this.onNewSession});
+
+  final VoidCallback onHistory;
+  final VoidCallback onNewSession;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        EmiSpacing.md,
+        0,
+        EmiSpacing.md,
+        EmiSpacing.xs,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          OutlinedButton.icon(
+            key: const Key('chatbotHistoryButton'),
+            onPressed: onHistory,
+            icon: const Icon(Icons.history, size: 18),
+            label: const Text('Riwayat'),
+          ),
+          const SizedBox(width: EmiSpacing.sm),
+          OutlinedButton.icon(
+            key: const Key('chatbotNewSessionButton'),
+            onPressed: onNewSession,
+            icon: const Icon(Icons.add_comment_outlined, size: 18),
+            label: const Text('Sesi Baru'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoadingHistoryBubble extends StatelessWidget {
+  const _LoadingHistoryBubble();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        'Memuat percakapan...',
+        style: TextStyle(color: StudentStyle.inkMuted),
+      ),
+    );
+  }
+}
+
 class _IntroCard extends StatelessWidget {
   const _IntroCard();
 
   @override
   Widget build(BuildContext context) {
-    return EmiCard(
+    return StudentCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(EmiSpacing.sm),
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: EmiColors.secondary,
-                  border: Border.all(color: EmiColors.border, width: 2),
+                  color: StudentStyle.tint,
                   borderRadius: BorderRadius.circular(EmiRadii.pill),
-                  boxShadow: const [EmiShadows.hard],
                 ),
-                child: const Icon(Icons.auto_awesome_outlined),
+                child: const Icon(
+                  Icons.auto_awesome_outlined,
+                  color: EmiColors.primary,
+                ),
               ),
               const SizedBox(width: EmiSpacing.md),
               Expanded(
                 child: Text(
                   'Tanya materi Bahasa Mekongga',
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(color: StudentStyle.ink),
                 ),
               ),
             ],
@@ -136,6 +217,7 @@ class _IntroCard extends StatelessWidget {
           const SizedBox(height: EmiSpacing.md),
           const Text(
             'EMI menjawab dari Basis AI yang dipublish admin dan menampilkan referensi jika cocok.',
+            style: TextStyle(color: StudentStyle.inkMuted),
           ),
         ],
       ),
@@ -144,28 +226,17 @@ class _IntroCard extends StatelessWidget {
 }
 
 class _ErrorCard extends StatelessWidget {
-  const _ErrorCard({required this.message, required this.onRetry});
+  const _ErrorCard({required this.onRetry});
 
-  final String message;
   final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
-    return EmiCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(message),
-          if (onRetry != null) ...[
-            const SizedBox(height: EmiSpacing.sm),
-            OutlinedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Coba lagi'),
-            ),
-          ],
-        ],
-      ),
+    return StudentPlaceholder(
+      icon: Icons.cloud_off_outlined,
+      title: 'Jawaban Belum Tersedia',
+      message: 'EMI belum bisa menjawab sekarang. Coba lagi sebentar.',
+      onRetry: onRetry,
     );
   }
 }
@@ -215,16 +286,15 @@ class _UserBubble extends StatelessWidget {
         padding: const EdgeInsets.all(EmiSpacing.md),
         decoration: BoxDecoration(
           color: EmiColors.primary,
-          border: Border.all(color: EmiColors.border, width: 2),
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(18),
             topRight: Radius.circular(18),
             bottomLeft: Radius.circular(18),
             bottomRight: Radius.circular(4),
           ),
-          boxShadow: const [EmiShadows.hard],
+          boxShadow: StudentStyle.softShadow(opacity: 0.12),
         ),
-        child: Text(content),
+        child: Text(content, style: const TextStyle(color: Colors.white)),
       ),
     );
   }
@@ -249,33 +319,27 @@ class _AssistantBubble extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: EmiSpacing.md),
         padding: const EdgeInsets.all(EmiSpacing.md),
         decoration: BoxDecoration(
-          color: EmiColors.surface,
-          border: Border.all(color: EmiColors.border, width: 2),
+          color: StudentStyle.surface,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(18),
             topRight: Radius.circular(18),
             bottomLeft: Radius.circular(4),
             bottomRight: Radius.circular(18),
           ),
-          boxShadow: const [EmiShadows.hard],
+          boxShadow: StudentStyle.softShadow(),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_displayAnswer(content)),
+            Text(
+              _displayAnswer(content),
+              style: const TextStyle(color: StudentStyle.ink),
+            ),
             if (response != null && response!.matched) ...[
               const SizedBox(height: EmiSpacing.sm),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: EmiColors.background,
-                  border: Border.all(color: EmiColors.border),
-                  borderRadius: BorderRadius.circular(EmiRadii.pill),
-                ),
-                child: const Text('Referensi tersedia'),
+              const StudentStatusChip(
+                label: 'Referensi tersedia',
+                status: 'done',
               ),
             ],
             if (source != null) ...[
@@ -283,16 +347,27 @@ class _AssistantBubble extends StatelessWidget {
               ExpansionTile(
                 tilePadding: EdgeInsets.zero,
                 childrenPadding: EdgeInsets.zero,
-                title: Text('Sumber: ${source.title}'),
+                title: Text(
+                  'Sumber: ${source.title}',
+                  style: const TextStyle(
+                    color: StudentStyle.ink,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
                 children: [
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: Text('Kategori: ${source.category ?? 'Umum'}'),
+                    child: Text(
+                      'Kategori: ${source.category ?? 'Umum'}',
+                      style: const TextStyle(color: StudentStyle.inkMuted),
+                    ),
                   ),
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Jenis sumber: ${_sourceTypeLabel(source.sourceType)}',
+                      style: const TextStyle(color: StudentStyle.inkMuted),
                     ),
                   ),
                 ],
@@ -324,9 +399,26 @@ class _TypingBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Align(
+    return Align(
       alignment: Alignment.centerLeft,
-      child: EmiCard(child: Text('EMI sedang mencari jawaban...')),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: EmiSpacing.md),
+        padding: const EdgeInsets.all(EmiSpacing.md),
+        decoration: BoxDecoration(
+          color: StudentStyle.surface,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(18),
+            topRight: Radius.circular(18),
+            bottomLeft: Radius.circular(4),
+            bottomRight: Radius.circular(18),
+          ),
+          boxShadow: StudentStyle.softShadow(),
+        ),
+        child: const Text(
+          'EMI sedang mencari jawaban...',
+          style: TextStyle(color: StudentStyle.inkMuted),
+        ),
+      ),
     );
   }
 }
@@ -346,37 +438,60 @@ class _ChatInput extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
-      child: Container(
+      child: Padding(
         padding: const EdgeInsets.all(EmiSpacing.md),
-        decoration: const BoxDecoration(
-          color: EmiColors.surface,
-          border: Border(top: BorderSide(color: EmiColors.border, width: 2)),
-        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Expanded(
-              child: TextField(
-                controller: controller,
-                enabled: !isSending,
-                minLines: 1,
-                maxLines: 4,
-                textInputAction: TextInputAction.newline,
-                decoration: const InputDecoration(
-                  hintText: 'Tanyakan materi, kosakata, atau budaya...',
+              child: Container(
+                decoration: BoxDecoration(
+                  color: StudentStyle.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: StudentStyle.softShadow(),
+                ),
+                child: TextField(
+                  controller: controller,
+                  enabled: !isSending,
+                  minLines: 1,
+                  maxLines: 4,
+                  textInputAction: TextInputAction.newline,
+                  style: const TextStyle(color: StudentStyle.ink),
+                  decoration: const InputDecoration(
+                    hintText: 'Tanyakan materi, kosakata, atau budaya...',
+                    filled: false,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: EmiSpacing.md,
+                      vertical: EmiSpacing.sm,
+                    ),
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: EmiSpacing.sm),
-            ElevatedButton(
-              onPressed: isSending ? null : onSend,
-              child: isSending
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.send_outlined),
+            SizedBox(
+              width: 52,
+              height: 52,
+              child: FilledButton(
+                onPressed: isSending ? null : onSend,
+                style: FilledButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  shape: const CircleBorder(),
+                ),
+                child: isSending
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.send_outlined),
+              ),
             ),
           ],
         ),

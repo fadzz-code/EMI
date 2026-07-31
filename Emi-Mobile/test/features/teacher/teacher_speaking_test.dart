@@ -10,7 +10,7 @@ import 'package:emi_mobile/features/teacher/data/teacher_providers.dart';
 import 'package:emi_mobile/features/teacher/data/teacher_repository.dart';
 import 'package:emi_mobile/features/teacher/presentation/teacher_dashboard_screen.dart';
 import 'package:emi_mobile/features/teacher/presentation/teacher_speaking_screens.dart';
-import 'package:emi_mobile/shared/widgets/emi_card.dart';
+import 'package:emi_mobile/features/teacher/presentation/teacher_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -336,7 +336,7 @@ void main() {
   ) async {
     final router = await _pump(tester, location: '/teacher/dashboard');
     await _bounded(tester);
-    await tester.drag(find.byType(ListView).first, const Offset(0, -900));
+    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
     await tester.pump();
     await tester.tap(find.text('Hasil Speaking').last);
     await _bounded(tester);
@@ -435,7 +435,7 @@ void main() {
     expect(
       find.ancestor(
         of: find.text('Salam Tolaki'),
-        matching: find.byType(EmiCard),
+        matching: find.byType(TeacherListCard),
       ),
       findsOneWidget,
     );
@@ -797,7 +797,10 @@ void main() {
     );
     await _bounded(tester);
     expect(
-      find.ancestor(of: find.text('Nina'), matching: find.byType(EmiCard)),
+      find.ancestor(
+        of: find.text('Nina'),
+        matching: find.byType(TeacherListCard),
+      ),
       findsOneWidget,
     );
     expect(find.textContaining('Skor AI 87'), findsOneWidget);

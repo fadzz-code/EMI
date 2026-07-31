@@ -5,11 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
-import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/role_dashboard_widgets.dart';
 import '../data/teacher_providers.dart';
 import '../data/teacher_repository.dart';
 import 'teacher_shell.dart';
+import 'teacher_style.dart';
+import 'teacher_widgets.dart';
 
 class TeacherStudentsScreen extends ConsumerStatefulWidget {
   const TeacherStudentsScreen({super.key});
@@ -63,12 +64,11 @@ class _TeacherProgressState extends ConsumerState<TeacherProgressScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
-            Text(
-              'Progress Siswa',
-              style: Theme.of(context).textTheme.headlineMedium,
+            const TeacherPageHeader(
+              icon: Icons.trending_up_outlined,
+              title: 'Progress Siswa',
+              subtitle: 'Pantau perkembangan belajar siswa di kelas Anda.',
             ),
-            const SizedBox(height: EmiSpacing.xs),
-            const Text('Pantau perkembangan belajar siswa di kelas Anda.'),
             const SizedBox(height: EmiSpacing.lg),
             if (classes.isLoading || progress.isLoading)
               const SizedBox(
@@ -91,9 +91,7 @@ class _TeacherProgressState extends ConsumerState<TeacherProgressScreen> {
                 classes: classes.requireValue.total,
                 students: progress.requireValue.total,
               ),
-              const SizedBox(height: EmiSpacing.lg),
-              Text('Kelas', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: EmiSpacing.md),
+              TeacherSectionHeader('Kelas', icon: Icons.groups_outlined),
               if (classes.requireValue.items.isEmpty)
                 const FriendlyState(
                   icon: Icons.groups_outlined,
@@ -161,29 +159,27 @@ class _TeacherClassProgressState
                 onRetry: () =>
                     ref.invalidate(teacherClassDetailProvider(widget.classId)),
               ),
-              data: (klass) => EmiCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      klass.name,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    Text(klass.schoolName ?? 'Sekolah belum tersedia'),
-                    Text('Siswa aktif: ${klass.studentsCount}'),
-                  ],
-                ),
+              data: (klass) => TeacherPageHeader(
+                icon: Icons.groups_outlined,
+                title: klass.name,
+                subtitle:
+                    '${klass.schoolName ?? 'Sekolah belum tersedia'} • ${klass.studentsCount} siswa aktif',
               ),
             ),
             const SizedBox(height: EmiSpacing.md),
-            TextField(
-              key: const Key('teacherProgressStudentSearch'),
+            TeacherSearchField(
+              fieldKey: const Key('teacherProgressStudentSearch'),
               controller: controller,
-              decoration: const InputDecoration(
-                labelText: 'Cari siswa',
-                prefixIcon: Icon(Icons.search),
-              ),
+              label: 'Cari siswa',
+              onClear: () {
+                controller.clear();
+                setState(() {
+                  search = '';
+                  page = 1;
+                });
+              },
               onChanged: (value) {
+                setState(() {});
                 debounce?.cancel();
                 debounce = Timer(const Duration(milliseconds: 350), () {
                   if (mounted) {
@@ -237,8 +233,11 @@ class TeacherStudentDetailScreen extends ConsumerWidget {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
-              Text(row.name, style: Theme.of(context).textTheme.headlineMedium),
-              Text('${row.schoolName} • ${row.className}'),
+              TeacherPageHeader(
+                icon: Icons.person_outline,
+                title: row.name,
+                subtitle: '${row.schoolName} • ${row.className}',
+              ),
               const SizedBox(height: EmiSpacing.md),
               _MetricGrid(
                 metrics: [
@@ -264,15 +263,14 @@ class TeacherStudentDetailScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: EmiSpacing.md),
-              EmiCard(
+              TeacherSectionHeader(
+                'Detail Pembelajaran',
+                icon: Icons.school_outlined,
+              ),
+              TeacherListCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Detail pembelajaran',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
                     Text('Status: ${_status(row.learningStatus)}'),
                     Text('Modul dimulai: ${row.startedModules}'),
                     Text('Kuis dicoba: ${row.attemptedQuizzes}'),
@@ -289,7 +287,14 @@ class TeacherStudentDetailScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: EmiSpacing.md),
-              const EmiCard(child: Text('Progress speaking belum tersedia.')),
+              TeacherListCard(
+                child: Text(
+                  'Progress speaking belum tersedia.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: EmiColors.textSecondary,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -329,17 +334,31 @@ class _MetricGrid extends StatelessWidget {
         mainAxisExtent: 184,
         children: [
           for (final metric in metrics)
-            EmiCard(
+            TeacherListCard(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(metric.$3),
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: const BoxDecoration(
+                      color: TeacherStyle.tint,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(metric.$3, color: EmiColors.primary),
+                  ),
                   const SizedBox(height: EmiSpacing.xs),
-                  Text(metric.$1, textAlign: TextAlign.center),
+                  Text(
+                    metric.$1,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: TeacherStyle.inkMuted),
+                  ),
                   Text(
                     metric.$2,
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(color: TeacherStyle.ink),
                   ),
                 ],
               ),
@@ -354,20 +373,22 @@ class _ClassProgressCard extends StatelessWidget {
   const _ClassProgressCard({required this.klass});
   final TeacherClass klass;
   @override
-  Widget build(BuildContext context) => EmiCard(
-    child: Material(
-      type: MaterialType.transparency,
-      child: ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: const CircleAvatar(child: Icon(Icons.groups_outlined)),
-        title: Text(klass.name),
-        subtitle: Text(
-          '${klass.schoolName ?? 'Sekolah belum tersedia'}\n${klass.studentsCount} siswa',
-        ),
-        isThreeLine: true,
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => context.push('/teacher/progress/classes/${klass.id}'),
+  Widget build(BuildContext context) => TeacherListCard(
+    padding: EdgeInsets.zero,
+    child: ListTile(
+      onTap: () => context.push('/teacher/progress/classes/${klass.id}'),
+      leading: CircleAvatar(
+        backgroundColor: TeacherStyle.tint,
+        foregroundColor: EmiColors.primary,
+        child: const Icon(Icons.groups_outlined),
       ),
+      title: Text(klass.name, style: const TextStyle(color: TeacherStyle.ink)),
+      subtitle: Text(
+        '${klass.schoolName ?? 'Sekolah belum tersedia'}\n${klass.studentsCount} siswa',
+        style: const TextStyle(color: TeacherStyle.inkMuted),
+      ),
+      isThreeLine: true,
+      trailing: const Icon(Icons.chevron_right, color: TeacherStyle.inkMuted),
     ),
   );
 }
@@ -409,30 +430,19 @@ class _ProgressResult extends StatelessWidget {
                   _StudentCard(student: row),
                   const SizedBox(height: EmiSpacing.sm),
                 ],
-                if (page.lastPage > 1)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      TextButton(
-                        onPressed: page.currentPage > 1
-                            ? () => onPage(page.currentPage - 1)
-                            : null,
-                        child: const Text('Sebelumnya'),
-                      ),
-                      Flexible(
-                        child: Text(
-                          'Halaman ${page.currentPage} dari ${page.lastPage}',
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: page.currentPage < page.lastPage
-                            ? () => onPage(page.currentPage + 1)
-                            : null,
-                        child: const Text('Berikutnya'),
-                      ),
-                    ],
+                if (page.lastPage > 1) ...[
+                  const SizedBox(height: EmiSpacing.xs),
+                  TeacherPaginationBar(
+                    currentPage: page.currentPage,
+                    lastPage: page.lastPage,
+                    onPrevious: page.currentPage > 1
+                        ? () => onPage(page.currentPage - 1)
+                        : null,
+                    onNext: page.currentPage < page.lastPage
+                        ? () => onPage(page.currentPage + 1)
+                        : null,
                   ),
+                ],
               ],
             ),
     );
@@ -452,20 +462,21 @@ class _StudentCard extends StatelessWidget {
   const _StudentCard({required this.student});
   final TeacherStudentProgress student;
   @override
-  Widget build(BuildContext context) => EmiCard(
-    child: Material(
-      type: MaterialType.transparency,
-      child: ListTile(
-        contentPadding: EdgeInsets.zero,
-        title: Text(student.name),
-        subtitle: Text(
-          '${student.className}\nModul ${student.completedModules}/${student.publishedModules} • Materi ${student.completedLessons}/${student.publishedLessons} • Kuis ${student.completedQuizzes}/${student.publishedQuizzes}',
-        ),
-        isThreeLine: true,
-        trailing: Text(_percent(student.percent)),
-        onTap: () =>
-            context.push('/teacher/progress/students/${student.studentId}'),
+  Widget build(BuildContext context) => TeacherListCard(
+    padding: EdgeInsets.zero,
+    onTap: () =>
+        context.push('/teacher/progress/students/${student.studentId}'),
+    child: ListTile(
+      title: Text(
+        student.name,
+        style: const TextStyle(color: TeacherStyle.ink),
       ),
+      subtitle: Text(
+        '${student.className}\nModul ${student.completedModules}/${student.publishedModules} • Materi ${student.completedLessons}/${student.publishedLessons} • Kuis ${student.completedQuizzes}/${student.publishedQuizzes}',
+        style: const TextStyle(color: TeacherStyle.inkMuted),
+      ),
+      isThreeLine: true,
+      trailing: TeacherStatusChip(label: _percent(student.percent)),
     ),
   );
 }

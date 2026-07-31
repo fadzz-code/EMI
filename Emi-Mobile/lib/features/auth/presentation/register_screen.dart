@@ -4,11 +4,16 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../core/errors/app_error.dart';
-import '../../../shared/widgets/emi_card.dart';
 import '../data/auth_providers.dart';
 import '../domain/auth_repository.dart';
 import '../domain/session_user.dart';
+import 'auth_banner.dart';
+import 'auth_brand_mark.dart';
+import 'auth_card.dart';
 import 'auth_controller.dart';
+import 'auth_field.dart';
+import 'auth_style.dart';
+import 'auth_theme_scope.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -50,152 +55,193 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
 
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(EmiSpacing.lg),
-            child: EmiCard(
-              child: Form(
-                key: _formKey,
+    return AuthThemeScope(
+      child: Scaffold(
+        backgroundColor: AuthStyle.pageBackground,
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(EmiSpacing.lg),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Daftar Akun EMI',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: EmiSpacing.sm),
-                    const Text(
-                      'Data akan diverifikasi Admin sebelum akun bisa digunakan.',
-                    ),
-                    if (_error != null) ...[
-                      const SizedBox(height: EmiSpacing.md),
-                      Text(
-                        _error!.message,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
+                    const AuthBrandMark(icon: Icons.person_add_alt_outlined),
+                    const SizedBox(height: EmiSpacing.xl),
+                    AuthCard(
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Daftar Akun EMI',
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(color: AuthStyle.ink),
+                            ),
+                            const SizedBox(height: EmiSpacing.xs),
+                            Text(
+                              'Data akan diverifikasi Admin sebelum akun bisa digunakan.',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(color: EmiColors.textSecondary),
+                            ),
+                            if (_error != null) ...[
+                              const SizedBox(height: EmiSpacing.md),
+                              AuthBanner(message: _error!.message),
+                            ],
+                            const SizedBox(height: EmiSpacing.lg),
+                            AuthDropdownField<UserRole>(
+                              label: 'Role',
+                              value: _role,
+                              items: const [
+                                DropdownMenuItem(
+                                  value: UserRole.student,
+                                  child: Text('Siswa'),
+                                ),
+                                DropdownMenuItem(
+                                  value: UserRole.teacher,
+                                  child: Text('Guru'),
+                                ),
+                              ],
+                              onChanged: auth.isLoading
+                                  ? null
+                                  : (value) => setState(
+                                      () => _role = value ?? UserRole.student,
+                                    ),
+                            ),
+                            const SizedBox(height: EmiSpacing.md),
+                            AuthField(
+                              label: 'Nama lengkap',
+                              controller: _nameController,
+                              validator: (value) =>
+                                  (value ?? '').trim().length < 3
+                                  ? 'Nama minimal 3 karakter.'
+                                  : null,
+                            ),
+                            const SizedBox(height: EmiSpacing.md),
+                            AuthField(
+                              label: 'Email',
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              validator: (value) => _validEmail(value ?? '')
+                                  ? null
+                                  : 'Email tidak valid.',
+                            ),
+                            const SizedBox(height: EmiSpacing.md),
+                            AuthField(
+                              label: 'Password',
+                              controller: _passwordController,
+                              obscureText: true,
+                              validator: _passwordError,
+                            ),
+                            const SizedBox(height: EmiSpacing.md),
+                            AuthField(
+                              label: 'Konfirmasi password',
+                              controller: _passwordConfirmationController,
+                              obscureText: true,
+                              validator: (value) =>
+                                  value != _passwordController.text
+                                  ? 'Konfirmasi password tidak sama.'
+                                  : null,
+                            ),
+                            const SizedBox(height: EmiSpacing.md),
+                            AuthDropdownField<String>(
+                              label: 'Sekolah',
+                              value: _schoolId,
+                              items: _schools
+                                  .map(
+                                    (school) => DropdownMenuItem(
+                                      value: school.id,
+                                      child: Text(
+                                        school.name,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              validator: (value) => value == null
+                                  ? 'Sekolah wajib dipilih.'
+                                  : null,
+                              onChanged: auth.isLoading || _loadingOptions
+                                  ? null
+                                  : (value) {
+                                      setState(() {
+                                        _schoolId = value;
+                                        _classId = null;
+                                        _classes = const [];
+                                      });
+                                      if (value != null) _loadClasses(value);
+                                    },
+                            ),
+                            const SizedBox(height: EmiSpacing.md),
+                            AuthDropdownField<String>(
+                              label: 'Kelas',
+                              value: _classId,
+                              items: _classes
+                                  .map(
+                                    (schoolClass) => DropdownMenuItem(
+                                      value: schoolClass.id,
+                                      child: Text(
+                                        schoolClass.name,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              validator: (value) =>
+                                  value == null ? 'Kelas wajib dipilih.' : null,
+                              onChanged: auth.isLoading || _loadingOptions
+                                  ? null
+                                  : (value) => setState(() => _classId = value),
+                            ),
+                            const SizedBox(height: EmiSpacing.lg),
+                            ElevatedButton(
+                              onPressed: auth.isLoading || _loadingOptions
+                                  ? null
+                                  : _submit,
+                              child: auth.isLoading
+                                  ? const SizedBox.square(
+                                      dimension: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text('Daftar'),
+                            ),
+                            const SizedBox(height: EmiSpacing.md),
+                            const Divider(color: AuthStyle.divider),
+                            const SizedBox(height: EmiSpacing.md),
+                            Center(
+                              child: Wrap(
+                                alignment: WrapAlignment.center,
+                                children: [
+                                  Text(
+                                    'Sudah punya akun? ',
+                                    style: TextStyle(
+                                      color: EmiColors.textSecondary,
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: auth.isLoading
+                                        ? null
+                                        : () => context.go('/login'),
+                                    child: Text(
+                                      'Masuk',
+                                      style: TextStyle(
+                                        color: EmiColors.primary,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                    const SizedBox(height: EmiSpacing.lg),
-                    DropdownButtonFormField<UserRole>(
-                      initialValue: _role,
-                      decoration: const InputDecoration(labelText: 'Role'),
-                      items: const [
-                        DropdownMenuItem(
-                          value: UserRole.student,
-                          child: Text('Siswa'),
-                        ),
-                        DropdownMenuItem(
-                          value: UserRole.teacher,
-                          child: Text('Guru'),
-                        ),
-                      ],
-                      onChanged: auth.isLoading
-                          ? null
-                          : (value) => setState(
-                              () => _role = value ?? UserRole.student,
-                            ),
-                    ),
-                    const SizedBox(height: EmiSpacing.md),
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nama lengkap',
-                      ),
-                      validator: (value) => (value ?? '').trim().length < 3
-                          ? 'Nama minimal 3 karakter.'
-                          : null,
-                    ),
-                    const SizedBox(height: EmiSpacing.md),
-                    TextFormField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(labelText: 'Email'),
-                      validator: (value) => _validEmail(value ?? '')
-                          ? null
-                          : 'Email tidak valid.',
-                    ),
-                    const SizedBox(height: EmiSpacing.md),
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: true,
-                      decoration: const InputDecoration(labelText: 'Password'),
-                      validator: _passwordError,
-                    ),
-                    const SizedBox(height: EmiSpacing.md),
-                    TextFormField(
-                      controller: _passwordConfirmationController,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Konfirmasi password',
-                      ),
-                      validator: (value) => value != _passwordController.text
-                          ? 'Konfirmasi password tidak sama.'
-                          : null,
-                    ),
-                    const SizedBox(height: EmiSpacing.md),
-                    DropdownButtonFormField<String>(
-                      initialValue: _schoolId,
-                      decoration: const InputDecoration(labelText: 'Sekolah'),
-                      items: _schools
-                          .map(
-                            (school) => DropdownMenuItem(
-                              value: school.id,
-                              child: Text(school.name),
-                            ),
-                          )
-                          .toList(),
-                      validator: (value) =>
-                          value == null ? 'Sekolah wajib dipilih.' : null,
-                      onChanged: auth.isLoading || _loadingOptions
-                          ? null
-                          : (value) {
-                              setState(() {
-                                _schoolId = value;
-                                _classId = null;
-                                _classes = const [];
-                              });
-                              if (value != null) _loadClasses(value);
-                            },
-                    ),
-                    const SizedBox(height: EmiSpacing.md),
-                    DropdownButtonFormField<String>(
-                      initialValue: _classId,
-                      decoration: const InputDecoration(labelText: 'Kelas'),
-                      items: _classes
-                          .map(
-                            (schoolClass) => DropdownMenuItem(
-                              value: schoolClass.id,
-                              child: Text(schoolClass.name),
-                            ),
-                          )
-                          .toList(),
-                      validator: (value) =>
-                          value == null ? 'Kelas wajib dipilih.' : null,
-                      onChanged: auth.isLoading || _loadingOptions
-                          ? null
-                          : (value) => setState(() => _classId = value),
-                    ),
-                    const SizedBox(height: EmiSpacing.lg),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: auth.isLoading || _loadingOptions
-                            ? null
-                            : _submit,
-                        child: auth.isLoading
-                            ? const CircularProgressIndicator()
-                            : const Text('Daftar'),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: auth.isLoading
-                          ? null
-                          : () => context.go('/login'),
-                      child: const Text('Sudah punya akun? Login'),
                     ),
                   ],
                 ),

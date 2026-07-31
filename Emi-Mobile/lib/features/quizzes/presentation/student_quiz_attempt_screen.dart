@@ -5,7 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
-import '../../../shared/widgets/emi_card.dart';
+import '../../../shared/widgets/student_style.dart';
+import '../../../shared/widgets/student_widgets.dart';
 import '../data/student_quiz.dart';
 import '../data/student_quiz_providers.dart';
 
@@ -119,6 +120,7 @@ class _StudentQuizAttemptScreenState
         context.pop();
       },
       child: Scaffold(
+        backgroundColor: StudentStyle.pageBackground,
         body: SafeArea(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
@@ -410,84 +412,108 @@ class _AttemptView extends StatelessWidget {
     }
     return Column(
       children: [
-        Container(
-          height: 64,
-          padding: const EdgeInsets.symmetric(horizontal: EmiSpacing.md),
-          decoration: const BoxDecoration(
-            color: EmiColors.background,
-            border: Border(
-              bottom: BorderSide(color: EmiColors.border, width: 2),
-            ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            EmiSpacing.md,
+            EmiSpacing.md,
+            EmiSpacing.md,
+            EmiSpacing.sm,
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Soal ${index + 1}/$total',
-                  style: Theme.of(context).textTheme.titleLarge,
+          child: Container(
+            padding: const EdgeInsets.all(EmiSpacing.md),
+            decoration: BoxDecoration(
+              color: StudentStyle.surface,
+              borderRadius: BorderRadius.circular(StudentStyle.cardRadius),
+              boxShadow: StudentStyle.softShadow(),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Soal ${index + 1}/$total',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: StudentStyle.ink,
+                        ),
+                      ),
+                    ),
+                    if (remaining != null) _TimerPill(remaining: remaining!),
+                  ],
                 ),
-              ),
-              if (remaining != null) _TimerPill(remaining: remaining!),
-            ],
+                const SizedBox(height: EmiSpacing.sm),
+                StudentProgressBar(value: total == 0 ? 0 : (index + 1) / total),
+              ],
+            ),
           ),
         ),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
-              LinearProgressIndicator(
-                value: total == 0 ? 0 : (index + 1) / total,
-              ),
-              const SizedBox(height: EmiSpacing.lg),
-              EmiCard(
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(EmiSpacing.md),
+                decoration: BoxDecoration(
+                  color: StudentStyle.surface,
+                  borderRadius: BorderRadius.circular(StudentStyle.cardRadius),
+                  boxShadow: StudentStyle.softShadow(),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       question!.questionText,
-                      style: Theme.of(context).textTheme.titleLarge,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleLarge?.copyWith(color: StudentStyle.ink),
                     ),
                     const SizedBox(height: EmiSpacing.sm),
-                    Text('${question!.points.g} poin'),
+                    StudentStatusChip(label: '${question!.points.g} poin'),
                   ],
                 ),
               ),
-              const SizedBox(height: EmiSpacing.lg),
+              const SizedBox(height: EmiSpacing.md),
               if (question!.isMultipleChoice)
                 ...question!.options.map(
                   (option) => Padding(
-                    padding: const EdgeInsets.only(bottom: EmiSpacing.md),
-                    child: ChoiceChip(
+                    padding: const EdgeInsets.only(bottom: EmiSpacing.sm),
+                    child: _OptionTile(
+                      text: option.optionText,
                       selected: selectedOptionId == option.id,
-                      label: SizedBox(
-                        width: double.infinity,
-                        child: Text(option.optionText),
-                      ),
-                      onSelected: (_) => onSelect(option.id),
-                      selectedColor: EmiColors.primary,
-                      backgroundColor: EmiColors.surface,
-                      side: const BorderSide(color: EmiColors.border, width: 2),
+                      onTap: () => onSelect(option.id),
                     ),
                   ),
                 )
               else
-                TextField(
-                  controller: textController,
-                  minLines: 4,
-                  maxLines: 6,
-                  decoration: const InputDecoration(
-                    hintText: 'Tulis jawaban...',
+                Container(
+                  decoration: BoxDecoration(
+                    color: StudentStyle.surface,
+                    borderRadius: BorderRadius.circular(
+                      StudentStyle.cardRadius,
+                    ),
+                    boxShadow: StudentStyle.softShadow(),
+                  ),
+                  child: TextField(
+                    controller: textController,
+                    minLines: 4,
+                    maxLines: 6,
+                    style: const TextStyle(color: StudentStyle.ink),
+                    decoration: const InputDecoration(
+                      hintText: 'Tulis jawaban...',
+                      filled: false,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding: EdgeInsets.all(EmiSpacing.md),
+                    ),
                   ),
                 ),
             ],
           ),
         ),
-        Container(
+        Padding(
           padding: const EdgeInsets.all(EmiSpacing.md),
-          decoration: const BoxDecoration(
-            color: EmiColors.surface,
-            border: Border(top: BorderSide(color: EmiColors.border, width: 2)),
-          ),
           child: Row(
             children: [
               Expanded(
@@ -499,22 +525,77 @@ class _AttemptView extends StatelessWidget {
               const SizedBox(width: EmiSpacing.sm),
               if (onNext != null)
                 Expanded(
-                  child: ElevatedButton(
+                  child: FilledButton(
                     onPressed: saving || submitting ? null : onNext,
                     child: Text(saving ? 'Menyimpan...' : 'Berikutnya'),
                   ),
                 )
               else
                 Expanded(
-                  child: ElevatedButton(
+                  child: FilledButton(
                     onPressed: saving || submitting ? null : onSubmit,
-                    child: Text(submitting ? 'Mengirim...' : 'Submit'),
+                    child: Text(submitting ? 'Mengirim...' : 'Kumpulkan'),
                   ),
                 ),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+class _OptionTile extends StatelessWidget {
+  const _OptionTile({
+    required this.text,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String text;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(StudentStyle.cardRadius),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: double.infinity,
+          padding: const EdgeInsets.all(EmiSpacing.md),
+          decoration: BoxDecoration(
+            color: selected ? EmiColors.primarySoft : StudentStyle.surface,
+            borderRadius: BorderRadius.circular(StudentStyle.cardRadius),
+            boxShadow: StudentStyle.softShadow(),
+            border: selected
+                ? Border.all(color: EmiColors.primary, width: 2)
+                : null,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                selected ? Icons.radio_button_checked : Icons.radio_button_off,
+                color: selected ? EmiColors.primary : StudentStyle.inkMuted,
+                size: 22,
+              ),
+              const SizedBox(width: EmiSpacing.sm),
+              Expanded(
+                child: Text(
+                  text,
+                  style: TextStyle(
+                    color: StudentStyle.ink,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -530,52 +611,96 @@ class _ResultView extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(EmiSpacing.md),
       children: [
-        Text('Hasil Kuis', style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: EmiSpacing.lg),
-        EmiCard(
+        const StudentPageHeader(
+          icon: Icons.emoji_events_outlined,
+          title: 'Hasil Kuis',
+          subtitle: 'Kerja bagus! Ini ringkasan hasilmu.',
+        ),
+        const SizedBox(height: EmiSpacing.md),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(EmiSpacing.lg),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFFFB877), Color(0xFFFF8A3D)],
+            ),
+            borderRadius: BorderRadius.circular(StudentStyle.heroRadius),
+            boxShadow: StudentStyle.heroShadow(),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'Status: ${attempt.status}',
-                style: Theme.of(context).textTheme.titleMedium,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(color: Colors.white),
               ),
               if (attempt.scorePercent != null) ...[
-                const SizedBox(height: EmiSpacing.md),
+                const SizedBox(height: EmiSpacing.sm),
                 Text(
                   '${attempt.scorePercent!.round()}%',
-                  style: Theme.of(context).textTheme.headlineMedium,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 40,
+                  ),
                 ),
               ],
               if (attempt.scorePoints != null && attempt.maxPoints != null)
-                Text('${attempt.scorePoints!.g}/${attempt.maxPoints!.g} poin'),
-              if (attempt.correctCount != null)
-                Text('Benar: ${attempt.correctCount}'),
-              if (attempt.incorrectCount != null)
-                Text('Salah: ${attempt.incorrectCount}'),
-              if (attempt.unansweredCount != null)
-                Text('Kosong: ${attempt.unansweredCount}'),
+                Text(
+                  '${attempt.scorePoints!.g}/${attempt.maxPoints!.g} poin',
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.92)),
+                ),
               if (attempt.scorePercent == null)
-                const Text('Nilai belum ditampilkan oleh pengaturan kuis.'),
+                Text(
+                  'Nilai belum ditampilkan oleh pengaturan kuis.',
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.92)),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: EmiSpacing.md),
+        StudentCard(
+          child: Row(
+            children: [
+              if (attempt.correctCount != null)
+                Expanded(
+                  child: StudentStatChip(
+                    label: 'Benar',
+                    value: '${attempt.correctCount}',
+                  ),
+                ),
+              if (attempt.incorrectCount != null) ...[
+                const SizedBox(width: EmiSpacing.sm),
+                Expanded(
+                  child: StudentStatChip(
+                    label: 'Salah',
+                    value: '${attempt.incorrectCount}',
+                  ),
+                ),
+              ],
+              if (attempt.unansweredCount != null) ...[
+                const SizedBox(width: EmiSpacing.sm),
+                Expanded(
+                  child: StudentStatChip(
+                    label: 'Kosong',
+                    value: '${attempt.unansweredCount}',
+                  ),
+                ),
+              ],
             ],
           ),
         ),
         const SizedBox(height: EmiSpacing.lg),
-        ...attempt.answers.map(
-          (answer) => Padding(
-            padding: const EdgeInsets.only(bottom: EmiSpacing.md),
-            child: EmiCard(
-              child: Text(
-                answer.isCorrect == null
-                    ? 'Jawaban tersimpan'
-                    : (answer.isCorrect! ? 'Benar' : 'Salah'),
-              ),
-            ),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: onDone,
+            child: const Text('Kembali ke detail kuis'),
           ),
-        ),
-        ElevatedButton(
-          onPressed: onDone,
-          child: const Text('Kembali ke detail kuis'),
         ),
       ],
     );
@@ -597,17 +722,34 @@ class _TimerPill extends StatelessWidget {
         .remainder(60)
         .toString()
         .padLeft(2, '0');
+    final urgent = remaining.inMinutes < 1;
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: EmiSpacing.sm,
         vertical: 6,
       ),
       decoration: BoxDecoration(
-        color: remaining.inMinutes < 1 ? EmiColors.error : EmiColors.secondary,
-        border: Border.all(color: EmiColors.border, width: 2),
+        color: urgent ? const Color(0xFFFFE1E3) : StudentStyle.tint,
         borderRadius: BorderRadius.circular(EmiRadii.pill),
       ),
-      child: Text('$minutes:$seconds'),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.timer_outlined,
+            size: 16,
+            color: urgent ? const Color(0xFFA62932) : EmiColors.primary,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '$minutes:$seconds',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: urgent ? const Color(0xFFA62932) : StudentStyle.ink,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -623,17 +765,11 @@ class _ErrorState extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(EmiSpacing.md),
       children: [
-        EmiCard(
-          child: Column(
-            children: [
-              Text(error.toString()),
-              const SizedBox(height: EmiSpacing.md),
-              ElevatedButton(
-                onPressed: onRetry,
-                child: const Text('Coba Lagi'),
-              ),
-            ],
-          ),
+        StudentPlaceholder(
+          icon: Icons.cloud_off_outlined,
+          title: 'Kuis Belum Bisa Dimuat',
+          message: 'Periksa koneksi internetmu, lalu coba lagi.',
+          onRetry: onRetry,
         ),
       ],
     );

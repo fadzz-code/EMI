@@ -162,7 +162,8 @@ void main() {
     await _pump(tester, '/admin/culture');
     await tester.pumpAndSettle();
     expect(find.byType(Image), findsOneWidget);
-    expect(find.text('Gambar · Terbit'), findsOneWidget);
+    expect(find.text('Gambar'), findsOneWidget);
+    expect(find.text('Terbit'), findsOneWidget);
     expect(find.text('Diubah 15/07/2026'), findsOneWidget);
     expect(find.text('media-secret'), findsNothing);
     expect(find.text('image'), findsNothing);

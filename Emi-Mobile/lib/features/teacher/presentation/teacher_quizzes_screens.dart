@@ -7,10 +7,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../core/errors/app_error.dart';
-import '../../../shared/widgets/emi_card.dart';
 import '../data/teacher_providers.dart';
 import '../data/teacher_quiz_models.dart';
 import 'teacher_shell.dart';
+import 'teacher_style.dart';
+import 'teacher_widgets.dart';
 
 class TeacherQuizzesScreen extends ConsumerStatefulWidget {
   const TeacherQuizzesScreen({super.key});
@@ -46,26 +47,12 @@ class _TeacherQuizzesScreenState extends ConsumerState<TeacherQuizzesScreen> {
         data: (data) => ListView(
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.quiz_outlined, size: 28),
-                const SizedBox(width: EmiSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Kuis Kelas',
-                        style: Theme.of(context).textTheme.headlineMedium,
-                      ),
-                      const Text('Kelola kuis dan pantau pemahaman siswa.'),
-                    ],
-                  ),
-                ),
-              ],
+            const TeacherPageHeader(
+              icon: Icons.quiz_outlined,
+              title: 'Kuis Kelas',
+              subtitle: 'Kelola kuis dan pantau pemahaman siswa.',
             ),
-            const SizedBox(height: EmiSpacing.lg),
+            const SizedBox(height: EmiSpacing.md),
             FilledButton.icon(
               onPressed: () => context.push('/teacher/quizzes/create'),
               icon: const Icon(Icons.add, size: 24),
@@ -74,12 +61,9 @@ class _TeacherQuizzesScreenState extends ConsumerState<TeacherQuizzesScreen> {
             const SizedBox(height: EmiSpacing.lg),
             _QuizMetrics(items: data.items, paginated: data.lastPage > 1),
             const SizedBox(height: EmiSpacing.lg),
-            TextField(
+            TeacherSearchField(
               controller: _search,
-              decoration: const InputDecoration(
-                labelText: 'Cari kuis',
-                prefixIcon: Icon(Icons.search),
-              ),
+              label: 'Cari kuis',
               onSubmitted: (_) => setState(() => page = 1),
             ),
             const SizedBox(height: EmiSpacing.sm),
@@ -109,25 +93,17 @@ class _TeacherQuizzesScreenState extends ConsumerState<TeacherQuizzesScreen> {
                 _QuizItem(quiz: quiz),
                 const SizedBox(height: EmiSpacing.sm),
               ],
-            if (data.items.isNotEmpty)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    onPressed: page > 1 ? () => setState(() => page--) : null,
-                    icon: const Icon(Icons.chevron_left),
-                  ),
-                  Flexible(
-                    child: Text('Halaman ${data.page} dari ${data.lastPage}'),
-                  ),
-                  IconButton(
-                    onPressed: page < data.lastPage
-                        ? () => setState(() => page++)
-                        : null,
-                    icon: const Icon(Icons.chevron_right),
-                  ),
-                ],
+            if (data.items.isNotEmpty) ...[
+              const SizedBox(height: EmiSpacing.xs),
+              TeacherPaginationBar(
+                currentPage: data.page,
+                lastPage: data.lastPage,
+                onPrevious: page > 1 ? () => setState(() => page--) : null,
+                onNext: page < data.lastPage
+                    ? () => setState(() => page++)
+                    : null,
               ),
+            ],
           ],
         ),
       ),
@@ -175,20 +151,35 @@ class _QuizMetrics extends StatelessWidget {
             for (final metric in metrics)
               SizedBox(
                 width: width,
-                child: EmiCard(
+                child: TeacherListCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(metric.$1, size: 24),
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: const BoxDecoration(
+                          color: TeacherStyle.tint,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          metric.$1,
+                          size: 18,
+                          color: EmiColors.primary,
+                        ),
+                      ),
                       const SizedBox(height: EmiSpacing.sm),
                       Text(
                         metric.$2,
-                        style: Theme.of(context).textTheme.titleLarge,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: TeacherStyle.ink,
+                        ),
                       ),
                       Text(
                         metric.$3,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: TeacherStyle.inkMuted),
                       ),
                     ],
                   ),
@@ -205,60 +196,69 @@ class _QuizItem extends StatelessWidget {
   const _QuizItem({required this.quiz});
   final TeacherQuiz quiz;
   @override
-  Widget build(BuildContext context) => InkWell(
-    borderRadius: BorderRadius.circular(EmiRadii.card),
+  Widget build(BuildContext context) => TeacherListCard(
     onTap: () => context.push('/teacher/quizzes/${quiz.id}'),
-    child: EmiCard(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.quiz_outlined, size: 28),
-          const SizedBox(width: EmiSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  quiz.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                Text(
-                  '${quiz.className ?? 'Kelas aktif'} • ${quiz.questionsCount} pertanyaan • ${quiz.attemptsCount} mengerjakan',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: EmiSpacing.sm),
-                Row(
-                  children: [
-                    Flexible(child: _StatusBadge(status: quiz.status)),
-                    const Spacer(),
-                    Flexible(
-                      child: Text(
-                        'Diperbarui ${_date(quiz.updatedAt)}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: const BoxDecoration(
+            color: TeacherStyle.tint,
+            shape: BoxShape.circle,
           ),
-          PopupMenuButton<String>(
-            onSelected: (value) => context.push(
-              value == 'result'
-                  ? '/teacher/quizzes/${quiz.id}/results'
-                  : '/teacher/quizzes/${quiz.id}/edit',
-            ),
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'edit', child: Text('Edit Kuis')),
-              PopupMenuItem(value: 'result', child: Text('Lihat Hasil')),
+          child: const Icon(Icons.quiz_outlined, color: EmiColors.primary),
+        ),
+        const SizedBox(width: EmiSpacing.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                quiz.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(color: TeacherStyle.ink),
+              ),
+              Text(
+                '${quiz.className ?? 'Kelas aktif'} • ${quiz.questionsCount} pertanyaan • ${quiz.attemptsCount} mengerjakan',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: TeacherStyle.inkMuted),
+              ),
+              const SizedBox(height: EmiSpacing.sm),
+              Row(
+                children: [
+                  Flexible(child: _StatusBadge(status: quiz.status)),
+                  const Spacer(),
+                  Flexible(
+                    child: Text(
+                      'Diperbarui ${_date(quiz.updatedAt)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: TeacherStyle.inkMuted),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
-        ],
-      ),
+        ),
+        PopupMenuButton<String>(
+          onSelected: (value) => context.push(
+            value == 'result'
+                ? '/teacher/quizzes/${quiz.id}/results'
+                : '/teacher/quizzes/${quiz.id}/edit',
+          ),
+          itemBuilder: (_) => const [
+            PopupMenuItem(value: 'edit', child: Text('Edit Kuis')),
+            PopupMenuItem(value: 'result', child: Text('Lihat Hasil')),
+          ],
+        ),
+      ],
     ),
   );
 }
@@ -275,8 +275,8 @@ class _QuizSkeleton extends StatelessWidget {
           child: Container(
             height: 88,
             decoration: BoxDecoration(
-              color: EmiColors.surfaceSoft,
-              borderRadius: BorderRadius.circular(EmiRadii.card),
+              color: TeacherStyle.tint,
+              borderRadius: BorderRadius.circular(TeacherStyle.cardRadius),
             ),
           ),
         ),
@@ -311,53 +311,42 @@ class _TeacherQuizDetailScreenState
           data: (quiz) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.quiz_outlined, size: 28),
-                  const SizedBox(width: EmiSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          quiz.title,
-                          style: Theme.of(context).textTheme.headlineMedium,
-                        ),
-                        Text(quiz.className ?? 'Kelas aktif'),
-                        const SizedBox(height: EmiSpacing.sm),
-                        _StatusBadge(status: quiz.status),
-                      ],
+              TeacherPageHeader(
+                icon: Icons.quiz_outlined,
+                title: quiz.title,
+                subtitle: quiz.className ?? 'Kelas aktif',
+                trailing: PopupMenuButton<String>(
+                  enabled: !mutating,
+                  onSelected: (value) => value == 'result'
+                      ? context.push('/teacher/quizzes/${widget.id}/results')
+                      : _action(context, quiz, value),
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(
+                      value: 'result',
+                      child: Text('Lihat Hasil'),
                     ),
-                  ),
-                  PopupMenuButton<String>(
-                    enabled: !mutating,
-                    onSelected: (value) => value == 'result'
-                        ? context.push('/teacher/quizzes/${widget.id}/results')
-                        : _action(context, quiz, value),
-                    itemBuilder: (_) => [
+                    if (quiz.status == 'draft')
                       const PopupMenuItem(
-                        value: 'result',
-                        child: Text('Lihat Hasil'),
+                        value: 'publish',
+                        child: Text('Terbitkan Kuis'),
                       ),
-                      if (quiz.status == 'draft')
-                        const PopupMenuItem(
-                          value: 'publish',
-                          child: Text('Terbitkan Kuis'),
-                        ),
-                      if (quiz.status == 'published')
-                        const PopupMenuItem(
-                          value: 'archive',
-                          child: Text('Arsipkan Kuis'),
-                        ),
-                      if (quiz.status == 'draft' && quiz.attemptsCount == 0)
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Text('Hapus Kuis'),
-                        ),
-                    ],
-                  ),
-                ],
+                    if (quiz.status == 'published')
+                      const PopupMenuItem(
+                        value: 'archive',
+                        child: Text('Arsipkan Kuis'),
+                      ),
+                    if (quiz.status == 'draft' && quiz.attemptsCount == 0)
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Text('Hapus Kuis'),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: EmiSpacing.sm),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: _StatusBadge(status: quiz.status),
               ),
               const SizedBox(height: EmiSpacing.lg),
               FilledButton.icon(
@@ -369,35 +358,22 @@ class _TeacherQuizDetailScreenState
               const SizedBox(height: EmiSpacing.lg),
               _DetailMetrics(quiz: quiz),
               if (quiz.description.isNotEmpty) ...[
-                const SizedBox(height: EmiSpacing.lg),
-                Text(
-                  'Deskripsi',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: EmiSpacing.sm),
+                TeacherSectionHeader('Deskripsi'),
                 Text(quiz.description),
               ],
-              const SizedBox(height: EmiSpacing.lg),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Pertanyaan',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
-                  FilledButton.icon(
-                    onPressed: quiz.status == 'draft'
-                        ? () => context.push(
-                            '/teacher/quizzes/${widget.id}/questions/create',
-                          )
-                        : null,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Tambah Pertanyaan'),
-                  ),
-                ],
+              TeacherSectionHeader(
+                'Pertanyaan',
+                icon: Icons.help_outline,
+                trailing: FilledButton.icon(
+                  onPressed: quiz.status == 'draft'
+                      ? () => context.push(
+                          '/teacher/quizzes/${widget.id}/questions/create',
+                        )
+                      : null,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Tambah'),
+                ),
               ),
-              const SizedBox(height: EmiSpacing.sm),
               if (quiz.questions.isEmpty)
                 const _State(
                   title: 'Belum Ada Pertanyaan',
@@ -406,13 +382,14 @@ class _TeacherQuizDetailScreenState
                 )
               else
                 for (var index = 0; index < quiz.questions.length; index++) ...[
-                  EmiCard(
+                  TeacherListCard(
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           '${index + 1}'.padLeft(2, '0'),
-                          style: Theme.of(context).textTheme.titleLarge,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(color: EmiColors.primary),
                         ),
                         const SizedBox(width: EmiSpacing.sm),
                         Expanded(
@@ -423,6 +400,7 @@ class _TeacherQuizDetailScreenState
                                 quiz.questions[index].text,
                                 maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(color: TeacherStyle.ink),
                               ),
                               if (quiz.questions[index].imageUrl != null) ...[
                                 const SizedBox(height: EmiSpacing.sm),
@@ -435,6 +413,9 @@ class _TeacherQuizDetailScreenState
                               const SizedBox(height: EmiSpacing.xs),
                               Text(
                                 '${quiz.questions[index].type == 'multiple_choice' ? 'Pilihan ganda' : 'Jawaban singkat'} • ${quiz.questions[index].points} poin',
+                                style: const TextStyle(
+                                  color: TeacherStyle.inkMuted,
+                                ),
                               ),
                             ],
                           ),
@@ -532,19 +513,36 @@ class _DetailMetrics extends StatelessWidget {
             for (final metric in metrics)
               SizedBox(
                 width: width,
-                child: EmiCard(
+                child: TeacherListCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(metric.$1, size: 24),
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: const BoxDecoration(
+                          color: TeacherStyle.tint,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          metric.$1,
+                          size: 18,
+                          color: EmiColors.primary,
+                        ),
+                      ),
                       const SizedBox(height: EmiSpacing.sm),
                       Text(
                         metric.$2,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleLarge,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: TeacherStyle.ink,
+                        ),
                       ),
-                      Text(metric.$3),
+                      Text(
+                        metric.$3,
+                        style: const TextStyle(color: TeacherStyle.inkMuted),
+                      ),
                     ],
                   ),
                 ),
@@ -645,54 +643,29 @@ class _TeacherQuizFormScreenState extends ConsumerState<TeacherQuizFormScreen> {
             child: ListView(
               padding: const EdgeInsets.all(EmiSpacing.md),
               children: [
-                _section(context, 'Informasi Kuis', Icons.info_outline),
+                _section(
+                  context,
+                  'Informasi Kuis',
+                  Icons.info_outline,
+                  leading: false,
+                ),
                 _field(title, 'Judul Kuis', required: true),
                 _field(description, 'Deskripsi', lines: 3),
                 _field(instructions, 'Petunjuk', lines: 3),
                 const SizedBox(height: EmiSpacing.sm),
                 _section(context, 'Aturan Pengerjaan', Icons.rule_outlined),
-                LayoutBuilder(
-                  builder: (context, constraints) => constraints.maxWidth >= 688
-                      ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: _field(
-                                duration,
-                                'Durasi (menit)',
-                                number: true,
-                                positive: true,
-                              ),
-                            ),
-                            const SizedBox(width: EmiSpacing.md),
-                            Expanded(
-                              child: _field(
-                                attempts,
-                                'Maksimal Percobaan',
-                                number: true,
-                                positive: true,
-                              ),
-                            ),
-                          ],
-                        )
-                      : Column(
-                          children: [
-                            _field(
-                              duration,
-                              'Durasi (menit)',
-                              number: true,
-                              positive: true,
-                            ),
-                            _field(
-                              attempts,
-                              'Maksimal Percobaan',
-                              number: true,
-                              positive: true,
-                            ),
-                          ],
-                        ),
+                _field(
+                  duration,
+                  'Durasi (menit)',
+                  number: true,
+                  positive: true,
                 ),
-                const SizedBox(height: EmiSpacing.sm),
+                _field(
+                  attempts,
+                  'Maksimal Percobaan',
+                  number: true,
+                  positive: true,
+                ),
                 _section(context, 'Jadwal', Icons.calendar_today_outlined),
                 _scheduleField(open, 'Buka pada', openAt, (value) {
                   openAt = value;
@@ -702,7 +675,6 @@ class _TeacherQuizFormScreenState extends ConsumerState<TeacherQuizFormScreen> {
                   closeAt = value;
                   close.text = _dateTime(value);
                 }),
-                const SizedBox(height: EmiSpacing.sm),
                 _section(context, 'Status', Icons.visibility_outlined),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
@@ -738,18 +710,12 @@ class _TeacherQuizFormScreenState extends ConsumerState<TeacherQuizFormScreen> {
     ),
   );
 
-  Widget _section(BuildContext context, String title, IconData icon) => Padding(
-    padding: const EdgeInsets.only(bottom: EmiSpacing.md),
-    child: Row(
-      children: [
-        Icon(icon, size: 24),
-        const SizedBox(width: EmiSpacing.sm),
-        Expanded(
-          child: Text(title, style: Theme.of(context).textTheme.titleLarge),
-        ),
-      ],
-    ),
-  );
+  Widget _section(
+    BuildContext context,
+    String title,
+    IconData icon, {
+    bool leading = true,
+  }) => TeacherSectionHeader(title, icon: icon, leading: leading);
 
   Future<void> _leave(TeacherQuiz? quiz) async {
     if (dirty && await _confirm(context, 'Batalkan perubahan?') != true) return;
@@ -966,18 +932,13 @@ class _TeacherQuestionFormScreenState
             child: ListView(
               padding: const EdgeInsets.all(EmiSpacing.md),
               children: [
-                Text(
+                TeacherSectionHeader(
                   'Pertanyaan',
-                  style: Theme.of(context).textTheme.titleLarge,
+                  icon: Icons.help_outline,
+                  leading: false,
                 ),
-                const SizedBox(height: EmiSpacing.md),
                 _input(text, 'Pertanyaan', true),
-                const SizedBox(height: EmiSpacing.lg),
-                Text(
-                  'Tipe Soal',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: EmiSpacing.md),
+                TeacherSectionHeader('Tipe Soal'),
                 DropdownButtonFormField(
                   initialValue: type,
                   decoration: const InputDecoration(labelText: 'Tipe Soal'),
@@ -996,26 +957,14 @@ class _TeacherQuestionFormScreenState
                     dirty = true;
                   }),
                 ),
-                const SizedBox(height: EmiSpacing.lg),
-                Text('Poin', style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: EmiSpacing.md),
+                TeacherSectionHeader('Poin'),
                 _input(points, 'Poin', true, number: true),
                 if (type == 'short_answer') ...[
-                  const SizedBox(height: EmiSpacing.lg),
-                  Text(
-                    'Jawaban Benar',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: EmiSpacing.md),
+                  TeacherSectionHeader('Jawaban Benar'),
                   _input(answer, 'Jawaban Benar', true),
                 ],
                 if (type == 'multiple_choice') ...[
-                  const SizedBox(height: EmiSpacing.lg),
-                  Text(
-                    'Pilihan Jawaban',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: EmiSpacing.md),
+                  TeacherSectionHeader('Pilihan Jawaban'),
                   for (var i = 0; i < options.length; i++)
                     Row(
                       children: [
@@ -1055,28 +1004,24 @@ class _TeacherQuestionFormScreenState
                     icon: const Icon(Icons.add),
                     label: const Text('Tambah Pilihan'),
                   ),
-                  const SizedBox(height: EmiSpacing.lg),
+                  const SizedBox(height: EmiSpacing.xs),
                   Text(
-                    'Jawaban Benar',
-                    style: Theme.of(context).textTheme.titleLarge,
+                    'Pilih tombol radio pada jawaban yang benar.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: EmiColors.textSecondary,
+                    ),
                   ),
-                  const SizedBox(height: EmiSpacing.sm),
-                  Text('Pilih tombol radio pada jawaban yang benar.'),
                 ],
-                const SizedBox(height: EmiSpacing.lg),
+                TeacherSectionHeader('Penjelasan'),
                 _input(explanation, 'Penjelasan', false),
-                const SizedBox(height: EmiSpacing.lg),
-                Text(
-                  'Gambar Soal',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: EmiSpacing.sm),
+                TeacherSectionHeader('Gambar Soal', icon: Icons.image_outlined),
                 if (imagePath != null)
                   Image.file(File(imagePath!), height: 160, fit: BoxFit.contain)
                 else if (imageUrl != null)
                   Image.network(imageUrl!, height: 160, fit: BoxFit.contain)
                 else if (imageMediaId != null)
                   Text(imageName ?? 'Gambar soal terhubung.'),
+                const SizedBox(height: EmiSpacing.sm),
                 Wrap(
                   spacing: EmiSpacing.sm,
                   children: [
@@ -1088,7 +1033,7 @@ class _TeacherQuestionFormScreenState
                       ),
                     ),
                     if (imageMediaId != null || imagePath != null)
-                      TextButton(
+                      OutlinedButton(
                         onPressed: saving
                             ? null
                             : () => setState(() {
@@ -1100,11 +1045,13 @@ class _TeacherQuestionFormScreenState
                       ),
                   ],
                 ),
-                if (q != null)
-                  TextButton(
+                if (q != null) ...[
+                  const SizedBox(height: EmiSpacing.md),
+                  OutlinedButton(
                     onPressed: saving ? null : _delete,
                     child: const Text('Hapus Soal'),
                   ),
+                ],
                 const SizedBox(height: 32),
               ],
             ),
@@ -1272,7 +1219,7 @@ class _TeacherQuizResultsScreenState
                 0,
               ),
               child: Wrap(
-                spacing: EmiSpacing.md,
+                spacing: EmiSpacing.sm,
                 runSpacing: EmiSpacing.sm,
                 children: [
                   _ResultMetric('Rata-rata', data.average, percent: true),
@@ -1291,8 +1238,9 @@ class _TeacherQuizResultsScreenState
           ),
           Padding(
             padding: const EdgeInsets.all(EmiSpacing.md),
-            child: DropdownButton<String>(
-              value: status,
+            child: DropdownButtonFormField<String>(
+              initialValue: status,
+              decoration: const InputDecoration(labelText: 'Status attempt'),
               items: const [
                 DropdownMenuItem(value: '', child: Text('Semua status')),
                 DropdownMenuItem(
@@ -1326,39 +1274,53 @@ class _TeacherQuizResultsScreenState
                       message: 'Belum ada attempt siswa untuk kuis ini.',
                     )
                   : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(
+                        EmiSpacing.md,
+                        0,
+                        EmiSpacing.md,
+                        EmiSpacing.md,
+                      ),
                       itemCount: data.items.length + 1,
                       itemBuilder: (context, index) {
                         if (index == data.items.length) {
-                          return Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              IconButton(
-                                onPressed: page > 1
-                                    ? () => setState(() => page--)
-                                    : null,
-                                icon: const Icon(Icons.chevron_left),
-                              ),
-                              Text(
-                                'Halaman ${data.page} dari ${data.lastPage}',
-                              ),
-                              IconButton(
-                                onPressed: page < data.lastPage
-                                    ? () => setState(() => page++)
-                                    : null,
-                                icon: const Icon(Icons.chevron_right),
-                              ),
-                            ],
+                          return Padding(
+                            padding: const EdgeInsets.only(top: EmiSpacing.xs),
+                            child: TeacherPaginationBar(
+                              currentPage: data.page,
+                              lastPage: data.lastPage,
+                              onPrevious: page > 1
+                                  ? () => setState(() => page--)
+                                  : null,
+                              onNext: page < data.lastPage
+                                  ? () => setState(() => page++)
+                                  : null,
+                            ),
                           );
                         }
                         final item = data.items[index];
-                        return ListTile(
-                          title: Text(item.studentName),
-                          subtitle: Text(
-                            '${_attemptStatus(item.status)} • Attempt #${item.number} • Skor ${item.scorePercent ?? '-'}%',
-                          ),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => context.push(
-                            '/teacher/quizzes/${widget.quizId}/results/${item.id}',
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: EmiSpacing.sm),
+                          child: TeacherListCard(
+                            padding: EdgeInsets.zero,
+                            onTap: () => context.push(
+                              '/teacher/quizzes/${widget.quizId}/results/${item.id}',
+                            ),
+                            child: ListTile(
+                              title: Text(
+                                item.studentName,
+                                style: const TextStyle(color: TeacherStyle.ink),
+                              ),
+                              subtitle: Text(
+                                '${_attemptStatus(item.status)} • Attempt #${item.number} • Skor ${item.scorePercent ?? '-'}%',
+                                style: const TextStyle(
+                                  color: TeacherStyle.inkMuted,
+                                ),
+                              ),
+                              trailing: const Icon(
+                                Icons.chevron_right,
+                                color: TeacherStyle.inkMuted,
+                              ),
+                            ),
                           ),
                         );
                       },
@@ -1377,21 +1339,13 @@ class _ResultMetric extends StatelessWidget {
   final num? value;
   final bool percent;
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 104,
-    child: Column(
-      children: [
-        Text(
-          value == null
-              ? 'Belum tersedia'
-              : percent
-              ? '${value!.toStringAsFixed(1)}%'
-              : '$value',
-          textAlign: TextAlign.center,
-        ),
-        Text(label, textAlign: TextAlign.center),
-      ],
-    ),
+  Widget build(BuildContext context) => TeacherStatChip(
+    label: label,
+    value: value == null
+        ? 'Belum tersedia'
+        : percent
+        ? '${value!.toStringAsFixed(1)}%'
+        : '$value',
   );
 }
 
@@ -1419,27 +1373,51 @@ class TeacherQuizAttemptScreen extends ConsumerWidget {
           data: (item) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
-              Text(
-                item.studentName,
-                style: Theme.of(context).textTheme.headlineSmall,
+              TeacherPageHeader(
+                icon: Icons.person_outline,
+                title: item.studentName,
+                subtitle:
+                    '${_attemptStatus(item.status)} • Attempt #${item.number}',
               ),
-              Text('${_attemptStatus(item.status)} • Attempt #${item.number}'),
-              Text(
-                'Skor: ${item.scorePercent ?? '-'}% (${item.scorePoints ?? '-'} / ${item.maxPoints ?? '-'})',
+              const SizedBox(height: EmiSpacing.md),
+              Wrap(
+                spacing: EmiSpacing.sm,
+                runSpacing: EmiSpacing.sm,
+                children: [
+                  TeacherStatChip(
+                    label: 'Skor',
+                    value:
+                        '${item.scorePercent ?? '-'}% (${item.scorePoints ?? '-'}/${item.maxPoints ?? '-'})',
+                  ),
+                  TeacherStatChip(label: 'Mulai', value: _date(item.startedAt)),
+                  TeacherStatChip(
+                    label: 'Dikumpulkan',
+                    value: _date(item.submittedAt),
+                  ),
+                ],
               ),
-              Text('Mulai: ${_date(item.startedAt)}'),
-              Text('Dikumpulkan: ${_date(item.submittedAt)}'),
-              const Divider(),
-              Text('Jawaban', style: Theme.of(context).textTheme.titleMedium),
+              TeacherSectionHeader('Jawaban', icon: Icons.checklist_outlined),
               if (item.answers.isEmpty)
-                const Text('Detail jawaban kosong.')
+                TeacherListCard(
+                  child: Text(
+                    'Detail jawaban kosong.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: EmiColors.textSecondary,
+                    ),
+                  ),
+                )
               else
-                for (final answer in item.answers)
-                  Card(
+                for (final answer in item.answers) ...[
+                  TeacherListCard(
+                    padding: EdgeInsets.zero,
                     child: ListTile(
-                      title: Text(answer.answerText),
+                      title: Text(
+                        answer.answerText,
+                        style: const TextStyle(color: TeacherStyle.ink),
+                      ),
                       subtitle: Text(
                         'Poin: ${answer.awardedPoints ?? '-'} / ${answer.maxPoints ?? '-'}',
+                        style: const TextStyle(color: TeacherStyle.inkMuted),
                       ),
                       trailing: answer.correct == null
                           ? null
@@ -1447,9 +1425,14 @@ class TeacherQuizAttemptScreen extends ConsumerWidget {
                               answer.correct!
                                   ? Icons.check_circle_outline
                                   : Icons.cancel_outlined,
+                              color: answer.correct!
+                                  ? EmiColors.success
+                                  : EmiColors.error,
                             ),
                     ),
                   ),
+                  const SizedBox(height: EmiSpacing.sm),
+                ],
             ],
           ),
         ),
@@ -1471,12 +1454,17 @@ class _StatusBadge extends StatelessWidget {
       color: status == 'published'
           ? EmiColors.success
           : status == 'archived'
-          ? EmiColors.surfaceSoft
+          ? TeacherStyle.tintStrong
           : EmiColors.warning,
-      border: Border.all(color: EmiColors.border, width: 2),
       borderRadius: BorderRadius.circular(EmiRadii.pill),
     ),
-    child: Text(_status(status), style: Theme.of(context).textTheme.labelLarge),
+    child: Text(
+      _status(status),
+      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+        fontWeight: FontWeight.w700,
+        color: status == 'archived' ? TeacherStyle.ink : Colors.white,
+      ),
+    ),
   );
 }
 
@@ -1491,9 +1479,23 @@ class _State extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.quiz_outlined, size: 48),
-          Text(title, style: Theme.of(context).textTheme.titleLarge),
-          Text(message, textAlign: TextAlign.center),
+          const Icon(
+            Icons.quiz_outlined,
+            size: 48,
+            color: TeacherStyle.inkMuted,
+          ),
+          const SizedBox(height: EmiSpacing.sm),
+          Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(color: TeacherStyle.ink),
+          ),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: TeacherStyle.inkMuted),
+          ),
           if (retry != null)
             TextButton(onPressed: retry, child: const Text('Coba Lagi')),
         ],

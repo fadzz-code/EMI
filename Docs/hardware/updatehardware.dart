@@ -233,7 +233,7 @@ class _WalkieTalkieScreenState extends State<WalkieTalkieScreen> {
     header.setUint8(12, 0x66); // f
     header.setUint8(13, 0x6D); // m
     header.setUint8(14, 0x74); // t
-    header.setUint8(15, 0x20); // 
+    header.setUint8(15, 0x20);
     header.setUint32(16, 16, Endian.little);
     header.setUint16(20, 1, Endian.little);
     header.setUint16(22, channels, Endian.little);

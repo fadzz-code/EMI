@@ -15,6 +15,7 @@ class AccountStatusScreen extends ConsumerWidget {
     final copy = _copyFor(auth.status, auth.error?.message);
 
     return Scaffold(
+      backgroundColor: EmiColors.background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(

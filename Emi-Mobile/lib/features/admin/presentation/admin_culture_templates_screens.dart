@@ -9,6 +9,8 @@ import '../data/admin_culture_repository.dart';
 import '../data/admin_repository.dart';
 import '../data/admin_providers.dart';
 import 'admin_shell.dart';
+import 'admin_style.dart';
+import 'admin_widgets.dart';
 
 final adminCultureTemplatesProvider =
     FutureProvider<List<AdminCultureTemplate>>(
@@ -53,17 +55,69 @@ class AdminCultureTemplatesScreen extends ConsumerWidget {
                     )
                   : Column(
                       children: [
-                        for (final item in items)
-                          ListTile(
-                            title: Text(item.title),
-                            subtitle: Text(
-                              '${item.items.length} item · ${item.status}',
-                            ),
-                            trailing: const Icon(Icons.chevron_right),
+                        for (final item in items) ...[
+                          AdminCard(
                             onTap: () => context.push(
                               '/admin/culture/templates/${item.id}',
                             ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: AdminStyle.tint,
+                                    borderRadius: BorderRadius.circular(
+                                      EmiRadii.pill,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.collections_bookmark_outlined,
+                                    color: EmiColors.primary,
+                                    size: 22,
+                                  ),
+                                ),
+                                const SizedBox(width: EmiSpacing.md),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item.title,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '${item.items.length} item · ${item.status}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              color: AdminStyle.inkMuted,
+                                            ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.chevron_right,
+                                  color: AdminStyle.inkMuted,
+                                ),
+                              ],
+                            ),
                           ),
+                          const SizedBox(height: EmiSpacing.sm),
+                        ],
                       ],
                     ),
             ),
@@ -92,53 +146,108 @@ class AdminCultureTemplateDetailScreen extends ConsumerWidget {
           data: (template) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
-              Text(
-                template.title,
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              Text(template.description.isEmpty ? '-' : template.description),
-              const SizedBox(height: EmiSpacing.md),
-              Wrap(
-                spacing: EmiSpacing.sm,
-                children: [
-                  OutlinedButton(
-                    onPressed: () => _editTemplate(context, ref, template),
-                    child: const Text('Edit'),
-                  ),
-                  if (template.status != 'published')
-                    OutlinedButton(
-                      onPressed: () => _publish(context, ref, template.id),
-                      child: const Text('Terbitkan'),
+              AdminCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      template.title,
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
-                  if (template.status == 'published')
-                    FilledButton(
-                      onPressed: () => _apply(context, ref, template.id),
-                      child: const Text('Terapkan ke Kelas'),
+                    const SizedBox(height: EmiSpacing.xs),
+                    Text(
+                      template.description.isEmpty ? '-' : template.description,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AdminStyle.inkMuted,
+                      ),
                     ),
-                ],
-              ),
-              const Divider(),
-              FilledButton.icon(
-                onPressed: () => _editItem(context, ref, template.id),
-                icon: const Icon(Icons.add),
-                label: const Text('Tambah Item'),
-              ),
-              for (final item in template.items)
-                ListTile(
-                  title: Text(item.title),
-                  subtitle: Text('${item.contentType} · ${item.status}'),
-                  onTap: () => _editItem(context, ref, template.id, item),
-                  trailing: IconButton(
-                    tooltip: 'Hapus item',
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () async {
-                      await ref
-                          .read(adminCultureRepositoryProvider)
-                          .deleteTemplateItem(item.id);
-                      ref.invalidate(adminCultureTemplateProvider(id));
-                    },
-                  ),
+                    const SizedBox(height: EmiSpacing.md),
+                    Wrap(
+                      spacing: EmiSpacing.sm,
+                      runSpacing: EmiSpacing.xs,
+                      children: [
+                        OutlinedButton(
+                          onPressed: () =>
+                              _editTemplate(context, ref, template),
+                          child: const Text('Edit'),
+                        ),
+                        if (template.status != 'published')
+                          OutlinedButton(
+                            onPressed: () =>
+                                _publish(context, ref, template.id),
+                            child: const Text('Terbitkan'),
+                          ),
+                        if (template.status == 'published')
+                          FilledButton(
+                            onPressed: () => _apply(context, ref, template.id),
+                            child: const Text('Terapkan ke Kelas'),
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
+              ),
+              AdminSectionHeader(
+                'Item Template',
+                trailing: IconButton(
+                  tooltip: 'Tambah Item',
+                  onPressed: () => _editItem(context, ref, template.id),
+                  icon: const Icon(Icons.add_circle_outline),
+                ),
+              ),
+              if (template.items.isEmpty)
+                const AdminPlaceholder(
+                  icon: Icons.collections_bookmark_outlined,
+                  title: 'Belum Ada Item',
+                  message: 'Tambah item untuk melengkapi template ini.',
+                )
+              else
+                for (final item in template.items) ...[
+                  AdminCard(
+                    onTap: () => _editItem(context, ref, template.id, item),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.title,
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.bold),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${item.contentType} · ${item.status}',
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(color: AdminStyle.inkMuted),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Hapus item',
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: EmiColors.error,
+                          ),
+                          onPressed: () async {
+                            await ref
+                                .read(adminCultureRepositoryProvider)
+                                .deleteTemplateItem(item.id);
+                            ref.invalidate(adminCultureTemplateProvider(id));
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: EmiSpacing.sm),
+                ],
             ],
           ),
         ),

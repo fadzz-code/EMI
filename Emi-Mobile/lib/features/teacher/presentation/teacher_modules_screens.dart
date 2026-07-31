@@ -5,11 +5,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../core/errors/app_error.dart';
-import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/role_dashboard_widgets.dart';
 import '../data/teacher_providers.dart';
 import '../data/teacher_repository.dart';
 import 'teacher_shell.dart';
+import 'teacher_style.dart';
+import 'teacher_widgets.dart';
 
 class TeacherModulesScreen extends ConsumerWidget {
   const TeacherModulesScreen({super.key});
@@ -76,20 +77,29 @@ class TeacherModulesScreen extends ConsumerWidget {
                       const SizedBox(height: EmiSpacing.md),
                   itemBuilder: (context, index) {
                     final item = items[index];
-                    return EmiCard(
+                    return TeacherListCard(
+                      padding: EdgeInsets.zero,
+                      onTap: () =>
+                          context.push('/teacher/modules/${item.id}/edit'),
                       child: ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const CircleAvatar(
-                          child: Icon(Icons.menu_book_outlined),
+                        leading: CircleAvatar(
+                          backgroundColor: TeacherStyle.tint,
+                          foregroundColor: EmiColors.primary,
+                          child: const Icon(Icons.menu_book_outlined),
                         ),
-                        title: Text(item.title),
+                        title: Text(
+                          item.title,
+                          style: const TextStyle(color: TeacherStyle.ink),
+                        ),
                         subtitle: Text(
                           '${_status(item.status)} • Urutan ${item.sortOrder}\n${item.lessons.length} materi',
+                          style: const TextStyle(color: TeacherStyle.inkMuted),
                         ),
                         isThreeLine: true,
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () =>
-                            context.push('/teacher/modules/${item.id}/edit'),
+                        trailing: const Icon(
+                          Icons.chevron_right,
+                          color: TeacherStyle.inkMuted,
+                        ),
                       ),
                     );
                   },
@@ -129,45 +139,60 @@ class _TeacherModuleCreateScreenState
   Widget build(BuildContext context) => TeacherShell(
     title: 'Tambah Modul',
     fallbackRoute: '/teacher/modules',
-    child: ListView(
-      padding: const EdgeInsets.all(EmiSpacing.md),
-      children: [
-        Form(
-          key: _form,
-          child: Column(
-            children: [
-              TextFormField(
-                controller: _title,
-                decoration: const InputDecoration(labelText: 'Judul Modul'),
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Judul wajib diisi.'
-                    : null,
-              ),
-              const SizedBox(height: EmiSpacing.md),
-              TextFormField(
-                controller: _description,
-                decoration: const InputDecoration(labelText: 'Deskripsi Modul'),
-                minLines: 3,
-                maxLines: 6,
-              ),
-              const SizedBox(height: EmiSpacing.md),
-              TextFormField(
-                controller: _sort,
-                decoration: const InputDecoration(labelText: 'Urutan Tampil'),
-                keyboardType: TextInputType.number,
-                validator: (value) => (int.tryParse(value ?? '') ?? 0) < 1
-                    ? 'Urutan minimal 1.'
-                    : null,
-              ),
-            ],
+    child: Form(
+      key: _form,
+      child: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(EmiSpacing.md),
+              children: [
+                TeacherSectionHeader(
+                  'Identitas Modul',
+                  icon: Icons.menu_book_outlined,
+                  leading: false,
+                ),
+                TextFormField(
+                  controller: _title,
+                  decoration: const InputDecoration(labelText: 'Judul Modul'),
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Judul wajib diisi.'
+                      : null,
+                ),
+                const SizedBox(height: EmiSpacing.md),
+                TextFormField(
+                  controller: _description,
+                  decoration: const InputDecoration(
+                    labelText: 'Deskripsi Modul',
+                  ),
+                  minLines: 3,
+                  maxLines: 6,
+                ),
+                TeacherSectionHeader('Urutan Tampil'),
+                TextFormField(
+                  controller: _sort,
+                  decoration: const InputDecoration(labelText: 'Urutan Tampil'),
+                  keyboardType: TextInputType.number,
+                  validator: (value) => (int.tryParse(value ?? '') ?? 0) < 1
+                      ? 'Urutan minimal 1.'
+                      : null,
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: EmiSpacing.lg),
-        FilledButton(
-          onPressed: _saving ? null : _save,
-          child: Text(_saving ? 'Menyimpan...' : 'Simpan Modul'),
-        ),
-      ],
+          SafeArea(
+            top: false,
+            minimum: const EdgeInsets.all(EmiSpacing.md),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _saving ? null : _save,
+                child: Text(_saving ? 'Menyimpan...' : 'Simpan Modul'),
+              ),
+            ),
+          ),
+        ],
+      ),
     ),
   );
 
@@ -264,11 +289,15 @@ class _TeacherModuleEditScreenState
       child: ListView(
         padding: const EdgeInsets.all(EmiSpacing.md),
         children: [
-          Text(
-            'Status: ${_status(item.status)}',
-            style: Theme.of(context).textTheme.titleMedium,
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TeacherStatusChip(label: _status(item.status)),
           ),
-          const SizedBox(height: EmiSpacing.md),
+          TeacherSectionHeader(
+            'Identitas Modul',
+            icon: Icons.menu_book_outlined,
+            leading: false,
+          ),
           Form(
             key: _form,
             child: Column(
@@ -309,54 +338,72 @@ class _TeacherModuleEditScreenState
             onPressed: _saving ? null : () => _save(item),
             child: Text(_saving ? 'Menyimpan...' : 'Simpan Perubahan'),
           ),
-          if (item.status != 'published')
-            OutlinedButton(
-              onPressed: _saving ? null : () => _publish(item),
-              child: const Text('Terbitkan Modul'),
-            ),
-          if (item.status != 'archived')
-            OutlinedButton(
-              onPressed: _saving ? null : () => _archive(item),
-              child: const Text('Arsipkan Modul'),
-            ),
-          if (item.status == 'draft')
-            TextButton(
-              onPressed: _saving ? null : () => _delete(item),
-              child: const Text('Hapus Draft'),
-            ),
-          const SizedBox(height: EmiSpacing.lg),
-          Row(
+          const SizedBox(height: EmiSpacing.sm),
+          Wrap(
+            spacing: EmiSpacing.sm,
+            runSpacing: EmiSpacing.sm,
             children: [
-              Expanded(
-                child: Text(
-                  'Daftar Materi',
-                  style: Theme.of(context).textTheme.titleMedium,
+              if (item.status != 'published')
+                OutlinedButton(
+                  onPressed: _saving ? null : () => _publish(item),
+                  child: const Text('Terbitkan Modul'),
                 ),
-              ),
-              FilledButton.icon(
-                onPressed: () =>
-                    context.push('/teacher/modules/${item.id}/lessons/create'),
-                icon: const Icon(Icons.add),
-                label: const Text('Tambah Materi'),
-              ),
+              if (item.status != 'archived')
+                OutlinedButton(
+                  onPressed: _saving ? null : () => _archive(item),
+                  child: const Text('Arsipkan Modul'),
+                ),
+              if (item.status == 'draft')
+                OutlinedButton(
+                  onPressed: _saving ? null : () => _delete(item),
+                  child: const Text('Hapus Draft'),
+                ),
             ],
           ),
-          const SizedBox(height: EmiSpacing.sm),
+          TeacherSectionHeader(
+            'Daftar Materi',
+            subtitle: 'Kelola urutan dan isi materi yang termasuk modul ini.',
+            icon: Icons.article_outlined,
+            trailing: FilledButton.icon(
+              onPressed: () =>
+                  context.push('/teacher/modules/${item.id}/lessons/create'),
+              icon: const Icon(Icons.add),
+              label: const Text('Tambah Materi'),
+            ),
+          ),
           if (item.lessons.isEmpty)
-            const Text('Modul ini belum memiliki materi.')
-          else
-            for (final lesson in item.lessons)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(lesson.title),
-                subtitle: Text(
-                  '${_contentLabel(lesson.contentType)} • ${_status(lesson.status)} • Urutan ${lesson.sortOrder}',
+            TeacherListCard(
+              child: Text(
+                'Modul ini belum memiliki materi.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: EmiColors.textSecondary,
                 ),
-                trailing: const Icon(Icons.edit_outlined),
+              ),
+            )
+          else
+            for (final lesson in item.lessons) ...[
+              TeacherListCard(
+                padding: EdgeInsets.zero,
                 onTap: () => context.push(
                   '/teacher/modules/${item.id}/lessons/${lesson.id}/edit',
                 ),
+                child: ListTile(
+                  title: Text(
+                    lesson.title,
+                    style: const TextStyle(color: TeacherStyle.ink),
+                  ),
+                  subtitle: Text(
+                    '${_contentLabel(lesson.contentType)} • ${_status(lesson.status)} • Urutan ${lesson.sortOrder}',
+                    style: const TextStyle(color: TeacherStyle.inkMuted),
+                  ),
+                  trailing: const Icon(
+                    Icons.edit_outlined,
+                    color: TeacherStyle.inkMuted,
+                  ),
+                ),
               ),
+              const SizedBox(height: EmiSpacing.sm),
+            ],
         ],
       ),
     );
@@ -522,84 +569,114 @@ class _TeacherLessonCreateScreenState
     fallbackRoute: '/teacher/modules/${widget.moduleId}/edit',
     child: Form(
       key: form,
-      child: ListView(
-        padding: const EdgeInsets.all(EmiSpacing.md),
+      child: Column(
         children: [
-          TextFormField(
-            controller: title,
-            decoration: const InputDecoration(labelText: 'Judul Materi'),
-            validator: (value) =>
-                value?.trim().isEmpty != false ? 'Judul wajib diisi.' : null,
-          ),
-          const SizedBox(height: EmiSpacing.md),
-          TextFormField(
-            controller: description,
-            decoration: const InputDecoration(labelText: 'Deskripsi Singkat'),
-            minLines: 2,
-            maxLines: 4,
-          ),
-          const SizedBox(height: EmiSpacing.md),
-          DropdownButtonFormField<String>(
-            initialValue: type,
-            decoration: const InputDecoration(labelText: 'Jenis Konten'),
-            items: const [
-              DropdownMenuItem(value: 'text', child: Text('Teks')),
-              DropdownMenuItem(value: 'image', child: Text('Gambar')),
-              DropdownMenuItem(value: 'audio', child: Text('Audio')),
-              DropdownMenuItem(value: 'pdf', child: Text('PDF')),
-              DropdownMenuItem(value: 'video', child: Text('Video URL')),
-              DropdownMenuItem(value: 'link', child: Text('Tautan')),
-            ],
-            onChanged: (value) => setState(() => type = value!),
-          ),
-          if (type == 'text') ...[
-            const SizedBox(height: EmiSpacing.md),
-            TextFormField(
-              controller: content,
-              decoration: const InputDecoration(labelText: 'Isi Materi'),
-              minLines: 5,
-              maxLines: 12,
-              validator: (value) => value?.trim().isEmpty != false
-                  ? 'Isi materi wajib diisi.'
-                  : null,
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(EmiSpacing.md),
+              children: [
+                TeacherSectionHeader(
+                  'Identitas Materi',
+                  icon: Icons.article_outlined,
+                  leading: false,
+                ),
+                TextFormField(
+                  controller: title,
+                  decoration: const InputDecoration(labelText: 'Judul Materi'),
+                  validator: (value) => value?.trim().isEmpty != false
+                      ? 'Judul wajib diisi.'
+                      : null,
+                ),
+                const SizedBox(height: EmiSpacing.md),
+                TextFormField(
+                  controller: description,
+                  decoration: const InputDecoration(
+                    labelText: 'Deskripsi Singkat',
+                  ),
+                  minLines: 2,
+                  maxLines: 4,
+                ),
+                const SizedBox(height: EmiSpacing.lg),
+                TeacherSectionHeader('Jenis Konten'),
+                DropdownButtonFormField<String>(
+                  initialValue: type,
+                  decoration: const InputDecoration(labelText: 'Jenis Konten'),
+                  items: const [
+                    DropdownMenuItem(value: 'text', child: Text('Teks')),
+                    DropdownMenuItem(value: 'image', child: Text('Gambar')),
+                    DropdownMenuItem(value: 'audio', child: Text('Audio')),
+                    DropdownMenuItem(value: 'pdf', child: Text('PDF')),
+                    DropdownMenuItem(value: 'video', child: Text('Video URL')),
+                    DropdownMenuItem(value: 'link', child: Text('Tautan')),
+                  ],
+                  onChanged: (value) => setState(() => type = value!),
+                ),
+                if (type == 'text') ...[
+                  const SizedBox(height: EmiSpacing.md),
+                  TextFormField(
+                    controller: content,
+                    decoration: const InputDecoration(labelText: 'Isi Materi'),
+                    minLines: 5,
+                    maxLines: 12,
+                    validator: (value) => value?.trim().isEmpty != false
+                        ? 'Isi materi wajib diisi.'
+                        : null,
+                  ),
+                ],
+                if (type == 'video' || type == 'link') ...[
+                  const SizedBox(height: EmiSpacing.md),
+                  TextFormField(
+                    controller: url,
+                    decoration: const InputDecoration(labelText: 'URL HTTPS'),
+                    keyboardType: TextInputType.url,
+                    validator: (value) {
+                      final uri = Uri.tryParse(value ?? '');
+                      return uri?.scheme == 'https'
+                          ? null
+                          : 'Masukkan URL HTTPS yang valid.';
+                    },
+                  ),
+                ],
+                if (type == 'image' || type == 'audio' || type == 'pdf') ...[
+                  const SizedBox(height: EmiSpacing.md),
+                  TeacherListCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(mediaName ?? 'Media belum dipilih'),
+                        const SizedBox(height: EmiSpacing.sm),
+                        FilledButton.icon(
+                          onPressed: saving ? null : _pick,
+                          icon: const Icon(Icons.upload_file),
+                          label: const Text('Pilih dan Unggah Media'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: EmiSpacing.lg),
+                TeacherSectionHeader('Urutan Tampil'),
+                TextFormField(
+                  controller: sort,
+                  decoration: const InputDecoration(labelText: 'Urutan Tampil'),
+                  keyboardType: TextInputType.number,
+                  validator: (value) => (int.tryParse(value ?? '') ?? 0) < 1
+                      ? 'Urutan minimal 1.'
+                      : null,
+                ),
+              ],
             ),
-          ],
-          if (type == 'video' || type == 'link') ...[
-            const SizedBox(height: EmiSpacing.md),
-            TextFormField(
-              controller: url,
-              decoration: const InputDecoration(labelText: 'URL HTTPS'),
-              keyboardType: TextInputType.url,
-              validator: (value) {
-                final uri = Uri.tryParse(value ?? '');
-                return uri?.scheme == 'https'
-                    ? null
-                    : 'Masukkan URL HTTPS yang valid.';
-              },
-            ),
-          ],
-          if (type == 'image' || type == 'audio' || type == 'pdf') ...[
-            const SizedBox(height: EmiSpacing.md),
-            Text(mediaName ?? 'Media belum dipilih'),
-            FilledButton.icon(
-              onPressed: saving ? null : _pick,
-              icon: const Icon(Icons.upload_file),
-              label: const Text('Pilih dan Unggah Media'),
-            ),
-          ],
-          const SizedBox(height: EmiSpacing.md),
-          TextFormField(
-            controller: sort,
-            decoration: const InputDecoration(labelText: 'Urutan Tampil'),
-            keyboardType: TextInputType.number,
-            validator: (value) => (int.tryParse(value ?? '') ?? 0) < 1
-                ? 'Urutan minimal 1.'
-                : null,
           ),
-          const SizedBox(height: EmiSpacing.lg),
-          FilledButton(
-            onPressed: saving ? null : _save,
-            child: Text(saving ? 'Menyimpan...' : 'Simpan Materi'),
+          SafeArea(
+            top: false,
+            minimum: const EdgeInsets.all(EmiSpacing.md),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: saving ? null : _save,
+                child: Text(saving ? 'Menyimpan...' : 'Simpan Materi'),
+              ),
+            ),
           ),
         ],
       ),
@@ -759,11 +836,21 @@ class _TeacherLessonEditScreenState
       child: ListView(
         padding: const EdgeInsets.all(EmiSpacing.md),
         children: [
-          Text(
-            'Status: ${_status(item.status)} • ${_contentLabel(_contentType ?? item.contentType)}',
-            style: Theme.of(context).textTheme.titleMedium,
+          Wrap(
+            spacing: EmiSpacing.xs,
+            children: [
+              TeacherStatusChip(label: _status(item.status)),
+              TeacherStatusChip(
+                label: _contentLabel(_contentType ?? item.contentType),
+                color: TeacherStyle.tint,
+              ),
+            ],
           ),
-          const SizedBox(height: EmiSpacing.md),
+          TeacherSectionHeader(
+            'Identitas Materi',
+            icon: Icons.article_outlined,
+            leading: false,
+          ),
           Form(
             key: _form,
             child: Column(
@@ -827,8 +914,8 @@ class _TeacherLessonEditScreenState
               ],
             ),
           ),
-          const SizedBox(height: EmiSpacing.lg),
-          EmiCard(
+          TeacherSectionHeader('Media Lampiran', icon: Icons.attach_file),
+          TeacherListCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -863,11 +950,13 @@ class _TeacherLessonEditScreenState
             onPressed: _saving ? null : () => _save(item),
             child: Text(_saving ? 'Menyimpan...' : 'Simpan Perubahan'),
           ),
-          if (item.status != 'published')
+          if (item.status != 'published') ...[
+            const SizedBox(height: EmiSpacing.sm),
             OutlinedButton(
               onPressed: _saving ? null : () => _publish(item),
               child: const Text('Terbitkan Materi'),
             ),
+          ],
         ],
       ),
     );

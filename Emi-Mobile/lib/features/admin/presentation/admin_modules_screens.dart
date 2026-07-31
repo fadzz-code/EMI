@@ -10,9 +10,11 @@ import 'package:just_audio/just_audio.dart';
 import '../../../app/theme/emi_theme.dart';
 import '../../../core/errors/app_error.dart';
 import '../../../shared/widgets/role_dashboard_widgets.dart';
+import '../../../shared/widgets/status_badge.dart';
 import '../data/admin_modules_providers.dart';
 import '../data/admin_modules_repository.dart';
 import 'admin_shell.dart';
+import 'admin_widgets.dart';
 
 class AdminModulesScreen extends ConsumerStatefulWidget {
   const AdminModulesScreen({super.key});
@@ -204,20 +206,14 @@ class _ModuleTile extends StatelessWidget {
   final AdminModuleItem item;
 
   @override
-  Widget build(BuildContext context) => InkWell(
+  Widget build(BuildContext context) => AdminCard(
     onTap: () => context.push('/admin/modules/${item.id}'),
-    borderRadius: BorderRadius.circular(12),
-    child: Container(
-      constraints: const BoxConstraints(minHeight: 88),
-      padding: const EdgeInsets.symmetric(
-        horizontal: EmiSpacing.md,
-        vertical: EmiSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        color: EmiColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: EmiColors.border, width: 1),
-      ),
+    padding: const EdgeInsets.symmetric(
+      horizontal: EmiSpacing.md,
+      vertical: EmiSpacing.sm,
+    ),
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 72),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -227,7 +223,6 @@ class _ModuleTile extends StatelessWidget {
             decoration: BoxDecoration(
               color: EmiColors.secondary,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: EmiColors.border),
             ),
             child: const Icon(Icons.menu_book_outlined),
           ),
@@ -246,10 +241,20 @@ class _ModuleTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: EmiSpacing.xs),
-                Text(
-                  '${item.lessonsCount} Materi · ${_statusLabel(item.status)}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${item.lessonsCount} Materi',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    EmiStatusBadge(
+                      label: _statusLabel(item.status),
+                      tone: emiStatusToneFromKey(item.status),
+                    ),
+                  ],
                 ),
                 Text(
                   'Diubah ${_shortDate(item.updatedAt)}',
@@ -416,8 +421,21 @@ class _LessonTile extends StatelessWidget {
   Widget build(BuildContext context) => ListTile(
     contentPadding: EdgeInsets.zero,
     title: Text(lesson.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-    subtitle: Text(
-      '${_contentLabel(lesson.contentType)} · ${_statusLabel(lesson.status)}',
+    subtitle: Row(
+      children: [
+        Flexible(
+          child: Text(
+            _contentLabel(lesson.contentType),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(width: EmiSpacing.xs),
+        EmiStatusBadge(
+          label: _statusLabel(lesson.status),
+          tone: emiStatusToneFromKey(lesson.status),
+        ),
+      ],
     ),
     trailing: PopupMenuButton<String>(
       onSelected: (value) {

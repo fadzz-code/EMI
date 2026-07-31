@@ -7,11 +7,13 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../app/theme/emi_theme.dart';
-import '../../../shared/widgets/emi_card.dart';
+import '../../../shared/widgets/status_badge.dart';
 import '../data/admin_progress_models.dart';
 import '../data/admin_progress_providers.dart';
 import '../data/admin_progress_repository.dart';
 import 'admin_shell.dart';
+import 'admin_style.dart';
+import 'admin_widgets.dart';
 
 class AdminReportsScreen extends ConsumerStatefulWidget {
   const AdminReportsScreen({super.key});
@@ -42,12 +44,12 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
           child: ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
-              Text(
-                'Progress Siswa',
-                style: Theme.of(context).textTheme.headlineSmall,
+              const AdminPageHeader(
+                icon: Icons.insights_outlined,
+                title: 'Progress Siswa',
+                subtitle: 'Pantau progress belajar siswa dan kelas.',
               ),
-              const Text('Pantau progress belajar siswa dan kelas.'),
-              const SizedBox(height: EmiSpacing.sm),
+              const SizedBox(height: EmiSpacing.md),
               Wrap(
                 spacing: EmiSpacing.sm,
                 runSpacing: EmiSpacing.sm,
@@ -65,12 +67,7 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: EmiSpacing.md),
-              Text(
-                'Ringkasan Progress',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: EmiSpacing.sm),
+              const AdminSectionHeader('Ringkasan Progress'),
               ProgressOverviewSummary(
                 data.summary,
                 speakingReports: data.speakingReports,
@@ -80,7 +77,7 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
               const SizedBox(height: EmiSpacing.lg),
               const ProgressSectionHeader('Siswa'),
               if (data.students.items.isEmpty)
-                const EmiCard(child: Text('Siswa tidak ditemukan.')),
+                const AdminCard(child: Text('Siswa tidak ditemukan.')),
               for (final student in data.students.items)
                 ProgressStudentItem(
                   student: student,
@@ -95,7 +92,7 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
               const SizedBox(height: EmiSpacing.lg),
               const ProgressSectionHeader('Kelas'),
               if (data.classes.items.isEmpty)
-                const EmiCard(child: Text('Kelas tidak ditemukan.')),
+                const AdminCard(child: Text('Kelas tidak ditemukan.')),
               for (final item in data.classes.items)
                 ProgressClassItem(
                   item: item,
@@ -304,9 +301,11 @@ class _AdminSpeakingReportsState extends ConsumerState<AdminSpeakingReports> {
             return Column(
               children: [
                 if (page.items.isEmpty)
-                  const EmiCard(child: Text('Laporan speaking siswa kosong.')),
-                for (final item in page.items)
-                  EmiCard(
+                  const AdminCard(
+                    child: Text('Laporan speaking siswa kosong.'),
+                  ),
+                for (final item in page.items) ...[
+                  AdminCard(
                     child: ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(item.name),
@@ -315,6 +314,8 @@ class _AdminSpeakingReportsState extends ConsumerState<AdminSpeakingReports> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: EmiSpacing.sm),
+                ],
                 _Pager(
                   meta: page.meta,
                   onPage: (value) => setState(() {
@@ -341,9 +342,11 @@ class _AdminSpeakingReportsState extends ConsumerState<AdminSpeakingReports> {
             return Column(
               children: [
                 if (page.items.isEmpty)
-                  const EmiCard(child: Text('Laporan speaking kelas kosong.')),
-                for (final item in page.items)
-                  EmiCard(
+                  const AdminCard(
+                    child: Text('Laporan speaking kelas kosong.'),
+                  ),
+                for (final item in page.items) ...[
+                  AdminCard(
                     child: ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(item.name),
@@ -352,6 +355,8 @@ class _AdminSpeakingReportsState extends ConsumerState<AdminSpeakingReports> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: EmiSpacing.sm),
+                ],
                 _Pager(
                   meta: page.meta,
                   onPage: (value) => setState(() {
@@ -413,10 +418,11 @@ class _ReportError extends StatelessWidget {
   const _ReportError({required this.onRetry});
   final VoidCallback onRetry;
   @override
-  Widget build(BuildContext context) => EmiCard(
+  Widget build(BuildContext context) => AdminCard(
     child: Column(
       children: [
         const Text('Laporan speaking belum bisa dimuat.'),
+        const SizedBox(height: EmiSpacing.sm),
         OutlinedButton(onPressed: onRetry, child: const Text('Coba lagi')),
       ],
     ),
@@ -445,8 +451,8 @@ class _RemoteReports extends StatelessWidget {
           return Column(
             children: [
               for (final item
-                  in snapshot.data?.items ?? const <AdminProgressSchool>[])
-                EmiCard(
+                  in snapshot.data?.items ?? const <AdminProgressSchool>[]) ...[
+                AdminCard(
                   child: ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(item.name),
@@ -455,6 +461,8 @@ class _RemoteReports extends StatelessWidget {
                     ),
                   ),
                 ),
+                const SizedBox(height: EmiSpacing.sm),
+              ],
               OutlinedButton(
                 onPressed: () =>
                     onCsv('progress/schools', 'laporan-sekolah.csv'),
@@ -478,8 +486,8 @@ class _RemoteReports extends StatelessWidget {
           return Column(
             children: [
               for (final item
-                  in snapshot.data?.items ?? const <AdminQuizResultRow>[])
-                EmiCard(
+                  in snapshot.data?.items ?? const <AdminQuizResultRow>[]) ...[
+                AdminCard(
                   child: ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text('${item.studentName} · ${item.quizTitle}'),
@@ -488,6 +496,8 @@ class _RemoteReports extends StatelessWidget {
                     ),
                   ),
                 ),
+                const SizedBox(height: EmiSpacing.sm),
+              ],
               OutlinedButton(
                 onPressed: () => onCsv('quiz-results', 'hasil-kuis.csv'),
                 child: const Text('Export CSV Hasil Kuis'),
@@ -703,22 +713,34 @@ class ProgressMetricTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(
     height: 180,
-    child: EmiCard(
-      padding: const EdgeInsets.all(EmiSpacing.md),
+    child: AdminCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 28),
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AdminStyle.tint,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 18, color: EmiColors.primary),
+          ),
           const Spacer(),
           Text(
             label,
-            style: Theme.of(context).textTheme.bodySmall,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AdminStyle.inkMuted),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
           Text(
             value,
-            style: Theme.of(context).textTheme.headlineSmall,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: AdminStyle.ink,
+            ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -733,30 +755,17 @@ class ProgressSectionHeader extends StatelessWidget {
   final String label;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: EmiSpacing.sm),
-    child: Text(label, style: Theme.of(context).textTheme.titleLarge),
-  );
+  Widget build(BuildContext context) => AdminSectionHeader(label);
 }
 
 class ProgressStatusBadge extends StatelessWidget {
-  const ProgressStatusBadge(this.label, {super.key});
+  const ProgressStatusBadge(this.label, {super.key, this.tone});
   final String label;
+  final EmiStatusTone? tone;
 
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.secondaryContainer,
-      borderRadius: BorderRadius.circular(EmiRadii.card),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: EmiSpacing.sm,
-        vertical: 4,
-      ),
-      child: Text(label, style: Theme.of(context).textTheme.labelMedium),
-    ),
-  );
+  Widget build(BuildContext context) =>
+      EmiStatusBadge(label: label, tone: tone ?? EmiStatusTone.neutral);
 }
 
 class ProgressInfoRow extends StatelessWidget {
@@ -789,53 +798,67 @@ class ProgressStudentItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: EmiSpacing.sm),
-    child: InkWell(
+    child: AdminCard(
       onTap: onTap,
-      child: EmiCard(
-        padding: const EdgeInsets.all(EmiSpacing.sm),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                const CircleAvatar(child: Icon(Icons.person_outline, size: 24)),
-                const SizedBox(width: EmiSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        student.fullName,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      Text(
-                        '${student.schoolName} • ${student.className}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const CircleAvatar(
+                backgroundColor: AdminStyle.tint,
+                child: Icon(
+                  Icons.person_outline,
+                  size: 24,
+                  color: EmiColors.primary,
                 ),
-                const Icon(Icons.chevron_right, size: 24),
-              ],
-            ),
-            ProgressInfoRow(
-              icon: Icons.menu_book_outlined,
-              label:
-                  '${student.completedModules}/${student.publishedModules} modul • ${adminProgressPercent(student.overallLearningProgressPercent)}',
-            ),
-            ProgressInfoRow(
-              icon: Icons.quiz_outlined,
-              label:
-                  'Kuis ${adminProgressPercent(student.averageBestQuizScorePercent)}',
-            ),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: ProgressStatusBadge(
-                adminProgressStatus(student.learningStatus),
               ),
+              const SizedBox(width: EmiSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      student.fullName,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      '${student.schoolName} • ${student.className}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AdminStyle.inkMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right,
+                size: 24,
+                color: AdminStyle.inkMuted,
+              ),
+            ],
+          ),
+          ProgressInfoRow(
+            icon: Icons.menu_book_outlined,
+            label:
+                '${student.completedModules}/${student.publishedModules} modul • ${adminProgressPercent(student.overallLearningProgressPercent)}',
+          ),
+          ProgressInfoRow(
+            icon: Icons.quiz_outlined,
+            label:
+                'Kuis ${adminProgressPercent(student.averageBestQuizScorePercent)}',
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ProgressStatusBadge(
+              adminProgressStatus(student.learningStatus),
+              tone: emiStatusToneFromKey(student.learningStatus),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     ),
   );
@@ -849,53 +872,64 @@ class ProgressClassItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: EmiSpacing.sm),
-    child: InkWell(
+    child: AdminCard(
       onTap: onTap,
-      child: EmiCard(
-        padding: const EdgeInsets.all(EmiSpacing.sm),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                const CircleAvatar(
-                  child: Icon(Icons.groups_outlined, size: 24),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const CircleAvatar(
+                backgroundColor: AdminStyle.tint,
+                child: Icon(
+                  Icons.groups_outlined,
+                  size: 24,
+                  color: EmiColors.primary,
                 ),
-                const SizedBox(width: EmiSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.name,
-                        style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(width: EmiSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.name,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
-                      Text(
-                        item.schoolName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      item.schoolName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AdminStyle.inkMuted,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const Icon(Icons.chevron_right, size: 24),
-              ],
-            ),
-            ProgressInfoRow(
-              icon: Icons.people_outline,
-              label: '${item.activeStudents} siswa aktif',
-            ),
-            ProgressInfoRow(
-              icon: Icons.menu_book_outlined,
-              label:
-                  '${item.completedModuleCount}/${item.publishedModules} modul • ${adminProgressPercent(item.averageLearningProgressPercent)}',
-            ),
-            ProgressInfoRow(
-              icon: Icons.quiz_outlined,
-              label:
-                  '${item.studentsParticipatedInQuiz} peserta • ${adminProgressPercent(item.averageQuizScorePercent)}',
-            ),
-          ],
-        ),
+              ),
+              const Icon(
+                Icons.chevron_right,
+                size: 24,
+                color: AdminStyle.inkMuted,
+              ),
+            ],
+          ),
+          ProgressInfoRow(
+            icon: Icons.people_outline,
+            label: '${item.activeStudents} siswa aktif',
+          ),
+          ProgressInfoRow(
+            icon: Icons.menu_book_outlined,
+            label:
+                '${item.completedModuleCount}/${item.publishedModules} modul • ${adminProgressPercent(item.averageLearningProgressPercent)}',
+          ),
+          ProgressInfoRow(
+            icon: Icons.quiz_outlined,
+            label:
+                '${item.studentsParticipatedInQuiz} peserta • ${adminProgressPercent(item.averageQuizScorePercent)}',
+          ),
+        ],
       ),
     ),
   );
@@ -931,11 +965,12 @@ class _Error extends StatelessWidget {
   final VoidCallback onRetry;
   @override
   Widget build(BuildContext context) => Center(
-    child: EmiCard(
+    child: AdminCard(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Text('Progress gagal dimuat.'),
+          const SizedBox(height: EmiSpacing.sm),
           OutlinedButton(onPressed: onRetry, child: const Text('Coba lagi')),
         ],
       ),

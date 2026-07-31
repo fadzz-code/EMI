@@ -3,13 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
-import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/role_dashboard_widgets.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../data/teacher_providers.dart';
 import '../data/teacher_repository.dart';
 import 'teacher_dashboard_widgets.dart';
 import 'teacher_shell.dart';
+import 'teacher_style.dart';
+import 'teacher_widgets.dart';
 
 class TeacherDashboardScreen extends ConsumerWidget {
   const TeacherDashboardScreen({super.key});
@@ -35,7 +36,7 @@ class TeacherDashboardScreen extends ConsumerWidget {
           data: (summary) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
-              RoleHeroHeader(
+              TeacherHeroHeader(
                 greeting: 'Selamat datang,',
                 name: user?.fullName ?? 'Guru EMI',
                 message:
@@ -48,16 +49,13 @@ class TeacherDashboardScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: EmiSpacing.lg),
-              _TeacherNoticeCard(
+              const TeacherNoticeCard(
                 icon: Icons.tips_and_updates_outlined,
                 title: 'Siap mendampingi kelas hari ini?',
                 message:
                     'Periksa materi dan kuis terbaru sebelum memulai pembelajaran.',
-                color: EmiColors.surfaceSoft,
               ),
-              const SizedBox(height: EmiSpacing.lg),
-              Text('Ringkasan', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: EmiSpacing.md),
+              const TeacherSectionHeader('Ringkasan', leading: true),
               LayoutBuilder(
                 builder: (context, constraints) => GridView.count(
                   crossAxisCount: constraints.maxWidth >= 720 ? 4 : 2,
@@ -65,7 +63,7 @@ class TeacherDashboardScreen extends ConsumerWidget {
                   mainAxisSpacing: EmiSpacing.md,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  mainAxisExtent: 150,
+                  mainAxisExtent: constraints.maxWidth < 360 ? 164 : 148,
                   children: [
                     TeacherDashboardMetricTile(
                       icon: Icons.school_outlined,
@@ -85,84 +83,99 @@ class TeacherDashboardScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: EmiSpacing.lg),
-              Text(
+              TeacherSectionHeader(
                 'Tindakan Cepat',
-                style: Theme.of(context).textTheme.titleMedium,
+                subtitle: 'Akses pintas tugas Guru.',
               ),
-              const SizedBox(height: EmiSpacing.xs),
-              const Text('Akses pintas tugas Guru.'),
-              const SizedBox(height: EmiSpacing.md),
-              GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: EmiSpacing.md,
-                mainAxisSpacing: EmiSpacing.md,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  TeacherQuickAction(
-                    label: 'Modul Kelas',
-                    icon: Icons.menu_book_outlined,
-                    onTap: () => context.go('/teacher/modules'),
-                  ),
-                  TeacherQuickAction(
-                    label: 'Kuis Kelas',
-                    icon: Icons.quiz_outlined,
-                    onTap: () => context.go('/teacher/quizzes'),
-                  ),
-                  TeacherQuickAction(
-                    label: 'Progress',
-                    icon: Icons.trending_up_outlined,
-                    onTap: () => context.go('/teacher/progress'),
-                  ),
-                  TeacherQuickAction(
-                    label: 'Hasil Speaking',
-                    icon: Icons.mic_none_outlined,
-                    onTap: () => context.go('/teacher/speaking/attempts'),
-                  ),
-                ],
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = (constraints.maxWidth - EmiSpacing.sm) / 2;
+                  return Wrap(
+                    spacing: EmiSpacing.sm,
+                    runSpacing: EmiSpacing.sm,
+                    children: [
+                      SizedBox(
+                        width: width,
+                        child: TeacherQuickAction(
+                          label: 'Modul Kelas',
+                          icon: Icons.menu_book_outlined,
+                          onTap: () => context.go('/teacher/modules'),
+                        ),
+                      ),
+                      SizedBox(
+                        width: width,
+                        child: TeacherQuickAction(
+                          label: 'Kuis Kelas',
+                          icon: Icons.quiz_outlined,
+                          onTap: () => context.go('/teacher/quizzes'),
+                        ),
+                      ),
+                      SizedBox(
+                        width: width,
+                        child: TeacherQuickAction(
+                          label: 'Progress',
+                          icon: Icons.trending_up_outlined,
+                          onTap: () => context.go('/teacher/progress'),
+                        ),
+                      ),
+                      SizedBox(
+                        width: width,
+                        child: TeacherQuickAction(
+                          label: 'Hasil Speaking',
+                          icon: Icons.mic_none_outlined,
+                          onTap: () => context.go('/teacher/speaking/attempts'),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
-              const SizedBox(height: EmiSpacing.lg),
-              Text(
-                'Aktivitas Terbaru',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: EmiSpacing.md),
+              TeacherSectionHeader('Aktivitas Terbaru'),
               if (summary.activities.isEmpty)
-                const EmiCard(
+                TeacherListCard(
                   child: Text(
                     'Aktivitas siswa akan muncul setelah mereka mulai belajar.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: TeacherStyle.inkMuted,
+                    ),
                   ),
                 )
               else
                 for (final activity in summary.activities)
                   TeacherActivityTile(activity: activity),
-              const SizedBox(height: EmiSpacing.lg),
-              Text(
-                'Kelas Saya',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: EmiSpacing.md),
+              TeacherSectionHeader('Kelas Saya'),
               if (summary.classId == null)
-                const EmiCard(
+                TeacherListCard(
                   child: Text(
                     'Belum ada kelas yang ditugaskan. Hubungi admin sekolah.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: TeacherStyle.inkMuted,
+                    ),
                   ),
                 )
               else
-                EmiCard(
+                TeacherListCard(
+                  padding: EdgeInsets.zero,
+                  onTap: () =>
+                      context.push('/teacher/classes/${summary.classId}'),
                   child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const CircleAvatar(
-                      child: Icon(Icons.groups_outlined),
+                    leading: CircleAvatar(
+                      backgroundColor: TeacherStyle.tint,
+                      foregroundColor: EmiColors.primary,
+                      child: const Icon(Icons.groups_outlined),
                     ),
-                    title: Text(summary.className ?? 'Kelas tanpa nama'),
+                    title: Text(
+                      summary.className ?? 'Kelas tanpa nama',
+                      style: const TextStyle(color: TeacherStyle.ink),
+                    ),
                     subtitle: Text(
                       summary.schoolName ?? 'Sekolah belum tersedia',
+                      style: const TextStyle(color: TeacherStyle.inkMuted),
                     ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () =>
-                        context.push('/teacher/classes/${summary.classId}'),
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      color: TeacherStyle.inkMuted,
+                    ),
                   ),
                 ),
             ],
@@ -187,58 +200,6 @@ class TeacherDashboardScreen extends ConsumerWidget {
     'quiz' => Icons.quiz_outlined,
     _ => Icons.insights_outlined,
   };
-}
-
-class _TeacherNoticeCard extends StatelessWidget {
-  const _TeacherNoticeCard({
-    required this.icon,
-    required this.title,
-    required this.message,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String title;
-  final String message;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => EmiCard(
-    child: Container(
-      padding: const EdgeInsets.all(EmiSpacing.sm),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(EmiRadii.card),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.auto_awesome_outlined, size: 28),
-          const SizedBox(width: EmiSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(icon, size: 18),
-                    const SizedBox(width: EmiSpacing.xs),
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(message),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
 }
 
 class _ScrollableLoading extends StatelessWidget {
