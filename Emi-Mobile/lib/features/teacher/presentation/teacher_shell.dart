@@ -252,6 +252,18 @@ class _TeacherDrawer extends ConsumerWidget {
             selected: location.startsWith('/teacher/culture'),
           ),
           _Item(
+            label: 'Kamus',
+            icon: Icons.menu_book_outlined,
+            route: '/teacher/dictionary',
+            selected: location.startsWith('/teacher/dictionary'),
+          ),
+          _Item(
+            label: 'Chatbot AI',
+            icon: Icons.auto_awesome_outlined,
+            route: '/teacher/chatbot',
+            selected: location.startsWith('/teacher/chatbot'),
+          ),
+          _Item(
             label: 'Speaking',
             icon: Icons.mic_none_outlined,
             route: '/teacher/speaking',

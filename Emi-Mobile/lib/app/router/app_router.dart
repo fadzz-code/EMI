@@ -23,6 +23,8 @@ import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/auth/presentation/reset_password_screen.dart';
 import '../../features/chatbot/presentation/student_chatbot_screen.dart';
+import '../../features/teacher/presentation/teacher_chatbot_screen.dart';
+import '../../features/teacher/presentation/teacher_dictionary_screens.dart';
 import '../../features/culture/data/culture_models.dart';
 import '../../features/culture/presentation/student_culture_detail_screen.dart';
 import '../../features/culture/presentation/student_culture_list_screen.dart';
@@ -290,6 +292,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => TeacherSpeakingAttemptDetailScreen(
           id: state.pathParameters['id'] ?? '',
         ),
+      ),
+      GoRoute(
+        path: '/teacher/dictionary',
+        builder: (_, _) => const TeacherDictionaryListScreen(),
+      ),
+      GoRoute(
+        path: '/teacher/dictionary/:id',
+        builder: (_, state) => TeacherDictionaryDetailScreen(
+          entryId: state.pathParameters['id'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/teacher/chatbot',
+        builder: (_, _) => const TeacherChatbotScreen(),
       ),
       GoRoute(
         path: '/teacher/profile',

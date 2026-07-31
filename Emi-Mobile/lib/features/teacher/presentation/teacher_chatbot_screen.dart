@@ -2,22 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/emi_theme.dart';
-import '../../../shared/widgets/emi_scaffold.dart';
-import '../../../shared/widgets/student_style.dart';
-import '../../../shared/widgets/student_widgets.dart';
-import '../data/chatbot_models.dart';
-import 'chatbot_controller.dart';
-import 'chatbot_history_panel.dart';
+import '../../chatbot/data/chatbot_models.dart';
+import '../../chatbot/presentation/chatbot_controller.dart';
+import '../../chatbot/presentation/chatbot_history_panel.dart';
+import 'teacher_shell.dart';
+import 'teacher_style.dart';
+import 'teacher_widgets.dart';
 
-class StudentChatbotScreen extends ConsumerStatefulWidget {
-  const StudentChatbotScreen({super.key});
+/// Teacher's Chatbot AI screen. Mirrors `StudentChatbotScreen` behavior
+/// (same backend contract, reused `ChatbotController`) but wrapped in
+/// `TeacherShell`/`TeacherStyle` to match the Teacher role's visual
+/// language instead of the Student one.
+class TeacherChatbotScreen extends ConsumerStatefulWidget {
+  const TeacherChatbotScreen({super.key});
 
   @override
-  ConsumerState<StudentChatbotScreen> createState() =>
-      _StudentChatbotScreenState();
+  ConsumerState<TeacherChatbotScreen> createState() =>
+      _TeacherChatbotScreenState();
 }
 
-class _StudentChatbotScreenState extends ConsumerState<StudentChatbotScreen> {
+class _TeacherChatbotScreenState extends ConsumerState<TeacherChatbotScreen> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
   bool _stickToBottom = true;
@@ -38,21 +42,22 @@ class _StudentChatbotScreenState extends ConsumerState<StudentChatbotScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(chatbotControllerProvider, (_, next) {
+    ref.listen(teacherChatbotControllerProvider, (_, next) {
       if (_stickToBottom) _scrollToBottom();
       if (!next.isSending && next.error == null) _messageController.clear();
     });
 
-    final state = ref.watch(chatbotControllerProvider);
+    final state = ref.watch(teacherChatbotControllerProvider);
 
-    return EmiScaffold(
+    return TeacherShell(
       title: 'Chatbot AI',
       child: Column(
         children: [
           _ChatbotToolbar(
             onHistory: () => _openHistory(context),
-            onNewSession: () =>
-                ref.read(chatbotControllerProvider.notifier).startNewSession(),
+            onNewSession: () => ref
+                .read(teacherChatbotControllerProvider.notifier)
+                .startNewSession(),
           ),
           Expanded(
             child: ListView(
@@ -66,7 +71,7 @@ class _StudentChatbotScreenState extends ConsumerState<StudentChatbotScreen> {
                     onRetry: state.pendingMessage == null
                         ? null
                         : () => ref
-                              .read(chatbotControllerProvider.notifier)
+                              .read(teacherChatbotControllerProvider.notifier)
                               .retry(),
                   ),
                 ],
@@ -94,7 +99,9 @@ class _StudentChatbotScreenState extends ConsumerState<StudentChatbotScreen> {
   }
 
   void _send() {
-    ref.read(chatbotControllerProvider.notifier).send(_messageController.text);
+    ref
+        .read(teacherChatbotControllerProvider.notifier)
+        .send(_messageController.text);
   }
 
   void _openHistory(BuildContext context) {
@@ -103,9 +110,16 @@ class _StudentChatbotScreenState extends ConsumerState<StudentChatbotScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => ChatbotHistoryPanel(
-        provider: chatbotControllerProvider,
+        provider: teacherChatbotControllerProvider,
         notifierRead: () =>
-            ref.read(chatbotControllerProvider.notifier),
+            ref.read(teacherChatbotControllerProvider.notifier),
+        palette: const ChatbotPanelPalette(
+          surface: TeacherStyle.surface,
+          ink: TeacherStyle.ink,
+          inkMuted: TeacherStyle.inkMuted,
+          tint: TeacherStyle.tint,
+          cardRadius: TeacherStyle.cardRadius,
+        ),
       ),
     );
   }
@@ -147,14 +161,14 @@ class _ChatbotToolbar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           OutlinedButton.icon(
-            key: const Key('chatbotHistoryButton'),
+            key: const Key('teacherChatbotHistoryButton'),
             onPressed: onHistory,
             icon: const Icon(Icons.history, size: 18),
             label: const Text('Riwayat'),
           ),
           const SizedBox(width: EmiSpacing.sm),
           OutlinedButton.icon(
-            key: const Key('chatbotNewSessionButton'),
+            key: const Key('teacherChatbotNewSessionButton'),
             onPressed: onNewSession,
             icon: const Icon(Icons.add_comment_outlined, size: 18),
             label: const Text('Sesi Baru'),
@@ -174,7 +188,7 @@ class _LoadingHistoryBubble extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Text(
         'Memuat percakapan...',
-        style: TextStyle(color: StudentStyle.inkMuted),
+        style: TextStyle(color: TeacherStyle.inkMuted),
       ),
     );
   }
@@ -185,7 +199,7 @@ class _IntroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StudentCard(
+    return TeacherListCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -195,7 +209,7 @@ class _IntroCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: StudentStyle.tint,
+                  color: TeacherStyle.tint,
                   borderRadius: BorderRadius.circular(EmiRadii.pill),
                 ),
                 child: const Icon(
@@ -209,7 +223,7 @@ class _IntroCard extends StatelessWidget {
                   'Tanya materi Bahasa Mekongga',
                   style: Theme.of(
                     context,
-                  ).textTheme.titleMedium?.copyWith(color: StudentStyle.ink),
+                  ).textTheme.titleMedium?.copyWith(color: TeacherStyle.ink),
                 ),
               ),
             ],
@@ -217,7 +231,7 @@ class _IntroCard extends StatelessWidget {
           const SizedBox(height: EmiSpacing.md),
           const Text(
             'EMI menjawab dari Basis AI yang dipublish admin dan menampilkan referensi jika cocok.',
-            style: TextStyle(color: StudentStyle.inkMuted),
+            style: TextStyle(color: TeacherStyle.inkMuted),
           ),
         ],
       ),
@@ -232,11 +246,41 @@ class _ErrorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StudentPlaceholder(
-      icon: Icons.cloud_off_outlined,
-      title: 'Jawaban Belum Tersedia',
-      message: 'EMI belum bisa menjawab sekarang. Coba lagi sebentar.',
-      onRetry: onRetry,
+    return TeacherListCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.cloud_off_outlined, color: TeacherStyle.ink),
+              const SizedBox(width: EmiSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Jawaban Belum Tersedia',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(color: TeacherStyle.ink),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: EmiSpacing.sm),
+          const Text(
+            'EMI belum bisa menjawab sekarang. Coba lagi sebentar.',
+            style: TextStyle(color: TeacherStyle.inkMuted),
+          ),
+          if (onRetry != null) ...[
+            const SizedBox(height: EmiSpacing.md),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton(
+                onPressed: onRetry,
+                child: const Text('Coba Lagi'),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -248,7 +292,7 @@ class _EmptyChat extends StatelessWidget {
   Widget build(BuildContext context) {
     return const _AssistantBubble(
       content:
-          'Halo! Kamu bisa bertanya tentang kosakata, budaya, atau materi Bahasa Mekongga.',
+          'Halo, Guru! Kamu bisa bertanya tentang kosakata, budaya, atau materi Bahasa Mekongga.',
       response: null,
     );
   }
@@ -292,7 +336,7 @@ class _UserBubble extends StatelessWidget {
             bottomLeft: Radius.circular(18),
             bottomRight: Radius.circular(4),
           ),
-          boxShadow: StudentStyle.softShadow(opacity: 0.12),
+          boxShadow: TeacherStyle.softShadow(opacity: 0.12),
         ),
         child: Text(content, style: const TextStyle(color: Colors.white)),
       ),
@@ -319,28 +363,25 @@ class _AssistantBubble extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: EmiSpacing.md),
         padding: const EdgeInsets.all(EmiSpacing.md),
         decoration: BoxDecoration(
-          color: StudentStyle.surface,
+          color: TeacherStyle.surface,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(18),
             topRight: Radius.circular(18),
             bottomLeft: Radius.circular(4),
             bottomRight: Radius.circular(18),
           ),
-          boxShadow: StudentStyle.softShadow(),
+          boxShadow: TeacherStyle.softShadow(),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               _displayAnswer(content),
-              style: const TextStyle(color: StudentStyle.ink),
+              style: const TextStyle(color: TeacherStyle.ink),
             ),
             if (response != null && response!.matched) ...[
               const SizedBox(height: EmiSpacing.sm),
-              const StudentStatusChip(
-                label: 'Referensi tersedia',
-                status: 'done',
-              ),
+              const TeacherStatusChip(label: 'Referensi tersedia'),
             ],
             if (source != null) ...[
               const SizedBox(height: EmiSpacing.sm),
@@ -350,7 +391,7 @@ class _AssistantBubble extends StatelessWidget {
                 title: Text(
                   'Sumber: ${source.title}',
                   style: const TextStyle(
-                    color: StudentStyle.ink,
+                    color: TeacherStyle.ink,
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
                   ),
@@ -360,14 +401,14 @@ class _AssistantBubble extends StatelessWidget {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Kategori: ${source.category ?? 'Umum'}',
-                      style: const TextStyle(color: StudentStyle.inkMuted),
+                      style: const TextStyle(color: TeacherStyle.inkMuted),
                     ),
                   ),
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Jenis sumber: ${_sourceTypeLabel(source.sourceType)}',
-                      style: const TextStyle(color: StudentStyle.inkMuted),
+                      style: const TextStyle(color: TeacherStyle.inkMuted),
                     ),
                   ),
                 ],
@@ -405,18 +446,18 @@ class _TypingBubble extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: EmiSpacing.md),
         padding: const EdgeInsets.all(EmiSpacing.md),
         decoration: BoxDecoration(
-          color: StudentStyle.surface,
+          color: TeacherStyle.surface,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(18),
             topRight: Radius.circular(18),
             bottomLeft: Radius.circular(4),
             bottomRight: Radius.circular(18),
           ),
-          boxShadow: StudentStyle.softShadow(),
+          boxShadow: TeacherStyle.softShadow(),
         ),
         child: const Text(
           'EMI sedang mencari jawaban...',
-          style: TextStyle(color: StudentStyle.inkMuted),
+          style: TextStyle(color: TeacherStyle.inkMuted),
         ),
       ),
     );
@@ -446,9 +487,9 @@ class _ChatInput extends StatelessWidget {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: StudentStyle.surface,
+                  color: TeacherStyle.surface,
                   borderRadius: BorderRadius.circular(24),
-                  boxShadow: StudentStyle.softShadow(),
+                  boxShadow: TeacherStyle.softShadow(),
                 ),
                 child: TextField(
                   controller: controller,
@@ -456,7 +497,7 @@ class _ChatInput extends StatelessWidget {
                   minLines: 1,
                   maxLines: 4,
                   textInputAction: TextInputAction.newline,
-                  style: const TextStyle(color: StudentStyle.ink),
+                  style: const TextStyle(color: TeacherStyle.ink),
                   decoration: const InputDecoration(
                     hintText: 'Tanyakan materi, kosakata, atau budaya...',
                     filled: false,
