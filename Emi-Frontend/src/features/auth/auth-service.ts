@@ -1,4 +1,4 @@
-import { ApiError, apiClient } from "@/lib/api-client";
+import { ApiError, apiClient, apiRequest } from "@/lib/api-client";
 import { isUserRole } from "@/lib/roles";
 
 import type {
@@ -115,5 +115,55 @@ export const authService = {
     );
 
     return response.data ?? [];
+  },
+
+  async updateProfile(token: string, payload: { full_name: string; phone?: string | null }) {
+    const response = await apiClient.patch<AuthUser>("/auth/me", payload, { token });
+
+    if (!response.data) {
+      throw new Error("Response profil tidak memuat data pengguna.");
+    }
+
+    return response.data;
+  },
+
+  async updatePassword(
+    token: string,
+    payload: { current_password: string; password: string; password_confirmation: string },
+  ) {
+    const response = await apiClient.put<AuthUser>("/auth/password", payload, { token });
+
+    if (!response.data) {
+      throw new Error("Response password tidak memuat data pengguna.");
+    }
+
+    return response.data;
+  },
+
+  async uploadAvatar(token: string, file: File) {
+    const formData = new FormData();
+    formData.set("avatar", file);
+
+    const response = await apiClient.post<AuthUser>("/auth/me/avatar", formData, { token });
+
+    if (!response.data) {
+      throw new Error("Response avatar tidak memuat data pengguna.");
+    }
+
+    return response.data;
+  },
+
+  async deleteAvatar(token: string) {
+    const response = await apiClient.delete<AuthUser>("/auth/me/avatar", { token });
+
+    if (!response.data) {
+      throw new Error("Response hapus avatar tidak memuat data pengguna.");
+    }
+
+    return response.data;
+  },
+
+  async deleteAccount(token: string, payload: { current_password: string }) {
+    await apiRequest<[]>("/auth/account", { method: "DELETE", token, body: payload });
   },
 };

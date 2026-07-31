@@ -1,12 +1,21 @@
 "use client";
 
+import { type FormEvent, useState } from "react";
 import { GraduationCap, School } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { Card, CardContent, CardHeader, EmptyState, PageHeader } from "@/components/ui";
+import { Alert, Button, Card, CardContent, CardHeader, EmptyState, Input, PageHeader } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
+import { authService } from "@/features/auth/auth-service";
+import { DeleteAccountForm } from "@/features/auth/delete-account-form";
+import { ProfileAvatarUpload } from "@/features/auth/profile-avatar-upload";
+import { ProfilePasswordForm } from "@/features/auth/profile-password-form";
+import { getFirstApiError } from "@/lib/api-client";
 import { roleLabels } from "@/lib/roles";
 
 import { formatOptional } from "./student-utils";
+
+const PROFILE_QUERY_KEY = ["student", "profile"];
 
 function statusLabel(status: string | null | undefined) {
   if (status === "approved") {
@@ -29,9 +38,29 @@ function statusLabel(status: string | null | undefined) {
 }
 
 export function StudentProfile() {
-  const { user } = useAuth();
+  const { token, user } = useAuth();
+  const queryClient = useQueryClient();
+  const [success, setSuccess] = useState(false);
   const schoolName = user?.active_school?.name;
   const className = user?.active_class?.name;
+
+  const updateMutation = useMutation({
+    mutationFn: (payload: { full_name: string; phone?: string | null }) => authService.updateProfile(token ?? "", payload),
+    onSuccess: async () => {
+      setSuccess(true);
+      await queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY });
+    },
+  });
+
+  function submitProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSuccess(false);
+    const data = new FormData(event.currentTarget);
+    updateMutation.mutate({
+      full_name: String(data.get("full_name") ?? "").trim(),
+      phone: String(data.get("phone") ?? "").trim() || null,
+    });
+  }
 
   return (
     <div className="grid gap-8">
@@ -100,6 +129,60 @@ export function StudentProfile() {
           )}
         </CardContent>
       </Card>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <h2 className="text-xl font-black text-ink">Foto Profil</h2>
+          </CardHeader>
+          <CardContent>
+            <ProfileAvatarUpload avatarUrl={user?.avatar?.url} fullName={user?.full_name} invalidateKey={PROFILE_QUERY_KEY} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <h2 className="text-xl font-black text-ink">Ubah Profil</h2>
+          </CardHeader>
+          <CardContent>
+            <form className="grid gap-4" key={user?.id} onSubmit={submitProfile}>
+              {success ? <Alert tone="success">Profil berhasil diperbarui.</Alert> : null}
+              {updateMutation.error ? <Alert tone="error">{getFirstApiError(updateMutation.error)}</Alert> : null}
+              <label className="grid gap-2 text-sm font-black text-ink">
+                Nama lengkap
+                <Input defaultValue={user?.full_name} name="full_name" required />
+              </label>
+              <label className="grid gap-2 text-sm font-black text-ink">
+                Nomor telepon
+                <Input defaultValue={user?.phone ?? ""} name="phone" placeholder="Belum diisi" />
+              </label>
+              <Button disabled={updateMutation.isPending} type="submit">
+                {updateMutation.isPending ? "Menyimpan..." : "Simpan Profil"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <h2 className="text-xl font-black text-ink">Ubah Password</h2>
+          </CardHeader>
+          <CardContent>
+            <ProfilePasswordForm />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <h2 className="text-xl font-black text-ink">Hapus Akun</h2>
+          </CardHeader>
+          <CardContent>
+            <DeleteAccountForm />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

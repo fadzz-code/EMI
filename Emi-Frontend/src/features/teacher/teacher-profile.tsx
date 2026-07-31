@@ -5,10 +5,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Alert, Button, Card, CardContent, CardHeader, ErrorState, Input, LoadingState, PageHeader } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
+import { DeleteAccountForm } from "@/features/auth/delete-account-form";
+import { ProfileAvatarUpload } from "@/features/auth/profile-avatar-upload";
+import { ProfilePasswordForm } from "@/features/auth/profile-password-form";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { teacherService } from "./teacher-service";
 import { formatOptional, statusLabel } from "./teacher-utils";
+
+const PROFILE_QUERY_KEY = ["teacher", "profile"];
 
 export function TeacherProfile() {
   const { refreshUser, token, user } = useAuth();
@@ -16,7 +21,7 @@ export function TeacherProfile() {
   const [success, setSuccess] = useState(false);
 
   const profileQuery = useQuery({
-    queryKey: ["teacher", "profile"],
+    queryKey: PROFILE_QUERY_KEY,
     queryFn: () => teacherService.profile(token ?? ""),
     enabled: Boolean(token),
   });
@@ -24,7 +29,7 @@ export function TeacherProfile() {
     mutationFn: (payload: { full_name: string; phone?: string | null }) => teacherService.updateProfile(token ?? "", payload),
     onSuccess: async () => {
       setSuccess(true);
-      await queryClient.invalidateQueries({ queryKey: ["teacher", "profile"] });
+      await queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY });
       await refreshUser();
     },
   });
@@ -49,7 +54,6 @@ export function TeacherProfile() {
                 <div className="rounded-xl border-2 border-border bg-surface-muted p-3"><dt className="font-black uppercase text-muted">Role</dt><dd className="mt-1 font-bold text-ink">{formatOptional(profile.role)}</dd></div>
                 <div className="rounded-xl border-2 border-border bg-surface-muted p-3"><dt className="font-black uppercase text-muted">Status</dt><dd className="mt-1 font-bold text-ink">{statusLabel(profile.status)}</dd></div>
                 <div className="rounded-xl border-2 border-border bg-surface-muted p-3"><dt className="font-black uppercase text-muted">Telepon</dt><dd className="mt-1 font-bold text-ink">{formatOptional(profile.phone)}</dd></div>
-                <div className="rounded-xl border-2 border-border bg-surface-muted p-3"><dt className="font-black uppercase text-muted">Avatar</dt><dd className="mt-1 font-bold text-ink">{profile.avatar?.url ? "Tersedia" : "Belum tersedia"}</dd></div>
               </dl>
             </CardContent>
           </Card>
@@ -88,6 +92,33 @@ export function TeacherProfile() {
         </div>
       ) : !profileQuery.isLoading && !profileQuery.isError ? (
         <Alert tone="info">Profil belum tersedia. User aktif: {user?.email ?? "tidak diketahui"}.</Alert>
+      ) : null}
+
+      {profile ? (
+        <>
+          <Card>
+            <CardHeader><h2 className="text-xl font-black text-ink">Foto Profil</h2></CardHeader>
+            <CardContent>
+              <ProfileAvatarUpload avatarUrl={profile.avatar?.url} fullName={profile.full_name} invalidateKey={PROFILE_QUERY_KEY} />
+            </CardContent>
+          </Card>
+
+          <div className="grid gap-6 xl:grid-cols-2">
+            <Card>
+              <CardHeader><h2 className="text-xl font-black text-ink">Ubah Password</h2></CardHeader>
+              <CardContent>
+                <ProfilePasswordForm />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><h2 className="text-xl font-black text-ink">Hapus Akun</h2></CardHeader>
+              <CardContent>
+                <DeleteAccountForm />
+              </CardContent>
+            </Card>
+          </div>
+        </>
       ) : null}
     </div>
   );
