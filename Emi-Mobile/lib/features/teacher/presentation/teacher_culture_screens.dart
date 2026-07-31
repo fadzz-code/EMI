@@ -417,6 +417,9 @@ class _CulturePlaybackState extends State<_CulturePlayback> {
         builder: (context, snapshot) => ListTile(
           contentPadding: EdgeInsets.zero,
           leading: IconButton.filled(
+            tooltip: snapshot.data?.playing == true
+                ? 'Jeda audio'
+                : 'Putar audio',
             onPressed: busy
                 ? null
                 : () => _audio(snapshot.data?.playing == true),

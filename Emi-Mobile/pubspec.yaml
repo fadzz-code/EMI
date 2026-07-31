@@ -68,6 +68,9 @@ dev_dependencies:
   json_serializable: 6.9.5
   mocktail: 1.0.4
   flutter_launcher_icons: ^0.14.4
+  # Used by tool/generate_app_icon.dart to programmatically draw the EMI
+  # launcher icon (no external image editor required to (re)generate it).
+  image: ^4.8.0
 
 # Launcher icon generation. Drop the EMI logo at assets/icon/emi_icon.png
 # (min. 512x512, no transparency for the Play Store icon), then run:

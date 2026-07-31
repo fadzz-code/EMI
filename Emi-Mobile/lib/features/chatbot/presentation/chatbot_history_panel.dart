@@ -90,6 +90,7 @@ class _ChatbotHistoryPanelState extends ConsumerState<ChatbotHistoryPanel> {
                   ),
                   IconButton(
                     key: const Key('chatbotHistoryCloseButton'),
+                    tooltip: 'Tutup',
                     onPressed: () => Navigator.of(context).pop(),
                     icon: Icon(Icons.close, color: palette.inkMuted),
                   ),

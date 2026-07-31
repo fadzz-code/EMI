@@ -513,25 +513,28 @@ class _ChatInput extends StatelessWidget {
               ),
             ),
             const SizedBox(width: EmiSpacing.sm),
-            SizedBox(
-              width: 52,
-              height: 52,
-              child: FilledButton(
-                onPressed: isSending ? null : onSend,
-                style: FilledButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  shape: const CircleBorder(),
+            Tooltip(
+              message: 'Kirim pertanyaan',
+              child: SizedBox(
+                width: 52,
+                height: 52,
+                child: FilledButton(
+                  onPressed: isSending ? null : onSend,
+                  style: FilledButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    shape: const CircleBorder(),
+                  ),
+                  child: isSending
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.send_outlined),
                 ),
-                child: isSending
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.send_outlined),
               ),
             ),
           ],

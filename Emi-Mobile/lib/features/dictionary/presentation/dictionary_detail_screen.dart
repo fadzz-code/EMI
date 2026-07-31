@@ -145,6 +145,7 @@ class _DictionaryAudioPlayerState extends State<DictionaryAudioPlayer> {
             builder: (context, snapshot) {
               final playing = snapshot.data?.playing == true;
               return IconButton.filled(
+                tooltip: playing ? 'Jeda audio' : 'Putar audio',
                 onPressed: _loading ? null : () => _toggle(playing),
                 style: IconButton.styleFrom(
                   backgroundColor: EmiColors.primary,

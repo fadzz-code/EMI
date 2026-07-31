@@ -567,6 +567,7 @@ class StudentPaginationBar extends StatelessWidget {
           children: [
             IconButton(
               key: previousKey,
+              tooltip: 'Halaman sebelumnya',
               onPressed: onPrevious,
               icon: const Icon(Icons.chevron_left, color: StudentStyle.ink),
             ),
@@ -581,6 +582,7 @@ class StudentPaginationBar extends StatelessWidget {
             ),
             IconButton(
               key: nextKey,
+              tooltip: 'Halaman berikutnya',
               onPressed: onNext,
               icon: const Icon(Icons.chevron_right, color: StudentStyle.ink),
             ),

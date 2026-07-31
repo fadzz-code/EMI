@@ -281,6 +281,7 @@ class _DictionaryCardState extends ConsumerState<_DictionaryCard> {
                     final playing = snapshot.data?.playing == true;
                     return IconButton.filled(
                       key: Key('teacherDictionaryAudio-${entry.id}'),
+                      tooltip: playing ? 'Jeda audio' : 'Putar audio',
                       onPressed: _loading ? null : () => _toggle(playing),
                       style: IconButton.styleFrom(
                         backgroundColor: TeacherStyle.tint,
@@ -500,6 +501,7 @@ class _DetailAudioPlayerState extends State<_DetailAudioPlayer> {
             builder: (context, snapshot) {
               final playing = snapshot.data?.playing == true;
               return IconButton.filled(
+                tooltip: playing ? 'Jeda audio' : 'Putar audio',
                 onPressed: _loading ? null : () => _toggle(playing),
                 style: IconButton.styleFrom(
                   backgroundColor: EmiColors.primary,
