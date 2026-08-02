@@ -58,6 +58,15 @@ export function AdminCultureTemplateEdit({ templateId }: { templateId: string })
     },
   });
 
+  const archiveMutation = useMutation({
+    mutationFn: () => adminCultureService.archiveTemplate(token ?? "", templateId),
+    onSuccess: () => {
+      setSuccessMsg("Template berhasil diarsipkan dan dapat diterbitkan kembali kapan saja.");
+      queryClient.invalidateQueries({ queryKey: ["admin", "culture-templates", templateId] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "culture-templates"] });
+    },
+  });
+
   const applyMutation = useMutation({
     mutationFn: (classIds: string[]) => adminCultureService.applyTemplate(token ?? "", templateId, classIds),
     onSuccess: (res) => setSuccessMsg(`Berhasil diterapkan ke ${res.applied.length} kelas. Dilewati: ${res.skipped.length}, Gagal: ${res.failed.length}.`),
@@ -96,11 +105,13 @@ export function AdminCultureTemplateEdit({ templateId }: { templateId: string })
                   {successMsg ? <Alert tone="success">{successMsg}</Alert> : null}
                   {updateMutation.error ? <Alert tone="error">{getFirstApiError(updateMutation.error)}</Alert> : null}
                   {publishMutation.error ? <Alert tone="error">{getFirstApiError(publishMutation.error)}</Alert> : null}
+                  {archiveMutation.error ? <Alert tone="error">{getFirstApiError(archiveMutation.error)}</Alert> : null}
                   <label className="grid gap-2 text-sm font-black text-ink">Judul<Input defaultValue={template.title} name="title" required /></label>
                   <label className="grid gap-2 text-sm font-black text-ink">Deskripsi<Input defaultValue={template.description ?? ""} name="description" /></label>
                   <div className="flex flex-wrap gap-2">
-                    <Button disabled={updateMutation.isPending || publishMutation.isPending} type="submit">{updateMutation.isPending ? "Menyimpan..." : "Simpan Template"}</Button>
-                    {template.status !== "published" ? <Button disabled={publishMutation.isPending || updateMutation.isPending} onClick={() => publishMutation.mutate()} type="button" variant="secondary">{publishMutation.isPending ? "Menerbitkan..." : "Terbitkan Template"}</Button> : null}
+                    <Button disabled={updateMutation.isPending || publishMutation.isPending || archiveMutation.isPending} type="submit">{updateMutation.isPending ? "Menyimpan..." : "Simpan Template"}</Button>
+                    {template.status !== "published" ? <Button disabled={publishMutation.isPending || updateMutation.isPending || archiveMutation.isPending} onClick={() => publishMutation.mutate()} type="button" variant="secondary">{publishMutation.isPending ? "Menerbitkan..." : template.status === "archived" ? "Terbitkan Ulang" : "Terbitkan Template"}</Button> : null}
+                    {template.status === "published" ? <Button disabled={archiveMutation.isPending || updateMutation.isPending} onClick={() => archiveMutation.mutate()} type="button" variant="ghost">{archiveMutation.isPending ? "Mengarsipkan..." : "Arsipkan Template"}</Button> : null}
                   </div>
                 </form>
               </CardContent>

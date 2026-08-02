@@ -41,9 +41,6 @@ class ClassQuizService
 
     public function update(ClassQuiz $quiz, array $data, User $actor, Request $request): ClassQuiz
     {
-        if ($quiz->status === 'archived') {
-            throw new ApiException('Kuis archived tidak dapat diubah.', 'QUIZ_ARCHIVED', 409);
-        }
         if ($quiz->status === 'published') {
             $data = collect($data)->only(['show_result'])->all();
             if ($data === []) {

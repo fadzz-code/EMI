@@ -102,7 +102,7 @@ class QuizQuestionService
 
     private function assertEditable(ClassQuiz $quiz): void
     {
-        if ($quiz->status !== 'draft' || $quiz->attempts()->exists()) {
+        if (! in_array($quiz->status, ['draft', 'archived'], true) || $quiz->attempts()->exists()) {
             throw new ApiException('Konten kuis terkunci.', 'QUIZ_CONTENT_LOCKED', 409);
         }
     }

@@ -62,10 +62,6 @@ class ModuleTemplateService
 
     public function publish(ModuleTemplate $template, User $actor, Request $request): ModuleTemplate
     {
-        if ($template->status === 'archived') {
-            throw new ApiException('Template modul archived tidak dapat dipublish.', 'INVALID_LESSON_CONTENT', 409);
-        }
-
         $template->load('lessons.media');
         $publishedLessons = $template->lessons->where('status', 'published');
 
@@ -117,6 +113,10 @@ class ModuleTemplateService
 
         if ($template->status === 'archived' && $template->archived_at === null) {
             $template->archived_at = now();
+        }
+
+        if ($template->status === 'draft') {
+            $template->archived_at = null;
         }
     }
 }

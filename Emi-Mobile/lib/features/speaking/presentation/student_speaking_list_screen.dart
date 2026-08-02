@@ -384,6 +384,9 @@ class _AttemptDetailState extends ConsumerState<_AttemptDetail> {
                     .temporaryMediaUrl(attempt.audioMediaId!);
           await _player.setUrl(url);
         }
+        if (_player.processingState == ProcessingState.completed) {
+          await _player.seek(Duration.zero);
+        }
         await _player.play();
       }
     } catch (_) {

@@ -148,6 +148,25 @@ class SpeakingPracticeAiTest extends TestCase
         $this->assertSame('webm', SpeakingAttempt::query()->firstOrFail()->audioMedia->extension);
     }
 
+    public function test_student_can_upload_mobile_m4a_detected_as_video_mp4(): void
+    {
+        Storage::fake('local');
+        config(['speaking.ai.enabled' => true]);
+        $this->bindSpeakingAiSuccess();
+        [$student, , $class] = $this->classroomUsers();
+        $exercise = $this->exercise($class);
+
+        $response = $this->withToken($this->tokenFor($student))->post('/api/v1/student/speaking/exercises/'.$exercise->id.'/attempts', [
+            'file' => UploadedFile::fake()->create('speaking-attempt.m4a', 128, 'video/mp4'),
+            'capture_source' => 'mobile_microphone',
+        ]);
+
+        $response->assertCreated();
+        $attempt = SpeakingAttempt::query()->firstOrFail();
+        $this->assertSame('mp4', $attempt->audioMedia->extension);
+        $this->assertSame('mobile_microphone', $attempt->capture_source);
+    }
+
     public function test_ai_failure_marks_attempt_failed_and_stores_error(): void
     {
         Storage::fake('local');

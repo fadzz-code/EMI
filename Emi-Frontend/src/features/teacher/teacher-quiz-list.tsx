@@ -16,10 +16,10 @@ import { quizLifecycle } from "./teacher-workflow";
 import type { TeacherClassQuiz } from "./types";
 import { formatCount, formatDate, formatOptional, statusLabel } from "./teacher-utils";
 
-const lockedMessage = "Konten kuis terkunci karena kuis sudah dipublikasikan atau sudah memiliki percobaan siswa. Buat kuis draft baru atau gunakan kuis yang belum dipublikasikan untuk mengubah soal.";
+const lockedMessage = "Konten kuis terkunci saat sedang diterbitkan atau sudah memiliki percobaan siswa. Arsipkan kuis sebelum mengubahnya.";
 
 function isQuizLocked(quiz: TeacherClassQuiz) {
-  return quiz.status !== "draft" || (quiz.attempts_count ?? 0) > 0;
+  return quiz.status === "published" || (quiz.attempts_count ?? 0) > 0;
 }
 
 export function TeacherQuizList() {
@@ -116,7 +116,7 @@ export function TeacherQuizList() {
                     <CardHeader>
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                          <div className="flex flex-wrap gap-2"><Badge tone={quiz.status === "published" ? "blue" : "neutral"}>{statusLabel(quiz.status)}</Badge>{locked ? <Badge tone="yellow"><LockKeyhole className="mr-1 size-3" />Terkunci</Badge> : <Badge tone="blue"><Pencil className="mr-1 size-3" />Draft bisa diedit</Badge>}</div>
+                          <div className="flex flex-wrap gap-2"><Badge tone={quiz.status === "published" ? "blue" : "neutral"}>{statusLabel(quiz.status)}</Badge>{locked ? <Badge tone="yellow"><LockKeyhole className="mr-1 size-3" />Terkunci</Badge> : <Badge tone="blue"><Pencil className="mr-1 size-3" />Bisa diedit</Badge>}</div>
                           <h2 className="mt-2 text-xl font-black text-ink">{quiz.title}</h2>
                           <p className="mt-1 text-sm font-bold text-muted">{quiz.class?.name ?? user?.active_class?.name ?? "Kelas aktif"}</p>
                         </div>

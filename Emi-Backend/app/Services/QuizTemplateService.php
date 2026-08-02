@@ -52,6 +52,8 @@ class QuizTemplateService
             $template->updated_by = $actor->id;
             if ($template->status === 'archived') {
                 $template->archived_at = now();
+            } elseif ($template->status === 'draft') {
+                $template->archived_at = null;
             }
             $template->save();
             $this->auditLogService->record('quiz_template.updated', $template, $actor, $old, $template->only(['title', 'status']), [], $request);
@@ -62,9 +64,6 @@ class QuizTemplateService
 
     public function publish(QuizTemplate $template, User $actor, Request $request): QuizTemplate
     {
-        if ($template->status === 'archived') {
-            throw new ApiException('Template kuis archived tidak dapat dipublish.', 'QUIZ_ARCHIVED', 409);
-        }
         $template->load('questions.options', 'questions.imageMedia');
         if ($template->questions->isEmpty()) {
             throw new ApiException('Template kuis harus memiliki soal.', 'QUIZ_HAS_NO_QUESTIONS', 409);

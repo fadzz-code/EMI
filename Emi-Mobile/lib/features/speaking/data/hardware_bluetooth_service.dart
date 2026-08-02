@@ -33,9 +33,12 @@ class HardwareConnectResult {
 typedef HardwarePermissionRequester = Future<bool> Function();
 
 Future<bool> requestHardwareBluetoothPermissions() async {
-  final scanStatus = await Permission.bluetoothScan.request();
-  final connectStatus = await Permission.bluetoothConnect.request();
-  return scanStatus.isGranted && connectStatus.isGranted;
+  final statuses = await [
+    Permission.bluetoothScan,
+    Permission.bluetoothConnect,
+    Permission.location,
+  ].request();
+  return statuses.values.every((status) => status.isGranted);
 }
 
 /// Owns the SPP connection lifecycle to the ESP32 and exposes decoded
@@ -74,7 +77,8 @@ class HardwareBluetoothService {
     if (!granted) {
       return const HardwareConnectResult(
         status: HardwareLinkStatus.permissionDenied,
-        message: 'Izin Bluetooth ditolak. Aktifkan izin Bluetooth di pengaturan HP.',
+        message:
+            'Izin Bluetooth ditolak. Aktifkan izin Bluetooth di pengaturan HP.',
       );
     }
 

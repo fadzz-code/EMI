@@ -15,7 +15,7 @@ import { formatCount, formatDate, formatOptional, statusLabel } from "./teacher-
 import type { TeacherClassQuiz } from "./types";
 
 function isQuizLocked(quiz: TeacherClassQuiz) {
-  return quiz.status !== "draft" || (quiz.attempts_count ?? 0) > 0;
+  return quiz.status === "published" || (quiz.attempts_count ?? 0) > 0;
 }
 
 export function TeacherClassQuizzes({ classId }: { classId: string }) {
@@ -59,7 +59,7 @@ export function TeacherClassQuizzes({ classId }: { classId: string }) {
                     <CardHeader>
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <div className="flex flex-wrap gap-2"><Badge tone={quiz.status === "published" ? "blue" : "neutral"}>{statusLabel(quiz.status)}</Badge>{locked ? <Badge tone="yellow"><LockKeyhole className="mr-1 size-3" />Terkunci</Badge> : <Badge tone="blue"><Pencil className="mr-1 size-3" />Draft bisa diedit</Badge>}</div>
+                          <div className="flex flex-wrap gap-2"><Badge tone={quiz.status === "published" ? "blue" : "neutral"}>{statusLabel(quiz.status)}</Badge>{locked ? <Badge tone="yellow"><LockKeyhole className="mr-1 size-3" />Terkunci</Badge> : <Badge tone="blue"><Pencil className="mr-1 size-3" />Bisa diedit</Badge>}</div>
                           <h2 className="mt-2 text-xl font-black text-ink">{quiz.title}</h2>
                         </div>
                         <span className="rounded-lg border-2 border-border bg-surface-muted px-2 py-1 text-xs font-black text-muted">{formatCount(quiz.duration_minutes)} menit</span>

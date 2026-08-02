@@ -31,6 +31,7 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
   const { token } = useAuth();
   const queryClient = useQueryClient();
   const [createQuestionOpen, setCreateQuestionOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<QuizTemplateQuestion | null>(null);
   const [deleteQuestionTarget, setDeleteQuestionTarget] =
     useState<QuizTemplateQuestion | null>(null);
@@ -159,12 +160,17 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
             dan pembahasan sebelum kuis diterbitkan.
           </p>
         </div>
-        <Link
-          className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-border bg-surface px-4 py-2 text-sm font-bold text-ink hover:bg-surface-muted"
-          href="/admin/quizzes"
-        >
-          Kembali ke Daftar
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => setPreviewOpen(true)} variant="secondary">
+            Preview Kuis
+          </Button>
+          <Link
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-border bg-surface px-4 py-2 text-sm font-bold text-ink hover:bg-surface-muted"
+            href="/admin/quizzes"
+          >
+            Kembali ke Daftar
+          </Link>
+        </div>
       </header>
 
       {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
@@ -283,6 +289,44 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
           </div>
         </div>
       ) : null}
+
+      <Modal
+        className="max-w-4xl"
+        onClose={() => setPreviewOpen(false)}
+        open={previewOpen}
+        title={`Preview Kuis: ${quiz?.title ?? ""}`}
+      >
+        {questions.length === 0 ? (
+          <EmptyState description="Tambahkan soal untuk melihat preview kuis." title="Soal kosong" />
+        ) : (
+          <div className="grid gap-4">
+            {questions.map((question) => (
+              <div className="rounded-2xl border-2 border-border bg-surface-muted p-4" key={question.id}>
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <Badge tone="neutral">#{question.order_number}</Badge>
+                  <Badge tone="neutral">{question.points} poin</Badge>
+                </div>
+                <p className="font-black text-ink">{question.question_text}</p>
+                {question.question_type === "multiple_choice" ? (
+                  <div className="mt-3 grid gap-2">
+                    {(question.options ?? []).map((option) => (
+                      <div className="flex justify-between rounded-lg border border-border bg-surface p-3 text-sm" key={option.id ?? option.order_number}>
+                        <span>{option.order_number}. {option.option_text}</span>
+                        {option.is_correct ? <Badge tone="blue">Jawaban benar</Badge> : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 rounded-lg border border-border bg-surface p-3 text-sm">
+                    <span className="font-black">Jawaban benar:</span> {question.correct_answer_text ?? "-"}
+                  </p>
+                )}
+                {question.explanation ? <p className="mt-3 text-sm text-muted"><span className="font-black text-ink">Pembahasan:</span> {question.explanation}</p> : null}
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
 
       <Modal
         onClose={() => setCreateQuestionOpen(false)}

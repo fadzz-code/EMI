@@ -204,7 +204,7 @@ class HardwareCaptureController extends StateNotifier<HardwareCaptureData> {
       );
       return;
     }
-    final durationSeconds = writer.bytesWritten ~/ _pcmBytesPerSecond;
+    final durationSeconds = (writer.bytesWritten / _pcmBytesPerSecond).ceil();
     state = state.copyWith(
       state: HardwareCaptureState.captured,
       recordedPath: path,

@@ -201,6 +201,7 @@ Route::prefix('v1')->group(function () {
         Route::put('culture-templates/{id}', [AdminCultureTemplateController::class, 'update']);
         Route::delete('culture-templates/{id}', [AdminCultureTemplateController::class, 'destroy']);
         Route::post('culture-templates/{id}/publish', [AdminCultureTemplateController::class, 'publish']);
+        Route::post('culture-templates/{id}/archive', [AdminCultureTemplateController::class, 'archive']);
         Route::post('culture-templates/{id}/apply', CultureTemplateApplyController::class);
         Route::post('culture-templates/{culture_template_id}/items', [AdminCultureTemplateItemController::class, 'store']);
         Route::get('culture-template-items/{id}', [AdminCultureTemplateItemController::class, 'show']);

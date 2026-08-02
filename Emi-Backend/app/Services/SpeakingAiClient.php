@@ -38,13 +38,17 @@ class SpeakingAiClient
             throw new SpeakingAiException('SPEAKING_AUDIO_FILE_UNREADABLE', 'Audio speaking tidak dapat dibaca.');
         }
 
+        $contentType = in_array($media->mime_type, ['video/mp4', 'application/mp4'], true)
+            ? 'audio/mp4'
+            : $media->mime_type;
+
         try {
             $response = Http::withToken((string) config('speaking.ai.token'))
                 ->connectTimeout((int) config('speaking.ai.connect_timeout_seconds', 5))
                 ->timeout((int) config('speaking.ai.timeout_seconds', 60))
                 ->retry(2, 100, fn (Throwable $exception): bool => $exception instanceof ConnectionException
                     || ($exception instanceof RequestException && $exception->response->serverError()), false)
-                ->attach('file', $stream, $media->original_name, ['Content-Type' => $media->mime_type])
+                ->attach('file', $stream, $media->original_name, ['Content-Type' => $contentType])
                 ->post(rtrim((string) config('speaking.ai.base_url'), '/').'/predict', [
                     'target_text' => $attempt->target_text_snapshot,
                 ]);

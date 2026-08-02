@@ -336,7 +336,7 @@ export function QuizList() {
                                 </DropdownMenuItem>
                               ) : (
                                 <DropdownMenuItem
-                                  disabled={publishMutation.isPending || quiz.status === "archived"}
+                                  disabled={publishMutation.isPending}
                                   icon={<Send />}
                                   onClick={() => publishMutation.mutate(quiz.id)}
                                 >

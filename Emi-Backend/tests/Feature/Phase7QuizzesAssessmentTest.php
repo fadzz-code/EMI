@@ -112,6 +112,15 @@ class Phase7QuizzesAssessmentTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.status', 'published');
 
+        $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/quiz-templates/{$templateId}/archive")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'archived');
+
+        $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/quiz-templates/{$templateId}/publish")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published')
+            ->assertJsonPath('data.archived_at', null);
+
         $this->withToken($this->tokenFor($admin))->putJson("/api/v1/admin/quiz-template-questions/{$firstQuestion}", [
             'question_text' => 'Terkunci',
         ])->assertConflict()->assertJsonPath('code', 'QUIZ_CONTENT_LOCKED');
@@ -445,9 +454,9 @@ class Phase7QuizzesAssessmentTest extends TestCase
         $this->withToken($this->tokenFor($teacher))->postJson("/api/v1/class-quizzes/{$published->id}/archive")
             ->assertOk()
             ->assertJsonPath('data.archived_at', $archivedAt);
-        $this->withToken($this->tokenFor($teacher))->putJson("/api/v1/class-quizzes/{$published->id}", ['title' => 'Tidak boleh berubah'])
-            ->assertConflict()
-            ->assertJsonPath('code', 'QUIZ_ARCHIVED');
+        $this->withToken($this->tokenFor($teacher))->putJson("/api/v1/class-quizzes/{$published->id}", ['title' => 'Kuis direvisi'])
+            ->assertOk()
+            ->assertJsonPath('data.title', 'Kuis direvisi');
         $this->assertDatabaseHas('quiz_attempts', ['class_quiz_id' => $published->id, 'student_id' => $student->id]);
         $this->withToken($this->tokenFor($teacher))->deleteJson("/api/v1/class-quizzes/{$publishedWithoutAttempt->id}")
             ->assertConflict()
@@ -471,6 +480,14 @@ class Phase7QuizzesAssessmentTest extends TestCase
         $this->withToken($this->tokenFor($teacher))->postJson("/api/v1/class-quizzes/{$quiz->id}/archive")
             ->assertOk()
             ->assertJsonPath('data.status', 'archived');
+
+        $question = $quiz->questions()->firstOrFail();
+        $this->withToken($this->tokenFor($teacher))->putJson("/api/v1/class-quizzes/{$quiz->id}", ['title' => 'Kuis arsip direvisi'])
+            ->assertOk()
+            ->assertJsonPath('data.title', 'Kuis arsip direvisi');
+        $this->withToken($this->tokenFor($teacher))->putJson("/api/v1/quiz-questions/{$question->id}", [
+            'question_text' => 'Soal arsip direvisi?',
+        ])->assertOk()->assertJsonPath('data.question_text', 'Soal arsip direvisi?');
 
         $this->withToken($this->tokenFor($teacher))->postJson("/api/v1/class-quizzes/{$quiz->id}/publish")
             ->assertOk()

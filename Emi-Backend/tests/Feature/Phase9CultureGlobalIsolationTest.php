@@ -378,6 +378,30 @@ class Phase9CultureGlobalIsolationTest extends TestCase
         $this->assertDatabaseHas('class_culture_items', ['id' => $id, 'media_id' => null, 'external_url' => 'https://example.com/new']);
     }
 
+    public function test_admin_can_archive_and_republish_culture_template_with_items(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $template = CultureTemplate::query()->create(['title' => 'Template', 'status' => 'draft', 'created_by' => $admin->id]);
+
+        $this->admin($admin)->postJson("/api/v1/admin/culture-templates/{$template->id}/items", $this->payload())
+            ->assertCreated();
+
+        $this->admin($admin)->postJson("/api/v1/admin/culture-templates/{$template->id}/publish")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published');
+
+        $this->admin($admin)->postJson("/api/v1/admin/culture-templates/{$template->id}/archive")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'archived');
+        $this->assertDatabaseHas('culture_template_items', ['culture_template_id' => $template->id, 'status' => 'archived']);
+
+        $this->admin($admin)->postJson("/api/v1/admin/culture-templates/{$template->id}/publish")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published')
+            ->assertJsonPath('data.archived_at', null);
+        $this->assertDatabaseHas('culture_template_items', ['culture_template_id' => $template->id, 'status' => 'published', 'archived_at' => null]);
+    }
+
     public function test_template_uses_same_validator_and_publish_rejects_invalid_class_item(): void
     {
         Storage::fake('public');

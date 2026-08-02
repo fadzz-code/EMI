@@ -23,7 +23,7 @@ MAX_DURATION_SECONDS = float(os.getenv("SPEAKING_AI_MAX_DURATION_SECONDS", "60")
 FFMPEG_TIMEOUT_SECONDS = float(os.getenv("SPEAKING_AI_FFMPEG_TIMEOUT_SECONDS", "30"))
 MAX_LOG_CHARS = 1000
 SAFE_EXTENSIONS = {".wav", ".webm", ".mp3", ".mp4", ".m4a", ".mpeg", ".mpga", ".ogg", ".oga"}
-SAFE_CONTENT_TYPES = {"audio/wav", "audio/x-wav", "audio/webm", "video/webm", "audio/mpeg", "audio/mp4", "audio/m4a", "audio/ogg"}
+SAFE_CONTENT_TYPES = {"audio/wav", "audio/x-wav", "audio/webm", "video/webm", "audio/mpeg", "audio/mp4", "video/mp4", "application/mp4", "audio/m4a", "audio/ogg"}
 WARNING = "Model is Indonesian STT; Mekongga pronunciation scoring is approximate."
 
 app = FastAPI(title="EMI Speaking AI", version="0.2.0")

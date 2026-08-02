@@ -16,6 +16,8 @@ class StoreSpeakingAttemptRequest extends FormRequest
         'audio/x-wav',
         'audio/mpeg',
         'audio/mp4',
+        'video/mp4',
+        'application/mp4',
         'audio/m4a',
         'audio/ogg',
     ];

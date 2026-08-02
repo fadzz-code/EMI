@@ -184,6 +184,15 @@ class Phase6ModulesLessonsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.status', 'published');
 
+        $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/module-templates/{$templateId}/archive")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'archived');
+
+        $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/module-templates/{$templateId}/publish")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published')
+            ->assertJsonPath('data.archived_at', null);
+
         $this->assertDatabaseHas('audit_logs', ['action' => 'module_template.created']);
         $this->assertDatabaseHas('audit_logs', ['action' => 'lesson_template.created']);
         $this->assertDatabaseHas('audit_logs', ['action' => 'lesson_template.reordered']);

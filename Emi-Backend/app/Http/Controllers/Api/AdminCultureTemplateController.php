@@ -76,4 +76,12 @@ class AdminCultureTemplateController extends Controller
 
         return ApiResponse::success('Template budaya berhasil dipublish.', new CultureTemplateResource($this->service->publish($template, $request->user(), $request)));
     }
+
+    public function archive(Request $request, string $id): JsonResponse
+    {
+        $template = CultureTemplate::query()->findOrFail($id);
+        Gate::authorize('update', $template);
+
+        return ApiResponse::success('Template budaya berhasil diarsipkan.', new CultureTemplateResource($this->service->archive($template, $request->user(), $request)));
+    }
 }

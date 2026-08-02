@@ -66,7 +66,7 @@ class CultureTemplateService
                 'updated_by' => $actor->id,
             ])->save();
 
-            $template->items()->where('status', 'draft')->update([
+            $template->items()->whereIn('status', ['draft', 'archived'])->update([
                 'status' => 'published',
                 'published_at' => now(),
                 'archived_at' => null,
@@ -74,6 +74,27 @@ class CultureTemplateService
             ]);
 
             $this->auditLogService->record('culture_template.published', $template, $actor, null, ['status' => 'published'], [], $request);
+
+            return $template->refresh()->load('items.media');
+        });
+    }
+
+    public function archive(CultureTemplate $template, User $actor, Request $request): CultureTemplate
+    {
+        return DB::transaction(function () use ($template, $actor, $request) {
+            $template->forceFill([
+                'status' => 'archived',
+                'archived_at' => now(),
+                'updated_by' => $actor->id,
+            ])->save();
+
+            $template->items()->where('status', 'published')->update([
+                'status' => 'archived',
+                'archived_at' => now(),
+                'updated_by' => $actor->id,
+            ]);
+
+            $this->auditLogService->record('culture_template.archived', $template, $actor, null, ['status' => 'archived'], [], $request);
 
             return $template->refresh()->load('items.media');
         });

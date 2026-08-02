@@ -15,10 +15,10 @@ import { teacherService } from "./teacher-service";
 import type { TeacherClassQuiz, TeacherQuizQuestion } from "./types";
 import { questionTypeLabel, statusLabel } from "./teacher-utils";
 
-const lockedMessage = "Konten kuis terkunci karena kuis sudah dipublikasikan atau sudah memiliki percobaan siswa. Buat kuis draft baru atau gunakan kuis yang belum dipublikasikan untuk mengubah soal.";
+const lockedMessage = "Konten kuis terkunci saat sedang diterbitkan atau sudah memiliki percobaan siswa. Arsipkan kuis sebelum mengubahnya.";
 
 function isQuizLocked(quiz: TeacherClassQuiz) {
-  return quiz.status !== "draft" || (quiz.attempts_count ?? 0) > 0;
+  return quiz.status === "published" || (quiz.attempts_count ?? 0) > 0;
 }
 
 export function TeacherQuizBuilder({ classQuizId }: { classQuizId: string }) {
@@ -75,7 +75,7 @@ export function TeacherQuizBuilder({ classQuizId }: { classQuizId: string }) {
       {quiz ? (
         <div className="grid items-start gap-6 lg:grid-cols-2">
           <Card>
-            <CardHeader><div className="flex items-center justify-between"><h2 className="text-xl font-black text-ink">Metadata Kuis</h2><div className="flex gap-2"><Badge tone={quiz.status === "published" ? "blue" : "neutral"}>{statusLabel(quiz.status)}</Badge>{locked ? <Badge tone="yellow"><LockKeyhole className="mr-1 size-3" />Terkunci</Badge> : <Badge tone="blue">Draft bisa diedit</Badge>}</div></div></CardHeader>
+            <CardHeader><div className="flex items-center justify-between"><h2 className="text-xl font-black text-ink">Metadata Kuis</h2><div className="flex gap-2"><Badge tone={quiz.status === "published" ? "blue" : "neutral"}>{statusLabel(quiz.status)}</Badge>{locked ? <Badge tone="yellow"><LockKeyhole className="mr-1 size-3" />Terkunci</Badge> : <Badge tone="blue">Bisa diedit</Badge>}</div></div></CardHeader>
             <CardContent>
               <form className="grid gap-4" onSubmit={(event) => {
                 event.preventDefault();

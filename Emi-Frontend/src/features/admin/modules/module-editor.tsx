@@ -99,6 +99,7 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
   const { token } = useAuth();
   const queryClient = useQueryClient();
   const [createLessonOpen, setCreateLessonOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [editingLesson, setEditingLesson] = useState<LessonTemplate | null>(null);
   const [deleteLessonTarget, setDeleteLessonTarget] = useState<LessonTemplate | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -239,12 +240,17 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
             satu materi valid diterbitkan.
           </p>
         </div>
-        <Link
-          className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-border bg-surface px-4 py-2 text-sm font-bold text-ink hover:bg-surface-muted"
-          href="/admin/modules"
-        >
-          Kembali ke Daftar
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => setPreviewOpen(true)} variant="secondary">
+            <Eye className="size-4" /> Preview Modul
+          </Button>
+          <Link
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border-2 border-border bg-surface px-4 py-2 text-sm font-bold text-ink hover:bg-surface-muted"
+            href="/admin/modules"
+          >
+            Kembali ke Daftar
+          </Link>
+        </div>
       </header>
 
       {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
@@ -434,6 +440,30 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
           </Card>
         </div>
       ) : null}
+
+      <Modal
+        className="max-w-4xl"
+        onClose={() => setPreviewOpen(false)}
+        open={previewOpen}
+        title={`Preview Modul: ${moduleTemplate?.title ?? ""}`}
+      >
+        {lessons.length === 0 ? (
+          <EmptyState description="Tambahkan materi untuk melihat preview modul." title="Materi kosong" />
+        ) : (
+          <div className="grid gap-4">
+            {lessons.map((lesson) => (
+              <div className="rounded-2xl border-2 border-border bg-surface-muted p-4" key={lesson.id}>
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <Badge tone="neutral">{lesson.sort_order}</Badge>
+                  <h3 className="font-black text-ink">{lesson.title}</h3>
+                  <Badge tone={statusTone(lesson.status)}>{statusLabel(lesson.status)}</Badge>
+                </div>
+                <LessonPreview lesson={lesson} />
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
 
       <Modal
         onClose={() => setCreateLessonOpen(false)}

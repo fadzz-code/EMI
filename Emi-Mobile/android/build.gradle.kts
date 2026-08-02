@@ -25,11 +25,24 @@ subprojects {
 // plugin, backfill the namespace from its manifest package at configure
 // time — a standard, non-invasive workaround for this exact class of
 // abandoned-plugin AGP incompatibility.
+//
+// It also hardcodes `compileSdkVersion 30`, which predates the
+// `android:attr/lStar` resource introduced in API 31 — release builds
+// (which enable resource shrinking/verification) fail to link against
+// that resource with "AAPT: error: resource android:attr/lStar not
+// found." Bumping this plugin's own compileSdk to match the app's
+// (`flutter.compileSdkVersion`, currently 36) resolves it without
+// touching the plugin's Kotlin/Java sources.
 subprojects {
-    plugins.withId("com.android.library") {
-        extensions.configure<com.android.build.gradle.LibraryExtension> {
-            if (namespace == null && project.name == "flutter_bluetooth_serial") {
-                namespace = "io.github.edufolly.flutterbluetoothserial"
+    if (project.name == "flutter_bluetooth_serial") {
+        afterEvaluate {
+            plugins.withId("com.android.library") {
+                extensions.configure<com.android.build.gradle.LibraryExtension> {
+                    if (namespace == null) {
+                        namespace = "io.github.edufolly.flutterbluetoothserial"
+                    }
+                    compileSdk = 36
+                }
             }
         }
     }

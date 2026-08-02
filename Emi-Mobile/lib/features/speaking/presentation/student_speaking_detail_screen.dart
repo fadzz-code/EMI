@@ -659,6 +659,7 @@ class _AudioBox extends StatefulWidget {
 class _AudioBoxState extends State<_AudioBox> {
   var _loading = false;
   String? _error;
+  String? _loadedSource;
 
   @override
   Widget build(BuildContext context) {
@@ -713,12 +714,17 @@ class _AudioBoxState extends State<_AudioBox> {
         await widget.player.pause();
       } else {
         await widget.beforePlay();
-        if (widget.player.audioSource == null) {
+        final source = widget.local ? widget.url! : await _playbackUrl();
+        if (_loadedSource != source) {
           if (widget.local) {
-            await widget.player.setFilePath(widget.url!);
+            await widget.player.setFilePath(source);
           } else {
-            await widget.player.setUrl(await _playbackUrl());
+            await widget.player.setUrl(source);
           }
+          _loadedSource = source;
+        }
+        if (widget.player.processingState == ProcessingState.completed) {
+          await widget.player.seek(Duration.zero);
         }
         await widget.player.play();
       }
@@ -730,13 +736,13 @@ class _AudioBoxState extends State<_AudioBox> {
   }
 
   Future<String> _playbackUrl() async {
-    final url = widget.url;
-    if (url != null && url.isNotEmpty) return url;
     final mediaId = widget.mediaId;
     final repository = widget.repository;
     if (mediaId != null && mediaId.isNotEmpty && repository != null) {
       return repository.temporaryMediaUrl(mediaId);
     }
+    final url = widget.url;
+    if (url != null && url.isNotEmpty) return url;
     throw const AppError(
       type: AppErrorType.unknown,
       message: 'Audio tidak tersedia.',
@@ -860,7 +866,7 @@ class _AttemptResultCardState extends ConsumerState<_AttemptResultCard> {
           if (attempt.aiTranscription != null)
             _row(context, 'Transkripsi', attempt.aiTranscription!),
           if (attempt.aiAlignment != null)
-            _row(context, 'Detail analisis', '${attempt.aiAlignment}'),
+            ..._analysisRows(context, attempt.aiAlignment!),
           if (attempt.aiError != null)
             _row(context, 'Error AI', attempt.aiError!),
           if (attempt.teacherScore != null)
@@ -870,6 +876,31 @@ class _AttemptResultCardState extends ConsumerState<_AttemptResultCard> {
         ],
       ),
     );
+  }
+
+  List<Widget> _analysisRows(BuildContext context, Object alignment) {
+    if (alignment is! Map) return const [];
+    final operations = alignment['operations'];
+    if (operations is! List) return const [];
+    return operations.whereType<Map>().map((operation) {
+      final type = operation['type'];
+      final target = operation['target']?.toString();
+      final actual = operation['transcription']?.toString();
+      final score = (operation['score'] as num?)?.round();
+      final message = switch (type) {
+        'match' => 'Pengucapan sudah tepat.',
+        'substitution' =>
+          'Terdengar “${actual ?? '-'}”. Coba ucapkan “${target ?? '-'}” lebih jelas.',
+        'deletion' => 'Kata belum terdengar. Coba ucapkan “${target ?? '-'}”.',
+        'insertion' => 'Terdengar kata tambahan “${actual ?? '-'}”.',
+        _ => 'Coba ulangi kata ini dengan lebih jelas.',
+      };
+      return _row(
+        context,
+        target ?? actual ?? 'Pengucapan',
+        score == null ? message : '$message Ketepatan $score%.',
+      );
+    }).toList();
   }
 
   Widget _row(BuildContext context, String label, String value) {

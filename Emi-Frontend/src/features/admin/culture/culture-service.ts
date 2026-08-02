@@ -71,6 +71,12 @@ export const adminCultureService = {
     return response.data;
   },
 
+  async archiveTemplate(token: string, templateId: string) {
+    const response = await apiClient.post<AdminCultureTemplate>(`/admin/culture-templates/${templateId}/archive`, {}, { token });
+    if (!response.data) throw new Error("Gagal mengarsipkan template");
+    return response.data;
+  },
+
   async applyTemplate(token: string, templateId: string, classIds: string[]) {
     const response = await apiClient.post<{ applied: unknown[]; skipped: unknown[]; failed: unknown[] }>(`/admin/culture-templates/${templateId}/apply`, { class_ids: classIds }, { token });
     if (!response.data) throw new Error("Gagal menerapkan template");

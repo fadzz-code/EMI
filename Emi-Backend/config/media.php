@@ -75,6 +75,8 @@ return [
             'audio/wav',
             'audio/x-wav',
             'audio/mp4',
+            'video/mp4',
+            'application/mp4',
             'audio/m4a',
             'audio/ogg',
             'audio/webm',
