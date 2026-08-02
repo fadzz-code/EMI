@@ -2,6 +2,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../core/errors/app_error.dart';
@@ -385,7 +387,7 @@ class _TeacherModuleEditScreenState
               TeacherListCard(
                 padding: EdgeInsets.zero,
                 onTap: () => context.push(
-                  '/teacher/modules/${item.id}/lessons/${lesson.id}/edit',
+                  '/teacher/modules/${item.id}/lessons/${lesson.id}/preview',
                 ),
                 child: ListTile(
                   title: Text(
@@ -396,9 +398,14 @@ class _TeacherModuleEditScreenState
                     '${_contentLabel(lesson.contentType)} • ${_status(lesson.status)} • Urutan ${lesson.sortOrder}',
                     style: const TextStyle(color: TeacherStyle.inkMuted),
                   ),
-                  trailing: const Icon(
-                    Icons.edit_outlined,
-                    color: TeacherStyle.inkMuted,
+                  trailing: IconButton(
+                    onPressed: () => context.push(
+                      '/teacher/modules/${item.id}/lessons/${lesson.id}/edit',
+                    ),
+                    icon: const Icon(
+                      Icons.edit_outlined,
+                      color: TeacherStyle.inkMuted,
+                    ),
                   ),
                 ),
               ),
@@ -531,6 +538,166 @@ class _TeacherModuleEditScreenState
   void _notice(String value) => ScaffoldMessenger.of(
     context,
   ).showSnackBar(SnackBar(content: Text(value)));
+}
+
+class TeacherModulePreviewScreen extends ConsumerWidget {
+  const TeacherModulePreviewScreen({super.key, required this.id});
+  final String id;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => TeacherShell(
+    title: 'Preview Modul',
+    fallbackRoute: '/teacher/modules/$id/edit',
+    child: ref
+        .watch(teacherModuleDetailProvider(id))
+        .when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, _) => _State(
+            icon: Icons.error_outline,
+            title: 'Preview belum bisa dimuat',
+            message: 'Periksa koneksi internet, lalu coba lagi.',
+            onRetry: () => ref.invalidate(teacherModuleDetailProvider(id)),
+          ),
+          data: (module) => ListView(
+            padding: const EdgeInsets.all(EmiSpacing.md),
+            children: [
+              TeacherPageHeader(
+                icon: Icons.visibility_outlined,
+                title: module.title,
+                subtitle: module.description.isEmpty
+                    ? 'Tampilan modul untuk siswa'
+                    : module.description,
+              ),
+              const SizedBox(height: EmiSpacing.sm),
+              Wrap(
+                spacing: EmiSpacing.sm,
+                children: [
+                  TeacherStatusChip(label: _status(module.status)),
+                  TeacherStatusChip(label: '${module.lessons.length} materi'),
+                ],
+              ),
+              TeacherSectionHeader('Materi'),
+              if (module.lessons.isEmpty)
+                const TeacherListCard(
+                  child: Text('Modul ini belum memiliki materi.'),
+                )
+              else
+                for (var index = 0; index < module.lessons.length; index++) ...[
+                  TeacherListCard(
+                    padding: EdgeInsets.zero,
+                    onTap: () => context.push(
+                      '/teacher/modules/$id/lessons/${module.lessons[index].id}/preview',
+                    ),
+                    child: ListTile(
+                      leading: CircleAvatar(child: Text('${index + 1}')),
+                      title: Text(module.lessons[index].title),
+                      subtitle: Text(
+                        '${_contentLabel(module.lessons[index].contentType)} • ${_status(module.lessons[index].status)}',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                    ),
+                  ),
+                  const SizedBox(height: EmiSpacing.sm),
+                ],
+            ],
+          ),
+        ),
+  );
+}
+
+class TeacherLessonPreviewScreen extends ConsumerStatefulWidget {
+  const TeacherLessonPreviewScreen({
+    super.key,
+    required this.moduleId,
+    required this.id,
+  });
+  final String moduleId;
+  final String id;
+  @override
+  ConsumerState<TeacherLessonPreviewScreen> createState() =>
+      _TeacherLessonPreviewScreenState();
+}
+
+class _TeacherLessonPreviewScreenState
+    extends ConsumerState<TeacherLessonPreviewScreen> {
+  final player = AudioPlayer();
+  @override
+  void dispose() {
+    player.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => TeacherShell(
+    title: 'Preview Materi',
+    fallbackRoute: '/teacher/modules/${widget.moduleId}/edit',
+    child: ref
+        .watch(teacherLessonContentProvider(widget.id))
+        .when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, _) => _State(
+            icon: Icons.error_outline,
+            title: 'Preview belum bisa dimuat',
+            message: 'Muat ulang untuk mendapatkan tautan media baru.',
+            onRetry: () =>
+                ref.invalidate(teacherLessonContentProvider(widget.id)),
+          ),
+          data: (content) => ListView(
+            padding: const EdgeInsets.all(EmiSpacing.md),
+            children: [
+              if (content.type == 'text')
+                SelectableText(content.contentBody ?? 'Konten belum tersedia.')
+              else if (content.type == 'image' && content.url != null)
+                Image.network(
+                  content.url!,
+                  errorBuilder: (_, _, _) =>
+                      const Text('Gambar tidak dapat ditampilkan.'),
+                )
+              else if (content.type == 'audio' && content.url != null)
+                FilledButton.icon(
+                  onPressed: () async {
+                    try {
+                      await player.setUrl(content.url!);
+                      await player.play();
+                    } catch (_) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Audio tidak dapat diputar.'),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text('Putar Audio'),
+                )
+              else if (content.url != null)
+                FilledButton.icon(
+                  onPressed: () => _open(content.url!),
+                  icon: const Icon(Icons.open_in_new),
+                  label: Text(
+                    content.type == 'pdf' ? 'Buka PDF' : 'Buka Materi',
+                  ),
+                )
+              else
+                const Text('Konten belum tersedia.'),
+            ],
+          ),
+        ),
+  );
+
+  Future<void> _open(String value) async {
+    final uri = Uri.tryParse(value);
+    if (uri == null ||
+        !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Materi tidak dapat dibuka.')),
+        );
+      }
+    }
+  }
 }
 
 class TeacherLessonCreateScreen extends ConsumerStatefulWidget {
@@ -946,6 +1113,13 @@ class _TeacherLessonEditScreenState
             ),
           ),
           const SizedBox(height: EmiSpacing.lg),
+          OutlinedButton.icon(
+            onPressed: () =>
+                context.push('/teacher/modules/${item.id}/preview'),
+            icon: const Icon(Icons.visibility_outlined),
+            label: const Text('Preview Modul'),
+          ),
+          const SizedBox(height: EmiSpacing.sm),
           FilledButton(
             onPressed: _saving ? null : () => _save(item),
             child: Text(_saving ? 'Menyimpan...' : 'Simpan Perubahan'),

@@ -2037,6 +2037,16 @@ class AdminUserDetailScreen extends ConsumerWidget {
                             : 'Aktifkan Akun',
                       ),
                     ),
+                    const SizedBox(height: EmiSpacing.sm),
+                    OutlinedButton(
+                      key: const Key('adminUserPermanentDelete'),
+                      onPressed: () =>
+                          _confirmPermanentDelete(context, ref, user),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: EmiColors.error,
+                      ),
+                      child: const Text('Hapus Permanen'),
+                    ),
                   ],
                 ),
               ),
@@ -2062,6 +2072,71 @@ class AdminUserDetailScreen extends ConsumerWidget {
     if (updated == true) {
       ref.invalidate(adminUserDetailProvider(user.id));
       ref.invalidate(adminUsersProvider);
+    }
+  }
+
+  Future<void> _confirmPermanentDelete(
+    BuildContext context,
+    WidgetRef ref,
+    AdminUser user,
+  ) async {
+    final controller = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Hapus akun permanen?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Akun, penempatan kelas, dan data pribadi akan dihapus. Tindakan ini tidak dapat dibatalkan.',
+              ),
+              const SizedBox(height: EmiSpacing.md),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Ketik "hapus permanen"',
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              onPressed: controller.text == 'hapus permanen'
+                  ? () => Navigator.pop(dialogContext, true)
+                  : null,
+              style: FilledButton.styleFrom(backgroundColor: EmiColors.error),
+              child: const Text('Hapus Permanen'),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+    if (confirmed != true) return;
+    try {
+      await ref
+          .read(adminRepositoryProvider)
+          .permanentlyDeleteUser(user.id, 'hapus permanen');
+      ref.invalidate(adminUsersProvider);
+      if (!context.mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Akun berhasil dihapus permanen.')),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 

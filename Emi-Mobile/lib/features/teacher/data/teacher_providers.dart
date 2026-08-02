@@ -11,6 +11,42 @@ final teacherRepositoryProvider = Provider<TeacherRepository>(
   (ref) => TeacherRepository(ref.watch(dioProvider), const DioErrorMapper()),
 );
 
+final teacherRegistrationRequestsProvider =
+    FutureProvider.family<
+      TeacherRequestPage,
+      ({int page, String search, String status})
+    >(
+      (ref, query) => ref
+          .watch(teacherRepositoryProvider)
+          .registrationRequests(
+            page: query.page,
+            search: query.search,
+            status: query.status,
+          ),
+    );
+final teacherRegistrationRequestProvider =
+    FutureProvider.family<TeacherRequestItem, String>(
+      (ref, id) => ref.watch(teacherRepositoryProvider).registrationRequest(id),
+    );
+final teacherPasswordResetRequestsProvider =
+    FutureProvider.family<
+      TeacherRequestPage,
+      ({int page, String search, String status})
+    >(
+      (ref, query) => ref
+          .watch(teacherRepositoryProvider)
+          .passwordResetRequests(
+            page: query.page,
+            search: query.search,
+            status: query.status,
+          ),
+    );
+final teacherPasswordResetRequestProvider =
+    FutureProvider.family<TeacherRequestItem, String>(
+      (ref, id) =>
+          ref.watch(teacherRepositoryProvider).passwordResetRequest(id),
+    );
+
 final teacherSpeakingTemplatesProvider =
     FutureProvider<List<TeacherSpeakingTemplate>>(
       (ref) => ref.watch(teacherRepositoryProvider).speakingTemplates(),
@@ -72,6 +108,11 @@ final teacherModuleDetailProvider =
 final teacherLessonDetailProvider =
     FutureProvider.family<TeacherLesson, String>(
       (ref, id) => ref.watch(teacherRepositoryProvider).lessonDetail(id),
+    );
+
+final teacherLessonContentProvider =
+    FutureProvider.family<TeacherLessonContent, String>(
+      (ref, id) => ref.watch(teacherRepositoryProvider).lessonContent(id),
     );
 
 final teacherClassDetailProvider = FutureProvider.family<TeacherClass, String>(

@@ -792,6 +792,17 @@ class AdminRepository {
     }
   }
 
+  Future<void> permanentlyDeleteUser(String id, String confirmation) async {
+    try {
+      await _dio.post<void>(
+        '/users/$id/force-delete',
+        data: {'confirmation': confirmation},
+      );
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
   Future<AdminUser> updateUserStatus(
     String id, {
     required String status,

@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/emi_theme.dart';
 import '../../../shared/widgets/student_style.dart';
 import '../../../shared/widgets/student_widgets.dart';
+import '../../dashboard/data/student_dashboard_providers.dart';
+import '../../progress/data/student_progress_providers.dart';
 import '../data/student_quiz.dart';
 import '../data/student_quiz_providers.dart';
 
@@ -321,6 +323,12 @@ class _StudentQuizAttemptScreenState
     });
     ref.invalidate(studentQuizDetailProvider(widget.quizId));
     ref.invalidate(studentQuizListProvider);
+    ref.invalidate(studentQuizAttemptsProvider);
+    ref.invalidate(studentDashboardSummaryProvider);
+    ref.invalidate(studentProgressReportProvider);
+    context.go(
+      '/student/quizzes/${widget.quizId}/result?attemptId=${result.id}',
+    );
   }
 
   void _submissionFailed(Object error) {

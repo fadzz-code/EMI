@@ -177,21 +177,37 @@ class _CultureMediaCardState extends ConsumerState<_CultureMediaCard> {
         ),
       );
     }
-    if (item.contentType == 'image' && item.media?.visibility != 'private') {
-      return StudentCard(
-        padding: EdgeInsets.zero,
-        clip: true,
-        child: Image.network(
-          item.contentUrl!,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => const Padding(
-            padding: EdgeInsets.all(EmiSpacing.md),
-            child: Text(
-              'Gambar gagal dimuat.',
-              style: TextStyle(color: StudentStyle.inkMuted),
+    if (item.contentType == 'image') {
+      return FutureBuilder<String>(
+        future: _url(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError || snapshot.data?.isNotEmpty != true) {
+            return StudentPlaceholder(
+              icon: Icons.broken_image_outlined,
+              title: 'Gambar Belum Bisa Dimuat',
+              message: 'Periksa koneksi internetmu, lalu coba lagi.',
+              onRetry: () => setState(() {}),
+            );
+          }
+          return StudentCard(
+            padding: EdgeInsets.zero,
+            clip: true,
+            child: Image.network(
+              snapshot.data!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => const Padding(
+                padding: EdgeInsets.all(EmiSpacing.md),
+                child: Text(
+                  'Gambar gagal dimuat.',
+                  style: TextStyle(color: StudentStyle.inkMuted),
+                ),
+              ),
             ),
-          ),
-        ),
+          );
+        },
       );
     }
     if (item.contentType == 'audio') {

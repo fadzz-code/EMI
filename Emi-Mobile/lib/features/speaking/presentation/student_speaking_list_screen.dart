@@ -11,7 +11,9 @@ import '../data/speaking_models.dart';
 import '../data/speaking_providers.dart';
 
 class StudentSpeakingListScreen extends ConsumerStatefulWidget {
-  const StudentSpeakingListScreen({super.key});
+  const StudentSpeakingListScreen({super.key, this.resultsOnly = false});
+
+  final bool resultsOnly;
 
   @override
   ConsumerState<StudentSpeakingListScreen> createState() =>
@@ -39,20 +41,27 @@ class _StudentSpeakingListScreenState
         child: ListView(
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
-            const StudentPageHeader(
+            StudentPageHeader(
               icon: Icons.mic_none_outlined,
-              title: 'Latihan Speaking',
-              subtitle: 'Latih pengucapanmu dan lihat hasilnya.',
+              title: widget.resultsOnly ? 'Hasil Speaking' : 'Latihan Speaking',
+              subtitle: widget.resultsOnly
+                  ? 'Lihat hasil dan riwayat latihanmu.'
+                  : 'Latih pengucapanmu dan lihat hasilnya.',
             ),
-            const SizedBox(height: EmiSpacing.md),
-            exercises.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => _ErrorCard(
-                onRetry: () => ref.invalidate(speakingExercisesProvider),
+            if (!widget.resultsOnly) ...[
+              const SizedBox(height: EmiSpacing.md),
+              exercises.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, _) => _ErrorCard(
+                  onRetry: () => ref.invalidate(speakingExercisesProvider),
+                ),
+                data: (items) => _ExerciseList(items: items),
               ),
-              data: (items) => _ExerciseList(items: items),
-            ),
-            const StudentSectionHeader('Riwayat Latihan', icon: Icons.history),
+              const StudentSectionHeader(
+                'Riwayat Latihan',
+                icon: Icons.history,
+              ),
+            ],
             attempts.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, _) => _ErrorCard(

@@ -110,19 +110,31 @@ class LessonMedia {
 }
 
 class LessonContent {
-  const LessonContent({this.url, this.type, this.expiresAt});
+  const LessonContent({
+    this.url,
+    this.type,
+    this.contentBody,
+    this.expiresAt,
+    this.media,
+  });
 
   final String? url;
   final String? type;
+  final String? contentBody;
   final String? expiresAt;
+  final LessonMedia? media;
 
   bool get hasUrl => url != null && url!.trim().isNotEmpty;
+  bool get hasText => contentBody != null && contentBody!.trim().isNotEmpty;
 
   factory LessonContent.fromJson(Map<String, dynamic> json) {
+    final media = json['media'];
     return LessonContent(
       url: json['url'] as String? ?? json['content_url'] as String?,
       type: json['type'] as String? ?? json['content_type'] as String?,
+      contentBody: json['content_body'] as String?,
       expiresAt: json['expires_at'] as String?,
+      media: media is Map<String, dynamic> ? LessonMedia.fromJson(media) : null,
     );
   }
 }

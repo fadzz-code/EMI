@@ -219,11 +219,16 @@ void main() {
     const labels = [
       'Beranda',
       'Kelas',
-      'Modul Kelas',
-      'Kuis Kelas',
-      'Budaya Mekongga',
-      'Speaking',
+      'Persetujuan',
+      'Siswa',
       'Progress',
+      'Modul',
+      'Kuis',
+      'Budaya Mekongga',
+      'Target Speaking',
+      'Hasil Speaking',
+      'Reset Password',
+      'Profil',
     ];
     final positions = labels
         .map((label) => tester.getTopLeft(find.text(label).last).dy)
@@ -251,11 +256,16 @@ void main() {
     const labels = [
       'Beranda',
       'Kelas',
-      'Modul Kelas',
-      'Kuis Kelas',
-      'Budaya Mekongga',
-      'Speaking',
+      'Persetujuan',
+      'Siswa',
       'Progress',
+      'Modul',
+      'Kuis',
+      'Budaya Mekongga',
+      'Target Speaking',
+      'Hasil Speaking',
+      'Reset Password',
+      'Profil',
     ];
     final drawer = find.byType(Drawer);
     final positions = labels

@@ -6,6 +6,7 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UserManagement\ForcePasswordResetRequest;
 use App\Http\Requests\UserManagement\ListUsersRequest;
+use App\Http\Requests\UserManagement\PermanentlyDeleteUserRequest;
 use App\Http\Requests\UserManagement\UpdateUserRequest;
 use App\Http\Requests\UserManagement\UpdateUserStatusRequest;
 use App\Http\Resources\UserManagementResource;
@@ -103,6 +104,15 @@ class UserController extends Controller
         );
 
         return ApiResponse::success('Status pengguna berhasil diperbarui.', new UserManagementResource($target));
+    }
+
+    public function forceDestroy(PermanentlyDeleteUserRequest $request, string $id): JsonResponse
+    {
+        $target = User::query()->findOrFail($id);
+        Gate::authorize('forceDelete', $target);
+        $this->userManagementService->permanentlyDelete($target, $request->user(), $request);
+
+        return ApiResponse::success('Akun pengguna berhasil dihapus permanen.', []);
     }
 
     public function forcePasswordReset(ForcePasswordResetRequest $request, string $id): JsonResponse

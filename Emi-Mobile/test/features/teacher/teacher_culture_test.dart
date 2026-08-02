@@ -314,12 +314,17 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('teacherMenuButton')));
     await tester.pumpAndSettle();
-    final quiz = find.text('Kuis Kelas');
-    final culture = find.text('Budaya Mekongga');
+    final drawer = find.byType(Drawer);
+    final quiz = find.descendant(of: drawer, matching: find.text('Kuis'));
+    final culture = find.descendant(
+      of: drawer,
+      matching: find.text('Budaya Mekongga'),
+    );
     expect(
       tester.getTopLeft(culture).dy,
       greaterThan(tester.getTopLeft(quiz).dy),
     );
+    await tester.ensureVisible(culture);
     await tester.tap(culture);
     await tester.pump(const Duration(milliseconds: 300));
     expect(router.routeInformationProvider.value.uri.path, '/teacher/culture');

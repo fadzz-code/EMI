@@ -84,6 +84,52 @@ class UserManagementService
         });
     }
 
+    public function permanentlyDelete(User $target, User $admin, Request $request): void
+    {
+        DB::transaction(function () use ($target, $admin, $request) {
+            $target = User::query()->whereKey($target->id)->lockForUpdate()->firstOrFail();
+
+            if (! in_array($target->role, ['teacher', 'student'], true)) {
+                throw new ApiException('Hanya akun Guru atau Siswa yang dapat dihapus permanen.', 'USER_PERMANENT_DELETE_FORBIDDEN', 409);
+            }
+
+            $references = DB::select(<<<'SQL'
+                select tc.table_name, kcu.column_name, rc.delete_rule
+                from information_schema.table_constraints tc
+                join information_schema.key_column_usage kcu
+                  on tc.constraint_name = kcu.constraint_name
+                 and tc.constraint_schema = kcu.constraint_schema
+                join information_schema.referential_constraints rc
+                  on tc.constraint_name = rc.constraint_name
+                 and tc.constraint_schema = rc.constraint_schema
+                join information_schema.constraint_column_usage ccu
+                  on rc.unique_constraint_name = ccu.constraint_name
+                 and rc.unique_constraint_schema = ccu.constraint_schema
+                where tc.constraint_type = 'FOREIGN KEY'
+                  and ccu.table_name = 'users'
+                  and ccu.column_name = 'id'
+                  and tc.table_schema = current_schema()
+                SQL);
+
+            foreach ($references as $reference) {
+                if ($reference->table_name === 'users' || $reference->delete_rule !== 'RESTRICT') {
+                    continue;
+                }
+
+                $query = DB::table($reference->table_name)->where($reference->column_name, $target->id);
+                if (in_array($reference->column_name, ['teacher_id', 'student_id', 'user_id'], true)) {
+                    $query->delete();
+                } else {
+                    $query->update([$reference->column_name => $admin->id]);
+                }
+            }
+
+            $this->auditLogService->record('user.permanently_deleted', $target, $admin, $target->only(['id', 'full_name', 'email', 'role']), ['deleted_by' => $admin->id], [], $request);
+            $target->tokens()->delete();
+            $target->delete();
+        });
+    }
+
     public function forcePasswordReset(User $target, string $newPassword, User $admin, Request $request): User
     {
         return DB::transaction(function () use ($target, $newPassword, $admin, $request) {

@@ -313,17 +313,29 @@ void main() {
     const labels = [
       'Beranda',
       'Kelas',
-      'Modul Kelas',
-      'Kuis Kelas',
-      'Budaya Mekongga',
-      'Speaking',
+      'Persetujuan',
+      'Siswa',
       'Progress',
+      'Modul',
+      'Kuis',
+      'Kamus',
+      'Budaya Mekongga',
+      'Chatbot AI',
+      'Target Speaking',
+      'Hasil Speaking',
+      'Reset Password',
+      'Profil',
     ];
     final positions = labels
         .map((label) => tester.getTopLeft(find.text(label).last).dy)
         .toList();
     expect(positions, orderedEquals([...positions]..sort()));
-    await tester.tap(find.text('Speaking'));
+    final targetSpeaking = find.descendant(
+      of: find.byType(Drawer),
+      matching: find.text('Target Speaking'),
+    );
+    await tester.ensureVisible(targetSpeaking);
+    await tester.tap(targetSpeaking);
     await _bounded(tester);
     expect(
       router.routeInformationProvider.value.uri.path,

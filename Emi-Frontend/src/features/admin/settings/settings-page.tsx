@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Alert, Badge, Button, ErrorState, FormField, Input, LoadingState } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
+import { ProfileAvatarUpload } from "@/features/auth/profile-avatar-upload";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { settingsService } from "./settings-service";
@@ -12,10 +13,6 @@ import { SettingsSectionCard } from "./settings-section-card";
 import { roleLabel } from "./settings-utils";
 
 const disabledFieldClass = "bg-surface-muted text-muted";
-
-function getInitials(name?: string) {
-  return name?.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "AD";
-}
 
 export function SettingsPage() {
   const { token, refreshUser } = useAuth();
@@ -91,7 +88,7 @@ export function SettingsPage() {
               profileMutation.mutate({ full_name: String(data.get("full_name") ?? "").trim(), phone: String(data.get("phone") ?? "").trim() || null });
             }}>
               <div className="rounded-2xl border-2 border-border bg-[var(--color-primary-muted)] p-5">
-                <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-border bg-surface text-2xl font-black text-ink shadow-emi">{getInitials(user.full_name)}</div>
+                <ProfileAvatarUpload avatarUrl={user.avatar?.url} fullName={user.full_name} invalidateKey={["admin", "settings", "profile"]} />
                 <h2 className="mt-4 text-lg font-black text-ink">{user.full_name}</h2>
                 <p className="mt-1 text-sm font-semibold text-muted">{user.email}</p>
                 <Badge className="mt-4" tone="blue">{roleLabel(user.role)}</Badge>

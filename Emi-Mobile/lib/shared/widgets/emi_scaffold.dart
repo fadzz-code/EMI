@@ -152,7 +152,7 @@ class _StudentDrawer extends StatelessWidget {
               selected: location == '/student/dashboard',
             ),
             _DrawerItem(
-              label: 'Modul',
+              label: 'Modul Belajar',
               icon: Icons.menu_book_outlined,
               route: '/student/modules',
               selected:
@@ -166,22 +166,16 @@ class _StudentDrawer extends StatelessWidget {
               selected: location.startsWith('/student/dictionary'),
             ),
             _DrawerItem(
+              label: 'Latihan Speaking',
+              icon: Icons.mic_none_outlined,
+              route: '/student/speaking',
+              selected: location.startsWith('/student/speaking'),
+            ),
+            _DrawerItem(
               label: 'Kuis',
               icon: Icons.quiz_outlined,
               route: '/student/quizzes',
               selected: location.startsWith('/student/quizzes'),
-            ),
-            _DrawerItem(
-              label: 'Progress Belajar',
-              icon: Icons.trending_up_outlined,
-              route: '/student/progress',
-              selected: location == '/student/progress',
-            ),
-            _DrawerItem(
-              label: 'Chatbot',
-              icon: Icons.auto_awesome_outlined,
-              route: '/student/chatbot',
-              selected: location == '/student/chatbot',
             ),
             _DrawerItem(
               label: 'Budaya Mekongga',
@@ -190,10 +184,16 @@ class _StudentDrawer extends StatelessWidget {
               selected: location.startsWith('/student/culture'),
             ),
             _DrawerItem(
-              label: 'Speaking',
-              icon: Icons.mic_none_outlined,
-              route: '/student/speaking',
-              selected: location.startsWith('/student/speaking'),
+              label: 'Chatbot AI',
+              icon: Icons.auto_awesome_outlined,
+              route: '/student/chatbot',
+              selected: location == '/student/chatbot',
+            ),
+            _DrawerItem(
+              label: 'Progres Belajar',
+              icon: Icons.trending_up_outlined,
+              route: '/student/progress',
+              selected: location == '/student/progress',
             ),
             _DrawerItem(
               label: 'Profil',

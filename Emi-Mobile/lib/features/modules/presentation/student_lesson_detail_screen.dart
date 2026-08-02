@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:just_audio/just_audio.dart';
 
 import '../../../app/theme/emi_theme.dart';
+import '../../../shared/media/media_opener.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
 import '../../../shared/widgets/student_style.dart';
 import '../../../shared/widgets/student_widgets.dart';
@@ -119,14 +121,14 @@ class _StudentLessonDetailScreenState
   }
 }
 
-class _LessonCard extends StatelessWidget {
+class _LessonCard extends ConsumerWidget {
   const _LessonCard({required this.lesson, required this.content});
 
   final StudentLesson lesson;
   final AsyncValue<LessonContent?> content;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return StudentCard(
       padding: EdgeInsets.zero,
       clip: true,
@@ -170,26 +172,23 @@ class _LessonCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _MediaBlock(lesson: lesson, content: content),
-                const SizedBox(height: EmiSpacing.md),
-                if (lesson.hasTextContent)
+                _MediaBlock(
+                  lesson: lesson,
+                  content: content,
+                  onRetry: () =>
+                      ref.invalidate(studentLessonContentProvider(lesson.id)),
+                ),
+                if (lesson.hasTextContent ||
+                    content.valueOrNull?.hasText == true) ...[
+                  const SizedBox(height: EmiSpacing.md),
                   Text(
-                    lesson.contentBody!,
+                    content.valueOrNull?.contentBody ?? lesson.contentBody!,
                     style: const TextStyle(
                       color: StudentStyle.ink,
                       height: 1.5,
                     ),
-                  )
-                else if (lesson.hasExternalUrl)
-                  SelectableText(
-                    lesson.externalUrl!,
-                    style: const TextStyle(color: EmiColors.primary),
-                  )
-                else
-                  const Text(
-                    'Konten teks belum tersedia untuk lesson ini.',
-                    style: TextStyle(color: StudentStyle.inkMuted),
                   ),
+                ],
               ],
             ),
           ),
@@ -199,42 +198,146 @@ class _LessonCard extends StatelessWidget {
   }
 }
 
-class _MediaBlock extends StatelessWidget {
-  const _MediaBlock({required this.lesson, required this.content});
+class _MediaBlock extends StatefulWidget {
+  const _MediaBlock({
+    required this.lesson,
+    required this.content,
+    required this.onRetry,
+  });
 
   final StudentLesson lesson;
   final AsyncValue<LessonContent?> content;
+  final VoidCallback onRetry;
+
+  @override
+  State<_MediaBlock> createState() => _MediaBlockState();
+}
+
+class _MediaBlockState extends State<_MediaBlock> {
+  final _player = AudioPlayer();
+  final _opener = const ExternalMediaOpener();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (lesson.media == null) return const SizedBox.shrink();
-    return content.when(
-      loading: () => _mediaNotice(context, 'Memuat media...'),
-      error: (error, _) => _mediaNotice(context, 'Media gagal dimuat.'),
-      data: (value) {
-        if (value == null || !value.hasUrl) {
-          return _mediaNotice(context, 'URL media tidak tersedia.');
+    return widget.content.when(
+      loading: () => _notice('Memuat konten...'),
+      error: (_, _) => _notice('Konten gagal dimuat.', retry: true),
+      data: (content) {
+        final type = content?.type ?? widget.lesson.contentType;
+        final media = content?.media ?? widget.lesson.media;
+        final url = content?.url ?? widget.lesson.externalUrl;
+        if (type == 'text') return const SizedBox.shrink();
+        if (url == null || url.trim().isEmpty) {
+          return _notice('Konten belum tersedia.', retry: true);
         }
-        if (lesson.media!.isImage) {
+        if (type == 'image' || media?.isImage == true) {
           return ClipRRect(
             borderRadius: BorderRadius.circular(EmiRadii.card),
             child: Image.network(
-              value.url!,
+              url,
               fit: BoxFit.cover,
               errorBuilder: (_, _, _) =>
-                  _mediaNotice(context, 'Gambar gagal dimuat.'),
+                  _notice('Gambar gagal dimuat.', retry: true),
             ),
           );
         }
-        return _mediaNotice(
-          context,
-          'Media ${lesson.media!.mimeType}: ${value.url}',
+        if (type == 'audio' || media?.isAudio == true) {
+          return StudentCard(
+            child: StreamBuilder<PlayerState>(
+              stream: _player.playerStateStream,
+              builder: (context, snapshot) => Row(
+                children: [
+                  IconButton.filled(
+                    onPressed: _busy
+                        ? null
+                        : () =>
+                              _toggleAudio(url, snapshot.data?.playing == true),
+                    icon: _busy
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            snapshot.data?.playing == true
+                                ? Icons.pause
+                                : Icons.play_arrow,
+                          ),
+                  ),
+                  const SizedBox(width: EmiSpacing.sm),
+                  Expanded(child: Text(_error ?? 'Putar audio materi')),
+                ],
+              ),
+            ),
+          );
+        }
+        return SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: _busy ? null : () => _open(url),
+            icon: const Icon(Icons.open_in_new),
+            label: Text(
+              type == 'pdf'
+                  ? 'Buka PDF'
+                  : type == 'video'
+                  ? 'Putar video'
+                  : 'Buka tautan',
+            ),
+          ),
         );
       },
     );
   }
 
-  Widget _mediaNotice(BuildContext context, String text) {
+  Future<void> _toggleAudio(String url, bool playing) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      if (playing) {
+        await _player.pause();
+      } else {
+        if (_player.audioSource == null) await _player.setUrl(url);
+        if (_player.processingState == ProcessingState.completed) {
+          await _player.seek(Duration.zero);
+        }
+        await _player.play();
+      }
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Audio gagal diputar. Coba lagi.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _open(String url) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      if (!await _opener.open(url)) throw const FormatException();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Konten gagal dibuka. Coba lagi.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Widget _notice(String text, {bool retry = false}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(EmiSpacing.md),
@@ -242,7 +345,21 @@ class _MediaBlock extends StatelessWidget {
         color: StudentStyle.tint,
         borderRadius: BorderRadius.circular(EmiRadii.card),
       ),
-      child: Text(text, style: const TextStyle(color: StudentStyle.inkMuted)),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(color: StudentStyle.inkMuted),
+            ),
+          ),
+          if (retry)
+            TextButton(
+              onPressed: widget.onRetry,
+              child: const Text('Coba Lagi'),
+            ),
+        ],
+      ),
     );
   }
 }

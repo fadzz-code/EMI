@@ -90,19 +90,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Beranda'), findsWidgets);
-    expect(find.text('Modul'), findsWidgets);
+    expect(find.text('Modul Belajar'), findsOneWidget);
     expect(find.text('Kamus'), findsWidgets);
+    expect(find.text('Latihan Speaking'), findsOneWidget);
     expect(find.text('Kuis'), findsWidgets);
-    expect(find.text('Progress Belajar'), findsOneWidget);
-    expect(find.text('Chatbot'), findsOneWidget);
     expect(find.text('Budaya Mekongga'), findsOneWidget);
-    expect(find.text('Speaking'), findsOneWidget);
+    expect(find.text('Chatbot AI'), findsOneWidget);
+    expect(find.text('Progres Belajar'), findsOneWidget);
     expect(find.text('Profil'), findsWidgets);
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
 
-    expect(find.text('Progress Belajar'), findsNothing);
+    expect(find.text('Progres Belajar'), findsNothing);
   });
 
   testWidgets('sidebar navigates and avoids duplicate current route', (
@@ -135,7 +135,7 @@ void main() {
     expect(find.text('Kamus'), findsOneWidget);
     expect(find.text('Kuis'), findsOneWidget);
     expect(find.text('Profil'), findsOneWidget);
-    expect(find.text('Progress Belajar'), findsNothing);
+    expect(find.text('Progres Belajar'), findsNothing);
     expect(find.text('Chatbot'), findsNothing);
     expect(find.text('Budaya Mekongga'), findsNothing);
   });

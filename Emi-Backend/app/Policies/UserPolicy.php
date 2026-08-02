@@ -38,4 +38,11 @@ class UserPolicy
     {
         return $user->role === 'admin';
     }
+
+    public function forceDelete(User $user, User $target): bool
+    {
+        return $user->role === 'admin'
+            && $user->id !== $target->id
+            && in_array($target->role, ['teacher', 'student'], true);
+    }
 }

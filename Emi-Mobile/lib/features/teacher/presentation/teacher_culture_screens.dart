@@ -514,7 +514,7 @@ class _FormState extends ConsumerState<TeacherCultureFormScreen> {
   String type = 'image', status = 'draft';
   String? mediaId, filePath, fileName, classId;
   bool hydrated = false, dirty = false, saving = false;
-  static const mediaTypes = {'image', 'audio', 'pdf'};
+  static const mediaTypes = {'image', 'audio', 'pdf', 'video'};
   @override
   void dispose() {
     title.dispose();
@@ -603,6 +603,12 @@ class _FormState extends ConsumerState<TeacherCultureFormScreen> {
                       )
                       .toList(),
                   onChanged: (v) => setState(() {
+                    if (v != type) {
+                      filePath = null;
+                      fileName = null;
+                      mediaId = null;
+                      url.clear();
+                    }
                     type = v!;
                     dirty = true;
                   }),
@@ -655,9 +661,12 @@ class _FormState extends ConsumerState<TeacherCultureFormScreen> {
                     decoration: const InputDecoration(
                       labelText: 'URL eksternal',
                     ),
-                    validator: (v) => Uri.tryParse(v ?? '')?.hasScheme == true
-                        ? null
-                        : 'Masukkan URL lengkap.',
+                    validator: (v) {
+                      final uri = Uri.tryParse(v?.trim() ?? '');
+                      return uri != null && uri.scheme == 'https'
+                          ? null
+                          : 'Gunakan URL HTTPS lengkap.';
+                    },
                   ),
                 TeacherSectionHeader('Status'),
                 DropdownButtonFormField<String>(
@@ -698,7 +707,7 @@ class _FormState extends ConsumerState<TeacherCultureFormScreen> {
     final allowed = switch (type) {
       'image' => {'jpg', 'jpeg', 'png', 'webp'},
       'audio' => {'mp3', 'm4a', 'wav', 'ogg'},
-      'video' => {'mp4', 'webm', 'mov'},
+      'video' => {'mp4', 'webm'},
       _ => {'pdf'},
     };
     if (!allowed.contains(file!.extension?.toLowerCase())) {

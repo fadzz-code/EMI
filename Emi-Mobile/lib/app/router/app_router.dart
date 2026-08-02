@@ -47,6 +47,7 @@ import '../../features/teacher/presentation/teacher_culture_screens.dart';
 import '../../features/teacher/presentation/teacher_dashboard_screen.dart';
 import '../../features/teacher/presentation/teacher_modules_screens.dart';
 import '../../features/teacher/presentation/teacher_quizzes_screens.dart';
+import '../../features/teacher/presentation/teacher_requests_screens.dart';
 import '../../features/teacher/presentation/teacher_students_screens.dart';
 import '../../features/teacher/presentation/teacher_speaking_screens.dart';
 import 'router_refresh_stream.dart';
@@ -140,6 +141,28 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             TeacherClassDetailScreen(id: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
+        path: '/teacher/approvals',
+        builder: (_, _) => const TeacherRequestsScreen(passwordReset: false),
+      ),
+      GoRoute(
+        path: '/teacher/approvals/:id',
+        builder: (_, state) => TeacherRequestDetailScreen(
+          id: state.pathParameters['id'] ?? '',
+          passwordReset: false,
+        ),
+      ),
+      GoRoute(
+        path: '/teacher/password-resets',
+        builder: (_, _) => const TeacherRequestsScreen(passwordReset: true),
+      ),
+      GoRoute(
+        path: '/teacher/password-resets/:id',
+        builder: (_, state) => TeacherRequestDetailScreen(
+          id: state.pathParameters['id'] ?? '',
+          passwordReset: true,
+        ),
+      ),
+      GoRoute(
         path: '/teacher/students',
         builder: (_, _) => const TeacherStudentsScreen(),
       ),
@@ -184,9 +207,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             TeacherModuleEditScreen(id: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
+        path: '/teacher/modules/:id/preview',
+        builder: (_, state) =>
+            TeacherModulePreviewScreen(id: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
         path: '/teacher/modules/:moduleId/lessons/create',
         builder: (_, state) => TeacherLessonCreateScreen(
           moduleId: state.pathParameters['moduleId'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/teacher/modules/:moduleId/lessons/:id/preview',
+        builder: (_, state) => TeacherLessonPreviewScreen(
+          moduleId: state.pathParameters['moduleId'] ?? '',
+          id: state.pathParameters['id'] ?? '',
         ),
       ),
       GoRoute(
@@ -203,6 +238,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/teacher/quizzes/create',
         builder: (_, _) => const TeacherQuizFormScreen(),
+      ),
+      GoRoute(
+        path: '/teacher/quizzes/:id/preview',
+        builder: (_, state) =>
+            TeacherQuizPreviewScreen(id: state.pathParameters['id'] ?? ''),
       ),
       GoRoute(
         path: '/teacher/quizzes/:id/edit',
@@ -360,6 +400,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: '/student/quizzes/:quizId/result',
+        builder: (_, state) => StudentQuizAttemptScreen(
+          quizId: state.pathParameters['quizId'] ?? '',
+          attemptId: state.uri.queryParameters['attemptId'],
+        ),
+      ),
+      GoRoute(
         path: '/student/progress',
         builder: (_, _) => const StudentProgressScreen(),
       ),
@@ -381,6 +428,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/student/speaking',
         builder: (_, _) => const StudentSpeakingListScreen(),
+      ),
+      GoRoute(
+        path: '/student/speaking/results',
+        builder: (_, _) => const StudentSpeakingListScreen(resultsOnly: true),
       ),
       GoRoute(
         path: '/student/speaking/:exerciseId',

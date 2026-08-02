@@ -230,6 +230,7 @@ Route::prefix('v1')->group(function () {
         Route::put('users/{id}', [UserController::class, 'update']);
         Route::patch('users/{id}/status', [UserController::class, 'updateStatus']);
         Route::post('users/{id}/force-password-reset', [UserController::class, 'forcePasswordReset']);
+        Route::post('users/{id}/force-delete', [UserController::class, 'forceDestroy']);
         Route::post('media', [MediaController::class, 'store']);
         Route::get('media/{id}', [MediaController::class, 'show']);
         Route::post('media/{id}/temporary-url', [MediaController::class, 'temporaryUrl']);

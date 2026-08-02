@@ -361,6 +361,35 @@ class Phase3SchoolClassUsersTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'user.reactivated']);
     }
 
+    public function test_admin_can_permanently_delete_assigned_teacher_and_student_with_exact_confirmation(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $teacher = User::factory()->teacher()->approved()->create();
+        $student = User::factory()->student()->approved()->create();
+        $class = SchoolClass::factory()->create(['created_by' => $teacher->id]);
+        TeacherClassAssignment::factory()->create(['teacher_id' => $teacher->id, 'class_id' => $class->id, 'assigned_by' => $admin->id]);
+        StudentClassMembership::factory()->create(['student_id' => $student->id, 'class_id' => $class->id, 'assigned_by' => $teacher->id]);
+
+        $this->withToken($this->tokenFor($admin))->postJson("/api/v1/users/{$student->id}/force-delete", [
+            'confirmation' => 'Hapus Permanen',
+        ])->assertUnprocessable();
+        $this->assertDatabaseHas('users', ['id' => $student->id]);
+
+        $this->withToken($this->tokenFor($admin))->postJson("/api/v1/users/{$student->id}/force-delete", [
+            'confirmation' => 'hapus permanen',
+        ])->assertOk();
+        $this->assertDatabaseMissing('users', ['id' => $student->id]);
+        $this->assertDatabaseMissing('student_class_memberships', ['student_id' => $student->id]);
+
+        $this->withToken($this->tokenFor($admin))->postJson("/api/v1/users/{$teacher->id}/force-delete", [
+            'confirmation' => 'hapus permanen',
+        ])->assertOk();
+        $this->assertDatabaseMissing('users', ['id' => $teacher->id]);
+        $this->assertDatabaseMissing('teacher_class_assignments', ['teacher_id' => $teacher->id]);
+        $this->assertDatabaseHas('classes', ['id' => $class->id, 'created_by' => $admin->id]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'user.permanently_deleted']);
+    }
+
     public function test_error_and_pagination_shapes_are_standard(): void
     {
         $admin = User::factory()->admin()->create();

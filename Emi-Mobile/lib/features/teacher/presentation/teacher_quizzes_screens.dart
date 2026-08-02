@@ -325,7 +325,7 @@ class _TeacherQuizDetailScreenState
                       value: 'result',
                       child: Text('Lihat Hasil'),
                     ),
-                    if (quiz.status == 'draft')
+                    if (quiz.status == 'draft' || quiz.status == 'archived')
                       const PopupMenuItem(
                         value: 'publish',
                         child: Text('Terbitkan Kuis'),
@@ -350,10 +350,18 @@ class _TeacherQuizDetailScreenState
               ),
               const SizedBox(height: EmiSpacing.lg),
               FilledButton.icon(
-                onPressed: () =>
-                    context.push('/teacher/quizzes/${widget.id}/edit'),
+                onPressed: quiz.status == 'published'
+                    ? null
+                    : () => context.push('/teacher/quizzes/${widget.id}/edit'),
                 icon: const Icon(Icons.edit_outlined),
                 label: const Text('Edit Kuis'),
+              ),
+              const SizedBox(height: EmiSpacing.sm),
+              OutlinedButton.icon(
+                onPressed: () =>
+                    context.push('/teacher/quizzes/${widget.id}/preview'),
+                icon: const Icon(Icons.visibility_outlined),
+                label: const Text('Preview Kuis'),
               ),
               const SizedBox(height: EmiSpacing.lg),
               _DetailMetrics(quiz: quiz),
@@ -365,7 +373,7 @@ class _TeacherQuizDetailScreenState
                 'Pertanyaan',
                 icon: Icons.help_outline,
                 trailing: FilledButton.icon(
-                  onPressed: quiz.status == 'draft'
+                  onPressed: quiz.status == 'draft' || quiz.status == 'archived'
                       ? () => context.push(
                           '/teacher/quizzes/${widget.id}/questions/create',
                         )
@@ -420,7 +428,7 @@ class _TeacherQuizDetailScreenState
                             ],
                           ),
                         ),
-                        if (quiz.status == 'draft')
+                        if (quiz.status == 'draft' || quiz.status == 'archived')
                           PopupMenuButton<String>(
                             onSelected: (_) => context.push(
                               '/teacher/quizzes/${widget.id}/questions/${quiz.questions[index].id}/edit',
@@ -552,6 +560,85 @@ class _DetailMetrics extends StatelessWidget {
       },
     );
   }
+}
+
+class TeacherQuizPreviewScreen extends ConsumerWidget {
+  const TeacherQuizPreviewScreen({super.key, required this.id});
+  final String id;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => TeacherShell(
+    title: 'Preview Kuis',
+    fallbackRoute: '/teacher/quizzes/$id',
+    child: ref
+        .watch(teacherQuizDetailProvider(id))
+        .when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, _) =>
+              const Center(child: Text('Preview belum bisa dimuat.')),
+          data: (quiz) => ListView(
+            padding: const EdgeInsets.all(EmiSpacing.md),
+            children: [
+              TeacherPageHeader(
+                icon: Icons.visibility_outlined,
+                title: quiz.title,
+                subtitle: quiz.instructions.isEmpty
+                    ? 'Tampilan kuis untuk siswa'
+                    : quiz.instructions,
+              ),
+              const SizedBox(height: EmiSpacing.md),
+              _DetailMetrics(quiz: quiz),
+              if (quiz.description.isNotEmpty) ...[
+                TeacherSectionHeader('Deskripsi'),
+                Text(quiz.description),
+              ],
+              const SizedBox(height: EmiSpacing.md),
+              for (var index = 0; index < quiz.questions.length; index++) ...[
+                TeacherListCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${index + 1}. ${quiz.questions[index].text}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      if (quiz.questions[index].imageUrl != null) ...[
+                        const SizedBox(height: EmiSpacing.sm),
+                        Image.network(
+                          quiz.questions[index].imageUrl!,
+                          height: 180,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, _, _) => const Text(
+                            'Gambar soal tidak dapat ditampilkan.',
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: EmiSpacing.sm),
+                      if (quiz.questions[index].type == 'multiple_choice')
+                        for (final option in quiz.questions[index].options)
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: EmiSpacing.xs,
+                            ),
+                            child: Text(
+                              '${option.correct ? '✓' : '○'} ${option.text}${option.correct ? ' (Jawaban benar)' : ''}',
+                            ),
+                          )
+                      else
+                        Text(
+                          quiz.questions[index].correctAnswer.isEmpty
+                              ? 'Siswa mengisi jawaban singkat.'
+                              : 'Jawaban benar: ${quiz.questions[index].correctAnswer}',
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: EmiSpacing.sm),
+              ],
+            ],
+          ),
+        ),
+  );
 }
 
 class TeacherQuizFormScreen extends ConsumerStatefulWidget {

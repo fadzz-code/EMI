@@ -73,6 +73,8 @@ export function UserDetailScreen({ userId }: { userId: string }) {
   const [statusOpen, setStatusOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
+  const [permanentDeleteOpen, setPermanentDeleteOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [form, setForm] = useState<UserFormState | null>(null);
   const [targetStatus, setTargetStatus] = useState<Extract<UserStatus, "approved" | "inactive">>("approved");
   const [statusReason, setStatusReason] = useState("");
@@ -130,6 +132,14 @@ export function UserDetailScreen({ userId }: { userId: string }) {
     },
   });
 
+  const permanentDeleteMutation = useMutation({
+    mutationFn: () => userManagementService.permanentlyDelete(token ?? "", userId, deleteConfirmation),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      window.location.assign("/admin/users");
+    },
+  });
+
   const assignMutation = useMutation<unknown, Error, { role: UserRole; classId: string }>({
     mutationFn: ({ role, classId }: { role: UserRole; classId: string }) => {
       if (role === "teacher") {
@@ -149,7 +159,7 @@ export function UserDetailScreen({ userId }: { userId: string }) {
 
   const user = userQuery.data;
   const classes = classesQuery.data?.items ?? [];
-  const actionError = updateMutation.error ?? statusMutation.error ?? assignMutation.error ?? resetPasswordMutation.error;
+  const actionError = updateMutation.error ?? statusMutation.error ?? assignMutation.error ?? resetPasswordMutation.error ?? permanentDeleteMutation.error;
   const canAssign = user?.role === "teacher" || user?.role === "student";
 
   function openEdit() {
@@ -235,9 +245,14 @@ export function UserDetailScreen({ userId }: { userId: string }) {
                 Ubah Status
               </Button>
               {canAssign ? (
-                <Button onClick={() => setAssignOpen(true)}>
-                  {user.role === "teacher" ? "Tetapkan Guru" : "Tempatkan Siswa"}
-                </Button>
+                <>
+                  <Button onClick={() => setAssignOpen(true)}>
+                    {user.role === "teacher" ? "Tetapkan Guru" : "Tempatkan Siswa"}
+                  </Button>
+                  <Button onClick={() => setPermanentDeleteOpen(true)} variant="danger">
+                    Hapus Permanen
+                  </Button>
+                </>
               ) : null}
             </div>
           </header>
@@ -390,6 +405,38 @@ export function UserDetailScreen({ userId }: { userId: string }) {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        onClose={() => {
+          setPermanentDeleteOpen(false);
+          setDeleteConfirmation("");
+        }}
+        open={permanentDeleteOpen}
+        title="Hapus Akun Permanen"
+      >
+        <div className="grid gap-4">
+          <Alert tone="error">
+            Akun, penempatan kelas, dan data pribadi akan dihapus permanen. Konten pembelajaran milik Guru dipindahkan ke Admin pelaksana. Tindakan ini tidak dapat dibatalkan.
+          </Alert>
+          <FormField label='Ketik "hapus permanen" untuk konfirmasi'>
+            <Input
+              autoComplete="off"
+              onChange={(event) => setDeleteConfirmation(event.target.value)}
+              value={deleteConfirmation}
+            />
+          </FormField>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <Button onClick={() => setPermanentDeleteOpen(false)} variant="ghost">Batal</Button>
+            <Button
+              disabled={deleteConfirmation !== "hapus permanen" || permanentDeleteMutation.isPending}
+              onClick={() => permanentDeleteMutation.mutate()}
+              variant="danger"
+            >
+              {permanentDeleteMutation.isPending ? "Menghapus..." : "Hapus Permanen"}
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       <Modal

@@ -1,10 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../shared/legal/privacy_policy.dart';
 import '../../auth/domain/session_user.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../profile/presentation/avatar_validator.dart';
 import 'admin_shell.dart';
 import 'admin_style.dart';
 import 'admin_widgets.dart';
@@ -22,6 +26,9 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
   final currentPassword = TextEditingController();
   final password = TextEditingController();
   final confirmation = TextEditingController();
+  final _avatarValidator = const AvatarValidator();
+  final _picker = ImagePicker();
+  XFile? _avatarPreview;
 
   @override
   void dispose() {
@@ -56,25 +63,29 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: AdminStyle.tint,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      (user?.fullName.isNotEmpty == true
-                              ? user!.fullName[0]
-                              : 'A')
-                          .toUpperCase(),
-                      style: const TextStyle(
-                        color: EmiColors.primary,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 22,
-                      ),
-                    ),
+                GestureDetector(
+                  onTap: auth.isLoading ? null : _pickAvatar,
+                  child: CircleAvatar(
+                    radius: 28,
+                    backgroundColor: AdminStyle.tint,
+                    foregroundImage: _avatarPreview != null
+                        ? FileImage(File(_avatarPreview!.path))
+                        : user?.avatarUrl != null
+                        ? NetworkImage(user!.avatarUrl!)
+                        : null,
+                    child: _avatarPreview == null && user?.avatarUrl == null
+                        ? Text(
+                            (user?.fullName.isNotEmpty == true
+                                    ? user!.fullName[0]
+                                    : 'A')
+                                .toUpperCase(),
+                            style: const TextStyle(
+                              color: EmiColors.primary,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 22,
+                            ),
+                          )
+                        : null,
                   ),
                 ),
                 const SizedBox(width: EmiSpacing.md),
@@ -113,6 +124,26 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
             ),
           ),
           const SizedBox(height: EmiSpacing.md),
+          OutlinedButton.icon(
+            key: const Key('adminChangeAvatar'),
+            onPressed: user == null || auth.isLoading ? null : _pickAvatar,
+            icon: const Icon(Icons.photo_camera_outlined),
+            label: const Text('Ganti Foto Profil'),
+          ),
+          if (user?.avatarUrl != null) ...[
+            const SizedBox(height: EmiSpacing.sm),
+            TextButton.icon(
+              key: const Key('adminDeleteAvatar'),
+              onPressed: auth.isLoading
+                  ? null
+                  : () => ref
+                        .read(authControllerProvider.notifier)
+                        .deleteAvatar(),
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('Hapus Foto Profil'),
+            ),
+          ],
+          const SizedBox(height: EmiSpacing.sm),
           FilledButton.icon(
             key: const Key('adminEditProfile'),
             onPressed: user == null || auth.isLoading
@@ -146,6 +177,28 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _pickAvatar() async {
+    final file = await _picker.pickImage(source: ImageSource.gallery);
+    if (file == null) return;
+    final validation = _avatarValidator.validate(
+      fileName: file.name,
+      sizeBytes: await File(file.path).length(),
+    );
+    if (!validation.isValid) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(validation.message!)));
+      }
+      return;
+    }
+    setState(() => _avatarPreview = file);
+    await ref
+        .read(authControllerProvider.notifier)
+        .uploadAvatar(path: file.path, fileName: file.name);
+    if (mounted) setState(() => _avatarPreview = null);
   }
 
   Future<void> _edit(SessionUser user) async {

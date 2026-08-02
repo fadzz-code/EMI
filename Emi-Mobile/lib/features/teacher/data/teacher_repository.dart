@@ -4,6 +4,90 @@ import '../../../core/errors/app_error.dart';
 import '../../../core/errors/dio_error_mapper.dart';
 import '../../culture/data/culture_models.dart';
 
+class TeacherRequestItem {
+  const TeacherRequestItem({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.status,
+    this.className,
+    this.schoolName,
+    this.reviewNote,
+  });
+  final String id;
+  final String name;
+  final String email;
+  final String status;
+  final String? className;
+  final String? schoolName;
+  final String? reviewNote;
+
+  factory TeacherRequestItem.fromJson(Map<String, dynamic> json) {
+    final user = json['user'] is Map<String, dynamic>
+        ? json['user'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+    final schoolClass = json['school_class'] is Map<String, dynamic>
+        ? json['school_class'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+    final school = json['school'] is Map<String, dynamic>
+        ? json['school'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+    return TeacherRequestItem(
+      id: json['id'] as String? ?? '',
+      name: user['full_name'] as String? ?? 'Siswa',
+      email: user['email'] as String? ?? '-',
+      status: json['status'] as String? ?? 'pending',
+      className: schoolClass['name'] as String?,
+      schoolName: school['name'] as String?,
+      reviewNote: json['review_note'] as String?,
+    );
+  }
+}
+
+class TeacherRequestPage {
+  const TeacherRequestPage({
+    required this.items,
+    required this.currentPage,
+    required this.lastPage,
+    required this.total,
+  });
+
+  final List<TeacherRequestItem> items;
+  final int currentPage;
+  final int lastPage;
+  final int total;
+
+  factory TeacherRequestPage.fromJson(Map<String, dynamic>? json) {
+    final rows = json?['data'];
+    final meta = _map(json?['meta']);
+    final items = rows is List
+        ? rows
+              .whereType<Map<String, dynamic>>()
+              .map(TeacherRequestItem.fromJson)
+              .toList()
+        : <TeacherRequestItem>[];
+    return TeacherRequestPage(
+      items: items,
+      currentPage: _int(meta['current_page'], fallback: 1),
+      lastPage: _int(meta['last_page'], fallback: 1),
+      total: _int(meta['total'], fallback: items.length),
+    );
+  }
+}
+
+class TeacherLessonContent {
+  const TeacherLessonContent({required this.type, this.contentBody, this.url});
+  final String type;
+  final String? contentBody;
+  final String? url;
+  factory TeacherLessonContent.fromJson(Map<String, dynamic> json) =>
+      TeacherLessonContent(
+        type: json['type'] as String? ?? 'text',
+        contentBody: json['content_body'] as String?,
+        url: json['url'] as String?,
+      );
+}
+
 class TeacherMetric {
   const TeacherMetric({
     required this.label,
@@ -557,6 +641,87 @@ class TeacherRepository {
   final Dio _dio;
   final DioErrorMapper _mapper;
 
+  Future<TeacherRequestPage> registrationRequests({
+    int page = 1,
+    String? search,
+    String? status,
+  }) => _request(
+    () => _dio.get<Map<String, dynamic>>(
+      '/teacher/registration-requests',
+      queryParameters: {
+        'page': page,
+        'per_page': 15,
+        'status': status?.isNotEmpty == true ? status : 'pending',
+        'sort_by': 'created_at',
+        'sort_order': 'desc',
+        if (search?.trim().isNotEmpty == true) 'search': search!.trim(),
+      },
+    ),
+    TeacherRequestPage.fromJson,
+  );
+
+  Future<TeacherRequestItem> registrationRequest(String id) => _request(
+    () => _dio.get<Map<String, dynamic>>('/teacher/registration-requests/$id'),
+    _requestItem,
+  );
+
+  Future<void> approveRegistrationRequest(String id, {String? reviewNote}) =>
+      _request(
+        () => _dio.post<Map<String, dynamic>>(
+          '/teacher/registration-requests/$id/approve',
+          data: {
+            if (reviewNote?.trim().isNotEmpty == true)
+              'review_note': reviewNote!.trim(),
+          },
+        ),
+        (_) {},
+      );
+
+  Future<TeacherRequestPage> passwordResetRequests({
+    int page = 1,
+    String? search,
+    String? status,
+  }) => _request(
+    () => _dio.get<Map<String, dynamic>>(
+      '/teacher/password-reset-requests',
+      queryParameters: {
+        'page': page,
+        'per_page': 15,
+        'status': status?.isNotEmpty == true ? status : 'pending',
+        'sort_by': 'created_at',
+        'sort_direction': 'desc',
+        if (search?.trim().isNotEmpty == true) 'search': search!.trim(),
+      },
+    ),
+    TeacherRequestPage.fromJson,
+  );
+
+  Future<TeacherRequestItem> passwordResetRequest(String id) => _request(
+    () =>
+        _dio.get<Map<String, dynamic>>('/teacher/password-reset-requests/$id'),
+    _requestItem,
+  );
+
+  Future<void> approvePasswordResetRequest(
+    String id,
+    String password,
+    String confirmation,
+  ) => _request(
+    () => _dio.post<Map<String, dynamic>>(
+      '/teacher/password-reset-requests/$id/approve',
+      data: {'password': password, 'password_confirmation': confirmation},
+    ),
+    (_) {},
+  );
+
+  Future<void> rejectPasswordResetRequest(String id, String note) => _request(
+    () => _dio.post<Map<String, dynamic>>(
+      '/teacher/password-reset-requests/$id/reject',
+      data: {'review_note': note},
+    ),
+    (_) {},
+  );
+
   Future<List<TeacherSpeakingTemplate>> speakingTemplates() => _request(
     () => _dio.get<Map<String, dynamic>>(
       '/teacher/speaking/templates',
@@ -720,6 +885,11 @@ class TeacherRepository {
   Future<TeacherLesson> lessonDetail(String id) => _request(
     () => _dio.get<Map<String, dynamic>>('/class-lessons/$id'),
     (json) => TeacherLesson.fromJson(_data(json, 'Detail materi')),
+  );
+
+  Future<TeacherLessonContent> lessonContent(String id) => _request(
+    () => _dio.get<Map<String, dynamic>>('/class-lessons/$id/content-url'),
+    (json) => TeacherLessonContent.fromJson(_data(json, 'Konten materi')),
   );
 
   Future<TeacherLesson> createLesson(
@@ -913,6 +1083,15 @@ class TeacherRepository {
     () => _dio.post<Map<String, dynamic>>(path),
     (json) => TeacherLesson.fromJson(_data(json, 'Materi')),
   );
+
+  TeacherRequestItem _requestItem(Map<String, dynamic>? json) {
+    final data = json?['data'];
+    if (data is Map<String, dynamic>) return TeacherRequestItem.fromJson(data);
+    throw const AppError(
+      type: AppErrorType.unknown,
+      message: 'Data permintaan tidak valid.',
+    );
+  }
 
   Future<T> _request<T>(
     Future<Response<Map<String, dynamic>>> Function() request,

@@ -260,6 +260,10 @@ export const userManagementService = {
     return response.data;
   },
 
+  async permanentlyDelete(token: string, userId: string, confirmation: string) {
+    await apiClient.post(`/users/${userId}/force-delete`, { confirmation }, { token });
+  },
+
   async forcePasswordReset(token: string, userId: string, payload: { password: string; password_confirmation: string }) {
     const response = await apiClient.post<ManagedUser>(`/users/${userId}/force-password-reset`, payload, { token });
 

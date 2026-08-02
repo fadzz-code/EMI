@@ -235,6 +235,12 @@ class _AdminDrawer extends ConsumerWidget {
                 selected: location.startsWith(feature.route),
               ),
             _Item(
+              label: 'Reset Password',
+              icon: Icons.lock_reset_outlined,
+              route: AdminFeature.users.route,
+              selected: false,
+            ),
+            _Item(
               label: 'Profil',
               icon: Icons.person_outline,
               route: '/admin/profile',
