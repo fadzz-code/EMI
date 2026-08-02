@@ -80,7 +80,7 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: false
-  image_path: "assets/icon/emi_icon.png"
+  image_path: "assets/icon/emi-logo.png"
   adaptive_icon_background: "#FF8A3D"
   adaptive_icon_foreground: "assets/icon/emi_icon_foreground.png"
 
