@@ -82,7 +82,7 @@ flutter_launcher_icons:
   ios: false
   image_path: "assets/icon/emi-logo.png"
   adaptive_icon_background: "#FF8A3D"
-  adaptive_icon_foreground: "assets/icon/emi_icon_foreground.png"
+  adaptive_icon_foreground: "assets/icon/emi-logo.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

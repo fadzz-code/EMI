@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../core/errors/app_error.dart';
+import '../../../shared/legal/privacy_policy.dart';
 import '../data/auth_providers.dart';
 import '../domain/auth_repository.dart';
 import '../domain/session_user.dart';
@@ -304,6 +305,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    final accepted = await _confirmPrivacyPolicy();
+    if (accepted != true || !mounted) return;
     setState(() => _error = null);
     try {
       await ref
@@ -325,6 +328,31 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       setState(() => _error = ref.read(authControllerProvider).error);
     }
   }
+
+  Future<bool?> _confirmPrivacyPolicy() => showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Kebijakan Privasi'),
+      content: const Text(
+        'EMI mengumpulkan nama, email, sekolah, kelas, data penggunaan, dan hasil belajar untuk membuat akun, memverifikasi pengguna, menjalankan fitur pembelajaran, serta meningkatkan keamanan layanan.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => openPrivacyPolicy(context),
+          child: const Text('Baca Kebijakan'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, false),
+          child: const Text('Tidak Setuju'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(dialogContext, true),
+          child: const Text('Saya Setuju'),
+        ),
+      ],
+    ),
+  );
 
   bool _validEmail(String value) {
     return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim());
