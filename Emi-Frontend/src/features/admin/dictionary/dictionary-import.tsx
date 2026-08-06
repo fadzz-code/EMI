@@ -44,8 +44,8 @@ function numberValue(value?: number | null) {
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 rounded-[var(--radius-control)] border-2 border-border bg-bg p-3">
-      <p className="truncate text-[10px] font-black uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-1 truncate text-lg font-black text-ink">{value}</p>
+      <p className="text-[10px] font-black uppercase leading-tight tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-1 break-words pt-0.5 text-lg font-black leading-[1.4] text-ink">{value}</p>
     </div>
   );
 }
@@ -77,15 +77,75 @@ function audioFilename(rawData?: Record<string, unknown> | null) {
   return typeof value === "string" ? value : "-";
 }
 
-const ERROR_CODE_INFO: Record<string, { label: string; hint: string }> = {
-  REQUIRED: { label: "Kolom wajib kosong", hint: "Isi kolom Bahasa Indonesia (kolom lain boleh menyusul)." },
-  CATEGORY_NOT_FOUND: { label: "Kategori tidak dikenal", hint: "Pilih kategori dari menu Kamus, atau kosongkan kolomnya." },
-  DICTIONARY_DUPLICATE: { label: "Kata sudah ada / ganda", hint: "Hapus baris ganda, atau ubah strategi duplikat ke Lewati/Perbarui." },
-  SENTENCE_DUPLICATE: { label: "Kalimat sudah ada / ganda", hint: "Hapus baris ganda, atau ubah strategi duplikat ke Lewati/Perbarui." },
-  CODE_NOT_FOUND: { label: "Kode tidak ditemukan", hint: "Impor kosakata dulu, atau periksa ejaan kodenya." },
-  RELATED_MEKONGGA_NOT_FOUND: { label: "Kata terkait tidak ada", hint: "Impor kata di sheet Kosakata dulu, atau samakan ejaan Mekongga-nya." },
-  AMBIGUOUS_RELATED_MEKONGGA: { label: "Kata terkait ganda", hint: "Rapikan entri kamus yang duplikat agar tautannya jelas." },
-  UNSAFE_ZIP_ENTRY: { label: "Nama audio tidak aman", hint: "Nama file audio tidak boleh mengandung path (garis miring)." },
+const ERROR_CODE_INFO: Record<string, { label: string; hint: string; steps: string[] }> = {
+  REQUIRED: {
+    label: "Kolom wajib kosong",
+    hint: "Ada baris yang kolom Bahasa Indonesia-nya kosong. Kolom ini wajib diisi.",
+    steps: [
+      "Buka file Excel-mu, cek baris yang disebut di tabel Error Impor di bawah.",
+      "Isi kolom Bahasa Indonesia (untuk Kosakata) atau Bahasa Indonesia contoh kalimat (untuk Contoh Kalimat).",
+      "Kolom lain seperti Mekongga/Inggris/Kategori boleh dikosongkan dulu.",
+    ],
+  },
+  CATEGORY_NOT_FOUND: {
+    label: "Kategori tidak dikenal",
+    hint: "Nama kategori yang kamu tulis tidak sama persis dengan kategori yang ada di sistem.",
+    steps: [
+      "Buka menu Kamus > Kategori untuk melihat daftar nama kategori yang benar.",
+      "Ganti isi kolom Kategori di Excel agar sama persis (huruf & ejaan) dengan salah satu nama di daftar itu.",
+      "Kalau belum tahu kategorinya, kosongkan saja kolom Kategori — nanti bisa diatur setelah impor.",
+    ],
+  },
+  DICTIONARY_DUPLICATE: {
+    label: "Kata sudah ada atau ganda",
+    hint: "Baris ini sama persis dengan kata lain (di file atau di kamus).",
+    steps: [
+      "Kalau duplikat di dalam file: hapus salah satu baris yang kembar.",
+      "Kalau kata memang sudah ada di kamus: ubah pilihan Strategi duplikat jadi \"Lewati duplikat\" (biarkan yang lama) atau \"Perbarui duplikat\" (timpa yang lama).",
+    ],
+  },
+  SENTENCE_DUPLICATE: {
+    label: "Kalimat sudah ada atau ganda",
+    hint: "Contoh kalimat ini sama persis dengan kalimat lain (di file atau di kamus).",
+    steps: [
+      "Kalau duplikat di dalam file: hapus salah satu baris kalimat yang kembar.",
+      "Kalau kalimat memang sudah ada di kamus: ubah Strategi duplikat jadi \"Lewati duplikat\" atau \"Perbarui duplikat\".",
+    ],
+  },
+  CODE_NOT_FOUND: {
+    label: "Kode tidak ditemukan",
+    hint: "Kode kata pada contoh kalimat tidak cocok dengan kata mana pun di kamus.",
+    steps: [
+      "Pastikan kata utamanya sudah diimpor lebih dulu lewat sheet/menu Kosakata.",
+      "Cek ejaan kode di kolom kode — harus sama persis dengan kode kata yang dituju.",
+    ],
+  },
+  RELATED_MEKONGGA_NOT_FOUND: {
+    label: "Kata Mekongga terkait tidak ada",
+    hint: "Contoh kalimat menunjuk ke kata Mekongga yang belum ada di sheet Kosakata maupun di kamus.",
+    steps: [
+      "Buka sheet Contoh Kalimat, lihat isi kolom \"Kata Mekongga Terkait\" pada baris yang error.",
+      "Pastikan kata itu sudah ada di sheet Kosakata (impor dulu Kosakata sebelum Contoh Kalimat).",
+      "Samakan ejaannya persis dengan kolom Mekongga di sheet Kosakata (huruf, spasi, tanda hubung).",
+    ],
+  },
+  AMBIGUOUS_RELATED_MEKONGGA: {
+    label: "Kata Mekongga terkait ganda",
+    hint: "Kata Mekongga terkait cocok dengan lebih dari satu entri kamus, jadi sistem tidak tahu harus menaut ke yang mana. Ini biasanya karena ada kata Mekongga yang sama tercatat dua kali di kamus.",
+    steps: [
+      "Buka menu Kamus, cari kata Mekongga yang disebut (misalnya \"iwoi\").",
+      "Kalau ada dua entri atau lebih dengan kata Mekongga yang sama, hapus/gabungkan yang duplikat sehingga tersisa satu entri.",
+      "Setelah kamus rapi, impor ulang file Contoh Kalimat.",
+    ],
+  },
+  UNSAFE_ZIP_ENTRY: {
+    label: "Nama file audio tidak aman",
+    hint: "Nama file audio mengandung tanda garis miring (/ atau \\), ini tidak diizinkan.",
+    steps: [
+      "Ganti nama file audio jadi nama file saja tanpa folder, contoh: monga.mp3.",
+      "Pastikan kolom audio di Excel hanya berisi nama file, bukan path folder.",
+    ],
+  },
 };
 
 type BreakdownRow = { code: string; count: number };
@@ -120,19 +180,32 @@ function ErrorBreakdown({ summary }: { summary: DictionaryImportSummary | null |
       <h3 className="font-black text-ink">Kenapa ada baris tidak valid?</h3>
       <div className="grid gap-2">
         {rows.map(({ code, count }) => {
-          const info = ERROR_CODE_INFO[code] ?? { label: simpleErrorLabel(code), hint: "Periksa kembali baris terkait." };
+          const info = ERROR_CODE_INFO[code] ?? {
+            label: simpleErrorLabel(code),
+            hint: "Periksa kembali baris terkait di tabel Error Impor di bawah.",
+            steps: [],
+          };
           return (
-            <div className="grid gap-1 rounded-md border-2 border-border bg-bg p-3 text-sm" key={code}>
+            <div className="grid gap-2 rounded-md border-2 border-border bg-bg p-3 text-sm" key={code}>
               <div className="flex items-center justify-between gap-2">
                 <span className="font-black text-ink">{info.label}</span>
                 <Badge tone="yellow">{count} baris</Badge>
               </div>
-              <p className="font-bold text-muted">Saran: {info.hint}</p>
+              <p className="font-bold text-muted">{info.hint}</p>
+              {info.steps.length > 0 ? (
+                <div className="grid gap-1">
+                  <p className="text-xs font-black uppercase tracking-wide text-muted-foreground">Cara memperbaiki:</p>
+                  <ol className="grid list-decimal gap-1 pl-5 font-bold text-ink">
+                    {info.steps.map((step, index) => (
+                      <li key={index}>{step}</li>
+                    ))}
+                  </ol>
+                </div>
+              ) : null}
             </div>
           );
         })}
       </div>
-      <p className="text-xs font-bold text-muted">Rincian per baris ada di tabel Error Impor di bawah.</p>
     </div>
   );
 }
@@ -286,7 +359,7 @@ export function DictionaryImport() {
       {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
       {actionError ? <Alert tone="error">{getFirstApiError(actionError)}</Alert> : null}
 
-      <div className="grid min-w-0 gap-6">
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
         <Card className="min-w-0">
           <CardHeader>
             <h2 className="text-xl font-black text-ink">Upload File Excel</h2>
@@ -375,15 +448,6 @@ export function DictionaryImport() {
                 </div>
 
                 {(selectedJob.invalid_rows ?? 0) > 0 ? <ErrorBreakdown summary={selectedJob.summary} /> : null}
-
-                <div className="grid gap-3 rounded-lg border-2 border-border bg-surface p-4 sm:grid-cols-3 2xl:grid-cols-6">
-                  <MiniStat label="File Ditemukan" value={numberValue(selectedJob.summary?.audio?.files_found)} />
-                  <MiniStat label="Cocok" value={numberValue(selectedJob.summary?.audio?.matched)} />
-                  <MiniStat label="Tidak Ditemukan" value={numberValue(selectedJob.summary?.audio?.missing)} />
-                  <MiniStat label="Nama Ganda" value={numberValue(selectedJob.summary?.audio?.ambiguous)} />
-                  <MiniStat label="Tidak Terpakai" value={numberValue(selectedJob.summary?.audio?.unused)} />
-                  <MiniStat label="Dipasang" value={numberValue(selectedJob.summary?.audio?.installed)} />
-                </div>
 
                 {selectedJob.failure_message ? (
                   <Alert tone="error">{selectedJob.failure_message}</Alert>
@@ -560,45 +624,43 @@ export function DictionaryImport() {
                   title="Tidak ada error"
                 />
               ) : (
-                <div className="max-h-[32rem] overflow-y-auto rounded-lg border-2 border-border">
-                  <Table className="w-full table-fixed">
-                    <TableHeader className="sticky top-0 z-10 hidden bg-surface lg:table-header-group">
-                      <tr>
-                        <th className="px-4 py-3">Bagian</th>
-                        <th className="px-4 py-3">Baris</th>
-                        <th className="px-4 py-3">Kolom</th>
-                        <th className="px-4 py-3">Kode</th>
-                        <th className="px-4 py-3">Pesan</th>
-                        <th className="px-4 py-3">Aksi</th>
+                <Table className="w-full table-fixed">
+                  <TableHeader className="hidden lg:table-header-group">
+                    <tr>
+                      <th className="px-4 py-3">Bagian</th>
+                      <th className="px-4 py-3">Baris</th>
+                      <th className="px-4 py-3">Kolom</th>
+                      <th className="px-4 py-3">Kode</th>
+                      <th className="px-4 py-3">Pesan</th>
+                      <th className="px-4 py-3">Aksi</th>
+                    </tr>
+                  </TableHeader>
+                  <tbody className="grid min-w-0 gap-4 lg:table-row-group">
+                    {(errorsQuery.data?.items ?? []).map((error) => (
+                      <tr className="grid min-w-0 gap-2 rounded-xl border-2 border-border p-4 lg:table-row lg:rounded-none lg:border-0 lg:p-0" key={error.id}>
+                        <TableCell className="border-0 p-0 lg:border-t lg:px-4 lg:py-3"><span className="font-bold lg:hidden">Bagian: </span>{simpleErrorLabel(error.sheet)}</TableCell>
+                        <TableCell className="border-0 p-0 lg:border-t lg:px-4 lg:py-3"><span className="font-bold lg:hidden">Baris: </span>{error.row_number ?? "-"}</TableCell>
+                        <TableCell className="min-w-0 break-words border-0 p-0 lg:border-t lg:px-4 lg:py-3"><span className="font-bold lg:hidden">Kolom: </span>{simpleErrorLabel(error.field)}</TableCell>
+                        <TableCell className="min-w-0 break-words border-0 p-0 lg:border-t lg:px-4 lg:py-3"><span className="font-bold lg:hidden">Masalah: </span>{simpleErrorLabel(error.code)}</TableCell>
+                        <TableCell className="min-w-0 break-words border-0 p-0 lg:border-t lg:px-4 lg:py-3">
+                          <div className="grid min-w-0 gap-1">
+                            <p>{error.message}</p>
+                            {error.code?.startsWith("AUDIO_") ? (
+                              <div className="grid gap-1 text-xs font-bold text-muted">
+                                <p>File: {audioFilename(error.raw_data)}</p>
+                                <p>Status: {simpleErrorLabel(error.code)}</p>
+                                <p>Alasan: {error.message}</p>
+                              </div>
+                            ) : null}
+                          </div>
+                        </TableCell>
+                        <TableCell className="border-0 p-0 lg:border-t lg:px-4 lg:py-3">
+                          <Button className="min-h-9 px-3 py-1 text-xs" onClick={() => setDeleteErrorId(error.id)} variant="danger">Hapus</Button>
+                        </TableCell>
                       </tr>
-                    </TableHeader>
-                    <tbody className="grid min-w-0 gap-4 p-2 lg:table-row-group lg:p-0">
-                      {(errorsQuery.data?.items ?? []).map((error) => (
-                        <tr className="grid min-w-0 gap-2 rounded-xl border-2 border-border p-4 lg:table-row lg:rounded-none lg:border-0 lg:p-0" key={error.id}>
-                          <TableCell className="border-0 p-0 lg:border-t lg:px-4 lg:py-3"><span className="font-bold lg:hidden">Bagian: </span>{simpleErrorLabel(error.sheet)}</TableCell>
-                          <TableCell className="border-0 p-0 lg:border-t lg:px-4 lg:py-3"><span className="font-bold lg:hidden">Baris: </span>{error.row_number ?? "-"}</TableCell>
-                          <TableCell className="min-w-0 break-words border-0 p-0 lg:border-t lg:px-4 lg:py-3"><span className="font-bold lg:hidden">Kolom: </span>{simpleErrorLabel(error.field)}</TableCell>
-                          <TableCell className="min-w-0 break-words border-0 p-0 lg:border-t lg:px-4 lg:py-3"><span className="font-bold lg:hidden">Masalah: </span>{simpleErrorLabel(error.code)}</TableCell>
-                          <TableCell className="min-w-0 break-words border-0 p-0 lg:border-t lg:px-4 lg:py-3">
-                            <div className="grid min-w-0 gap-1">
-                              <p>{error.message}</p>
-                              {error.code?.startsWith("AUDIO_") ? (
-                                <div className="grid gap-1 text-xs font-bold text-muted">
-                                  <p>File: {audioFilename(error.raw_data)}</p>
-                                  <p>Status: {simpleErrorLabel(error.code)}</p>
-                                  <p>Alasan: {error.message}</p>
-                                </div>
-                              ) : null}
-                            </div>
-                          </TableCell>
-                          <TableCell className="border-0 p-0 lg:border-t lg:px-4 lg:py-3">
-                            <Button className="min-h-9 px-3 py-1 text-xs" onClick={() => setDeleteErrorId(error.id)} variant="danger">Hapus</Button>
-                          </TableCell>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </Table>
-                </div>
+                    ))}
+                  </tbody>
+                </Table>
               )
             ) : null}
           </CardContent>
