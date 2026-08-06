@@ -363,7 +363,7 @@ class Phase5DictionaryImportTest extends TestCase
         $this->assertDatabaseHas('dictionary_import_errors', [
             'field' => 'kode',
             'code' => 'CODE_NOT_FOUND',
-            'message' => 'Kode tidak ditemukan di kosakata. Import kosakata terlebih dahulu.',
+            'message' => 'Kode "TIDAKADA" tidak ada di kamus. Saran: impor kosakata dulu, atau periksa ejaan kodenya.',
         ]);
         $this->assertSame(0, DictionaryEntry::query()->count());
     }

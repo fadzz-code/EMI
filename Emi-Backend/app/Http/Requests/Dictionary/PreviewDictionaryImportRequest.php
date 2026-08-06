@@ -32,11 +32,6 @@ class PreviewDictionaryImportRequest extends ApiFormRequest
 
             $extension = mb_strtolower($file->getClientOriginalExtension());
             $importType = $this->input('import_type');
-            $maxKb = (int) config($extension === 'xlsx' ? 'dictionary.max_xlsx_kb' : 'dictionary.max_csv_kb');
-
-            if ((int) $file->getSize() > $maxKb * 1024) {
-                $validator->errors()->add('csv_file', "Ukuran file {$extension} maksimal {$maxKb} KB.");
-            }
 
             if (($extension === 'xlsx' && $importType !== null && $importType !== 'combined') || ($extension === 'csv' && $importType === 'combined')) {
                 $validator->errors()->add('import_type', 'Tipe import tidak sesuai dengan format file. XLSX wajib combined dan CSV tidak boleh combined.');

@@ -88,7 +88,9 @@ class DictionaryImportService
 
     private function ensureInactive(DictionaryImportJob $job): void
     {
-        if (in_array($job->status, ['previewing', 'queued', 'processing'], true)) {
+        // 'previewing' tidak diblokir: pratinjau berjalan sinkron dalam request,
+        // jadi status itu pada riwayat berarti prosesnya macet dan aman dihapus.
+        if (in_array($job->status, ['queued', 'processing'], true)) {
             throw new ApiException('Import aktif tidak dapat diubah.', 'ACTIVE_IMPORT_CANNOT_BE_DELETED', 409);
         }
     }

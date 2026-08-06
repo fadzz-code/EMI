@@ -94,6 +94,7 @@ export type DictionaryImportSheetSummary = {
   warning_count?: number;
   new_rows?: number;
   duplicate_rows?: number;
+  error_breakdown?: Record<string, number>;
   [key: string]: unknown;
 };
 

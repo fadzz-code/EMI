@@ -36,7 +36,7 @@ import {
   importStatusLabel,
   statusTone,
 } from "./dictionary-utils";
-import type { DictionaryImportJob, DictionaryImportSheetSummary, DuplicateStrategy } from "./types";
+import type { DictionaryImportJob, DictionaryImportSheetSummary, DictionaryImportSummary, DuplicateStrategy } from "./types";
 
 function numberValue(value?: number | null) {
   return String(value ?? 0);
@@ -67,6 +67,66 @@ function simpleErrorLabel(value?: string | null) {
 function audioFilename(rawData?: Record<string, unknown> | null) {
   const value = rawData?.filename ?? rawData?.audio_filename ?? rawData?.audio;
   return typeof value === "string" ? value : "-";
+}
+
+const ERROR_CODE_INFO: Record<string, { label: string; hint: string }> = {
+  REQUIRED: { label: "Kolom wajib kosong", hint: "Isi kolom Bahasa Indonesia (kolom lain boleh menyusul)." },
+  CATEGORY_NOT_FOUND: { label: "Kategori tidak dikenal", hint: "Pilih kategori dari menu Kamus, atau kosongkan kolomnya." },
+  DICTIONARY_DUPLICATE: { label: "Kata sudah ada / ganda", hint: "Hapus baris ganda, atau ubah strategi duplikat ke Lewati/Perbarui." },
+  SENTENCE_DUPLICATE: { label: "Kalimat sudah ada / ganda", hint: "Hapus baris ganda, atau ubah strategi duplikat ke Lewati/Perbarui." },
+  CODE_NOT_FOUND: { label: "Kode tidak ditemukan", hint: "Impor kosakata dulu, atau periksa ejaan kodenya." },
+  RELATED_MEKONGGA_NOT_FOUND: { label: "Kata terkait tidak ada", hint: "Impor kata di sheet Kosakata dulu, atau samakan ejaan Mekongga-nya." },
+  AMBIGUOUS_RELATED_MEKONGGA: { label: "Kata terkait ganda", hint: "Rapikan entri kamus yang duplikat agar tautannya jelas." },
+  UNSAFE_ZIP_ENTRY: { label: "Nama audio tidak aman", hint: "Nama file audio tidak boleh mengandung path (garis miring)." },
+};
+
+type BreakdownRow = { code: string; count: number };
+
+function collectBreakdown(summary: DictionaryImportSummary | null | undefined): BreakdownRow[] {
+  const totals: Record<string, number> = {};
+  const sources = [summary?.error_breakdown, summary?.vocabulary?.error_breakdown, summary?.sentence_examples?.error_breakdown];
+
+  for (const source of sources) {
+    if (source && typeof source === "object") {
+      for (const [code, count] of Object.entries(source as Record<string, number>)) {
+        totals[code] = (totals[code] ?? 0) + (typeof count === "number" ? count : 0);
+      }
+    }
+  }
+
+  return Object.entries(totals)
+    .filter(([, count]) => count > 0)
+    .map(([code, count]) => ({ code, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+function ErrorBreakdown({ summary }: { summary: DictionaryImportSummary | null | undefined }) {
+  const rows = collectBreakdown(summary);
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="grid gap-3 rounded-lg border-2 border-border bg-surface p-4">
+      <h3 className="font-black text-ink">Kenapa ada baris tidak valid?</h3>
+      <div className="grid gap-2">
+        {rows.map(({ code, count }) => {
+          const info = ERROR_CODE_INFO[code] ?? { label: simpleErrorLabel(code), hint: "Periksa kembali baris terkait." };
+          return (
+            <div className="grid gap-1 rounded-md border-2 border-border bg-bg p-3 text-sm" key={code}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-black text-ink">{info.label}</span>
+                <Badge tone="yellow">{count} baris</Badge>
+              </div>
+              <p className="font-bold text-muted">Saran: {info.hint}</p>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-xs font-bold text-muted">Rincian per baris ada di tabel Error Impor di bawah.</p>
+    </div>
+  );
 }
 
 function SheetSummary({ label, summary }: { label: string; summary?: DictionaryImportSheetSummary }) {
@@ -305,6 +365,8 @@ export function DictionaryImport() {
                   <SheetSummary label="Kosakata" summary={selectedJob.summary?.vocabulary} />
                   <SheetSummary label="Contoh Kalimat" summary={selectedJob.summary?.sentence_examples} />
                 </div>
+
+                {(selectedJob.invalid_rows ?? 0) > 0 ? <ErrorBreakdown summary={selectedJob.summary} /> : null}
 
                 <div className="grid gap-3 rounded-lg border-2 border-border bg-surface p-4 sm:grid-cols-2 2xl:grid-cols-3">
                   <StatsCard label="File Ditemukan" value={numberValue(selectedJob.summary?.audio?.files_found)} />

@@ -323,13 +323,22 @@ class DictionaryExcelImportTest extends TestCase
         $this->withToken($this->tokenFor($admin))->deleteJson("/api/v1/admin/dictionary/imports/{$job->id}/errors/{$error->id}", ['confirm' => true])->assertOk();
         $this->assertDatabaseMissing('dictionary_import_errors', ['id' => $error->id]);
 
-        foreach (['previewing', 'queued', 'processing'] as $status) {
+        foreach (['queued', 'processing'] as $status) {
             $job->update(['status' => $status]);
             $this->withToken($this->tokenFor($admin))->deleteJson("/api/v1/admin/dictionary/imports/{$job->id}", ['confirm' => true])
                 ->assertConflict()->assertJsonPath('code', 'ACTIVE_IMPORT_CANNOT_BE_DELETED');
             $this->withToken($this->tokenFor($admin))->deleteJson("/api/v1/admin/dictionary/imports/{$job->id}/errors", ['confirm' => true])
                 ->assertConflict()->assertJsonPath('code', 'ACTIVE_IMPORT_CANNOT_BE_DELETED');
         }
+    }
+
+    public function test_stuck_previewing_history_can_be_deleted(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $job = DictionaryImportJob::factory()->create(['uploaded_by' => $admin->id, 'status' => 'previewing']);
+
+        $this->withToken($this->tokenFor($admin))->deleteJson("/api/v1/admin/dictionary/imports/{$job->id}", ['confirm' => true])->assertOk();
+        $this->assertDatabaseMissing('dictionary_import_jobs', ['id' => $job->id]);
     }
 
     public function test_invalid_xlsx_sheet_names_are_rejected_with_clear_message(): void

@@ -151,6 +151,7 @@ class DictionaryImportPreviewService
             ->active()
             ->get()
             ->keyBy(fn (DictionaryCategory $category) => $this->normalizer->normalize($category->name));
+        $existingByTriple = $this->existingEntriesByTriple();
         $seen = [];
         $validRows = [];
         $errors = [];
@@ -159,6 +160,7 @@ class DictionaryImportPreviewService
         $duplicateRows = 0;
         $audioReferenced = [];
         $dbDuplicates = 0;
+        $errorBreakdown = [];
 
         foreach ($rows as $row) {
             $data = $this->cleanRow($row['data']);
@@ -170,37 +172,31 @@ class DictionaryImportPreviewService
             ];
             $tripleKey = implode('|', $triple);
 
-            foreach (['indonesia', 'mekongga', 'english', 'kategori'] as $field) {
-                if (($data[$field] ?? '') === '') {
-                    $rowErrors[] = $this->error($row['row_number'], $field, 'REQUIRED', "Kolom {$field} wajib diisi.", $data, true, 'vocabulary');
-                }
+            if (($data['indonesia'] ?? '') === '') {
+                $rowErrors[] = $this->error($row['row_number'], 'indonesia', 'REQUIRED', 'Kolom Bahasa Indonesia kosong. Saran: isi kata Indonesia-nya; kolom lain boleh dikosongkan dulu.', $data, true, 'vocabulary');
             }
 
             $category = $categories[$this->normalizer->normalize($data['kategori'] ?? '')] ?? null;
 
             if (($data['kategori'] ?? '') !== '' && ! $category) {
-                $rowErrors[] = $this->error($row['row_number'], 'kategori', 'CATEGORY_NOT_FOUND', 'Kategori tidak ditemukan atau tidak aktif.', $data, true, 'vocabulary');
+                $rowErrors[] = $this->error($row['row_number'], 'kategori', 'CATEGORY_NOT_FOUND', "Kategori \"{$data['kategori']}\" tidak ada atau nonaktif. Saran: pilih kategori dari menu Kamus, atau kosongkan kolomnya.", $data, true, 'vocabulary');
             }
 
             $workbookDuplicate = isset($seen[$tripleKey]);
             if ($workbookDuplicate) {
                 $duplicateRows++;
-                $rowErrors[] = $this->error($row['row_number'], null, $job->duplicate_strategy === 'reject' ? 'DICTIONARY_DUPLICATE' : 'CSV_DUPLICATE_SKIPPED', $job->duplicate_strategy === 'reject' ? 'Duplikat ditemukan dalam sheet Kosakata.' : 'Duplikat dalam sheet Kosakata dilewati secara deterministik.', $data, $job->duplicate_strategy === 'reject', 'vocabulary');
+                $rowErrors[] = $this->error($row['row_number'], null, $job->duplicate_strategy === 'reject' ? 'DICTIONARY_DUPLICATE' : 'CSV_DUPLICATE_SKIPPED', $job->duplicate_strategy === 'reject' ? 'Baris ini sama persis dengan baris lain di sheet Kosakata. Saran: hapus salah satu baris.' : 'Baris ini sama dengan baris lain di sheet Kosakata, jadi otomatis dilewati. Saran: hapus baris gandanya.', $data, $job->duplicate_strategy === 'reject', 'vocabulary');
             } else {
                 $seen[$tripleKey] = true;
             }
 
-            $existing = DictionaryEntry::query()
-                ->where('indonesia_normalized', $triple[0])
-                ->where('english_normalized', $triple[1])
-                ->where('mekongga_normalized', $triple[2])
-                ->first();
+            $existingId = $existingByTriple[$tripleKey] ?? null;
 
-            if ($existing) {
+            if ($existingId !== null) {
                 $dbDuplicates++;
 
                 if ($job->duplicate_strategy === 'reject') {
-                    $rowErrors[] = $this->error($row['row_number'], null, 'DICTIONARY_DUPLICATE', 'Entri kamus sudah ada.', $data, true, 'vocabulary');
+                    $rowErrors[] = $this->error($row['row_number'], null, 'DICTIONARY_DUPLICATE', 'Kata ini sudah ada di kamus. Saran: ganti strategi duplikat ke "Lewati" atau "Perbarui".', $data, true, 'vocabulary');
                 }
             }
 
@@ -215,6 +211,10 @@ class DictionaryImportPreviewService
 
             $fatalRowErrors = array_filter($rowErrors, fn ($error) => $error['is_error']);
 
+            foreach ($fatalRowErrors as $fatalError) {
+                $errorBreakdown[$fatalError['code']] = ($errorBreakdown[$fatalError['code']] ?? 0) + 1;
+            }
+
             foreach ($rowErrors as $error) {
                 $errors[] = collect($error)->except('is_error')->all();
                 if (count($sampleErrors) < config('dictionary.sample_limit')) {
@@ -225,11 +225,11 @@ class DictionaryImportPreviewService
             if ($fatalRowErrors === [] && ! $workbookDuplicate) {
                 $validRows[] = [
                     'row_number' => $row['row_number'],
-                    'data' => $data + ['kode' => $this->generateEntryCode($data['mekongga'], $row['row_number'])],
+                    'data' => $data + ['kode' => $this->generateEntryCode($data['mekongga'] ?? '', $row['row_number'])],
                     'category_id' => $category?->id,
                     'triple_key' => $tripleKey,
                     'mekongga_normalized' => $triple[2],
-                    'existing_id' => $existing?->id,
+                    'existing_id' => $existingId,
                 ];
 
                 if (count($sampleRows) < config('dictionary.sample_limit')) {
@@ -265,6 +265,7 @@ class DictionaryImportPreviewService
                 'unused_audio_files' => count($unusedAudio),
                 'audio' => $this->audioSummary($zipFiles, $audioReferenced, $errors, $unusedAudio),
                 'warning_count' => count($unusedAudio) + count(array_filter($errors, fn ($error) => in_array($error['code'], ['CSV_DUPLICATE_SKIPPED', 'AUDIO_FILE_NOT_FOUND', 'AUDIO_AUTO_NOT_FOUND', 'AUDIO_AUTO_AMBIGUOUS'], true))),
+                'error_breakdown' => $errorBreakdown,
                 'sample_rows' => $sampleRows,
                 'sample_errors' => $sampleErrors,
             ],
@@ -281,6 +282,19 @@ class DictionaryImportPreviewService
             $vocabByMekongga[$vocabRow['mekongga_normalized']][] = $vocabRow;
         }
 
+        $relatedValues = collect($rows)
+            ->map(fn (array $row): string => $this->normalizer->normalize($row['data']['related_mekongga'] ?? ''))
+            ->filter()
+            ->unique()
+            ->values();
+        $entriesByMekongga = $relatedValues->isEmpty()
+            ? collect()
+            : DictionaryEntry::query()->whereIn('mekongga_normalized', $relatedValues)->get()->groupBy('mekongga_normalized');
+        $existingSentences = DictionarySentenceExample::query()
+            ->whereIn('dictionary_entry_id', $entriesByMekongga->flatten(1)->pluck('id'))
+            ->get(['id', 'dictionary_entry_id', 'example_mekongga_normalized', 'example_indonesia_normalized'])
+            ->keyBy(fn (DictionarySentenceExample $sentence): string => implode('|', [$sentence->dictionary_entry_id, $sentence->example_mekongga_normalized, $sentence->example_indonesia_normalized]));
+
         $seen = [];
         $validRows = [];
         $errors = [];
@@ -288,34 +302,36 @@ class DictionaryImportPreviewService
         $sampleErrors = [];
         $duplicateRows = 0;
         $dbDuplicates = 0;
+        $errorBreakdown = [];
 
         foreach ($rows as $row) {
             $data = $this->cleanRow($row['data']);
             $rowErrors = [];
 
-            foreach (['contoh_mekongga', 'contoh_indonesia', 'related_mekongga'] as $field) {
-                if (($data[$field] ?? '') === '') {
-                    $rowErrors[] = $this->error($row['row_number'], $field, 'REQUIRED', "Kolom {$field} wajib diisi.", $data, true, 'sentence_examples');
-                }
+            if (($data['contoh_indonesia'] ?? '') === '') {
+                $rowErrors[] = $this->error($row['row_number'], 'contoh_indonesia', 'REQUIRED', 'Kolom Bahasa Indonesia kosong. Saran: isi kalimat Indonesia-nya; contoh Mekongga boleh menyusul.', $data, true, 'sentence_examples');
+            }
+
+            if (($data['related_mekongga'] ?? '') === '') {
+                $rowErrors[] = $this->error($row['row_number'], 'related_mekongga', 'REQUIRED', 'Kolom Kata Mekongga Terkait kosong. Saran: isi kata Mekongga yang punya contoh ini, persis seperti di sheet Kosakata.', $data, true, 'sentence_examples');
             }
 
             $relatedNormalized = $this->normalizer->normalize($data['related_mekongga'] ?? '');
             $entries = $relatedNormalized !== ''
-                ? DictionaryEntry::query()->where('mekongga_normalized', $relatedNormalized)->get()
+                ? collect($entriesByMekongga[$relatedNormalized] ?? [])
                 : collect();
             $pendingVocabRows = $vocabByMekongga[$relatedNormalized] ?? [];
             $matchCount = $entries->count() + count($pendingVocabRows);
             $entry = $matchCount === 1 ? $entries->first() : null;
-            $pendingVocabRow = $matchCount === 1 && $entries->isEmpty() ? $pendingVocabRows[0] : null;
 
             if ($relatedNormalized !== '' && $matchCount > 1) {
-                $rowErrors[] = $this->error($row['row_number'], 'related_mekongga', 'AMBIGUOUS_RELATED_MEKONGGA', "Kata Mekongga \"{$data['related_mekongga']}\" cocok dengan lebih dari satu entri.", $data, true, 'sentence_examples');
+                $rowErrors[] = $this->error($row['row_number'], 'related_mekongga', 'AMBIGUOUS_RELATED_MEKONGGA', "Kata Mekongga \"{$data['related_mekongga']}\" cocok dengan lebih dari satu entri kamus. Saran: perjelas kata terkait atau rapikan duplikat entri di kamus.", $data, true, 'sentence_examples');
             } elseif ($relatedNormalized !== '' && $matchCount === 0) {
                 $rowErrors[] = $this->error(
                     $row['row_number'],
                     'related_mekongga',
                     'RELATED_MEKONGGA_NOT_FOUND',
-                    "Kata Mekongga \"{$data['related_mekongga']}\" tidak ditemukan di sheet Kosakata maupun kamus. Pastikan ejaan sama persis dengan kolom Mekongga.",
+                    "Kata Mekongga \"{$data['related_mekongga']}\" tidak ditemukan di sheet Kosakata maupun kamus. Saran: impor kata itu dulu di sheet Kosakata, atau samakan ejaannya persis dengan kolom Mekongga.",
                     $data,
                     true,
                     'sentence_examples',
@@ -331,28 +347,28 @@ class DictionaryImportPreviewService
             $workbookDuplicate = isset($seen[$pairKey]);
             if ($workbookDuplicate) {
                 $duplicateRows++;
-                $rowErrors[] = $this->error($row['row_number'], null, $job->duplicate_strategy === 'reject' ? 'SENTENCE_DUPLICATE' : 'CSV_DUPLICATE_SKIPPED', $job->duplicate_strategy === 'reject' ? 'Contoh kalimat duplikat ditemukan dalam sheet Contoh Kalimat.' : 'Duplikat dalam sheet Contoh Kalimat dilewati secara deterministik.', $data, $job->duplicate_strategy === 'reject', 'sentence_examples');
+                $rowErrors[] = $this->error($row['row_number'], null, $job->duplicate_strategy === 'reject' ? 'SENTENCE_DUPLICATE' : 'CSV_DUPLICATE_SKIPPED', $job->duplicate_strategy === 'reject' ? 'Kalimat ini sama dengan baris lain di sheet Contoh Kalimat. Saran: hapus salah satu baris.' : 'Kalimat ini sama dengan baris lain di sheet Contoh Kalimat, jadi otomatis dilewati. Saran: hapus baris gandanya.', $data, $job->duplicate_strategy === 'reject', 'sentence_examples');
             } else {
                 $seen[$pairKey] = true;
             }
 
-            $existing = $entry
-                ? DictionarySentenceExample::query()
-                    ->where('dictionary_entry_id', $entry->id)
-                    ->where('example_mekongga_normalized', $pair[0])
-                    ->where('example_indonesia_normalized', $pair[1])
-                    ->first()
+            $existingId = $entry
+                ? ($existingSentences[implode('|', [$entry->id, $pair[0], $pair[1]])] ?? null)
                 : null;
 
-            if ($existing) {
+            if ($existingId !== null) {
                 $dbDuplicates++;
 
                 if ($job->duplicate_strategy === 'reject') {
-                    $rowErrors[] = $this->error($row['row_number'], null, 'SENTENCE_DUPLICATE', 'Contoh kalimat sudah ada.', $data, true, 'sentence_examples');
+                    $rowErrors[] = $this->error($row['row_number'], null, 'SENTENCE_DUPLICATE', 'Contoh kalimat ini sudah ada di kamus. Saran: ganti strategi duplikat ke "Lewati" atau "Perbarui".', $data, true, 'sentence_examples');
                 }
             }
 
             $fatalRowErrors = array_filter($rowErrors, fn ($error) => $error['is_error']);
+
+            foreach ($fatalRowErrors as $fatalError) {
+                $errorBreakdown[$fatalError['code']] = ($errorBreakdown[$fatalError['code']] ?? 0) + 1;
+            }
 
             foreach ($rowErrors as $error) {
                 $errors[] = collect($error)->except('is_error')->all();
@@ -364,11 +380,11 @@ class DictionaryImportPreviewService
             if ($fatalRowErrors === [] && ! $workbookDuplicate) {
                 $validRows[] = [
                     'row_number' => $row['row_number'],
-                    'data' => $data + ['kode' => $this->generateEntryCode($data['contoh_mekongga'], $row['row_number']).'-CK'],
+                    'data' => $data + ['kode' => $this->generateEntryCode($data['contoh_mekongga'] ?? '', $row['row_number']).'-CK'],
                     'pair_key' => $pairKey,
                     'entry_id' => $entry?->id,
                     'pending_vocab_mekongga' => $entry ? null : $relatedNormalized,
-                    'existing_id' => $existing?->id,
+                    'existing_id' => $existingId,
                 ];
 
                 if (count($sampleRows) < config('dictionary.sample_limit')) {
@@ -390,6 +406,7 @@ class DictionaryImportPreviewService
                 'audio_missing' => 0,
                 'unused_audio_files' => 0,
                 'warning_count' => count(array_filter($errors, fn ($error) => $error['code'] === 'CSV_DUPLICATE_SKIPPED')),
+                'error_breakdown' => $errorBreakdown,
                 'sample_rows' => $sampleRows,
                 'sample_errors' => $sampleErrors,
             ],
@@ -410,6 +427,7 @@ class DictionaryImportPreviewService
             ->active()
             ->get()
             ->keyBy(fn (DictionaryCategory $category) => $this->normalizer->normalize($category->name));
+        $existingByTriple = $this->existingEntriesByTriple();
         $seen = [];
         $validRows = [];
         $errors = [];
@@ -418,50 +436,45 @@ class DictionaryImportPreviewService
         $duplicateRows = 0;
         $audioReferenced = [];
         $dbDuplicates = 0;
+        $errorBreakdown = [];
 
         foreach ($rows as $row) {
             $data = $this->cleanRow($row['data']);
             $rowErrors = [];
             $triple = [
-                $this->normalizer->normalize($data['indonesia']),
-                $this->normalizer->normalize($data['english']),
-                $this->normalizer->normalize($data['mekongga']),
+                $this->normalizer->normalize($data['indonesia'] ?? ''),
+                $this->normalizer->normalize($data['english'] ?? ''),
+                $this->normalizer->normalize($data['mekongga'] ?? ''),
             ];
             $tripleKey = implode('|', $triple);
 
-            foreach (['kode', 'indonesia', 'english', 'mekongga', 'kategori'] as $field) {
-                if (($data[$field] ?? '') === '') {
-                    $rowErrors[] = $this->error($row['row_number'], $field, 'REQUIRED', "Kolom {$field} wajib diisi.", $data);
-                }
+            if (($data['indonesia'] ?? '') === '') {
+                $rowErrors[] = $this->error($row['row_number'], 'indonesia', 'REQUIRED', 'Kolom Bahasa Indonesia kosong. Saran: isi kata Indonesia-nya; kolom lain boleh dikosongkan dulu.', $data);
             }
 
             $category = $categories[$this->normalizer->normalize($data['kategori'] ?? '')] ?? null;
 
             if (($data['kategori'] ?? '') !== '' && ! $category) {
-                $rowErrors[] = $this->error($row['row_number'], 'kategori', 'CATEGORY_NOT_FOUND', 'Kategori tidak ditemukan atau tidak aktif.', $data);
+                $rowErrors[] = $this->error($row['row_number'], 'kategori', 'CATEGORY_NOT_FOUND', "Kategori \"{$data['kategori']}\" tidak ada atau nonaktif. Saran: pilih kategori dari menu Kamus, atau kosongkan kolomnya.", $data);
             }
 
             if (isset($seen[$tripleKey])) {
                 $duplicateRows++;
 
                 if ($job->duplicate_strategy === 'reject') {
-                    $rowErrors[] = $this->error($row['row_number'], null, 'DICTIONARY_DUPLICATE', 'Duplikat ditemukan dalam CSV.', $data);
+                    $rowErrors[] = $this->error($row['row_number'], null, 'DICTIONARY_DUPLICATE', 'Baris ini sama persis dengan baris lain di CSV. Saran: hapus salah satu baris.', $data);
                 } else {
-                    $rowErrors[] = $this->error($row['row_number'], null, 'CSV_DUPLICATE_SKIPPED', 'Duplikat dalam CSV dilewati secara deterministik.', $data, false);
+                    $rowErrors[] = $this->error($row['row_number'], null, 'CSV_DUPLICATE_SKIPPED', 'Baris ini sama dengan baris lain di CSV, jadi otomatis dilewati. Saran: hapus baris gandanya.', $data, false);
                 }
             }
 
-            $existing = DictionaryEntry::query()
-                ->where('indonesia_normalized', $triple[0])
-                ->where('english_normalized', $triple[1])
-                ->where('mekongga_normalized', $triple[2])
-                ->first();
+            $existingId = $existingByTriple[$tripleKey] ?? null;
 
-            if ($existing) {
+            if ($existingId !== null) {
                 $dbDuplicates++;
 
                 if ($job->duplicate_strategy === 'reject') {
-                    $rowErrors[] = $this->error($row['row_number'], null, 'DICTIONARY_DUPLICATE', 'Entri kamus sudah ada.', $data);
+                    $rowErrors[] = $this->error($row['row_number'], null, 'DICTIONARY_DUPLICATE', 'Kata ini sudah ada di kamus. Saran: ganti strategi duplikat ke "Lewati" atau "Perbarui".', $data);
                 }
             }
 
@@ -476,6 +489,10 @@ class DictionaryImportPreviewService
 
             $fatalRowErrors = array_filter($rowErrors, fn ($error) => $error['is_error']);
 
+            foreach ($fatalRowErrors as $fatalError) {
+                $errorBreakdown[$fatalError['code']] = ($errorBreakdown[$fatalError['code']] ?? 0) + 1;
+            }
+
             foreach ($rowErrors as $error) {
                 $errors[] = collect($error)->except('is_error')->all();
                 if (count($sampleErrors) < config('dictionary.sample_limit')) {
@@ -487,10 +504,10 @@ class DictionaryImportPreviewService
                 $seen[$tripleKey] = true;
                 $validRows[] = [
                     'row_number' => $row['row_number'],
-                    'data' => $data,
+                    'data' => $data + ['kode' => ($data['kode'] ?? '') !== '' ? $data['kode'] : $this->generateEntryCode($data['mekongga'] ?? '', $row['row_number'])],
                     'category_id' => $category?->id,
                     'triple_key' => $tripleKey,
-                    'existing_id' => $existing?->id,
+                    'existing_id' => $existingId,
                 ];
 
                 if (count($sampleRows) < config('dictionary.sample_limit')) {
@@ -525,6 +542,7 @@ class DictionaryImportPreviewService
                 'unused_audio_files' => count($unusedAudio),
                 'audio' => $this->audioSummary($zipFiles, $audioReferenced, $errors, $unusedAudio),
                 'warning_count' => count($unusedAudio) + count(array_filter($errors, fn ($error) => in_array($error['code'], ['CSV_DUPLICATE_SKIPPED', 'AUDIO_FILE_NOT_FOUND', 'AUDIO_AUTO_NOT_FOUND', 'AUDIO_AUTO_AMBIGUOUS'], true))),
+                'error_breakdown' => $errorBreakdown,
                 'sample_rows' => $sampleRows,
                 'sample_errors' => $sampleErrors,
             ],
@@ -533,6 +551,19 @@ class DictionaryImportPreviewService
 
     private function analyzeSentenceRows(DictionaryImportJob $job, array $rows): array
     {
+        $codes = collect($rows)
+            ->map(fn (array $row): string => $this->normalizer->normalize($row['data']['kode'] ?? ''))
+            ->filter()
+            ->unique()
+            ->values();
+        $entriesByCode = $codes->isEmpty()
+            ? collect()
+            : DictionaryEntry::query()->whereIn('code_normalized', $codes)->get()->keyBy('code_normalized');
+        $existingSentences = DictionarySentenceExample::query()
+            ->whereIn('dictionary_entry_id', $entriesByCode->pluck('id'))
+            ->get(['id', 'dictionary_entry_id', 'example_mekongga_normalized', 'example_indonesia_normalized'])
+            ->keyBy(fn (DictionarySentenceExample $sentence): string => implode('|', [$sentence->dictionary_entry_id, $sentence->example_mekongga_normalized, $sentence->example_indonesia_normalized]));
+
         $seen = [];
         $validRows = [];
         $errors = [];
@@ -540,20 +571,23 @@ class DictionaryImportPreviewService
         $sampleErrors = [];
         $duplicateRows = 0;
         $dbDuplicates = 0;
+        $errorBreakdown = [];
 
         foreach ($rows as $row) {
             $data = $this->cleanRow($row['data']);
             $rowErrors = [];
 
-            foreach (['kode', 'contoh_mekongga', 'contoh_indonesia'] as $field) {
-                if (($data[$field] ?? '') === '') {
-                    $rowErrors[] = $this->error($row['row_number'], $field, 'REQUIRED', "Kolom {$field} wajib diisi.", $data);
-                }
+            if (($data['kode'] ?? '') === '') {
+                $rowErrors[] = $this->error($row['row_number'], 'kode', 'REQUIRED', 'Kolom kode kosong. Saran: isi kode kata dari sheet Kosakata agar kalimat tertaut ke kata yang benar.', $data);
+            }
+
+            if (($data['contoh_indonesia'] ?? '') === '') {
+                $rowErrors[] = $this->error($row['row_number'], 'contoh_indonesia', 'REQUIRED', 'Kolom Bahasa Indonesia kosong. Saran: isi kalimat Indonesia-nya; contoh Mekongga boleh menyusul.', $data);
             }
 
             $pair = [
-                $this->normalizer->normalize($data['contoh_mekongga']),
-                $this->normalizer->normalize($data['contoh_indonesia']),
+                $this->normalizer->normalize($data['contoh_mekongga'] ?? ''),
+                $this->normalizer->normalize($data['contoh_indonesia'] ?? ''),
             ];
             $pairKey = implode('|', $pair);
 
@@ -561,35 +595,35 @@ class DictionaryImportPreviewService
                 $duplicateRows++;
 
                 if ($job->duplicate_strategy === 'reject') {
-                    $rowErrors[] = $this->error($row['row_number'], null, 'SENTENCE_DUPLICATE', 'Contoh kalimat duplikat ditemukan dalam CSV.', $data);
+                    $rowErrors[] = $this->error($row['row_number'], null, 'SENTENCE_DUPLICATE', 'Kalimat ini sama dengan baris lain di CSV. Saran: hapus salah satu baris.', $data);
                 } else {
-                    $rowErrors[] = $this->error($row['row_number'], null, 'CSV_DUPLICATE_SKIPPED', 'Duplikat dalam CSV dilewati secara deterministik.', $data, false);
+                    $rowErrors[] = $this->error($row['row_number'], null, 'CSV_DUPLICATE_SKIPPED', 'Kalimat ini sama dengan baris lain di CSV, jadi otomatis dilewati. Saran: hapus baris gandanya.', $data, false);
                 }
             }
 
-            $entry = DictionaryEntry::query()
-                ->where('code_normalized', $this->normalizer->normalize($data['kode'] ?? ''))
-                ->first();
+            $entry = $entriesByCode[$this->normalizer->normalize($data['kode'] ?? '')] ?? null;
 
             if (($data['kode'] ?? '') !== '' && ! $entry) {
-                $rowErrors[] = $this->error($row['row_number'], 'kode', 'CODE_NOT_FOUND', 'Kode tidak ditemukan di kosakata. Import kosakata terlebih dahulu.', $data);
+                $rowErrors[] = $this->error($row['row_number'], 'kode', 'CODE_NOT_FOUND', "Kode \"{$data['kode']}\" tidak ada di kamus. Saran: impor kosakata dulu, atau periksa ejaan kodenya.", $data);
             }
 
-            $existing = DictionarySentenceExample::query()
-                ->where('dictionary_entry_id', $entry?->id)
-                ->where('example_mekongga_normalized', $pair[0])
-                ->where('example_indonesia_normalized', $pair[1])
-                ->first();
+            $existingId = $entry
+                ? ($existingSentences[implode('|', [$entry->id, $pair[0], $pair[1]])] ?? null)
+                : null;
 
-            if ($existing) {
+            if ($existingId !== null) {
                 $dbDuplicates++;
 
                 if ($job->duplicate_strategy === 'reject') {
-                    $rowErrors[] = $this->error($row['row_number'], null, 'SENTENCE_DUPLICATE', 'Contoh kalimat sudah ada.', $data);
+                    $rowErrors[] = $this->error($row['row_number'], null, 'SENTENCE_DUPLICATE', 'Contoh kalimat ini sudah ada di kamus. Saran: ganti strategi duplikat ke "Lewati" atau "Perbarui".', $data);
                 }
             }
 
             $fatalRowErrors = array_filter($rowErrors, fn ($error) => $error['is_error']);
+
+            foreach ($fatalRowErrors as $fatalError) {
+                $errorBreakdown[$fatalError['code']] = ($errorBreakdown[$fatalError['code']] ?? 0) + 1;
+            }
 
             foreach ($rowErrors as $error) {
                 $errors[] = collect($error)->except('is_error')->all();
@@ -605,7 +639,7 @@ class DictionaryImportPreviewService
                     'data' => $data,
                     'pair_key' => $pairKey,
                     'entry_id' => $entry?->id,
-                    'existing_id' => $existing?->id,
+                    'existing_id' => $existingId,
                 ];
 
                 if (count($sampleRows) < config('dictionary.sample_limit')) {
@@ -627,10 +661,20 @@ class DictionaryImportPreviewService
                 'audio_missing' => 0,
                 'unused_audio_files' => 0,
                 'warning_count' => count(array_filter($errors, fn ($error) => $error['code'] === 'CSV_DUPLICATE_SKIPPED')),
+                'error_breakdown' => $errorBreakdown,
                 'sample_rows' => $sampleRows,
                 'sample_errors' => $sampleErrors,
             ],
         ];
+    }
+
+    private function existingEntriesByTriple(): array
+    {
+        return DictionaryEntry::query()
+            ->select(['id', 'indonesia_normalized', 'english_normalized', 'mekongga_normalized'])
+            ->get()
+            ->mapWithKeys(fn (DictionaryEntry $entry): array => [implode('|', [$entry->indonesia_normalized, $entry->english_normalized, $entry->mekongga_normalized]) => $entry->id])
+            ->all();
     }
 
     private function resolveAudio(string $explicit, string $mekongga, array $zipFiles, int $rowNumber, array $data, ?string $sheet = null): array
@@ -645,7 +689,7 @@ class DictionaryImportPreviewService
                 : [null, $this->error($rowNumber, 'audio_filename', 'AUDIO_FILE_NOT_FOUND', "Audio \"{$explicit}\" tidak ditemukan karena ZIP audio tidak diunggah atau file tidak ada di ZIP. Kata tetap bisa diimpor tanpa audio.", $data, false, $sheet)];
         }
 
-        if ($zipFiles === []) {
+        if ($zipFiles === [] || $mekongga === '') {
             return [null, null];
         }
 
