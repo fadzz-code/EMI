@@ -1,12 +1,13 @@
 "use client";
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { Bot, CheckCheck, ListChecks, TriangleAlert } from "lucide-react";
+import { Bot, CheckCheck, ListChecks, Mic, TriangleAlert, Volume2 } from "lucide-react";
 
-import { Alert, AudioPlayer, Badge, Button, Card, CardContent, CardHeader, EmptyState, FormField, Input, LoadingState, Textarea } from "@/components/ui";
+import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, FormField, Input, LoadingState, Textarea } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
+import { ComparePlayer, referenceAudioUrl } from "@/features/student/speaking-result-hero";
 import { teacherService } from "./teacher-service";
 import type { TeacherSpeakingAttempt } from "./types";
 
@@ -36,6 +37,7 @@ export function TeacherSpeakingResults() {
   const [teacherScore, setTeacherScore] = useState("");
   const [teacherFeedback, setTeacherFeedback] = useState("");
   const [search, setSearch] = useState("");
+  const [tab, setTab] = useState<"pending" | "reviewed">("pending");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -47,7 +49,7 @@ export function TeacherSpeakingResults() {
     teacherService.speakingAttempts(token)
       .then((items) => {
         if (ignore) return;
-        const initialAttempt = items[0] ?? null;
+        const initialAttempt = items.find((item) => item.status !== "reviewed" && item.teacher_score === null) ?? items[0] ?? null;
         setAttempts(items);
         setSelectedAttempt(initialAttempt);
         setTeacherScore(initialAttempt?.teacher_score?.toString() ?? "");
@@ -109,17 +111,20 @@ export function TeacherSpeakingResults() {
     }
   }
 
+  const isReviewed = (attempt: TeacherSpeakingAttempt) => attempt.status === "reviewed" || attempt.teacher_score !== null;
+
   const filteredAttempts = useMemo(() => {
+    const byTab = attempts.filter((attempt) => tab === "reviewed" ? isReviewed(attempt) : !isReviewed(attempt));
     const keyword = search.trim().toLowerCase();
-    if (!keyword) return attempts;
-    return attempts.filter((attempt) => [
+    if (!keyword) return byTab;
+    return byTab.filter((attempt) => [
       attempt.student?.full_name,
       attempt.student?.email,
       attempt.exercise?.title,
       attempt.target_text,
       attempt.status,
     ].filter(Boolean).join(" ").toLowerCase().includes(keyword));
-  }, [attempts, search]);
+  }, [attempts, search, tab]);
 
   const alignmentRows = (Array.isArray(selectedAttempt?.ai_alignment) ? [] : Object.entries(selectedAttempt?.ai_alignment ?? {}))
     .filter(([key, value]) => typeof value === "number" && /^\d+_/.test(key))
@@ -168,17 +173,32 @@ export function TeacherSpeakingResults() {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[1fr_1.3fr]">
-        <Card>
+        <Card className="flex flex-col lg:h-[42rem]">
           <CardHeader>
             <div className="grid gap-3">
               <h2 className="text-xl font-black text-ink">Percobaan Siswa</h2>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { key: "pending", label: `Perlu Ditinjau (${attempts.filter((attempt) => !isReviewed(attempt)).length})` },
+                  { key: "reviewed", label: `Sudah Ditinjau (${attempts.filter(isReviewed).length})` },
+                ] as const).map((item) => (
+                  <button
+                    className={`rounded-xl border-2 border-border px-3 py-2 text-sm font-black transition ${tab === item.key ? "bg-primary text-primary-foreground" : "bg-surface text-ink hover:bg-surface-muted"}`}
+                    key={item.key}
+                    onClick={() => setTab(item.key)}
+                    type="button"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
               <Input onChange={(event) => setSearch(event.target.value)} placeholder="Cari siswa, latihan, status..." value={search} />
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex min-h-0 flex-1 flex-col">
             {isLoading ? <LoadingState title="Memuat hasil speaking" /> : null}
-            {!isLoading && filteredAttempts.length === 0 ? <EmptyState description="Percobaan speaking siswa akan muncul setelah siswa mengirim audio." title="Belum ada hasil speaking" /> : null}
-            <div className="grid gap-3">
+            {!isLoading && filteredAttempts.length === 0 ? <EmptyState description={tab === "pending" ? "Tidak ada percobaan yang menunggu tinjauan. Percobaan baru akan muncul setelah siswa mengirim audio." : "Belum ada percobaan yang selesai ditinjau. Buka tab Perlu Ditinjau untuk memberi feedback."} title={tab === "pending" ? "Tidak ada yang perlu ditinjau" : "Belum ada yang ditinjau"} /> : null}
+            <div className="grid max-h-[34rem] content-start gap-3 overflow-y-auto pr-1 lg:max-h-none lg:min-h-0 lg:flex-1">
               {filteredAttempts.map((attempt) => (
                 <button key={attempt.id} className={`rounded-xl border-2 border-border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-emi ${selectedAttempt?.id === attempt.id ? "bg-[var(--color-primary-muted)]" : "bg-surface hover:bg-surface-muted"}`} onClick={() => selectAttempt(attempt)} type="button">
                   <div className="flex items-start justify-between gap-3">
@@ -199,9 +219,9 @@ export function TeacherSpeakingResults() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="flex flex-col lg:h-[42rem]">
           <CardHeader><h2 className="text-xl font-black text-ink">Detail dan Feedback</h2></CardHeader>
-          <CardContent>
+          <CardContent className="min-h-0 flex-1 overflow-y-auto">
             {!selectedAttempt ? <EmptyState description="Pilih percobaan siswa untuk meninjau audio dan memberi feedback." title="Pilih percobaan" /> : (
               <div className="grid gap-4">
                 <div className="rounded-xl border-2 border-border bg-[var(--color-primary-muted)] p-4">
@@ -214,8 +234,12 @@ export function TeacherSpeakingResults() {
                   <p className="rounded-xl border-2 border-border bg-surface-muted p-3 text-sm"><span className="font-black">Skor guru:</span> {score(selectedAttempt.teacher_score)}</p>
                 </div>
                 {selectedAttempt.ai_error ? <Alert tone="error">AI gagal menganalisis: {selectedAttempt.ai_error}</Alert> : null}
-                <AudioPlayer src={audioUrl ?? undefined} title="Audio asli siswa" />
-                {!audioUrl ? <p className="text-sm font-bold text-muted">Audio private akan diputar setelah URL sementara tersedia untuk guru.</p> : null}
+                <div className="grid gap-3 rounded-xl border-2 border-border bg-surface p-4">
+                  <p className="text-xs font-black uppercase tracking-[0.12em] text-muted">Bandingkan Suara</p>
+                  <ComparePlayer icon={Volume2} label="Penutur Asli" src={referenceAudioUrl(selectedAttempt.exercise)} />
+                  <ComparePlayer icon={Mic} label="Suara Siswa" src={audioUrl} />
+                  {!audioUrl ? <p className="text-xs font-bold text-muted">Audio siswa akan diputar setelah URL sementara tersedia untuk guru.</p> : null}
+                </div>
                 <div className="rounded-xl border-2 border-border bg-surface p-4">
                   <h3 className="font-black text-ink">Perbandingan ucapan</h3>
                   <p className="mt-1 text-xs font-semibold text-muted">Bandingkan hasil ucapan siswa yang dikenali AI dengan target teks per kata.</p>

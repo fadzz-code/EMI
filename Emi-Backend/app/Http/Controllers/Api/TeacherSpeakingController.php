@@ -22,8 +22,9 @@ class TeacherSpeakingController extends Controller
         $direction = $request->validated('direction', 'desc');
         $search = $request->validated('search');
         $attempts = SpeakingAttempt::query()
-            ->with(['exercise', 'student', 'reviewer'])
-            ->whereHas('exercise', fn ($query) => $query->whereIn('classroom_id', $classIds))
+            ->with(['exercise.referenceAudio', 'student', 'reviewer'])
+            ->whereHas('exercise', fn ($query) => $query
+                ->where(fn ($nested) => $nested->whereIn('classroom_id', $classIds)->orWhereNull('classroom_id')))
             ->when($request->validated('analysis_status'), fn ($query, $status) => $query->where('analysis_status', $status))
             ->when($request->validated('review_status'), fn ($query, $status) => $query->where('review_status', $status))
             ->when($search, fn ($query, $value) => $query->where(fn ($nested) => $nested
@@ -40,7 +41,7 @@ class TeacherSpeakingController extends Controller
     {
         abort_unless($this->attemptService->teacherCanAccess(request()->user(), $attempt->load('exercise')), 403);
 
-        return ApiResponse::success('Detail percobaan speaking siswa berhasil diambil.', new SpeakingAttemptResource($attempt->load(['exercise', 'student', 'reviewer'])));
+        return ApiResponse::success('Detail percobaan speaking siswa berhasil diambil.', new SpeakingAttemptResource($attempt->load(['exercise.referenceAudio', 'student', 'reviewer'])));
     }
 
     public function feedback(ReviewSpeakingAttemptRequest $request, SpeakingAttempt $attempt): JsonResponse

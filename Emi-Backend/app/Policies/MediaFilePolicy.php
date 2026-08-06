@@ -53,10 +53,16 @@ class MediaFilePolicy
         }
 
         $attempt = SpeakingAttempt::query()->with('exercise')->where('audio_media_id', $mediaFile->id)->first();
-        $classId = $attempt?->exercise?->classroom_id;
+
+        if (! $attempt) {
+            return false;
+        }
+
+        $classId = $attempt->exercise?->classroom_id;
 
         if (! $classId) {
-            return false;
+            // Latihan global (dibuat admin) dapat direview guru manapun.
+            return true;
         }
 
         return $user->teacherClassAssignments()->where('class_id', $classId)->where('is_active', true)->exists();
