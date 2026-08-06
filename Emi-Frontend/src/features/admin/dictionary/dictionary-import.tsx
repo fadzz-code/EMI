@@ -19,7 +19,6 @@ import {
   LoadingState,
   Pagination,
   Select,
-  StatsCard,
   Table,
   TableCell,
   TableHeader,
@@ -40,6 +39,15 @@ import type { DictionaryImportJob, DictionaryImportSheetSummary, DictionaryImpor
 
 function numberValue(value?: number | null) {
   return String(value ?? 0);
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-[var(--radius-control)] border-2 border-border bg-bg p-3">
+      <p className="truncate text-[10px] font-black uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-1 truncate text-lg font-black text-ink">{value}</p>
+    </div>
+  );
 }
 
 function summaryValue(summary: DictionaryImportSheetSummary | null | undefined, key: string) {
@@ -134,10 +142,10 @@ function SheetSummary({ label, summary }: { label: string; summary?: DictionaryI
     <div className="grid h-full gap-3 rounded-lg border-2 border-border bg-surface p-4">
       <h3 className="font-black text-ink">{label}</h3>
       <div className="grid grid-cols-2 gap-3">
-        <StatsCard label="Total Baris" value={summaryValue(summary, "total_rows")} />
-        <StatsCard label="Baris Valid" value={summaryValue(summary, "valid_rows")} />
-        <StatsCard label="Baris Tidak Valid" value={summaryValue(summary, "invalid_rows")} />
-        <StatsCard label="Duplikat" value={summaryValue(summary, "duplicate_rows")} />
+        <MiniStat label="Total Baris" value={summaryValue(summary, "total_rows")} />
+        <MiniStat label="Baris Valid" value={summaryValue(summary, "valid_rows")} />
+        <MiniStat label="Baris Tidak Valid" value={summaryValue(summary, "invalid_rows")} />
+        <MiniStat label="Duplikat" value={summaryValue(summary, "duplicate_rows")} />
       </div>
     </div>
   );
@@ -278,7 +286,7 @@ export function DictionaryImport() {
       {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
       {actionError ? <Alert tone="error">{getFirstApiError(actionError)}</Alert> : null}
 
-      <div className="grid min-w-0 gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
+      <div className="grid min-w-0 gap-6">
         <Card className="min-w-0">
           <CardHeader>
             <h2 className="text-xl font-black text-ink">Upload File Excel</h2>
@@ -354,11 +362,11 @@ export function DictionaryImport() {
           <CardContent>
             {selectedJob ? (
               <div className="grid gap-4">
-                <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-                  <StatsCard label="Total Baris" value={numberValue(selectedJob.total_rows)} />
-                  <StatsCard label="Baris Valid" value={numberValue(selectedJob.valid_rows)} />
-                  <StatsCard label="Baris Tidak Valid" value={numberValue(selectedJob.invalid_rows)} />
-                  <StatsCard label="Peringatan" value={numberValue(selectedJob.warning_count)} />
+                <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+                  <MiniStat label="Total Baris" value={numberValue(selectedJob.total_rows)} />
+                  <MiniStat label="Baris Valid" value={numberValue(selectedJob.valid_rows)} />
+                  <MiniStat label="Baris Tidak Valid" value={numberValue(selectedJob.invalid_rows)} />
+                  <MiniStat label="Peringatan" value={numberValue(selectedJob.warning_count)} />
                 </div>
 
                 <div className="grid min-w-0 items-stretch gap-4 lg:grid-cols-2">
@@ -368,13 +376,13 @@ export function DictionaryImport() {
 
                 {(selectedJob.invalid_rows ?? 0) > 0 ? <ErrorBreakdown summary={selectedJob.summary} /> : null}
 
-                <div className="grid gap-3 rounded-lg border-2 border-border bg-surface p-4 sm:grid-cols-2 2xl:grid-cols-3">
-                  <StatsCard label="File Ditemukan" value={numberValue(selectedJob.summary?.audio?.files_found)} />
-                  <StatsCard label="Cocok" value={numberValue(selectedJob.summary?.audio?.matched)} />
-                  <StatsCard label="Tidak Ditemukan" value={numberValue(selectedJob.summary?.audio?.missing)} />
-                  <StatsCard label="Nama Ganda" value={numberValue(selectedJob.summary?.audio?.ambiguous)} />
-                  <StatsCard label="Tidak Terpakai" value={numberValue(selectedJob.summary?.audio?.unused)} />
-                  <StatsCard label="Dipasang" value={numberValue(selectedJob.summary?.audio?.installed)} />
+                <div className="grid gap-3 rounded-lg border-2 border-border bg-surface p-4 sm:grid-cols-3 2xl:grid-cols-6">
+                  <MiniStat label="File Ditemukan" value={numberValue(selectedJob.summary?.audio?.files_found)} />
+                  <MiniStat label="Cocok" value={numberValue(selectedJob.summary?.audio?.matched)} />
+                  <MiniStat label="Tidak Ditemukan" value={numberValue(selectedJob.summary?.audio?.missing)} />
+                  <MiniStat label="Nama Ganda" value={numberValue(selectedJob.summary?.audio?.ambiguous)} />
+                  <MiniStat label="Tidak Terpakai" value={numberValue(selectedJob.summary?.audio?.unused)} />
+                  <MiniStat label="Dipasang" value={numberValue(selectedJob.summary?.audio?.installed)} />
                 </div>
 
                 {selectedJob.failure_message ? (
@@ -552,43 +560,45 @@ export function DictionaryImport() {
                   title="Tidak ada error"
                 />
               ) : (
-                <Table className="w-full table-fixed">
-                  <TableHeader className="hidden lg:table-header-group">
-                    <tr>
-                      <th className="px-4 py-3">Bagian</th>
-                      <th className="px-4 py-3">Baris</th>
-                      <th className="px-4 py-3">Kolom</th>
-                      <th className="px-4 py-3">Kode</th>
-                      <th className="px-4 py-3">Pesan</th>
-                      <th className="px-4 py-3">Aksi</th>
-                    </tr>
-                  </TableHeader>
-                  <tbody className="grid min-w-0 gap-4 lg:table-row-group">
-                    {(errorsQuery.data?.items ?? []).map((error) => (
-                      <tr className="grid min-w-0 gap-2 rounded-xl border-2 border-border p-4 lg:table-row lg:rounded-none lg:border-0 lg:p-0" key={error.id}>
-                        <TableCell className="border-0 p-0 lg:border-t lg:px-4 lg:py-3"><span className="font-bold lg:hidden">Bagian: </span>{simpleErrorLabel(error.sheet)}</TableCell>
-                        <TableCell className="border-0 p-0 lg:border-t lg:px-4 lg:py-3"><span className="font-bold lg:hidden">Baris: </span>{error.row_number ?? "-"}</TableCell>
-                        <TableCell className="min-w-0 break-words border-0 p-0 lg:border-t lg:px-4 lg:py-3"><span className="font-bold lg:hidden">Kolom: </span>{simpleErrorLabel(error.field)}</TableCell>
-                        <TableCell className="min-w-0 break-words border-0 p-0 lg:border-t lg:px-4 lg:py-3"><span className="font-bold lg:hidden">Masalah: </span>{simpleErrorLabel(error.code)}</TableCell>
-                        <TableCell className="min-w-0 break-words border-0 p-0 lg:border-t lg:px-4 lg:py-3">
-                          <div className="grid min-w-0 gap-1">
-                            <p>{error.message}</p>
-                            {error.code?.startsWith("AUDIO_") ? (
-                              <div className="grid gap-1 text-xs font-bold text-muted">
-                                <p>File: {audioFilename(error.raw_data)}</p>
-                                <p>Status: {simpleErrorLabel(error.code)}</p>
-                                <p>Alasan: {error.message}</p>
-                              </div>
-                            ) : null}
-                          </div>
-                        </TableCell>
-                        <TableCell className="border-0 p-0 lg:border-t lg:px-4 lg:py-3">
-                          <Button className="min-h-9 px-3 py-1 text-xs" onClick={() => setDeleteErrorId(error.id)} variant="danger">Hapus</Button>
-                        </TableCell>
+                <div className="max-h-[32rem] overflow-y-auto rounded-lg border-2 border-border">
+                  <Table className="w-full table-fixed">
+                    <TableHeader className="sticky top-0 z-10 hidden bg-surface lg:table-header-group">
+                      <tr>
+                        <th className="px-4 py-3">Bagian</th>
+                        <th className="px-4 py-3">Baris</th>
+                        <th className="px-4 py-3">Kolom</th>
+                        <th className="px-4 py-3">Kode</th>
+                        <th className="px-4 py-3">Pesan</th>
+                        <th className="px-4 py-3">Aksi</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </Table>
+                    </TableHeader>
+                    <tbody className="grid min-w-0 gap-4 p-2 lg:table-row-group lg:p-0">
+                      {(errorsQuery.data?.items ?? []).map((error) => (
+                        <tr className="grid min-w-0 gap-2 rounded-xl border-2 border-border p-4 lg:table-row lg:rounded-none lg:border-0 lg:p-0" key={error.id}>
+                          <TableCell className="border-0 p-0 lg:border-t lg:px-4 lg:py-3"><span className="font-bold lg:hidden">Bagian: </span>{simpleErrorLabel(error.sheet)}</TableCell>
+                          <TableCell className="border-0 p-0 lg:border-t lg:px-4 lg:py-3"><span className="font-bold lg:hidden">Baris: </span>{error.row_number ?? "-"}</TableCell>
+                          <TableCell className="min-w-0 break-words border-0 p-0 lg:border-t lg:px-4 lg:py-3"><span className="font-bold lg:hidden">Kolom: </span>{simpleErrorLabel(error.field)}</TableCell>
+                          <TableCell className="min-w-0 break-words border-0 p-0 lg:border-t lg:px-4 lg:py-3"><span className="font-bold lg:hidden">Masalah: </span>{simpleErrorLabel(error.code)}</TableCell>
+                          <TableCell className="min-w-0 break-words border-0 p-0 lg:border-t lg:px-4 lg:py-3">
+                            <div className="grid min-w-0 gap-1">
+                              <p>{error.message}</p>
+                              {error.code?.startsWith("AUDIO_") ? (
+                                <div className="grid gap-1 text-xs font-bold text-muted">
+                                  <p>File: {audioFilename(error.raw_data)}</p>
+                                  <p>Status: {simpleErrorLabel(error.code)}</p>
+                                  <p>Alasan: {error.message}</p>
+                                </div>
+                              ) : null}
+                            </div>
+                          </TableCell>
+                          <TableCell className="border-0 p-0 lg:border-t lg:px-4 lg:py-3">
+                            <Button className="min-h-9 px-3 py-1 text-xs" onClick={() => setDeleteErrorId(error.id)} variant="danger">Hapus</Button>
+                          </TableCell>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </div>
               )
             ) : null}
           </CardContent>
