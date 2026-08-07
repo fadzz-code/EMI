@@ -46,11 +46,6 @@ class FreeAiAnswerProvider implements AiAnswerProviderInterface
         }
     }
 
-    /**
-     * Persona, gaya bahasa, dan guardrail keamanan yang dikirim sebagai
-     * systemInstruction ke provider AI. Ubah bebas sesuai kebutuhan tuning —
-     * method ini tidak dipakai/dikunci oleh file lain di luar provider ini.
-     */
     protected function getSystemInstruction(): string
     {
         return <<<'TEXT'
@@ -114,88 +109,47 @@ TEXT;
     }
 
     /**
-     * Daftar model Gemini yang dicoba berurutan jika model sebelumnya gagal
-     * (mis. HTTP 429/503). Model dari config('ai.free_model') dicoba lebih
-     * dulu jika di-set, lalu daftar fallback ini menyusul. Ubah bebas.
-     *
-     * @return list<string>
+     * Daftar model Sumopod yang digunakan.
      */
     protected function geminiModels(): array
     {
-        $configured = $this->model ? [$this->model] : [];
-
-        return array_values(array_unique([
-            ...$configured,
-            'gemini-2.0-flash',
-            'gemini-flash-lite-latest',
-            'gemini-1.5-flash',
-        ]));
-    }
-
-    /**
-     * Safety thresholds dikirim ke Gemini generateContent. Ubah bebas sesuai
-     * kebutuhan (mis. BLOCK_ONLY_HIGH untuk lebih longgar).
-     *
-     * @return list<array{category: string, threshold: string}>
-     */
-    protected function geminiSafetySettings(): array
-    {
         return [
-            ['category' => 'HARM_CATEGORY_HARASSMENT', 'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'],
-            ['category' => 'HARM_CATEGORY_HATE_SPEECH', 'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'],
-            ['category' => 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'],
-            ['category' => 'HARM_CATEGORY_DANGEROUS_CONTENT', 'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'],
-        ];
-    }
-
-    /**
-     * generationConfig dikirim ke Gemini generateContent. Ubah bebas sesuai
-     * kebutuhan tuning (temperature, maxOutputTokens, dll).
-     *
-     * @return array<string, mixed>
-     */
-    protected function geminiGenerationConfig(): array
-    {
-        return [
-            'temperature' => 0.4,
-            'maxOutputTokens' => 1024,
+            'gemini/gemini-3.1-flash-lite', // Model utama untuk Sumopod
+            'gemini/gemini-3.5-flash',      // Fallback
         ];
     }
 
     private function generateGemini(string $prompt, bool $hasLocalContext = true): AiAnswerResult
     {
-        $payload = [
-            'systemInstruction' => [
-                'parts' => [['text' => $this->getSystemInstruction()]],
-            ],
-            'contents' => [
-                [
-                    'role' => 'user',
-                    'parts' => [['text' => $prompt]],
-                ],
-            ],
-            'safetySettings' => $this->geminiSafetySettings(),
-            'generationConfig' => $this->geminiGenerationConfig(),
-        ];
-
-        // Hybrid Fallback Grounding: jika tidak ada dokumen lokal yang
-        // relevan, izinkan Gemini mencari jawaban via Google Search.
-        if (! $hasLocalContext) {
-            $payload['tools'] = [
-                ['googleSearch' => (object) []],
-            ];
-        }
-
         $response = null;
         $lastError = '';
 
         foreach ($this->geminiModels() as $selectedModel) {
-            $response = Http::timeout($this->timeoutSeconds)
-                ->withQueryParameters(['key' => $this->apiKey])
-                ->post("https://generativelanguage.googleapis.com/v1beta/models/{$selectedModel}:generateContent", $payload);
+            // Menggunakan format OpenAI-Compatible untuk Sumopod
+            $response = Http::withHeaders([
+                    'Content-Type' => 'application/json',
+                    'Authorization' => 'Bearer ' . $this->apiKey,
+                ])
+                ->withOptions([
+                    'verify' => false,
+                    'curl' => [
+                        CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+                    ]
+                ])
+                ->timeout($this->timeoutSeconds) // Menggunakan timeout dari env (20s)
+                ->post('https://ai.sumopod.com/v1/chat/completions', [
+                    'model' => $selectedModel,
+                    'messages' => [
+                        ['role' => 'system', 'content' => $this->getSystemInstruction()],
+                        ['role' => 'user', 'content' => $prompt]
+                    ],
+                    'temperature' => 0.4,
+                    'max_tokens' => 1024,
+                ]);
 
             if ($response->successful()) {
-                $answer = data_get($response->json(), 'candidates.0.content.parts.0.text');
+                // Parsing response ala OpenAI Format dari Sumopod
+                $answer = data_get($response->json(), 'choices.0.message.content');
 
                 return $this->answerResult($answer, $prompt);
             }
@@ -203,7 +157,7 @@ TEXT;
             $lastError = "Model {$selectedModel}: ".$response->body();
         }
 
-        Log::warning('Gemini generateContent failed for all fallback models.', [
+        Log::warning('Gemini API (Sumopod) failed for all fallback models.', [
             'models' => $this->geminiModels(),
             'last_error' => $lastError,
         ]);

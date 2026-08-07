@@ -38,26 +38,33 @@ class GeminiEmbeddingProvider implements EmbeddingProviderInterface
         }
 
         try {
-            $response = Http::timeout(max(1, $this->timeoutSeconds))
-                ->withQueryParameters(['key' => $this->apiKey])
+            $usedModel = 'gemini/gemini-embedding-001';
+
+            $response = Http::withHeaders([
+                    'Content-Type' => 'application/json',
+                    'Authorization' => 'Bearer ' . $this->apiKey,
+                ])
+                ->withOptions([
+                    'verify' => false,
+                    'curl' => [
+                        CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+                    ]
+                ])
+                ->timeout(max(1, $this->timeoutSeconds))
                 ->post($this->endpoint(), [
-                    'model' => 'models/'.$this->model,
-                    'content' => [
-                        'parts' => [
-                            ['text' => $text],
-                        ],
-                    ],
-                    'taskType' => $taskType,
-                    'outputDimensionality' => $this->dimensions,
+                    'model' => $usedModel,
+                    'input' => $text 
                 ]);
 
             if (! $response->successful()) {
                 return $this->failure('Provider embedding mengembalikan respons gagal.', $inputType, [
                     'status' => $response->status(),
+                    'body' => $response->body(),
                 ]);
             }
 
-            $values = data_get($response->json(), 'embedding.values');
+            // Parsing response ala OpenAI Format dari Sumopod
+            $values = data_get($response->json(), 'data.0.embedding');
 
             if (! is_array($values) || $values === []) {
                 return $this->failure('Respons embedding tidak valid.', $inputType);
@@ -73,27 +80,27 @@ class GeminiEmbeddingProvider implements EmbeddingProviderInterface
                 return $this->failure('Respons embedding berisi nilai tidak valid.', $inputType);
             }
 
-            if (count($vector) !== $this->dimensions) {
+            if ($this->dimensions > 0 && count($vector) !== $this->dimensions) {
                 return $this->failure('Dimensi embedding tidak sesuai konfigurasi.', $inputType, [
                     'actual_dimensions' => count($vector),
                 ]);
             }
 
-            return EmbeddingResult::success($vector, $this->provider, $this->model, $this->dimensions, $inputType, [
+            return EmbeddingResult::success($vector, $this->provider, $usedModel, count($vector), $inputType, [
                 'task_type' => $taskType,
             ]);
-        } catch (Throwable) {
-            return $this->failure('Provider embedding tidak dapat dihubungi.', $inputType);
+        } catch (Throwable $e) {
+            return $this->failure('Provider embedding tidak dapat dihubungi: ' . $e->getMessage(), $inputType);
         }
     }
 
     private function endpoint(): string
     {
-        return rtrim($this->baseUrl, '/').'/models/'.$this->model.':embedContent';
+        return 'https://ai.sumopod.com/v1/embeddings';
     }
 
     private function failure(string $error, string $inputType, array $metadata = []): EmbeddingResult
     {
-        return EmbeddingResult::failure($error, $this->provider, $this->model, $this->dimensions, $inputType, $metadata);
+        return EmbeddingResult::failure($error, $this->provider, 'gemini/gemini-embedding-001', $this->dimensions, $inputType, $metadata);
     }
 }
