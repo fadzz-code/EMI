@@ -180,6 +180,20 @@ export const studentService = {
     return response.data;
   },
 
+  async temporaryMediaUrl(token: string, mediaId: string) {
+    const response = await apiClient.post<{ url: string; expires_at: string }>(
+      `/media/${mediaId}/temporary-url`,
+      { expires_in_minutes: 15, disposition: "inline" },
+      { token },
+    );
+
+    if (!response.data) {
+      throw new Error("URL audio tidak tersedia.");
+    }
+
+    return response.data.url;
+  },
+
   async chatbotConversations(token: string, status?: "active" | "archived") {
     const response = await apiClient.get<ChatbotConversationSummary[]>("/student/chatbot/conversations", {
       token,

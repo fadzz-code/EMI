@@ -4,6 +4,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../core/errors/app_error.dart';
@@ -372,14 +374,25 @@ class _TeacherQuizDetailScreenState
               TeacherSectionHeader(
                 'Pertanyaan',
                 icon: Icons.help_outline,
-                trailing: FilledButton.icon(
-                  onPressed: quiz.status == 'draft' || quiz.status == 'archived'
-                      ? () => context.push(
-                          '/teacher/quizzes/${widget.id}/questions/create',
-                        )
-                      : null,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Tambah'),
+                trailing: Wrap(
+                  spacing: EmiSpacing.xs,
+                  children: [
+                    if (quiz.questions.length > 1 && (quiz.status == 'draft' || quiz.status == 'archived'))
+                      IconButton(
+                        tooltip: 'Ubah Urutan Soal',
+                        onPressed: () => _showReorderQuestionsDialog(context, ref, quiz.id, quiz.questions),
+                        icon: const Icon(Icons.swap_vert),
+                      ),
+                    FilledButton.icon(
+                      onPressed: quiz.status == 'draft' || quiz.status == 'archived'
+                          ? () => context.push(
+                              '/teacher/quizzes/${widget.id}/questions/create',
+                            )
+                          : null,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Tambah'),
+                    ),
+                  ],
                 ),
               ),
               if (quiz.questions.isEmpty)
@@ -1284,17 +1297,89 @@ class _TeacherQuizResultsScreenState
     extends ConsumerState<TeacherQuizResultsScreen> {
   int page = 1;
   String status = '';
+
+  Future<void> _exportCsv() async {
+    try {
+      final bytes = await ref.read(teacherQuizRepositoryProvider).reportCsv(
+        quizId: widget.quizId,
+        status: status,
+      );
+      final file = File('${(await getTemporaryDirectory()).path}/hasil-kuis.csv');
+      await file.writeAsBytes(bytes, flush: true);
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(file.path)], subject: 'Hasil Kuis CSV'),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal mengekspor hasil kuis CSV.')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final filter = (quizId: widget.quizId, page: page, status: status);
     final attempts = ref.watch(teacherQuizAttemptsProvider(filter));
     final reportFilter = (page: page, quizId: widget.quizId, status: status);
     final report = ref.watch(teacherQuizReportProvider(reportFilter));
+    final classQuizReport = ref.watch(teacherClassQuizReportProvider(widget.quizId));
     return TeacherShell(
       title: 'Hasil Kuis',
       fallbackRoute: '/teacher/quizzes/${widget.quizId}',
       child: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(EmiSpacing.md, EmiSpacing.md, EmiSpacing.md, 0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: _exportCsv,
+                icon: const Icon(Icons.share, size: 20),
+                label: const Text('Export CSV Hasil Kuis'),
+              ),
+            ),
+          ),
+          classQuizReport.when(
+            loading: () => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
+            data: (summary) => Padding(
+              padding: const EdgeInsets.fromLTRB(EmiSpacing.md, EmiSpacing.sm, EmiSpacing.md, 0),
+              child: TeacherListCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.analytics_outlined, color: EmiColors.primary),
+                        const SizedBox(width: EmiSpacing.xs),
+                        Text(
+                          'Statistik Kuis Kelas',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: TeacherStyle.ink,
+                              ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: EmiSpacing.xs),
+                    Wrap(
+                      spacing: EmiSpacing.md,
+                      runSpacing: EmiSpacing.xs,
+                      children: [
+                        Text('Siswa: ${summary.studentCount}', style: const TextStyle(fontSize: 12)),
+                        Text('Total Attempt: ${summary.attemptsCount}', style: const TextStyle(fontSize: 12)),
+                        Text('Selesai: ${summary.submittedCount}', style: const TextStyle(fontSize: 12)),
+                        if (summary.averageScorePercent != null)
+                          Text('Rata-rata: ${summary.averageScorePercent}%', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: EmiColors.primary)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
           report.when(
             loading: () => const LinearProgressIndicator(),
             error: (_, _) => const SizedBox.shrink(),
@@ -1587,6 +1672,103 @@ class _State extends StatelessWidget {
             TextButton(onPressed: retry, child: const Text('Coba Lagi')),
         ],
       ),
+    ),
+  );
+}
+
+void _showReorderQuestionsDialog(
+  BuildContext context,
+  WidgetRef ref,
+  String quizId,
+  List<TeacherQuizQuestion> initialQuestions,
+) {
+  if (initialQuestions.length < 2) return;
+  final ordered = List<TeacherQuizQuestion>.from(initialQuestions);
+  bool saving = false;
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setModalState) {
+        return Padding(
+          padding: const EdgeInsets.all(EmiSpacing.md),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Ubah Urutan Soal',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: EmiSpacing.xs),
+              const Text('Tahan dan geser item untuk mengubah nomor urut soal.'),
+              const SizedBox(height: EmiSpacing.md),
+              SizedBox(
+                height: 320,
+                child: ReorderableListView.builder(
+                  shrinkWrap: true,
+                  itemCount: ordered.length,
+                  onReorder: (oldIndex, newIndex) {
+                    setModalState(() {
+                      var targetIndex = newIndex;
+                      if (oldIndex < targetIndex) targetIndex -= 1;
+                      final item = ordered.removeAt(oldIndex);
+                      ordered.insert(targetIndex, item);
+                    });
+                  },
+                  itemBuilder: (context, index) {
+                    final question = ordered[index];
+                    return ListTile(
+                      key: ValueKey(question.id),
+                      leading: CircleAvatar(
+                        backgroundColor: TeacherStyle.tint,
+                        foregroundColor: EmiColors.primary,
+                        child: Text('${index + 1}'),
+                      ),
+                      title: Text(
+                        question.text,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: const Icon(Icons.drag_handle),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: EmiSpacing.md),
+              FilledButton(
+                onPressed: saving
+                    ? null
+                    : () async {
+                        setModalState(() => saving = true);
+                        try {
+                          await ref.read(teacherQuizRepositoryProvider).reorderQuestions(
+                                quizId,
+                                ordered.map((e) => e.id).toList(),
+                              );
+                          ref.invalidate(teacherQuizDetailProvider(quizId));
+                          if (context.mounted) Navigator.pop(context);
+                        } catch (e) {
+                          setModalState(() => saving = false);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(_error(e))),
+                            );
+                          }
+                        }
+                      },
+                child: Text(saving ? 'Menyimpan...' : 'Simpan Urutan Soal'),
+              ),
+              TextButton(
+                onPressed: saving ? null : () => Navigator.pop(context),
+                child: const Text('Batal'),
+              ),
+            ],
+          ),
+        );
+      },
     ),
   );
 }

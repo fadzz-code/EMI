@@ -11,6 +11,7 @@ class ApplyModuleTemplateRequest extends ApiFormRequest
         return [
             'class_ids' => ['required', 'array', 'min:1'],
             'class_ids.*' => ['required', 'uuid', 'exists:classes,id'],
+            'sync_existing' => ['sometimes', 'boolean'],
         ];
     }
 }

@@ -235,6 +235,85 @@ class TeacherQuizResultPage {
   }
 }
 
+class TeacherQuizReportSummary {
+  const TeacherQuizReportSummary({
+    required this.classQuizId,
+    required this.studentCount,
+    required this.attemptsCount,
+    required this.submittedCount,
+    required this.inProgressCount,
+    this.averageScorePercent,
+    this.highestScorePercent,
+    this.lowestScorePercent,
+    required this.questions,
+  });
+
+  final String classQuizId;
+  final int studentCount;
+  final int attemptsCount;
+  final int submittedCount;
+  final int inProgressCount;
+  final num? averageScorePercent;
+  final num? highestScorePercent;
+  final num? lowestScorePercent;
+  final List<TeacherQuizQuestionReport> questions;
+
+  factory TeacherQuizReportSummary.fromJson(Map<String, dynamic>? json) {
+    final data = _map(json?['data']);
+    final list = data['questions'];
+    return TeacherQuizReportSummary(
+      classQuizId: _text(data['class_quiz_id']),
+      studentCount: _integer(data['student_count']),
+      attemptsCount: _integer(data['attempts_count']),
+      submittedCount: _integer(data['submitted_count']),
+      inProgressCount: _integer(data['in_progress_count']),
+      averageScorePercent: data['average_score_percent'] as num?,
+      highestScorePercent: data['highest_score_percent'] as num?,
+      lowestScorePercent: data['lowest_score_percent'] as num?,
+      questions: list is List
+          ? list
+              .whereType<Map<String, dynamic>>()
+              .map(TeacherQuizQuestionReport.fromJson)
+              .toList()
+          : const [],
+    );
+  }
+}
+
+class TeacherQuizQuestionReport {
+  const TeacherQuizQuestionReport({
+    required this.id,
+    required this.questionType,
+    required this.orderNumber,
+    required this.points,
+    required this.answeredCount,
+    required this.correctCount,
+    required this.incorrectCount,
+    this.averageAwardedPoints,
+  });
+
+  final String id;
+  final String questionType;
+  final int orderNumber;
+  final int points;
+  final int answeredCount;
+  final int correctCount;
+  final int incorrectCount;
+  final num? averageAwardedPoints;
+
+  factory TeacherQuizQuestionReport.fromJson(Map<String, dynamic> json) =>
+      TeacherQuizQuestionReport(
+        id: _text(json['id']),
+        questionType: _text(json['question_type']),
+        orderNumber: _integer(json['order_number']),
+        points: _integer(json['points']),
+        answeredCount: _integer(json['answered_count']),
+        correctCount: _integer(json['correct_count']),
+        incorrectCount: _integer(json['incorrect_count']),
+        averageAwardedPoints: json['average_awarded_points'] as num?,
+      );
+}
+
 class TeacherQuizAttemptPage {
   const TeacherQuizAttemptPage({
     required this.items,

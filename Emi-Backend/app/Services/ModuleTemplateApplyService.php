@@ -14,7 +14,7 @@ class ModuleTemplateApplyService
 {
     public function __construct(private readonly AuditLogService $auditLogService) {}
 
-    public function apply(ModuleTemplate $template, array $classIds, User $actor, Request $request): array
+    public function apply(ModuleTemplate $template, array $classIds, User $actor, Request $request, bool $syncExisting = false): array
     {
         $template->load('lessons');
 
@@ -22,11 +22,11 @@ class ModuleTemplateApplyService
             throw new ApiException('Template modul belum published.', 'MODULE_TEMPLATE_NOT_PUBLISHED', 409);
         }
 
-        $summary = ['applied' => [], 'skipped' => [], 'failed' => []];
+        $summary = ['applied' => [], 'synced' => [], 'skipped' => [], 'failed' => []];
 
         foreach (array_values(array_unique($classIds)) as $classId) {
             try {
-                DB::transaction(function () use ($template, $classId, $actor, $request, &$summary) {
+                DB::transaction(function () use ($template, $classId, $actor, $request, $syncExisting, &$summary) {
                     $class = SchoolClass::query()->with('school')->lockForUpdate()->findOrFail($classId);
 
                     if ($class->status !== 'active') {
@@ -43,7 +43,18 @@ class ModuleTemplateApplyService
                         ->first();
 
                     if ($existing) {
-                        $summary['skipped'][] = ['class_id' => $class->id, 'reason' => 'MODULE_TEMPLATE_ALREADY_APPLIED'];
+                        if (! $syncExisting) {
+                            $summary['skipped'][] = ['class_id' => $class->id, 'reason' => 'MODULE_TEMPLATE_ALREADY_APPLIED'];
+
+                            return;
+                        }
+
+                        $this->syncExistingModule($existing, $template, $actor);
+                        $summary['synced'][] = ['class_id' => $class->id, 'class_module_id' => $existing->id];
+                        $this->auditLogService->record('module_template.synced', $existing, $actor, null, [
+                            'source_module_template_id' => $template->id,
+                            'class_id' => $class->id,
+                        ], [], $request);
 
                         return;
                     }
@@ -87,5 +98,62 @@ class ModuleTemplateApplyService
         }
 
         return $summary;
+    }
+
+    /**
+     * Update an existing ClassModule with the latest template changes.
+     *
+     * - Updates module title and description (only if the teacher hasn't
+     *   customised them — we always sync because the admin template is the
+     *   source of truth for structural metadata).
+     * - For each published LessonTemplate: if a matching ClassLesson exists
+     *   (by source_lesson_template_id), update its content; otherwise create
+     *   a new ClassLesson.
+     * - ClassLessons created by the teacher manually (no source_lesson_template_id)
+     *   are never touched.
+     */
+    private function syncExistingModule(ClassModule $module, ModuleTemplate $template, User $actor): void
+    {
+        $module->forceFill([
+            'title' => $template->title,
+            'description' => $template->description,
+            'updated_by' => $actor->id,
+        ])->save();
+
+        $existingLessons = $module->lessons()
+            ->whereNotNull('source_lesson_template_id')
+            ->get()
+            ->keyBy('source_lesson_template_id');
+
+        foreach ($template->lessons->where('status', 'published') as $lesson) {
+            $existingLesson = $existingLessons->get($lesson->id);
+
+            if ($existingLesson) {
+                $existingLesson->forceFill([
+                    'title' => $lesson->title,
+                    'description' => $lesson->description,
+                    'content_type' => $lesson->content_type,
+                    'content_body' => $lesson->content_body,
+                    'media_id' => $lesson->media_id,
+                    'external_url' => $lesson->external_url,
+                    'sort_order' => $lesson->sort_order,
+                    'updated_by' => $actor->id,
+                ])->save();
+            } else {
+                $module->lessons()->create([
+                    'source_lesson_template_id' => $lesson->id,
+                    'title' => $lesson->title,
+                    'description' => $lesson->description,
+                    'content_type' => $lesson->content_type,
+                    'content_body' => $lesson->content_body,
+                    'media_id' => $lesson->media_id,
+                    'external_url' => $lesson->external_url,
+                    'sort_order' => $lesson->sort_order,
+                    'status' => 'published',
+                    'published_at' => now(),
+                    'created_by' => $actor->id,
+                ]);
+            }
+        }
     }
 }

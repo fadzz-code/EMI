@@ -112,10 +112,10 @@ export const moduleTemplateService = {
     return response.data;
   },
 
-  async applyToClasses(token: string, moduleId: string, classIds: string[]) {
+  async applyToClasses(token: string, moduleId: string, classIds: string[], syncExisting = false) {
     const response = await apiClient.post<TemplateApplyResult>(
       `/admin/module-templates/${moduleId}/apply`,
-      { class_ids: classIds },
+      { class_ids: classIds, sync_existing: syncExisting },
       { token },
     );
 

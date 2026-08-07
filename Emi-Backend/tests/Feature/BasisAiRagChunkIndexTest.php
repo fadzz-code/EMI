@@ -250,7 +250,7 @@ class BasisAiRagChunkIndexTest extends TestCase
             'message' => 'arti mekongga',
         ])->assertOk()
             ->assertJsonPath('data.matched', false)
-            ->assertJsonPath('data.answer', 'Saya belum menemukan jawaban dari Basis AI yang tersedia.');
+            ->assertJsonPath('data.answer', 'Hmm, aku belum menemukan jawaban yang tepat untuk pertanyaan itu.');
     }
 
     public function test_archived_and_draft_chunks_are_ignored(): void

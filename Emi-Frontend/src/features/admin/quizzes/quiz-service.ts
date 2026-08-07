@@ -108,10 +108,10 @@ export const quizTemplateService = {
     return response.data;
   },
 
-  async applyToClasses(token: string, quizId: string, classIds: string[]) {
+  async applyToClasses(token: string, quizId: string, classIds: string[], syncExisting = false) {
     const response = await apiClient.post<QuizTemplateApplyResult>(
       `/admin/quiz-templates/${quizId}/apply`,
-      { class_ids: classIds },
+      { class_ids: classIds, sync_existing: syncExisting },
       { token },
     );
 

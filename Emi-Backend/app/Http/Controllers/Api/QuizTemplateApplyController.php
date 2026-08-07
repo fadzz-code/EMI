@@ -19,6 +19,6 @@ class QuizTemplateApplyController extends Controller
         $template = QuizTemplate::query()->findOrFail($id);
         Gate::authorize('apply', $template);
 
-        return ApiResponse::success('Template kuis selesai diterapkan.', $this->service->apply($template, $request->validated('class_ids'), $request->user(), $request));
+        return ApiResponse::success('Template kuis selesai diterapkan.', $this->service->apply($template, $request->validated('class_ids'), $request->user(), $request, (bool) $request->validated('sync_existing', false)));
     }
 }

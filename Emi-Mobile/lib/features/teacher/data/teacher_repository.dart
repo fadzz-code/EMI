@@ -882,6 +882,17 @@ class TeacherRepository {
     }
   }
 
+  Future<void> reorderModules(String classId, List<String> moduleIds) async {
+    try {
+      await _dio.patch<void>(
+        '/classes/$classId/modules/reorder',
+        data: {'module_ids': moduleIds},
+      );
+    } catch (error) {
+      throw error is AppError ? error : _mapper.map(error);
+    }
+  }
+
   Future<TeacherLesson> lessonDetail(String id) => _request(
     () => _dio.get<Map<String, dynamic>>('/class-lessons/$id'),
     (json) => TeacherLesson.fromJson(_data(json, 'Detail materi')),
@@ -911,6 +922,17 @@ class TeacherRepository {
 
   Future<TeacherLesson> publishLesson(String id) =>
       _actionLesson('/class-lessons/$id/publish');
+
+  Future<void> reorderLessons(String moduleId, List<String> lessonIds) async {
+    try {
+      await _dio.patch<void>(
+        '/class-modules/$moduleId/lessons/reorder',
+        data: {'lesson_ids': lessonIds},
+      );
+    } catch (error) {
+      throw error is AppError ? error : _mapper.map(error);
+    }
+  }
 
   Future<CulturePage> culture(String classId) => _request(
     () => _dio.get<Map<String, dynamic>>(
@@ -1062,6 +1084,25 @@ class TeacherRepository {
     ),
     TeacherStudentProgressPage.fromJson,
   );
+
+  Future<List<int>> studentProgressCsv({
+    String? classId,
+    String? search,
+  }) async {
+    try {
+      final response = await _dio.get<List<int>>(
+        '/teacher/reports/progress/students/export',
+        queryParameters: {
+          if (classId != null && classId.isNotEmpty) 'class_id': classId,
+          if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+        },
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return response.data ?? const [];
+    } catch (error) {
+      throw error is AppError ? error : _mapper.map(error);
+    }
+  }
 
   Future<TeacherStudentProgress> studentDetail(String id) async {
     final page = await studentProgress(studentId: id);

@@ -2,7 +2,7 @@ import type { ChatbotConversationMessage, ChatbotSource } from "./types";
 
 export const CHATBOT_ANSWER_PREFIX = "Berdasarkan Basis AI EMI, berikut informasi yang ditemukan:";
 
-export const CHATBOT_FALLBACK_ANSWER = "Saya belum menemukan jawaban dari Basis AI yang tersedia.";
+export const CHATBOT_FALLBACK_ANSWER = "Hmm, aku belum menemukan jawaban yang tepat untuk pertanyaan itu.";
 
 export type ChatMessage = {
   id: string;

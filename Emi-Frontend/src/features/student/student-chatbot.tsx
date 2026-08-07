@@ -259,7 +259,7 @@ export function StudentChatbot() {
 
                         {isFallback ? (
                           <p className="rounded-xl border-2 border-dashed border-border bg-surface-muted p-3 text-xs font-bold leading-5 text-muted">
-                            Coba gunakan kata kunci yang lebih spesifik atau tanyakan topik yang tersedia di Basis AI EMI.
+                            Coba tanyakan arti kata Mekongga (misalnya &quot;apa arti mongga&quot;) atau topik budaya yang sudah tersedia di EMI.
                           </p>
                         ) : null}
 

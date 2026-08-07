@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
+import '../data/auth_providers.dart';
 import 'auth_banner.dart';
 import 'auth_brand_mark.dart';
 import 'auth_card.dart';
@@ -36,6 +37,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
+    final branding = ref.watch(loginBrandingProvider).valueOrNull;
+    final hasBanner = branding?['enabled'] == true && branding?['image_url'] != null;
 
     return AuthThemeScope(
       child: Scaffold(
@@ -57,6 +60,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const AuthBrandMark(),
+                          if (hasBanner) ...[
+                            const SizedBox(height: EmiSpacing.md),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(AuthStyle.fieldRadius),
+                              child: Image.network(
+                                branding!['image_url'] as String,
+                                height: 140,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: EmiSpacing.xl),
                           AuthCard(
                             child: Form(

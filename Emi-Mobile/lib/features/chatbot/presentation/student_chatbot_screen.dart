@@ -216,7 +216,7 @@ class _IntroCard extends StatelessWidget {
           ),
           const SizedBox(height: EmiSpacing.md),
           const Text(
-            'EMI menjawab dari Basis AI yang dipublish admin dan menampilkan referensi jika cocok.',
+            'Tanya arti kata Mekongga atau topik budaya — EMI jawab lengkap dengan referensinya.',
             style: TextStyle(color: StudentStyle.inkMuted),
           ),
         ],

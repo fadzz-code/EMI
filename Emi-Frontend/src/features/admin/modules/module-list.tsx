@@ -45,6 +45,7 @@ export function ModuleList() {
   const [applyTarget, setApplyTarget] = useState<ModuleTemplate | null>(null);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   const [publishAfterApply, setPublishAfterApply] = useState(true);
+  const [syncExisting, setSyncExisting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ModuleTemplate | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -66,7 +67,7 @@ export function ModuleList() {
 
   const classesQuery = useQuery({
     queryKey: ["admin", "classes", "apply-targets"],
-    queryFn: () => classService.list(token ?? "", { status: "active", per_page: 100 }),
+    queryFn: () => classService.list(token ?? "", { status: "active", per_page: 500 }),
     enabled: Boolean(token),
   });
 
@@ -96,12 +97,14 @@ export function ModuleList() {
       moduleId,
       classIds,
       publishClassContent,
+      syncExistingClasses,
     }: {
       moduleId: string;
       classIds: string[];
       publishClassContent: boolean;
+      syncExistingClasses: boolean;
     }) => {
-      const result = await moduleTemplateService.applyToClasses(token ?? "", moduleId, classIds);
+      const result = await moduleTemplateService.applyToClasses(token ?? "", moduleId, classIds, syncExistingClasses);
       let publishedCount = 0;
 
       if (publishClassContent) {
@@ -110,6 +113,9 @@ export function ModuleList() {
         );
         const classModuleIds = new Set([
           ...result.applied
+            .map((item) => item.class_module_id)
+            .filter((id): id is string => Boolean(id)),
+          ...result.synced
             .map((item) => item.class_module_id)
             .filter((id): id is string => Boolean(id)),
           ...classModules
@@ -127,14 +133,16 @@ export function ModuleList() {
       return { result, publishedCount };
     },
     onSuccess: ({ result, publishedCount }) => {
+      const totalAffected = result.applied.length + result.synced.length;
       setSuccessMessage(
-        publishedCount > 0
-          ? `Template modul diterapkan ke ${result.applied.length} kelas dan ${publishedCount} modul kelas langsung diterbitkan. Modul terlihat untuk siswa yang terdaftar pada kelas tersebut.`
-          : `Template modul diterapkan: ${result.applied.length} kelas, dilewati: ${result.skipped.length}, gagal: ${result.failed.length}. Modul kelas masih draft dan perlu diterbitkan agar terlihat siswa.`,
+        totalAffected > 0
+          ? `Template modul diterapkan ke ${result.applied.length} kelas baru, disinkronkan ke ${result.synced.length} kelas existing${publishedCount > 0 ? `, dan ${publishedCount} modul kelas langsung diterbitkan` : ""}. Modul terlihat untuk siswa yang terdaftar pada kelas tersebut.`
+          : `Tidak ada kelas baru yang diterapkan. Dilewati: ${result.skipped.length} (sudah memiliki template), gagal: ${result.failed.length}. Centang "Sinkronkan" untuk memperbarui kelas yang sudah ada.`,
       );
       setApplyTarget(null);
       setSelectedClassIds([]);
       setPublishAfterApply(true);
+      setSyncExisting(false);
     },
   });
 
@@ -291,7 +299,7 @@ export function ModuleList() {
                               </button>
                             ) : null}
                             {module.status === "published" ? (
-                              <button className="inline-flex h-9 w-28 items-center justify-center gap-1.5 rounded-lg border-2 border-border text-xs font-bold text-ink hover:border-primary hover:text-primary disabled:opacity-50" disabled={applyMutation.isPending} onClick={() => { setApplyTarget(module); setSelectedClassIds([]); setPublishAfterApply(true); }} type="button">
+                              <button className="inline-flex h-9 w-28 items-center justify-center gap-1.5 rounded-lg border-2 border-border text-xs font-bold text-ink hover:border-primary hover:text-primary disabled:opacity-50" disabled={applyMutation.isPending} onClick={() => { setApplyTarget(module); setSelectedClassIds([]); setPublishAfterApply(true); setSyncExisting(false); }} type="button">
                                 <Share2 aria-hidden="true" className="size-4 shrink-0" />
                                 Terapkan
                               </button>
@@ -338,18 +346,31 @@ export function ModuleList() {
             classes.length === 0 ? (
               <EmptyState description="Belum ada kelas aktif untuk menerima template modul." title="Kelas aktif kosong" />
             ) : (
-              <div className="grid max-h-80 gap-2 overflow-auto rounded-xl border border-border p-3">
-                {classes.map((schoolClass) => (
-                  <label className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3 text-sm font-bold text-ink" key={schoolClass.id}>
-                    <input
-                      checked={selectedClassIds.includes(schoolClass.id)}
-                      onChange={() => toggleClass(schoolClass.id)}
-                      type="checkbox"
-                    />
-                    <span>{schoolClass.name} - {schoolClass.academic_year}</span>
-                  </label>
-                ))}
-              </div>
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-bold text-muted">{classes.length} kelas aktif tersedia</span>
+                  <div className="flex gap-2">
+                    <button className="rounded-lg border-2 border-border px-3 py-1.5 text-xs font-bold text-ink hover:border-primary hover:text-primary" onClick={() => setSelectedClassIds(classes.map((c) => c.id))} type="button">
+                      Pilih Semua
+                    </button>
+                    <button className="rounded-lg border-2 border-border px-3 py-1.5 text-xs font-bold text-ink hover:border-primary hover:text-primary" onClick={() => setSelectedClassIds([])} type="button">
+                      Kosongkan
+                    </button>
+                  </div>
+                </div>
+                <div className="grid max-h-80 gap-2 overflow-auto rounded-xl border border-border p-3">
+                  {classes.map((schoolClass) => (
+                    <label className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3 text-sm font-bold text-ink" key={schoolClass.id}>
+                      <input
+                        checked={selectedClassIds.includes(schoolClass.id)}
+                        onChange={() => toggleClass(schoolClass.id)}
+                        type="checkbox"
+                      />
+                      <span>{schoolClass.name} - {schoolClass.school?.name ?? "Tanpa Sekolah"} ({schoolClass.academic_year})</span>
+                    </label>
+                  ))}
+                </div>
+              </>
             )
           ) : null}
           <label className="flex items-start gap-3 rounded-xl border-2 border-border bg-[var(--color-primary-muted)] p-3 text-sm font-bold text-ink">
@@ -361,6 +382,20 @@ export function ModuleList() {
             />
             <span>Setelah diterapkan, langsung terbitkan modul kelas agar terlihat oleh guru dan siswa.</span>
           </label>
+          <label className="flex items-start gap-3 rounded-xl border-2 border-border bg-surface p-3 text-sm font-bold text-ink">
+            <input
+              checked={syncExisting}
+              className="mt-1"
+              onChange={(event) => setSyncExisting(event.target.checked)}
+              type="checkbox"
+            />
+            <span>Sinkronkan kelas yang sudah memiliki template ini. Memperbarui judul, deskripsi, dan materi modul kelas dengan versi terbaru dari template. Perubahan guru pada modul kelas akan ditimpa.</span>
+          </label>
+          {syncExisting ? (
+            <Alert tone="warning">
+              Mode sinkronisasi akan memperbarui modul kelas yang sudah ada. Materi yang dibuat guru sendiri (tanpa sumber template) tidak akan terpengaruh.
+            </Alert>
+          ) : null}
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button onClick={() => setApplyTarget(null)} type="button" variant="ghost">
               Batal
@@ -369,7 +404,7 @@ export function ModuleList() {
               disabled={!applyTarget || selectedClassIds.length === 0 || applyMutation.isPending}
               onClick={() => {
                 if (applyTarget) {
-                  applyMutation.mutate({ moduleId: applyTarget.id, classIds: selectedClassIds, publishClassContent: publishAfterApply });
+                  applyMutation.mutate({ moduleId: applyTarget.id, classIds: selectedClassIds, publishClassContent: publishAfterApply, syncExistingClasses: syncExisting });
                 }
               }}
               type="button"

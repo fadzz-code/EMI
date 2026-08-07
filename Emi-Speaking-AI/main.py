@@ -10,10 +10,13 @@ import wave
 from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+load_dotenv()
 
 ENGINE = "wav2vec2-indonesian-levenshtein"
 MODEL_NAME = os.getenv("SPEAKING_AI_MODEL", "indonesian-nlp/wav2vec2-large-xlsr-indonesian")

@@ -207,6 +207,12 @@ final teacherQuizReportProvider =
           .report(page: value.page, quizId: value.quizId, status: value.status),
     );
 
+final teacherClassQuizReportProvider =
+    FutureProvider.family<TeacherQuizReportSummary, String>(
+      (ref, quizId) =>
+          ref.watch(teacherQuizRepositoryProvider).classQuizReport(quizId),
+    );
+
 final teacherQuizAttemptProvider =
     FutureProvider.family<TeacherQuizAttempt, String>(
       (ref, id) => ref.watch(teacherQuizRepositoryProvider).attempt(id),

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Cable, LoaderCircle, Mic, Play, Square, UploadCloud } from "lucide-react";
+import { Cable, LoaderCircle, Mic, Play, Square, UploadCloud, Volume2 } from "lucide-react";
 
 import { Alert, Badge, Button, Card, CardContent, EmptyState } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -13,21 +13,8 @@ import { studentService } from "./student-service";
 import { useEsp32SerialCapture } from "./use-esp32-serial-capture";
 import type { SpeakingAttempt, SpeakingExercise } from "./types";
 import { createSpeakingPoller, SPEAKING_TERMINAL_STATUSES } from "./speaking-poller";
-import { shouldUseMicrophone, studentAiWarnings } from "./speaking-result";
-
-function statusLabel(status?: string) {
-  return {
-    pending: "Menunggu analisis",
-    processing: "Diproses AI",
-    completed: "Selesai dianalisis",
-    failed: "Analisis gagal",
-    reviewed: "Sudah ditinjau guru",
-  }[status ?? ""] ?? "Status tidak dikenal";
-}
-
-function score(value?: number | null) {
-  return value === null || value === undefined ? "-" : `${value}/100`;
-}
+import { shouldUseMicrophone } from "./speaking-result";
+import { ComparePlayer, referenceAudioUrl, SpeakingResultHero } from "./speaking-result-hero";
 
 function speakingErrorMessage(error: unknown) {
   const message = getFirstApiError(error);
@@ -37,20 +24,6 @@ function speakingErrorMessage(error: unknown) {
   }
 
   return message;
-}
-
-function statusTone(status?: string): "yellow" | "blue" | "orange" {
-  if (status === "failed") return "orange";
-  if (status === "reviewed" || status === "completed") return "blue";
-  return "yellow";
-}
-
-function referenceAudioUrl(exercise: SpeakingExercise | null) {
-  return exercise?.reference_audio?.url
-    ?? exercise?.reference_audio?.content_url
-    ?? exercise?.reference_audio?.public_url
-    ?? exercise?.reference_audio?.file_url
-    ?? null;
 }
 
 function referenceAudioName(exercise: SpeakingExercise | null) {
@@ -164,6 +137,20 @@ export function StudentSpeaking() {
     setCaptureSource(source);
   }
 
+  function resetAttempt() {
+    setActiveAttempt(null);
+    setRecordedFile(null);
+    if (recordedUrl) URL.revokeObjectURL(recordedUrl);
+    setRecordedUrl(null);
+    setError(null);
+  }
+
+  function nextExercise() {
+    const index = exercises.findIndex((exercise) => exercise.id === selectedExercise?.id);
+    if (exercises.length > 0) setSelectedExercise(exercises[(index + 1) % exercises.length]);
+    resetAttempt();
+  }
+
   async function submitAttempt() {
     const file = captureSource === "esp32" ? esp32.capture?.file : recordedFile;
     if (!token || !selectedExercise || !file || submitGuardRef.current) return;
@@ -193,8 +180,8 @@ export function StudentSpeaking() {
 
       {error ? <Alert tone="error">{error}</Alert> : null}
 
-      <section className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-        <Card className="h-fit">
+      <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <Card className="h-fit lg:order-2">
           <CardContent>
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
@@ -235,7 +222,7 @@ export function StudentSpeaking() {
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden bg-[var(--color-primary-muted)]">
+        <Card className="overflow-hidden bg-[var(--color-primary-muted)] lg:order-1">
           <CardContent>
             {selectedExercise ? (
               <div className="grid gap-5">
@@ -271,7 +258,7 @@ export function StudentSpeaking() {
                   </div>
                   {referenceAudioUrl(selectedExercise) ? (
                     <div className="grid gap-2">
-                      <audio className="w-full" controls onError={() => setReferenceAudioError(true)} src={referenceAudioUrl(selectedExercise) ?? undefined}>Audio belum dapat diputar. Coba muat ulang halaman.</audio>
+                      <ComparePlayer icon={Volume2} label="Penutur Asli" onError={() => setReferenceAudioError(true)} src={referenceAudioUrl(selectedExercise)} />
                       <p className="text-xs font-bold text-muted">{referenceAudioName(selectedExercise)}</p>
                       {referenceAudioError ? <p className="text-xs font-black text-danger">Audio belum dapat diputar. Coba muat ulang halaman.</p> : null}
                       {esp32.state !== "unsupported" ? <p className="text-xs font-semibold text-muted">Pilih &quot;EMI_KOLAKA&quot; sebagai output audio Windows agar suara keluar dari speaker alat.</p> : null}
@@ -342,7 +329,7 @@ export function StudentSpeaking() {
                       <Play className="size-5 text-primary" strokeWidth={3} />
                       <p className="font-black text-ink">Preview audio</p>
                     </div>
-                    <audio className="w-full" controls src={captureSource === "microphone" ? recordedUrl ?? undefined : esp32.capture?.url} />
+                    <ComparePlayer icon={Mic} label="Rekaman Kamu" src={captureSource === "microphone" ? recordedUrl : esp32.capture?.url} />
                   </div>
                 ) : null}
 
@@ -365,26 +352,18 @@ export function StudentSpeaking() {
       </section>
 
       {activeAttempt ? (
-        <Card>
-          <CardContent>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-black text-ink">Hasil Percobaan Terakhir</h2>
-                <p className="mt-1 text-xs font-bold text-muted">Hasil AI adalah perkiraan awal. Penilaian akhir akan diberikan oleh guru.</p>
-              </div>
-              <Badge tone={statusTone(activeAttempt.status)}>{statusLabel(activeAttempt.status)}</Badge>
-            </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <div className="rounded-xl border-2 border-transparent bg-surface-muted p-4"><p className="text-xs font-black uppercase text-muted">Skor awal AI</p><p className="mt-1 text-2xl font-black text-ink">{score(activeAttempt.ai_score)}</p></div>
-              <div className="rounded-xl border-2 border-transparent bg-surface-muted p-4"><p className="text-xs font-black uppercase text-muted">Skor guru</p><p className="mt-1 text-2xl font-black text-ink">{score(activeAttempt.teacher_score)}</p></div>
-            </div>
-            {activeAttempt.ai_transcription ? <p className="mt-4 text-sm leading-6"><span className="font-black">Transkripsi AI:</span> {activeAttempt.ai_transcription}</p> : null}
-            {activeAttempt.ai_alignment ? <p className="mt-2 text-sm font-bold text-muted">Alignment AI tersedia untuk membantu tinjauan pengucapan.</p> : null}
-            {studentAiWarnings(activeAttempt.ai_warnings).map((warning) => <Alert key={warning} tone="info">{warning}</Alert>)}
-            {activeAttempt.status === "failed" ? <div className="grid gap-3"><Alert tone="error">{activeAttempt.ai_error || "Analisis belum berhasil. Audio tetap tersimpan dan dapat dicoba lagi."}</Alert><Button onClick={() => { setError(null); setActiveAttempt(null); }} type="button" variant="secondary">Coba lagi</Button></div> : null}
-            {activeAttempt.teacher_feedback ? <Alert tone="success">Feedback guru: {activeAttempt.teacher_feedback}</Alert> : <p className="mt-4 text-sm font-bold text-muted">Menunggu tinjauan guru.</p>}
-          </CardContent>
-        </Card>
+        <section className="grid gap-4">
+          <div>
+            <h2 className="text-xl font-black text-ink">Hasil Percobaan Terakhir</h2>
+            <p className="mt-1 text-xs font-bold text-muted">Hasil AI adalah perkiraan awal. Penilaian akhir akan diberikan oleh guru.</p>
+          </div>
+          <SpeakingResultHero
+            attempt={activeAttempt}
+            onNext={nextExercise}
+            onRetry={resetAttempt}
+            referenceAudioUrl={referenceAudioUrl(selectedExercise)}
+          />
+        </section>
       ) : null}
 
       <Card>

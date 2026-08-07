@@ -48,6 +48,7 @@ export function QuizList() {
   const [applyTarget, setApplyTarget] = useState<QuizTemplate | null>(null);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   const [publishAfterApply, setPublishAfterApply] = useState(true);
+  const [syncExisting, setSyncExisting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<QuizTemplate | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -69,7 +70,7 @@ export function QuizList() {
 
   const classesQuery = useQuery({
     queryKey: ["admin", "classes", "quiz-apply-targets"],
-    queryFn: () => classService.list(token ?? "", { status: "active", per_page: 100 }),
+    queryFn: () => classService.list(token ?? "", { status: "active", per_page: 500 }),
     enabled: Boolean(token),
   });
 
@@ -116,12 +117,14 @@ export function QuizList() {
       quizId,
       classIds,
       publishClassContent,
+      syncExistingClasses,
     }: {
       quizId: string;
       classIds: string[];
       publishClassContent: boolean;
+      syncExistingClasses: boolean;
     }) => {
-      const result = await quizTemplateService.applyToClasses(token ?? "", quizId, classIds);
+      const result = await quizTemplateService.applyToClasses(token ?? "", quizId, classIds, syncExistingClasses);
       let publishedCount = 0;
 
       if (publishClassContent) {
@@ -130,6 +133,9 @@ export function QuizList() {
         );
         const classQuizIds = new Set([
           ...result.applied
+            .map((item) => item.class_quiz_id)
+            .filter((id): id is string => Boolean(id)),
+          ...result.synced
             .map((item) => item.class_quiz_id)
             .filter((id): id is string => Boolean(id)),
           ...classQuizzes
@@ -147,14 +153,16 @@ export function QuizList() {
       return { result, publishedCount };
     },
     onSuccess: ({ result, publishedCount }) => {
+      const totalAffected = result.applied.length + result.synced.length;
       setSuccessMessage(
-        publishedCount > 0
-          ? `Template kuis diterapkan ke ${result.applied.length} kelas dan ${publishedCount} kuis kelas langsung diterbitkan. Kuis terlihat untuk siswa yang terdaftar pada kelas tersebut.`
-          : `Template kuis diterapkan: ${result.applied.length} kelas, dilewati: ${result.skipped.length}, gagal: ${result.failed.length}. Kuis kelas masih draft dan perlu diterbitkan agar terlihat siswa.`,
+        totalAffected > 0
+          ? `Template kuis diterapkan ke ${result.applied.length} kelas baru, disinkronkan ke ${result.synced.length} kelas existing${publishedCount > 0 ? `, dan ${publishedCount} kuis kelas langsung diterbitkan` : ""}. Kuis terlihat untuk siswa yang terdaftar pada kelas tersebut.`
+          : `Tidak ada kelas baru yang diterapkan. Dilewati: ${result.skipped.length} (sudah memiliki template), gagal: ${result.failed.length}. Centang "Sinkronkan" untuk memperbarui kuis yang sudah ada.`,
       );
       setApplyTarget(null);
       setSelectedClassIds([]);
       setPublishAfterApply(true);
+      setSyncExisting(false);
     },
   });
 
@@ -330,7 +338,7 @@ export function QuizList() {
                               {quiz.status === "published" ? (
                                 <DropdownMenuItem
                                   icon={<Share2 />}
-                                  onClick={() => { setApplyTarget(quiz); setSelectedClassIds([]); setPublishAfterApply(true); }}
+                                  onClick={() => { setApplyTarget(quiz); setSelectedClassIds([]); setPublishAfterApply(true); setSyncExisting(false); }}
                                 >
                                   Terapkan ke Kelas
                                 </DropdownMenuItem>
@@ -410,18 +418,31 @@ export function QuizList() {
             classes.length === 0 ? (
               <EmptyState description="Belum ada kelas aktif untuk menerima template kuis." title="Kelas aktif kosong" />
             ) : (
-              <div className="grid max-h-80 gap-2 overflow-auto rounded-xl border border-border p-3">
-                {classes.map((schoolClass) => (
-                  <label className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3 text-sm font-bold text-ink" key={schoolClass.id}>
-                    <input
-                      checked={selectedClassIds.includes(schoolClass.id)}
-                      onChange={() => toggleClass(schoolClass.id)}
-                      type="checkbox"
-                    />
-                    <span>{schoolClass.name} - {schoolClass.academic_year}</span>
-                  </label>
-                ))}
-              </div>
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-bold text-muted">{classes.length} kelas aktif tersedia</span>
+                  <div className="flex gap-2">
+                    <button className="rounded-lg border-2 border-border px-3 py-1.5 text-xs font-bold text-ink hover:border-primary hover:text-primary" onClick={() => setSelectedClassIds(classes.map((c) => c.id))} type="button">
+                      Pilih Semua
+                    </button>
+                    <button className="rounded-lg border-2 border-border px-3 py-1.5 text-xs font-bold text-ink hover:border-primary hover:text-primary" onClick={() => setSelectedClassIds([])} type="button">
+                      Kosongkan
+                    </button>
+                  </div>
+                </div>
+                <div className="grid max-h-80 gap-2 overflow-auto rounded-xl border border-border p-3">
+                  {classes.map((schoolClass) => (
+                    <label className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3 text-sm font-bold text-ink" key={schoolClass.id}>
+                      <input
+                        checked={selectedClassIds.includes(schoolClass.id)}
+                        onChange={() => toggleClass(schoolClass.id)}
+                        type="checkbox"
+                      />
+                      <span>{schoolClass.name} - {schoolClass.school?.name ?? "Tanpa Sekolah"} ({schoolClass.academic_year})</span>
+                    </label>
+                  ))}
+                </div>
+              </>
             )
           ) : null}
           <label className="flex items-start gap-3 rounded-xl border-2 border-border bg-[var(--color-primary-muted)] p-3 text-sm font-bold text-ink">
@@ -433,6 +454,20 @@ export function QuizList() {
             />
             <span>Setelah diterapkan, langsung terbitkan kuis kelas agar terlihat oleh guru dan siswa.</span>
           </label>
+          <label className="flex items-start gap-3 rounded-xl border-2 border-border bg-surface p-3 text-sm font-bold text-ink">
+            <input
+              checked={syncExisting}
+              className="mt-1"
+              onChange={(event) => setSyncExisting(event.target.checked)}
+              type="checkbox"
+            />
+            <span>Sinkronkan kelas yang sudah memiliki template ini. Memperbarui metadata, soal, dan opsi jawaban kuis kelas dengan versi terbaru dari template. Perubahan guru pada kuis kelas akan ditimpa.</span>
+          </label>
+          {syncExisting ? (
+            <Alert tone="warning">
+              Mode sinkronisasi akan memperbarui kuis kelas yang sudah ada. Soal yang dibuat guru sendiri (tanpa sumber template) tidak akan terpengaruh.
+            </Alert>
+          ) : null}
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button onClick={() => setApplyTarget(null)} type="button" variant="ghost">
               Batal
@@ -441,7 +476,7 @@ export function QuizList() {
               disabled={!applyTarget || selectedClassIds.length === 0 || applyMutation.isPending}
               onClick={() => {
                 if (applyTarget) {
-                  applyMutation.mutate({ quizId: applyTarget.id, classIds: selectedClassIds, publishClassContent: publishAfterApply });
+                  applyMutation.mutate({ quizId: applyTarget.id, classIds: selectedClassIds, publishClassContent: publishAfterApply, syncExistingClasses: syncExisting });
                 }
               }}
               type="button"

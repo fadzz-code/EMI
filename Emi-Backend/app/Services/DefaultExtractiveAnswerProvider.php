@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 
 class DefaultExtractiveAnswerProvider
 {
-    public const FALLBACK_ANSWER = 'Saya belum menemukan jawaban dari Basis AI yang tersedia.';
+    public const FALLBACK_ANSWER = 'Hmm, aku belum menemukan jawaban yang tepat untuk pertanyaan itu.';
 
     public function answer(?AiKnowledgeItem $item, string $message, int $confidence = 0, ?Collection $keywords = null, ?string $fallbackReason = null): array
     {

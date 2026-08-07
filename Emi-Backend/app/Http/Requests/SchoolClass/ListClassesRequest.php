@@ -17,7 +17,7 @@ class ListClassesRequest extends ApiFormRequest
             'grade_level' => ['sometimes', 'nullable', 'string', 'max:50'],
             'teacher_id' => ['sometimes', 'uuid', 'exists:users,id'],
             'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:500'],
             'sort_by' => ['sometimes', Rule::in(['name', 'grade_level', 'academic_year', 'status', 'created_at'])],
             'sort_direction' => ['sometimes', Rule::in(['asc', 'desc'])],
         ];

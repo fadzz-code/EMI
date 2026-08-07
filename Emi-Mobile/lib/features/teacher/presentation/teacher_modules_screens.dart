@@ -50,6 +50,11 @@ class TeacherModulesScreen extends ConsumerWidget {
       title: 'Modul Kelas',
       actions: [
         IconButton(
+          tooltip: 'Ubah Urutan Modul',
+          onPressed: () => _showReorderModulesDialog(context, ref, classId, modules.valueOrNull ?? const []),
+          icon: const Icon(Icons.swap_vert),
+        ),
+        IconButton(
           tooltip: 'Tambah Modul',
           onPressed: () =>
               context.push('/teacher/modules/create?classId=$classId'),
@@ -366,11 +371,22 @@ class _TeacherModuleEditScreenState
             'Daftar Materi',
             subtitle: 'Kelola urutan dan isi materi yang termasuk modul ini.',
             icon: Icons.article_outlined,
-            trailing: FilledButton.icon(
-              onPressed: () =>
-                  context.push('/teacher/modules/${item.id}/lessons/create'),
-              icon: const Icon(Icons.add),
-              label: const Text('Tambah Materi'),
+            trailing: Wrap(
+              spacing: EmiSpacing.xs,
+              children: [
+                if (item.lessons.length > 1)
+                  IconButton(
+                    tooltip: 'Ubah Urutan Materi',
+                    onPressed: () => _showReorderLessonsDialog(context, ref, item.id, item.lessons),
+                    icon: const Icon(Icons.swap_vert),
+                  ),
+                FilledButton.icon(
+                  onPressed: () =>
+                      context.push('/teacher/modules/${item.id}/lessons/create'),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Tambah Materi'),
+                ),
+              ],
             ),
           ),
           if (item.lessons.isEmpty)
@@ -1328,6 +1344,193 @@ Future<bool?> _confirm(BuildContext context, String title, String message) =>
         ],
       ),
     );
+void _showReorderModulesDialog(
+  BuildContext context,
+  WidgetRef ref,
+  String classId,
+  List<TeacherModule> initialModules,
+) {
+  if (initialModules.length < 2) return;
+  final ordered = List<TeacherModule>.from(initialModules);
+  bool saving = false;
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setModalState) {
+        return Padding(
+          padding: const EdgeInsets.all(EmiSpacing.md),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Ubah Urutan Modul',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: EmiSpacing.xs),
+              const Text('Tahan dan geser item untuk mengubah urutan pengerjaan modul.'),
+              const SizedBox(height: EmiSpacing.md),
+              SizedBox(
+                height: 320,
+                child: ReorderableListView.builder(
+                  shrinkWrap: true,
+                  itemCount: ordered.length,
+                  onReorder: (oldIndex, newIndex) {
+                    setModalState(() {
+                      var targetIndex = newIndex;
+                      if (oldIndex < targetIndex) targetIndex -= 1;
+                      final item = ordered.removeAt(oldIndex);
+                      ordered.insert(targetIndex, item);
+                    });
+                  },
+                  itemBuilder: (context, index) {
+                    final module = ordered[index];
+                    return ListTile(
+                      key: ValueKey(module.id),
+                      leading: CircleAvatar(
+                        backgroundColor: TeacherStyle.tint,
+                        foregroundColor: EmiColors.primary,
+                        child: Text('${index + 1}'),
+                      ),
+                      title: Text(module.title),
+                      trailing: const Icon(Icons.drag_handle),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: EmiSpacing.md),
+              FilledButton(
+                onPressed: saving
+                    ? null
+                    : () async {
+                        setModalState(() => saving = true);
+                        try {
+                          await ref.read(teacherRepositoryProvider).reorderModules(
+                                classId,
+                                ordered.map((e) => e.id).toList(),
+                              );
+                          ref.invalidate(teacherModulesProvider(classId));
+                          if (context.mounted) Navigator.pop(context);
+                        } catch (e) {
+                          setModalState(() => saving = false);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(_error(e))),
+                            );
+                          }
+                        }
+                      },
+                child: Text(saving ? 'Menyimpan...' : 'Simpan Urutan Modul'),
+              ),
+              TextButton(
+                onPressed: saving ? null : () => Navigator.pop(context),
+                child: const Text('Batal'),
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
+
+void _showReorderLessonsDialog(
+  BuildContext context,
+  WidgetRef ref,
+  String moduleId,
+  List<TeacherLesson> initialLessons,
+) {
+  if (initialLessons.length < 2) return;
+  final ordered = List<TeacherLesson>.from(initialLessons);
+  bool saving = false;
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setModalState) {
+        return Padding(
+          padding: const EdgeInsets.all(EmiSpacing.md),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Ubah Urutan Materi',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: EmiSpacing.xs),
+              const Text('Tahan dan geser item untuk mengubah urutan alur materi.'),
+              const SizedBox(height: EmiSpacing.md),
+              SizedBox(
+                height: 320,
+                child: ReorderableListView.builder(
+                  shrinkWrap: true,
+                  itemCount: ordered.length,
+                  onReorder: (oldIndex, newIndex) {
+                    setModalState(() {
+                      var targetIndex = newIndex;
+                      if (oldIndex < targetIndex) targetIndex -= 1;
+                      final item = ordered.removeAt(oldIndex);
+                      ordered.insert(targetIndex, item);
+                    });
+                  },
+                  itemBuilder: (context, index) {
+                    final lesson = ordered[index];
+                    return ListTile(
+                      key: ValueKey(lesson.id),
+                      leading: CircleAvatar(
+                        backgroundColor: TeacherStyle.tint,
+                        foregroundColor: EmiColors.primary,
+                        child: Text('${index + 1}'),
+                      ),
+                      title: Text(lesson.title),
+                      subtitle: Text(_contentLabel(lesson.contentType)),
+                      trailing: const Icon(Icons.drag_handle),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: EmiSpacing.md),
+              FilledButton(
+                onPressed: saving
+                    ? null
+                    : () async {
+                        setModalState(() => saving = true);
+                        try {
+                          await ref.read(teacherRepositoryProvider).reorderLessons(
+                                moduleId,
+                                ordered.map((e) => e.id).toList(),
+                              );
+                          ref.invalidate(teacherModuleDetailProvider(moduleId));
+                          if (context.mounted) Navigator.pop(context);
+                        } catch (e) {
+                          setModalState(() => saving = false);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(_error(e))),
+                            );
+                          }
+                        }
+                      },
+                child: Text(saving ? 'Menyimpan...' : 'Simpan Urutan Materi'),
+              ),
+              TextButton(
+                onPressed: saving ? null : () => Navigator.pop(context),
+                child: const Text('Batal'),
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
+
 String _error(Object error) => error is AppError
     ? error.message
     : 'Perubahan belum berhasil disimpan. Coba lagi.';

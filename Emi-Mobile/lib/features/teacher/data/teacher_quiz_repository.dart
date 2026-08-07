@@ -74,6 +74,16 @@ class TeacherQuizRepository {
     () => _dio.delete<Map<String, dynamic>>('/quiz-questions/$id'),
     (_) {},
   );
+  Future<void> reorderQuestions(String quizId, List<String> questionIds) async {
+    try {
+      await _dio.patch<void>(
+        '/class-quizzes/$quizId/questions/reorder',
+        data: {'question_ids': questionIds},
+      );
+    } catch (error) {
+      throw error is AppError ? error : _mapper.map(error);
+    }
+  }
   Future<TeacherQuizAttemptPage> attempts(
     String quizId, {
     int page = 1,
@@ -88,6 +98,11 @@ class TeacherQuizRepository {
     ),
     TeacherQuizAttemptPage.fromJson,
   );
+  Future<TeacherQuizReportSummary> classQuizReport(String quizId) => _request(
+    () => _dio.get<Map<String, dynamic>>('/class-quizzes/$quizId/report'),
+    TeacherQuizReportSummary.fromJson,
+  );
+
   Future<TeacherQuizResultPage> report({
     int page = 1,
     String? quizId,
@@ -103,6 +118,25 @@ class TeacherQuizRepository {
     ),
     TeacherQuizResultPage.fromJson,
   );
+
+  Future<List<int>> reportCsv({
+    String? quizId,
+    String? status,
+  }) async {
+    try {
+      final response = await _dio.get<List<int>>(
+        '/teacher/reports/quiz-results/export',
+        queryParameters: {
+          if (quizId?.isNotEmpty == true) 'quiz_id': quizId,
+          if (status?.isNotEmpty == true) 'status': status,
+        },
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return response.data ?? const [];
+    } catch (error) {
+      throw error is AppError ? error : _mapper.map(error);
+    }
+  }
 
   Future<TeacherQuizAttempt> attempt(String id) => _request(
     () => _dio.get<Map<String, dynamic>>('/quiz-attempts/$id'),

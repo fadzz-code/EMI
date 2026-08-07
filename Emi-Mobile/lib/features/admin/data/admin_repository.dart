@@ -654,6 +654,14 @@ class AdminRepository {
     }
   }
 
+  Future<void> permanentlyDeleteClass(String id) async {
+    try {
+      await _dio.delete<void>('/classes/$id/force');
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
   Future<void> assignTeacher(String classId, String teacherId) async {
     try {
       await _dio.post<Map<String, dynamic>>(
@@ -739,6 +747,14 @@ class AdminRepository {
         type: AppErrorType.unknown,
         message: 'Data sekolah tidak valid.',
       );
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<void> permanentlyDeleteSchool(String id) async {
+    try {
+      await _dio.delete<void>('/schools/$id/force');
     } catch (error) {
       throw _map(error);
     }

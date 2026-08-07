@@ -58,7 +58,8 @@ class SpeakingAttemptService
     {
         $classId = $attempt->exercise?->classroom_id;
         if (! $classId) {
-            return false;
+            // Latihan global (dibuat admin) dapat direview guru manapun.
+            return true;
         }
 
         return $teacher->teacherClassAssignments()

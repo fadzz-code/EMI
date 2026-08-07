@@ -8,7 +8,8 @@ use Illuminate\Support\Str;
 class DictionaryRetriever
 {
     private const GENERIC_WORDS = [
-        'apa', 'arti', 'kata', 'bahasa', 'mekongga', 'dari', 'untuk', 'terjemahan', 'padanan', 'kosakata', 'dalam', 'ke', 'yang', 'adalah', 'itu',
+        'apa', 'arti', 'artinya', 'kata', 'bahasa', 'mekongga', 'dari', 'untuk', 'terjemahan', 'padanan', 'kosakata', 'dalam', 'ke', 'yang', 'adalah', 'itu',
+        'makna', 'maksud', 'maksudnya', 'dimaksud', 'dong', 'sih', 'nih', 'kok', 'loh', 'tuh', 'ya', 'yah',
     ];
 
     public function __construct(private readonly DictionaryNormalizer $normalizer) {}
@@ -103,6 +104,11 @@ class DictionaryRetriever
             '/\bterjemahan\s+(.+?)(?:\s+ke\s+bahasa\s+mekongga)?$/u',
             '/\bkata\s+(.+?)\s+dalam\s+bahasa\s+mekongga$/u',
             '/\b(.+?)\s+dalam\s+bahasa\s+mekongga$/u',
+            '/\bapa\s+artinya\s+(?:kata\s+)?(.+)$/u',
+            '/\bmakna\s+(?:kata\s+)?(.+)$/u',
+            '/\byang\s+dimaksud\s+(?:dengan\s+)?(.+)$/u',
+            '/\b(.+?)\s+artinya(?:\s+apa)?$/u',
+            '/\b(.+?)\s+maksudnya(?:\s+apa)?$/u',
         ];
 
         foreach ($patterns as $pattern) {

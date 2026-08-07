@@ -203,6 +203,16 @@ class AuthRemoteDataSource {
   Future<void> logout() async {
     await _dio.post<Map<String, dynamic>>('/auth/logout');
   }
+
+  Future<Map<String, dynamic>> publicBranding() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>('/public/login-branding');
+      final data = response.data?['data'];
+      return data is Map<String, dynamic> ? data : <String, dynamic>{};
+    } catch (_) {
+      return <String, dynamic>{};
+    }
+  }
 }
 
 Map<String, dynamic> _requiredMap(Object? value) {

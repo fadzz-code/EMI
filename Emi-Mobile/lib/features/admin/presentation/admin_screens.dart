@@ -846,6 +846,15 @@ class AdminSchoolDetailScreen extends ConsumerWidget {
                     : 'Aktifkan Sekolah',
               ),
             ),
+            const SizedBox(height: EmiSpacing.sm),
+            TextButton.icon(
+              onPressed: () => _confirmForceDeleteSchool(context, ref, school),
+              icon: const Icon(Icons.delete_forever, color: EmiColors.error),
+              label: const Text(
+                'Hapus Permanen Sekolah',
+                style: TextStyle(color: EmiColors.error),
+              ),
+            ),
           ],
         ),
       ),
@@ -907,6 +916,49 @@ class AdminSchoolDetailScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmForceDeleteSchool(
+    BuildContext context,
+    WidgetRef ref,
+    AdminSchool school,
+  ) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Permanen Sekolah?'),
+        content: Text(
+          'Sekolah "${school.name}" beserta relasi di dalamnya akan dihapus secara permanen dari database. Tindakan ini tidak dapat dibatalkan.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: EmiColors.error),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hapus Permanen'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(adminRepositoryProvider).permanentlyDeleteSchool(school.id);
+      if (!context.mounted) return;
+      ref.invalidate(adminSchoolsProvider);
+      context.go('/admin/schools');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sekolah berhasil dihapus permanen.')),
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal menghapus sekolah secara permanen.')),
+        );
+      }
+    }
   }
 }
 
@@ -1176,6 +1228,15 @@ class AdminClassDetailScreen extends ConsumerWidget {
                     : 'Aktifkan Kelas',
               ),
             ),
+            const SizedBox(height: EmiSpacing.sm),
+            TextButton.icon(
+              onPressed: () => _confirmForceDeleteClass(context, ref, klass),
+              icon: const Icon(Icons.delete_forever, color: EmiColors.error),
+              label: const Text(
+                'Hapus Permanen Kelas',
+                style: TextStyle(color: EmiColors.error),
+              ),
+            ),
           ],
         ),
       ),
@@ -1352,6 +1413,49 @@ class AdminClassDetailScreen extends ConsumerWidget {
     }
     ref.invalidate(adminClassDetailProvider(klass.id));
     ref.invalidate(adminClassesProvider);
+  }
+
+  Future<void> _confirmForceDeleteClass(
+    BuildContext context,
+    WidgetRef ref,
+    AdminClass klass,
+  ) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Permanen Kelas?'),
+        content: Text(
+          'Kelas "${klass.name}" beserta relasi di dalamnya akan dihapus secara permanen dari database. Tindakan ini tidak dapat dibatalkan.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: EmiColors.error),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hapus Permanen'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(adminRepositoryProvider).permanentlyDeleteClass(klass.id);
+      if (!context.mounted) return;
+      ref.invalidate(adminClassesProvider);
+      context.go('/admin/classes');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kelas berhasil dihapus permanen.')),
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal menghapus kelas secara permanen.')),
+        );
+      }
+    }
   }
 }
 

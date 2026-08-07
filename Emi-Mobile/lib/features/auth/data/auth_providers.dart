@@ -18,3 +18,7 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
     errorMapper: const DioErrorMapper(),
   );
 });
+
+final loginBrandingProvider = FutureProvider<Map<String, dynamic>>((ref) {
+  return ref.watch(authRemoteDataSourceProvider).publicBranding();
+});

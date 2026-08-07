@@ -83,6 +83,7 @@ export type LessonTemplatePayload = {
 
 export type TemplateApplyResult = {
   applied: Array<{ class_id: string; class_module_id?: string }>;
+  synced: Array<{ class_id: string; class_module_id?: string }>;
   skipped: Array<{ class_id: string; reason: string }>;
   failed: Array<{ class_id: string; reason: string }>;
 };

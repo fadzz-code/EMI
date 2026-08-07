@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../shared/widgets/role_dashboard_widgets.dart';
@@ -45,6 +48,23 @@ class TeacherProgressScreen extends ConsumerStatefulWidget {
 
 class _TeacherProgressState extends ConsumerState<TeacherProgressScreen> {
   static const query = (page: 1, search: '');
+
+  Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
+    try {
+      final bytes = await ref.read(teacherRepositoryProvider).studentProgressCsv();
+      final file = File('${(await getTemporaryDirectory()).path}/laporan-siswa-guru.csv');
+      await file.writeAsBytes(bytes, flush: true);
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(file.path)], subject: 'Laporan Siswa'),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal mengekspor data CSV.')),
+        );
+      }
+    }
+  }
   @override
   Widget build(BuildContext context) {
     final classes = ref.watch(teacherClassesProvider(query));
@@ -68,6 +88,15 @@ class _TeacherProgressState extends ConsumerState<TeacherProgressScreen> {
               icon: Icons.trending_up_outlined,
               title: 'Progress Siswa',
               subtitle: 'Pantau perkembangan belajar siswa di kelas Anda.',
+            ),
+            const SizedBox(height: EmiSpacing.md),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: () => _exportCsv(context, ref),
+                icon: const Icon(Icons.share, size: 20),
+                label: const Text('Export CSV Siswa'),
+              ),
             ),
             const SizedBox(height: EmiSpacing.lg),
             if (classes.isLoading || progress.isLoading)
@@ -125,6 +154,26 @@ class _TeacherClassProgressState
   Timer? debounce;
   int page = 1;
   String search = '';
+
+  Future<void> _exportCsv(BuildContext context) async {
+    try {
+      final bytes = await ref.read(teacherRepositoryProvider).studentProgressCsv(
+        classId: widget.classId,
+        search: search,
+      );
+      final file = File('${(await getTemporaryDirectory()).path}/laporan-progress-kelas.csv');
+      await file.writeAsBytes(bytes, flush: true);
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(file.path)], subject: 'Laporan Progress Kelas'),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal mengekspor data CSV.')),
+        );
+      }
+    }
+  }
   @override
   void dispose() {
     debounce?.cancel();
@@ -190,6 +239,14 @@ class _TeacherClassProgressState
                   }
                 });
               },
+            ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: () => _exportCsv(context),
+                icon: const Icon(Icons.share, size: 20),
+                label: const Text('Export CSV Kelas'),
+              ),
             ),
             const SizedBox(height: EmiSpacing.md),
             _ProgressResult(

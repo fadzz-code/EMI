@@ -255,7 +255,7 @@ class Phase9BasisAiTest extends TestCase
         $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
             'message' => 'Apa itu teknologi luar angkasa?',
         ])->assertOk()
-            ->assertJsonPath('data.answer', 'Saya belum menemukan jawaban dari Basis AI yang tersedia.')
+            ->assertJsonPath('data.answer', 'Hmm, aku belum menemukan jawaban yang tepat untuk pertanyaan itu.')
             ->assertJsonPath('data.source', null)
             ->assertJsonPath('data.matched', false)
             ->assertJsonPath('data.mode', 'default_extractive')
@@ -293,6 +293,21 @@ class Phase9BasisAiTest extends TestCase
             ->assertJsonPath('data.provider', 'dictionary');
     }
 
+    public function test_student_chatbot_answers_suffix_artinya_from_dictionary(): void
+    {
+        $student = User::factory()->student()->approved()->create();
+        $this->createDictionaryEntry('air dimasak', 'cooked water', 'kulata');
+
+        foreach (['kulata artinya', 'kulata artinya apa', 'apa artinya kulata', 'makna kata kulata'] as $message) {
+            $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
+                'message' => $message,
+            ])->assertOk()
+                ->assertJsonPath('data.answer', 'Dalam Kamus EMI, kata "kulata" berarti "air dimasak" dalam Bahasa Indonesia.')
+                ->assertJsonPath('data.mode', 'dictionary')
+                ->assertJsonPath('data.provider', 'dictionary');
+        }
+    }
+
     public function test_dictionary_intent_without_match_does_not_invent_translation(): void
     {
         $student = User::factory()->student()->approved()->create();
@@ -300,7 +315,7 @@ class Phase9BasisAiTest extends TestCase
         $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
             'message' => 'bahasa Mekongga dari galaksi',
         ])->assertOk()
-            ->assertJsonPath('data.answer', 'Saya belum menemukan jawaban dari Basis AI yang tersedia.')
+            ->assertJsonPath('data.answer', 'Hmm, aku belum menemukan jawaban yang tepat untuk pertanyaan itu.')
             ->assertJsonPath('data.matched', false)
             ->assertJsonPath('data.provider', 'default');
     }
@@ -362,7 +377,7 @@ class Phase9BasisAiTest extends TestCase
         $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
             'message' => 'bahasa Mekongga dari air',
         ])->assertOk()
-            ->assertJsonPath('data.answer', 'Saya belum menemukan jawaban dari Basis AI yang tersedia.')
+            ->assertJsonPath('data.answer', 'Hmm, aku belum menemukan jawaban yang tepat untuk pertanyaan itu.')
             ->assertJsonPath('data.matched', false);
     }
 
@@ -416,13 +431,13 @@ class Phase9BasisAiTest extends TestCase
         $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
             'message' => 'Apa rahasia draft?',
         ])->assertOk()
-            ->assertJsonPath('data.answer', 'Saya belum menemukan jawaban dari Basis AI yang tersedia.')
+            ->assertJsonPath('data.answer', 'Hmm, aku belum menemukan jawaban yang tepat untuk pertanyaan itu.')
             ->assertJsonPath('data.matched', false);
 
         $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
             'message' => 'Apa isi arsip?',
         ])->assertOk()
-            ->assertJsonPath('data.answer', 'Saya belum menemukan jawaban dari Basis AI yang tersedia.')
+            ->assertJsonPath('data.answer', 'Hmm, aku belum menemukan jawaban yang tepat untuk pertanyaan itu.')
             ->assertJsonPath('data.matched', false);
     }
 
@@ -460,7 +475,7 @@ class Phase9BasisAiTest extends TestCase
         $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/chatbot/messages', [
             'message' => 'arti mekongga',
         ])->assertOk()
-            ->assertJsonPath('data.answer', 'Saya belum menemukan jawaban dari Basis AI yang tersedia.')
+            ->assertJsonPath('data.answer', 'Hmm, aku belum menemukan jawaban yang tepat untuk pertanyaan itu.')
             ->assertJsonPath('data.matched', false)
             ->assertJsonPath('data.confidence', 0);
     }
