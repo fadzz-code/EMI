@@ -69,8 +69,25 @@ class _StudentSpeakingListScreenState
               ),
               data: (page) => Column(
                 children: [
+                  if (widget.resultsOnly && page.items.isNotEmpty) ...[
+                    _LatestResultHero(
+                      attempt: page.items.first,
+                      onOpen: () => _showAttempt(context, page.items.first.id),
+                      onTrainAgain: page.items.first.exerciseId.isEmpty
+                          ? null
+                          : () => context.push(
+                              '/student/speaking/${page.items.first.exerciseId}',
+                            ),
+                    ),
+                    const StudentSectionHeader(
+                      'Riwayat Hasil',
+                      icon: Icons.history,
+                    ),
+                  ],
                   _AttemptList(
-                    items: page.items,
+                    items: widget.resultsOnly && page.items.isNotEmpty
+                        ? page.items.skip(1).toList()
+                        : page.items,
                     onOpen: (attemptId) => _showAttempt(context, attemptId),
                   ),
                   if (page.lastPage > 1) ...[
@@ -201,6 +218,101 @@ class _ExerciseList extends StatelessWidget {
   }
 }
 
+class _LatestResultHero extends StatelessWidget {
+  const _LatestResultHero({
+    required this.attempt,
+    required this.onOpen,
+    required this.onTrainAgain,
+  });
+
+  final SpeakingAttempt attempt;
+  final VoidCallback onOpen;
+  final VoidCallback? onTrainAgain;
+
+  @override
+  Widget build(BuildContext context) {
+    final score = attempt.teacherScore ?? attempt.aiScore;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: EmiSpacing.md),
+      padding: const EdgeInsets.all(EmiSpacing.lg),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [StudentStyle.heroTintStart, StudentStyle.heroTintEnd],
+        ),
+        borderRadius: BorderRadius.circular(StudentStyle.heroRadius),
+        boxShadow: StudentStyle.heroShadow(),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Hasil Terbaru',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: EmiSpacing.sm),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                score?.round().toString() ?? '—',
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 7, left: 3),
+                child: Text('/100', style: TextStyle(color: Colors.white70)),
+              ),
+              const Spacer(),
+              Flexible(
+                child: Text(
+                  attempt.scoreLevel,
+                  textAlign: TextAlign.end,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            attempt.friendlyStatus,
+            style: const TextStyle(color: Colors.white),
+          ),
+          const SizedBox(height: EmiSpacing.md),
+          Wrap(
+            spacing: EmiSpacing.sm,
+            runSpacing: EmiSpacing.sm,
+            children: [
+              FilledButton(
+                onPressed: onOpen,
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: EmiColors.primary,
+                ),
+                child: const Text('Lihat Detail'),
+              ),
+              OutlinedButton.icon(
+                onPressed: onTrainAgain,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: Colors.white70),
+                ),
+                icon: const Icon(Icons.replay),
+                label: const Text('Latihan Lagi'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _AttemptList extends StatelessWidget {
   const _AttemptList({required this.items, required this.onOpen});
 
@@ -311,19 +423,34 @@ class _AttemptDetailState extends ConsumerState<_AttemptDetail> {
                       attempt.targetText ??
                       'Latihan speaking',
                 ),
-                _row(context, 'Status', attempt.status),
+                _row(context, 'Status', attempt.friendlyStatus),
+                if (attempt.aiScore != null || attempt.teacherScore != null)
+                  _row(
+                    context,
+                    'Pencapaian',
+                    '${(attempt.teacherScore ?? attempt.aiScore)!.round()}/100 · ${attempt.scoreLevel}',
+                  ),
+                if (attempt.targetText != null ||
+                    attempt.exercise?.targetText != null)
+                  _row(
+                    context,
+                    'Kalimat target',
+                    attempt.targetText ?? attempt.exercise!.targetText!,
+                  ),
+                if (attempt.aiTranscription != null)
+                  _row(context, 'Yang terdengar', attempt.aiTranscription!),
                 if (attempt.isProcessing)
                   _row(
                     context,
                     'Analisis',
                     'Masih berjalan. Tarik untuk refresh nanti.',
                   ),
-                if (attempt.aiScore != null)
-                  _row(context, 'Skor AI', '${attempt.aiScore}'),
-                if (attempt.aiTranscription != null)
-                  _row(context, 'Transkripsi', attempt.aiTranscription!),
                 if (attempt.aiAlignment != null)
-                  _row(context, 'Detail analisis', '${attempt.aiAlignment}'),
+                  _row(
+                    context,
+                    'Detail pengucapan',
+                    _alignmentSummary(attempt.aiAlignment!),
+                  ),
                 if (attempt.aiError != null)
                   _row(context, 'Error AI', attempt.aiError!),
                 if (attempt.teacherScore != null)
@@ -373,6 +500,24 @@ class _AttemptDetailState extends ConsumerState<_AttemptDetail> {
         ],
       ),
     );
+  }
+
+  String _alignmentSummary(Object alignment) {
+    if (alignment is! Map || alignment['operations'] is! List) {
+      return 'Analisis tersedia. Dengarkan lagi lalu bandingkan pengucapanmu.';
+    }
+    final operations = (alignment['operations'] as List).whereType<Map>();
+    final tips = operations.where((item) => item['type'] != 'match').map((
+      item,
+    ) {
+      final target = item['target']?.toString() ?? 'kata ini';
+      return item['type'] == 'deletion'
+          ? 'Ucapkan “$target” lebih lengkap.'
+          : 'Latih “$target” dengan lebih jelas.';
+    }).toList();
+    return tips.isEmpty
+        ? 'Semua kata utama terdengar tepat. Pertahankan ritme dan intonasimu.'
+        : tips.take(3).join(' ');
   }
 
   Future<void> _toggle(bool playing) async {

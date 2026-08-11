@@ -116,6 +116,23 @@ class SpeakingAttempt {
   bool get isCompleted => effectiveAnalysisStatus == 'completed';
   bool get isFailed => effectiveAnalysisStatus == 'failed';
 
+  String get friendlyStatus {
+    if (isProcessing) return 'Sedang dianalisis';
+    if (isFailed) return 'Perlu dicoba lagi';
+    if (teacherScore != null) return 'Sudah dinilai guru';
+    if (isCompleted) return 'Analisis selesai';
+    return 'Rekaman terkirim';
+  }
+
+  String get scoreLevel {
+    final score = teacherScore ?? aiScore;
+    if (score == null) return 'Terus berlatih';
+    if (score >= 90) return 'Luar biasa';
+    if (score >= 75) return 'Bagus sekali';
+    if (score >= 60) return 'Sudah berkembang';
+    return 'Ayo latihan lagi';
+  }
+
   factory SpeakingAttempt.fromJson(Map<String, dynamic> json) {
     final exercise = json['exercise'];
     final analysis = json['analysis'];

@@ -135,6 +135,8 @@ class _StudentSpeakingDetailScreenState
             children: [
               _ExerciseCard(exercise: data),
               const SizedBox(height: EmiSpacing.md),
+              const _PracticeGuide(),
+              const SizedBox(height: EmiSpacing.md),
               if (data.referenceAudio?.url != null ||
                   data.referenceAudioMediaId != null)
                 _AudioBox(
@@ -209,7 +211,7 @@ class _StudentSpeakingDetailScreenState
                   !recorder.recording) ...[
                 const SizedBox(height: EmiSpacing.md),
                 _AudioBox(
-                  title: 'Preview Rekaman',
+                  title: 'Rekaman Kamu',
                   player: _previewPlayer,
                   url: recorder.path!,
                   beforePlay: () => _referencePlayer.pause(),
@@ -231,7 +233,7 @@ class _StudentSpeakingDetailScreenState
                   hardware.recordedPath != null) ...[
                 const SizedBox(height: EmiSpacing.md),
                 _AudioBox(
-                  title: 'Preview Rekaman Alat',
+                  title: 'Rekaman Kamu · Alat Speaking EMI',
                   player: _previewPlayer,
                   url: hardware.recordedPath!,
                   beforePlay: () => _referencePlayer.pause(),
@@ -401,6 +403,74 @@ class _ExerciseCard extends StatelessWidget {
   }
 }
 
+class _PracticeGuide extends StatelessWidget {
+  const _PracticeGuide();
+
+  @override
+  Widget build(BuildContext context) {
+    const steps = [
+      (Icons.menu_book_outlined, '1', 'Baca', 'Pahami kalimat target'),
+      (Icons.headphones_outlined, '2', 'Dengarkan', 'Ikuti suara asli'),
+      (Icons.mic_none_outlined, '3', 'Rekam', 'Ucapkan dengan jelas'),
+    ];
+    return StudentCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Cara Berlatih',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: StudentStyle.ink,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: EmiSpacing.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: steps
+                .map(
+                  (step) => Expanded(
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: StudentStyle.tint,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(step.$1, color: EmiColors.primary),
+                        ),
+                        const SizedBox(height: EmiSpacing.sm),
+                        Text(
+                          '${step.$2}. ${step.$3}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: StudentStyle.ink,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          step.$4,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: StudentStyle.inkMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _RecorderCard extends StatelessWidget {
   const _RecorderCard({
     required this.state,
@@ -505,38 +575,58 @@ class _CaptureSourceSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: disabled
-                ? null
-                : () => onChanged(_CaptureSource.microphone),
-            icon: const Icon(Icons.mic),
-            label: const Text('Mikrofon HP'),
-            style: OutlinedButton.styleFrom(
-              backgroundColor: source == _CaptureSource.microphone
-                  ? Theme.of(context).colorScheme.primaryContainer
-                  : null,
+    return StudentCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Pilih Sumber Rekaman',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: StudentStyle.ink,
+              fontWeight: FontWeight.w700,
             ),
           ),
-        ),
-        const SizedBox(width: EmiSpacing.sm),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: disabled
-                ? null
-                : () => onChanged(_CaptureSource.hardware),
-            icon: const Icon(Icons.bluetooth_audio),
-            label: const Text('Alat Speaking EMI'),
-            style: OutlinedButton.styleFrom(
-              backgroundColor: source == _CaptureSource.hardware
-                  ? Theme.of(context).colorScheme.primaryContainer
-                  : null,
-            ),
+          const SizedBox(height: 4),
+          const Text(
+            'Gunakan mikrofon HP atau sambungkan Alat Speaking EMI.',
+            style: TextStyle(color: StudentStyle.inkMuted),
           ),
-        ),
-      ],
+          const SizedBox(height: EmiSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: disabled
+                      ? null
+                      : () => onChanged(_CaptureSource.microphone),
+                  icon: const Icon(Icons.mic),
+                  label: const Text('Mikrofon HP'),
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: source == _CaptureSource.microphone
+                        ? Theme.of(context).colorScheme.primaryContainer
+                        : null,
+                  ),
+                ),
+              ),
+              const SizedBox(width: EmiSpacing.sm),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: disabled
+                      ? null
+                      : () => onChanged(_CaptureSource.hardware),
+                  icon: const Icon(Icons.bluetooth_audio),
+                  label: const Text('Alat Speaking EMI'),
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: source == _CaptureSource.hardware
+                        ? Theme.of(context).colorScheme.primaryContainer
+                        : null,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -777,6 +867,11 @@ class _SubmitCard extends StatelessWidget {
               label: Text(submitting ? 'Mengirim...' : 'Kumpulkan Rekaman'),
             ),
           ),
+          const SizedBox(height: EmiSpacing.sm),
+          const Text(
+            'Rekaman akan dianalisis untuk membandingkan kalimat target, kata yang terdengar, dan ketepatan pengucapanmu.',
+            style: TextStyle(color: StudentStyle.inkMuted, fontSize: 12),
+          ),
           if (submitting) ...[
             const SizedBox(height: EmiSpacing.sm),
             ClipRRect(
@@ -861,8 +956,41 @@ class _AttemptResultCardState extends ConsumerState<_AttemptResultCard> {
               style: const TextStyle(color: StudentStyle.inkMuted),
             ),
           ],
-          if (attempt.aiScore != null)
-            _row(context, 'Skor AI', '${attempt.aiScore}'),
+          if (attempt.aiScore != null || attempt.teacherScore != null) ...[
+            const SizedBox(height: EmiSpacing.md),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(EmiSpacing.md),
+              decoration: BoxDecoration(
+                color: StudentStyle.tint,
+                borderRadius: BorderRadius.circular(StudentStyle.cardRadius),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    '${(attempt.teacherScore ?? attempt.aiScore)!.round()}',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: EmiColors.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const Text('/100'),
+                  const SizedBox(width: EmiSpacing.md),
+                  Expanded(
+                    child: Text(
+                      '${attempt.scoreLevel}\n${attempt.friendlyStatus}',
+                      style: const TextStyle(
+                        color: StudentStyle.ink,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (attempt.targetText != null)
+            _row(context, 'Kalimat target', attempt.targetText!),
           if (attempt.aiTranscription != null)
             _row(context, 'Transkripsi', attempt.aiTranscription!),
           if (attempt.aiAlignment != null)

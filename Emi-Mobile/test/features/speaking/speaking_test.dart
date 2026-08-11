@@ -38,6 +38,8 @@ void main() {
     expect(attempt.aiScore, 88.5);
     expect(attempt.isCompleted, isTrue);
     expect(attempt.teacherFeedback, 'Bagus');
+    expect(attempt.friendlyStatus, 'Analisis selesai');
+    expect(attempt.scoreLevel, 'Bagus sekali');
 
     final page = SpeakingAttemptPage.fromJson({
       'data': [
