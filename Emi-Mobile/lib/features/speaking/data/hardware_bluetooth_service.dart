@@ -1,6 +1,7 @@
 import 'dart:async';
-import 'dart:typed_data';
+import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'hardware_connection.dart';
@@ -26,19 +27,26 @@ class HardwareConnectResult {
   final String? message;
 }
 
-/// Requests the two Android 12+ runtime permissions required for SPP
-/// (`BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`). Extracted as an injectable
-/// function so tests can bypass the real `permission_handler` platform
-/// channel, which is unavailable under `flutter test`.
 typedef HardwarePermissionRequester = Future<bool> Function();
+typedef AndroidSdkReader = Future<int> Function();
+typedef PermissionRequest = Future<bool> Function(Permission permission);
 
-Future<bool> requestHardwareBluetoothPermissions() async {
-  final statuses = await [
-    Permission.bluetoothScan,
-    Permission.bluetoothConnect,
-    Permission.location,
-  ].request();
-  return statuses.values.every((status) => status.isGranted);
+const _androidSdkChannel = MethodChannel('emi_mobile/android_sdk');
+
+Future<int> readAndroidSdk() async =>
+    await _androidSdkChannel.invokeMethod<int>('sdkInt') ?? 0;
+
+Permission hardwareBluetoothPermissionForSdk(int sdk) =>
+    sdk >= 31 ? Permission.bluetoothConnect : Permission.location;
+
+Future<bool> requestHardwareBluetoothPermissions({
+  AndroidSdkReader sdkReader = readAndroidSdk,
+  PermissionRequest? request,
+}) async {
+  if (!Platform.isAndroid) return true;
+  final permission = hardwareBluetoothPermissionForSdk(await sdkReader());
+  return (request ??
+      (permission) async => (await permission.request()).isGranted)(permission);
 }
 
 /// Owns the SPP connection lifecycle to the ESP32 and exposes decoded
@@ -62,6 +70,7 @@ class HardwareBluetoothService {
 
   HardwareConnection? _connection;
   StreamSubscription<Uint8List>? _subscription;
+  int _generation = 0;
 
   bool get isConnected => _connection?.isConnected ?? false;
 
@@ -73,7 +82,13 @@ class HardwareBluetoothService {
       return const HardwareConnectResult(status: HardwareLinkStatus.connected);
     }
 
+    final generation = ++_generation;
     final granted = await _requestPermissions();
+    if (generation != _generation) {
+      return const HardwareConnectResult(
+        status: HardwareLinkStatus.disconnected,
+      );
+    }
     if (!granted) {
       return const HardwareConnectResult(
         status: HardwareLinkStatus.permissionDenied,
@@ -85,19 +100,28 @@ class HardwareBluetoothService {
     try {
       _parser.reset();
       final connection = await _connector(kHardwareDeviceName);
+      if (generation != _generation) {
+        await connection.close();
+        return const HardwareConnectResult(
+          status: HardwareLinkStatus.disconnected,
+        );
+      }
       _connection = connection;
       _subscription = connection.input.listen(
         (chunk) {
+          if (generation != _generation) return;
           final packets = _parser.push(chunk);
           for (final packet in packets) {
             onPacket?.call(packet);
           }
         },
         onDone: () {
+          if (generation != _generation) return;
           _teardown();
           onDisconnected?.call();
         },
         onError: (Object _) {
+          if (generation != _generation) return;
           _teardown();
           onDisconnected?.call();
         },
@@ -118,6 +142,7 @@ class HardwareBluetoothService {
   }
 
   Future<void> disconnect() async {
+    _generation++;
     await _subscription?.cancel();
     _subscription = null;
     await _connection?.close();

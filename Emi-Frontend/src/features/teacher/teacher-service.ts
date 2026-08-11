@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/api-client";
+import { apiClient, type ApiPaginationMeta } from "@/lib/api-client";
 import type { ChatbotConversationDetail, ChatbotConversationSummary, DictionaryEntry, DictionaryEntryFilters, StudentChatbotResponse } from "@/features/student/types";
 
 import { teacherProgressRequestQuery } from "./teacher-workflow";
@@ -25,6 +25,7 @@ import type {
   TeacherQuizResultRow,
   TeacherUserProfile,
   TeacherSpeakingAttempt,
+  TeacherSpeakingAttemptCounts,
   TeacherSpeakingExercise,
   TeacherSpeakingExercisePayload,
   TeacherSpeakingTemplate,
@@ -270,7 +271,7 @@ export const teacherService = {
   },
 
   async uploadCultureMedia(token: string, file: File) {
-    return this.uploadMedia(token, file, "culture_media", "public");
+    return this.uploadMedia(token, file, "culture_media", "private");
   },
 
   async quizzes(token: string) {
@@ -548,9 +549,12 @@ export const teacherService = {
     await apiClient.delete(`/teacher/speaking/exercises/${exerciseId}`, { token });
   },
 
-  async speakingAttempts(token: string) {
-    const response = await apiClient.get<TeacherSpeakingAttempt[]>("/teacher/speaking/attempts", { token });
-    return response.data ?? [];
+  async speakingAttempts(token: string, page = 1, filters: { search?: string; review_status?: "pending" | "reviewed" } = {}) {
+    const response = await apiClient.get<TeacherSpeakingAttempt[]>("/teacher/speaking/attempts", {
+      token,
+      query: { page, per_page: 100, search: filters.search, review_status: filters.review_status },
+    });
+    return paginated(response.data, response.meta) as PaginatedResult<TeacherSpeakingAttempt, ApiPaginationMeta & { counts?: TeacherSpeakingAttemptCounts }>;
   },
 
   async speakingAttemptDetail(token: string, attemptId: string) {

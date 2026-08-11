@@ -84,6 +84,7 @@ class TeacherQuizRepository {
       throw error is AppError ? error : _mapper.map(error);
     }
   }
+
   Future<TeacherQuizAttemptPage> attempts(
     String quizId, {
     int page = 1,
@@ -119,10 +120,7 @@ class TeacherQuizRepository {
     TeacherQuizResultPage.fromJson,
   );
 
-  Future<List<int>> reportCsv({
-    String? quizId,
-    String? status,
-  }) async {
+  Future<List<int>> reportCsv({String? quizId, String? status}) async {
     try {
       final response = await _dio.get<List<int>>(
         '/teacher/reports/quiz-results/export',

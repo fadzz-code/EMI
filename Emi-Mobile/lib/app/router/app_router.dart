@@ -369,7 +369,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/student/lessons/:lessonId',
         builder: (_, state) => StudentLessonDetailScreen(
           lessonId: state.pathParameters['lessonId'] ?? '',
-          moduleId: state.extra as String?,
+          moduleId: state.extra is String ? state.extra as String : null,
         ),
       ),
       GoRoute(

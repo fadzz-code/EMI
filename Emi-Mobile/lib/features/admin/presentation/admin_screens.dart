@@ -72,23 +72,44 @@ class AdminDashboardScreen extends ConsumerWidget {
                     'Ringkasan Utama',
                     icon: Icons.insights_outlined,
                   ),
-                  GridView.count(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: EmiSpacing.md,
-                    mainAxisSpacing: EmiSpacing.md,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisExtent: 150,
-                    children: [
-                      for (final item in data.items)
-                        AdminMetricCard(
-                          label: item.label,
-                          value: item.value,
-                          icon: _metricIcon(item),
-                          highlight: item.highlight,
-                        ),
-                    ],
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final columns = constraints.maxWidth >= 720
+                          ? 4
+                          : constraints.maxWidth >= 480
+                          ? 3
+                          : 2;
+                      return GridView.count(
+                        crossAxisCount: columns,
+                        crossAxisSpacing: EmiSpacing.sm,
+                        mainAxisSpacing: EmiSpacing.sm,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        mainAxisExtent: 132,
+                        children: [
+                          for (final item in data.items.where(
+                            (item) => item.iconName != 'approval',
+                          ))
+                            AdminMetricCard(
+                              label: item.label,
+                              value: item.value,
+                              icon: _metricIcon(item),
+                              highlight: item.highlight,
+                            ),
+                        ],
+                      );
+                    },
                   ),
+                  if (data.generatedAt != null) ...[
+                    const SizedBox(height: EmiSpacing.sm),
+                    Text(
+                      'Diperbarui ${_dashboardTimestamp(data.generatedAt!)}',
+                      textAlign: TextAlign.end,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AdminStyle.inkMuted,
+                      ),
+                    ),
+                  ],
                 ],
                 const AdminSectionHeader(
                   'Menu Cepat',
@@ -128,9 +149,20 @@ class AdminDashboardScreen extends ConsumerWidget {
     'approval' => Icons.how_to_reg_outlined,
     'school' => Icons.apartment_outlined,
     'class' => Icons.school_outlined,
-    'users' => Icons.people_outline,
+    'teacher' => Icons.person_outline,
+    'student' => Icons.groups_outlined,
+    'quiz' => Icons.quiz_outlined,
+    'progress' => Icons.trending_up_outlined,
+    'participation' => Icons.how_to_vote_outlined,
     _ => Icons.insights_outlined,
   };
+
+  String _dashboardTimestamp(DateTime value) {
+    final local = value.toLocal();
+    String two(int number) => number.toString().padLeft(2, '0');
+    return '${two(local.day)}/${two(local.month)}/${local.year} '
+        '${two(local.hour)}:${two(local.minute)}';
+  }
 
   IconData _featureIcon(AdminFeature feature) => switch (feature) {
     AdminFeature.approvals => Icons.how_to_reg_outlined,
@@ -945,7 +977,9 @@ class AdminSchoolDetailScreen extends ConsumerWidget {
     );
     if (ok != true) return;
     try {
-      await ref.read(adminRepositoryProvider).permanentlyDeleteSchool(school.id);
+      await ref
+          .read(adminRepositoryProvider)
+          .permanentlyDeleteSchool(school.id);
       if (!context.mounted) return;
       ref.invalidate(adminSchoolsProvider);
       context.go('/admin/schools');
@@ -955,7 +989,9 @@ class AdminSchoolDetailScreen extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal menghapus sekolah secara permanen.')),
+          const SnackBar(
+            content: Text('Gagal menghapus sekolah secara permanen.'),
+          ),
         );
       }
     }
@@ -1452,7 +1488,9 @@ class AdminClassDetailScreen extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal menghapus kelas secara permanen.')),
+          const SnackBar(
+            content: Text('Gagal menghapus kelas secara permanen.'),
+          ),
         );
       }
     }

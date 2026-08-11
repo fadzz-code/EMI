@@ -144,6 +144,8 @@ class DictionaryImportJobAdmin {
     this.warningCount = 0,
     this.failureCode,
     this.failureMessage,
+    this.originalName,
+    this.createdAt,
   });
   final String id;
   final String status;
@@ -158,6 +160,8 @@ class DictionaryImportJobAdmin {
   final int warningCount;
   final String? failureCode;
   final String? failureMessage;
+  final String? originalName;
+  final String? createdAt;
   factory DictionaryImportJobAdmin.fromJson(Map<String, dynamic> json) =>
       DictionaryImportJobAdmin(
         id: json['id'] as String? ?? '',
@@ -173,6 +177,8 @@ class DictionaryImportJobAdmin {
         warningCount: _int(json['warning_count']) ?? 0,
         failureCode: json['failure_code'] as String?,
         failureMessage: json['failure_message'] as String?,
+        originalName: json['csv_original_name'] as String?,
+        createdAt: json['created_at'] as String?,
       );
 }
 
@@ -487,18 +493,59 @@ class AdminCrudRepository {
         DictionaryImportJobAdmin.fromJson,
       );
 
+  Future<DictionaryImportJobAdmin> dictionaryImportDetail(String id) =>
+      _one('/admin/dictionary/imports/$id', DictionaryImportJobAdmin.fromJson);
+
+  Future<AdminCrudPage<DictionaryImportJobAdmin>> dictionaryImports({
+    int page = 1,
+  }) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '/admin/dictionary/imports',
+        queryParameters: {'page': page, 'per_page': 10},
+      );
+      return _page(res.data, DictionaryImportJobAdmin.fromJson);
+    } catch (e) {
+      throw _map(e);
+    }
+  }
+
   Future<AdminCrudPage<DictionaryImportErrorAdmin>> dictionaryImportErrors(
-    String id,
-  ) async {
+    String id, {
+    int page = 1,
+  }) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>(
         '/admin/dictionary/imports/$id/errors',
+        queryParameters: {'page': page, 'per_page': 15},
       );
       return _page(res.data, DictionaryImportErrorAdmin.fromJson);
     } catch (e) {
       throw _map(e);
     }
   }
+
+  Future<List<int>> dictionaryImportTemplate() async {
+    try {
+      final res = await _dio.get<List<int>>(
+        '/admin/dictionary/imports/xlsx-template',
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return res.data ?? const [];
+    } catch (e) {
+      throw _map(e);
+    }
+  }
+
+  Future<void> deleteDictionaryImport(String id) =>
+      _delete('/admin/dictionary/imports/$id', data: {'confirm': true});
+  Future<void> deleteDictionaryImportError(String id, String errorId) =>
+      _delete(
+        '/admin/dictionary/imports/$id/errors/$errorId',
+        data: {'confirm': true},
+      );
+  Future<void> clearDictionaryImportErrors(String id) =>
+      _delete('/admin/dictionary/imports/$id/errors', data: {'confirm': true});
 
   Future<AdminCrudPage<QuizTemplateAdmin>> quizzes({
     String? search,
@@ -707,9 +754,9 @@ class AdminCrudRepository {
     }
   }
 
-  Future<void> _delete(String path) async {
+  Future<void> _delete(String path, {Map<String, dynamic>? data}) async {
     try {
-      await _dio.delete<Map<String, dynamic>>(path);
+      await _dio.delete<Map<String, dynamic>>(path, data: data);
     } catch (e) {
       throw _map(e);
     }

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\ClassLesson;
 use App\Models\ClassModule;
 use App\Models\MediaFile;
+use App\Models\ModuleProgress;
 use App\Models\School;
 use App\Models\SchoolClass;
 use App\Models\StudentClassMembership;
@@ -95,6 +96,41 @@ class TeacherModulesTest extends TestCase
             ->assertOk()->assertJsonPath('data.status', 'published');
         $this->withToken($this->tokenFor($foreignTeacher))->putJson("/api/v1/class-lessons/{$lesson->id}", ['title' => 'Ditolak'])->assertForbidden();
         $this->withToken($this->tokenFor($foreignTeacher))->postJson("/api/v1/class-lessons/{$lesson->id}/publish")->assertForbidden();
+    }
+
+    public function test_teacher_cannot_attach_another_teachers_private_media_to_lesson(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $school = School::factory()->create(['created_by' => $admin->id]);
+        $class = SchoolClass::factory()->create(['school_id' => $school->id, 'created_by' => $admin->id]);
+        $teacher = User::factory()->teacher()->approved()->create();
+        $otherTeacher = User::factory()->teacher()->approved()->create();
+        TeacherClassAssignment::factory()->create(['teacher_id' => $teacher->id, 'class_id' => $class->id, 'assigned_by' => $admin->id]);
+        $module = ClassModule::factory()->create(['class_id' => $class->id, 'created_by' => $teacher->id]);
+        $foreignMedia = MediaFile::factory()->private()->create(['uploaded_by' => $otherTeacher->id, 'purpose' => 'document', 'mime_type' => 'application/pdf']);
+
+        $this->withToken($this->tokenFor($teacher))->postJson("/api/v1/class-modules/{$module->id}/lessons", [
+            'title' => 'Media Asing',
+            'content_type' => 'pdf',
+            'media_id' => $foreignMedia->id,
+        ])->assertUnprocessable()->assertJsonPath('code', 'INVALID_LESSON_MEDIA');
+    }
+
+    public function test_student_module_progress_only_contains_active_class(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $school = School::factory()->create(['created_by' => $admin->id]);
+        $oldClass = SchoolClass::factory()->create(['school_id' => $school->id, 'created_by' => $admin->id]);
+        $newClass = SchoolClass::factory()->create(['school_id' => $school->id, 'created_by' => $admin->id]);
+        $student = User::factory()->student()->approved()->create();
+        $oldMembership = StudentClassMembership::factory()->create(['student_id' => $student->id, 'class_id' => $oldClass->id, 'assigned_by' => $admin->id]);
+        $oldModule = ClassModule::factory()->create(['class_id' => $oldClass->id, 'created_by' => $admin->id]);
+        ModuleProgress::factory()->create(['student_id' => $student->id, 'class_module_id' => $oldModule->id]);
+        $oldMembership->update(['is_active' => false]);
+        StudentClassMembership::factory()->create(['student_id' => $student->id, 'class_id' => $newClass->id, 'assigned_by' => $admin->id]);
+
+        $this->withToken($this->tokenFor($student))->getJson('/api/v1/student/progress/modules')
+            ->assertOk()->assertJsonPath('meta.total', 0);
     }
 
     private function tokenFor(User $user): string

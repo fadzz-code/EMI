@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 /// from the in-app profile screens. Kept in one place so the URL stays
 /// consistent across roles.
 const String kPrivacyPolicyUrl = 'https://emi-kolaka.id/privacy-policy';
+const String kPrivacyPolicyVersion = '2026-08-11';
 
 /// Opens the privacy policy in an external browser. Shows a SnackBar if the
 /// URL cannot be launched (e.g. no browser available).

@@ -24,6 +24,7 @@ class _DictionaryListScreenState extends ConsumerState<DictionaryListScreen> {
   final _searchController = TextEditingController();
   Timer? _debounce;
   String? _search;
+  String _language = 'all';
   String? _categoryId;
   int _page = 1;
 
@@ -38,10 +39,12 @@ class _DictionaryListScreenState extends ConsumerState<DictionaryListScreen> {
   Widget build(BuildContext context) {
     final query = DictionaryQuery(
       search: _search,
+      language: _language,
       categoryId: _categoryId,
       page: _page,
     );
     final entries = ref.watch(dictionaryListProvider(query));
+    final categorySource = ref.watch(dictionaryCategorySourceProvider);
 
     return EmiScaffold(
       title: 'Kamus Mekongga',
@@ -90,8 +93,16 @@ class _DictionaryListScreenState extends ConsumerState<DictionaryListScreen> {
                 ),
               ),
               const SizedBox(height: EmiSpacing.md),
+              _LanguageChips(
+                active: _language,
+                onChanged: (language) => setState(() {
+                  _language = language;
+                  _page = 1;
+                }),
+              ),
+              const SizedBox(height: EmiSpacing.sm),
               _CategoryChips(
-                entries: page.items,
+                entries: categorySource.valueOrNull?.items ?? page.items,
                 activeId: _categoryId,
                 onChanged: (id) => setState(() {
                   _categoryId = id;
@@ -165,6 +176,37 @@ class _DictionaryListScreenState extends ConsumerState<DictionaryListScreen> {
     if (index == 2) context.go('/student/dictionary');
     if (index == 3) context.go('/student/quizzes');
     if (index == 4) context.go('/student/profile');
+  }
+}
+
+class _LanguageChips extends StatelessWidget {
+  const _LanguageChips({required this.active, required this.onChanged});
+
+  final String active;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    const languages = {
+      'all': 'Semua bahasa',
+      'indonesia': 'Indonesia',
+      'english': 'Inggris',
+      'mekongga': 'Mekongga',
+    };
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: languages.entries
+            .map(
+              (language) => _Chip(
+                label: language.value,
+                selected: active == language.key,
+                onTap: () => onChanged(language.key),
+              ),
+            )
+            .toList(),
+      ),
+    );
   }
 }
 

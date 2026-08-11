@@ -13,7 +13,7 @@ export function useEsp32SerialCapture() {
   const [error, setError] = useState<string | null>(support.reason);
   const [notice, setNotice] = useState<string | null>(null);
   const [capture, setCapture] = useState<{ file: File; url: string; duration: number } | null>(null);
-  const serviceRef = useRef(new Esp32SerialService());
+  const serviceRef = useRef<Esp32SerialService | null>(support.supported ? new Esp32SerialService() : null);
   const stateRef = useRef<Esp32CaptureState>(state);
   const captureRef = useRef<{ file: File; url: string; duration: number } | null>(null);
   const chunksRef = useRef<Uint8Array[]>([]);
@@ -92,18 +92,19 @@ export function useEsp32SerialCapture() {
   }, [clearPartial, transition]);
 
   const connect = useCallback(async (requestNew = false) => {
-    if (busyRef.current || stateRef.current === "connecting" || stateRef.current === "recording" || stateRef.current === "finalizing") return;
+    const service = serviceRef.current;
+    if (!service || busyRef.current || stateRef.current === "connecting" || stateRef.current === "recording" || stateRef.current === "finalizing") return;
     busyRef.current = true;
     const previous = stateRef.current;
     transition("connecting");
     if (mountedRef.current) { setError(null); setNotice(null); }
     try {
-      const result = await serviceRef.current.connect(requestNew, handlePacket, handleEnd);
+      const result = await service.connect(requestNew, handlePacket, handleEnd);
       if (!mountedRef.current) return;
       if (result.status === "cancelled") {
         setNotice(result.message);
-        transition(previous === "permitted" || serviceRef.current.hasPermission ? "permitted" : "disconnected");
-      } else transition(result.status === "connected" ? "ready" : serviceRef.current.hasPermission ? "permitted" : "disconnected");
+        transition(previous === "permitted" || service.hasPermission ? "permitted" : "disconnected");
+      } else transition(result.status === "connected" ? "ready" : service.hasPermission ? "permitted" : "disconnected");
     } catch (caught) {
       if (mountedRef.current) setError(caught instanceof Error ? caught.message : "Gagal menghubungkan alat.");
       transition("error");
@@ -113,16 +114,24 @@ export function useEsp32SerialCapture() {
   }, [handleEnd, handlePacket, transition]);
 
   const disconnect = useCallback(async () => {
-    await serviceRef.current.disconnect();
+    await serviceRef.current?.disconnect();
     clearPartial();
-    transition("disconnected");
-  }, [clearPartial, transition]);
+    transition(support.supported ? "disconnected" : "unsupported");
+  }, [clearPartial, support.supported, transition]);
+
+  const clearCapture = useCallback(() => {
+    clearPartial();
+    if (captureRef.current) URL.revokeObjectURL(captureRef.current.url);
+    captureRef.current = null;
+    if (mountedRef.current) setCapture(null);
+    if (stateRef.current === "captured" || stateRef.current === "error") transition(serviceRef.current?.connected ? "ready" : support.supported ? "disconnected" : "unsupported");
+  }, [clearPartial, support.supported, transition]);
 
   useEffect(() => {
     const service = serviceRef.current;
     mountedRef.current = true;
     const reconnect = window.setTimeout(async () => {
-      if (!support.supported) return;
+      if (!service) return;
       try {
         const result = await service.reconnect(handlePacket, handleEnd);
         transition(result.status === "connected" ? "ready" : service.hasPermission ? "permitted" : "disconnected");
@@ -134,12 +143,12 @@ export function useEsp32SerialCapture() {
     return () => {
       mountedRef.current = false;
       window.clearTimeout(reconnect);
-      void service.dispose();
+      void service?.dispose();
       clearPartial();
       if (captureRef.current) URL.revokeObjectURL(captureRef.current.url);
       captureRef.current = null;
     };
   }, [clearPartial, handleEnd, handlePacket, support.supported, transition]);
 
-  return { supported: support.supported, state, error, notice, capture, connect, disconnect };
+  return { supported: support.supported, state, error, notice, capture, connect, disconnect, clearCapture };
 }

@@ -138,17 +138,36 @@ export function StudentSpeaking() {
   }
 
   function resetAttempt() {
+    const recorder = mediaRecorderRef.current;
+    if (recorder) {
+      recorder.ondataavailable = null;
+      recorder.onstop = null;
+      if (recorder.state !== "inactive") recorder.stop();
+      mediaRecorderRef.current = null;
+    }
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    mediaStreamRef.current = null;
+    chunksRef.current = [];
+    setIsRecording(false);
     setActiveAttempt(null);
     setRecordedFile(null);
     if (recordedUrl) URL.revokeObjectURL(recordedUrl);
     setRecordedUrl(null);
+    esp32.clearCapture();
     setError(null);
+  }
+
+  function selectExercise(exercise: SpeakingExercise) {
+    if (exercise.id === selectedExercise?.id || isSubmitting || esp32.state === "finalizing") return;
+    resetAttempt();
+    setSelectedExercise(exercise);
+    setReferenceAudioError(false);
   }
 
   function nextExercise() {
     const index = exercises.findIndex((exercise) => exercise.id === selectedExercise?.id);
-    if (exercises.length > 0) setSelectedExercise(exercises[(index + 1) % exercises.length]);
-    resetAttempt();
+    const exercise = exercises[(index + 1) % exercises.length];
+    if (exercise) selectExercise(exercise);
   }
 
   async function submitAttempt() {
@@ -169,7 +188,7 @@ export function StudentSpeaking() {
   }
 
   return (
-    <div className="mx-auto grid max-w-5xl gap-8 pb-24 lg:pb-0">
+    <div className="mx-auto grid min-w-0 max-w-5xl gap-6 overflow-x-hidden pb-24 sm:gap-8 lg:pb-0">
       <section className="flex flex-col gap-2">
         <p className="text-sm font-black uppercase tracking-[0.08em] text-muted">Latihan Speaking</p>
         <h1 className="text-3xl font-black leading-tight text-ink md:text-4xl">Latih pelafalan Mekongga</h1>
@@ -202,10 +221,7 @@ export function StudentSpeaking() {
                       ? "border-border bg-accent text-accent-foreground shadow-[2px_2px_0_var(--border)]"
                       : "border-transparent bg-surface-muted text-ink hover:border-border hover:shadow-[2px_2px_0_var(--border)]",
                   )}
-                  onClick={() => {
-                    setSelectedExercise(exercise);
-                    setReferenceAudioError(false);
-                  }}
+                  onClick={() => selectExercise(exercise)}
                   type="button"
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -222,34 +238,34 @@ export function StudentSpeaking() {
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden bg-[var(--color-primary-muted)] lg:order-1">
-          <CardContent>
+        <Card className="min-w-0 max-w-full overflow-hidden bg-[var(--color-primary-muted)] lg:order-1">
+          <CardContent className="min-w-0 p-3 sm:p-5">
             {selectedExercise ? (
-              <div className="grid gap-5">
-                <div className="rounded-[var(--radius-card)] border-2 border-border bg-surface p-5 text-center shadow-[2px_2px_0_var(--border)]">
+              <div className="grid min-w-0 max-w-full gap-4 sm:gap-5">
+                <div className="min-w-0 rounded-[var(--radius-card)] border-2 border-border bg-surface p-3 text-center shadow-[2px_2px_0_var(--border)] sm:p-5">
                   <p className="text-[10px] font-black uppercase tracking-widest text-muted">Target bacaan</p>
-                  <p className="mt-3 text-3xl font-black leading-tight text-ink md:text-4xl">{selectedExercise.target_text}</p>
+                  <p className="mt-3 break-words text-2xl font-black leading-tight text-ink [overflow-wrap:anywhere] sm:text-3xl md:text-4xl">{selectedExercise.target_text}</p>
                   {selectedExercise.target_translation ? <p className="mt-2 text-sm font-bold text-muted">{selectedExercise.target_translation}</p> : null}
                   {selectedExercise.prompt_text ? <p className="mt-3 text-sm font-semibold leading-6 text-muted">{selectedExercise.prompt_text}</p> : null}
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl border-2 border-transparent bg-surface p-4">
+                <div className="grid gap-2 min-[400px]:grid-cols-3 sm:gap-3">
+                  <div className="min-w-0 rounded-2xl border-2 border-transparent bg-surface p-3 sm:p-4">
                     <p className="text-sm font-black text-ink">1. Baca</p>
                     <p className="mt-1 text-xs font-semibold text-muted">Pahami target kalimat.</p>
                   </div>
-                  <div className="rounded-2xl border-2 border-transparent bg-surface p-4">
-                    <p className="text-sm font-black text-ink">2. Dengarkan</p>
+                  <div className="min-w-0 rounded-2xl border-2 border-transparent bg-surface p-3 sm:p-4">
+                    <p className="break-words text-sm font-black text-ink">2. Dengarkan</p>
                     <p className="mt-1 text-xs font-semibold text-muted">Ikuti contoh Suara Asli.</p>
                   </div>
-                  <div className="rounded-2xl border-2 border-transparent bg-surface p-4">
+                  <div className="min-w-0 rounded-2xl border-2 border-transparent bg-surface p-3 sm:p-4">
                     <p className="text-sm font-black text-ink">3. Rekam</p>
                     <p className="mt-1 text-xs font-semibold text-muted">Ucapkan dengan jelas.</p>
                   </div>
                 </div>
 
-                <div className="rounded-[var(--radius-card)] border-2 border-border bg-surface p-4 shadow-[2px_2px_0_var(--border)]">
-                  <div className="mb-3 flex items-start justify-between gap-3">
+                <div className="min-w-0 max-w-full rounded-[var(--radius-card)] border-2 border-border bg-surface p-3 shadow-[2px_2px_0_var(--border)] sm:p-4">
+                  <div className="mb-3 flex min-w-0 items-start justify-between gap-3">
                     <div>
                       <p className="text-lg font-black text-ink">Suara Asli</p>
                       <p className="mt-1 text-sm font-semibold text-muted">Dengarkan contoh pengucapan sebelum merekam suaramu.</p>
@@ -270,7 +286,7 @@ export function StudentSpeaking() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3" aria-label="Sumber rekaman">
+                <div className="grid gap-3 sm:grid-cols-2" aria-label="Sumber rekaman">
                   <Button disabled={isRecording || isSubmitting || esp32.state === "recording" || esp32.state === "finalizing"} onClick={() => selectCaptureSource("microphone")} type="button" variant={captureSource === "microphone" ? "primary" : "secondary"}><Mic className="mr-2 size-4" />Gunakan mikrofon perangkat</Button>
                   <Button disabled={!esp32.supported || isRecording || isSubmitting || esp32.state === "recording" || esp32.state === "finalizing"} onClick={() => selectCaptureSource("esp32")} type="button" variant={captureSource === "esp32" ? "primary" : "secondary"}><Cable className="mr-2 size-4" />Gunakan Alat Speaking EMI</Button>
                 </div>

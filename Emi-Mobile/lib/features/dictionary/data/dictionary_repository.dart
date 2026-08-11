@@ -12,6 +12,7 @@ class DictionaryRepository {
 
   Future<DictionaryPage> list({
     String? search,
+    String language = 'all',
     String? categoryId,
     int page = 1,
     int perPage = 15,
@@ -24,6 +25,7 @@ class DictionaryRepository {
           'per_page': perPage,
           if (search != null && search.trim().isNotEmpty)
             'search': search.trim(),
+          'language': language,
           if (categoryId != null && categoryId.isNotEmpty)
             'category_id': categoryId,
         },

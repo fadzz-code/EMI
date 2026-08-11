@@ -2,17 +2,22 @@
 
 namespace App\Policies;
 
+use App\Models\ClassCultureItem;
 use App\Models\MediaFile;
 use App\Models\SpeakingAttempt;
 use App\Models\User;
+use App\Services\SpeakingAuthorizationService;
 
 class MediaFilePolicy
 {
+    public function __construct(private readonly SpeakingAuthorizationService $speakingAuthorizationService) {}
+
     public function view(User $user, MediaFile $mediaFile): bool
     {
         return $user->role === 'admin'
             || $mediaFile->uploaded_by === $user->id
-            || $mediaFile->isPublic()
+            || ($mediaFile->isPublic() && $mediaFile->purpose !== 'culture_media')
+            || $this->canAccessCultureMedia($user, $mediaFile)
             || $this->teacherCanReviewSpeakingRecording($user, $mediaFile);
     }
 
@@ -33,7 +38,7 @@ class MediaFilePolicy
     public function requestTemporaryUrl(User $user, MediaFile $mediaFile): bool
     {
         return $mediaFile->isPrivate()
-            && ($user->role === 'admin' || $mediaFile->uploaded_by === $user->id || $this->teacherCanReviewSpeakingRecording($user, $mediaFile));
+            && ($user->role === 'admin' || $mediaFile->uploaded_by === $user->id || $this->canAccessCultureMedia($user, $mediaFile) || $this->teacherCanReviewSpeakingRecording($user, $mediaFile));
     }
 
     public function delete(User $user, MediaFile $mediaFile): bool
@@ -46,25 +51,34 @@ class MediaFilePolicy
         return $mediaFile->isPublic();
     }
 
+    private function canAccessCultureMedia(User $user, MediaFile $mediaFile): bool
+    {
+        if ($mediaFile->purpose !== 'culture_media') {
+            return false;
+        }
+
+        $items = ClassCultureItem::query()
+            ->where('media_id', $mediaFile->id)
+            ->where('status', 'published')
+            ->whereHas('schoolClass', fn ($query) => $query
+                ->where('status', 'active')
+                ->whereHas('school', fn ($school) => $school->where('status', 'active')));
+
+        return match ($user->role) {
+            'teacher' => $items->whereIn('class_id', $user->teacherClassAssignments()->where('is_active', true)->select('class_id'))->exists(),
+            'student' => $items->whereIn('class_id', $user->studentClassMemberships()->where('is_active', true)->select('class_id'))->exists(),
+            default => false,
+        };
+    }
+
     private function teacherCanReviewSpeakingRecording(User $user, MediaFile $mediaFile): bool
     {
         if ($user->role !== 'teacher' || $mediaFile->purpose !== 'speaking_recording') {
             return false;
         }
 
-        $attempt = SpeakingAttempt::query()->with('exercise')->where('audio_media_id', $mediaFile->id)->first();
+        $attempt = SpeakingAttempt::query()->where('audio_media_id', $mediaFile->id)->first();
 
-        if (! $attempt) {
-            return false;
-        }
-
-        $classId = $attempt->exercise?->classroom_id;
-
-        if (! $classId) {
-            // Latihan global (dibuat admin) dapat direview guru manapun.
-            return true;
-        }
-
-        return $user->teacherClassAssignments()->where('class_id', $classId)->where('is_active', true)->exists();
+        return $attempt && $this->speakingAuthorizationService->teacherCanAccessAttempt($user, $attempt);
     }
 }

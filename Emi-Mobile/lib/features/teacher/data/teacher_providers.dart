@@ -68,8 +68,17 @@ final teacherSpeakingExerciseProvider =
       (ref, id) => ref.watch(teacherRepositoryProvider).speakingExercise(id),
     );
 final teacherSpeakingAttemptsProvider =
-    FutureProvider<List<TeacherSpeakingAttempt>>(
-      (ref) => ref.watch(teacherRepositoryProvider).speakingAttempts(),
+    FutureProvider.family<
+      TeacherSpeakingAttemptPage,
+      ({int page, String search, String reviewStatus})
+    >(
+      (ref, query) => ref
+          .watch(teacherRepositoryProvider)
+          .speakingAttempts(
+            page: query.page,
+            search: query.search,
+            reviewStatus: query.reviewStatus,
+          ),
     );
 final teacherSpeakingAttemptProvider =
     FutureProvider.family<TeacherSpeakingAttempt, String>(

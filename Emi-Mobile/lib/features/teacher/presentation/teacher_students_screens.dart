@@ -51,8 +51,12 @@ class _TeacherProgressState extends ConsumerState<TeacherProgressScreen> {
 
   Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
     try {
-      final bytes = await ref.read(teacherRepositoryProvider).studentProgressCsv();
-      final file = File('${(await getTemporaryDirectory()).path}/laporan-siswa-guru.csv');
+      final bytes = await ref
+          .read(teacherRepositoryProvider)
+          .studentProgressCsv();
+      final file = File(
+        '${(await getTemporaryDirectory()).path}/laporan-siswa-guru.csv',
+      );
       await file.writeAsBytes(bytes, flush: true);
       await SharePlus.instance.share(
         ShareParams(files: [XFile(file.path)], subject: 'Laporan Siswa'),
@@ -65,6 +69,7 @@ class _TeacherProgressState extends ConsumerState<TeacherProgressScreen> {
       }
     }
   }
+
   @override
   Widget build(BuildContext context) {
     final classes = ref.watch(teacherClassesProvider(query));
@@ -157,14 +162,18 @@ class _TeacherClassProgressState
 
   Future<void> _exportCsv(BuildContext context) async {
     try {
-      final bytes = await ref.read(teacherRepositoryProvider).studentProgressCsv(
-        classId: widget.classId,
-        search: search,
+      final bytes = await ref
+          .read(teacherRepositoryProvider)
+          .studentProgressCsv(classId: widget.classId, search: search);
+      final file = File(
+        '${(await getTemporaryDirectory()).path}/laporan-progress-kelas.csv',
       );
-      final file = File('${(await getTemporaryDirectory()).path}/laporan-progress-kelas.csv');
       await file.writeAsBytes(bytes, flush: true);
       await SharePlus.instance.share(
-        ShareParams(files: [XFile(file.path)], subject: 'Laporan Progress Kelas'),
+        ShareParams(
+          files: [XFile(file.path)],
+          subject: 'Laporan Progress Kelas',
+        ),
       );
     } catch (_) {
       if (context.mounted) {
@@ -174,6 +183,7 @@ class _TeacherClassProgressState
       }
     }
   }
+
   @override
   void dispose() {
     debounce?.cancel();

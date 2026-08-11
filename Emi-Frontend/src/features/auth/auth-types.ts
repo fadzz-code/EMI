@@ -39,6 +39,8 @@ export type RegisterPayload = {
   requested_role: "teacher" | "student";
   school_id: string;
   class_id: string;
+  privacy_policy_accepted: boolean;
+  privacy_policy_version: string;
 };
 
 export type RegisterResult = {

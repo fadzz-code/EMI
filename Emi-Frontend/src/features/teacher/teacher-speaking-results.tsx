@@ -1,9 +1,9 @@
 "use client";
 
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Bot, CheckCheck, ListChecks, Mic, TriangleAlert, Volume2 } from "lucide-react";
 
-import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, FormField, Input, LoadingState, Textarea } from "@/components/ui";
+import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, FormField, Input, LoadingState, Pagination, Textarea } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
@@ -32,7 +32,11 @@ function date(value?: string | null) {
 export function TeacherSpeakingResults() {
   const { token } = useAuth();
   const [attempts, setAttempts] = useState<TeacherSpeakingAttempt[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [counts, setCounts] = useState({ total: 0, pending: 0, reviewed: 0, failed: 0 });
   const [selectedAttempt, setSelectedAttempt] = useState<TeacherSpeakingAttempt | null>(null);
+  const selectedAttemptId = useRef<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [teacherScore, setTeacherScore] = useState("");
   const [teacherFeedback, setTeacherFeedback] = useState("");
@@ -46,14 +50,18 @@ export function TeacherSpeakingResults() {
   useEffect(() => {
     if (!token) return;
     let ignore = false;
-    teacherService.speakingAttempts(token)
-      .then((items) => {
+    teacherService.speakingAttempts(token, page, { search: search.trim(), review_status: tab })
+      .then((result) => {
         if (ignore) return;
-        const initialAttempt = items.find((item) => item.status !== "reviewed" && item.teacher_score === null) ?? items[0] ?? null;
-        setAttempts(items);
-        setSelectedAttempt(initialAttempt);
-        setTeacherScore(initialAttempt?.teacher_score?.toString() ?? "");
-        setTeacherFeedback(initialAttempt?.teacher_feedback ?? "");
+        const lastPage = Math.max(result.meta?.last_page ?? 1, 1);
+        if (result.items.length === 0 && page > lastPage) {
+          setPage(lastPage);
+          return;
+        }
+        setAttempts(result.items);
+        setTotalPages(lastPage);
+        setCounts(result.meta?.counts ?? { total: result.meta?.total ?? result.items.length, pending: 0, reviewed: 0, failed: 0 });
+        if (!result.items.some((item) => item.id === selectedAttemptId.current)) clearSelection();
         setError(null);
       })
       .catch((err) => !ignore && setError(getFirstApiError(err)))
@@ -61,7 +69,7 @@ export function TeacherSpeakingResults() {
     return () => {
       ignore = true;
     };
-  }, [token]);
+  }, [page, search, tab, token]);
 
   useEffect(() => {
     if (!token || !selectedAttempt?.audio_media_id) {
@@ -77,30 +85,42 @@ export function TeacherSpeakingResults() {
     };
   }, [selectedAttempt?.audio_media_id, token]);
 
+  function clearSelection() {
+    selectedAttemptId.current = null;
+    setSelectedAttempt(null);
+    setAudioUrl(null);
+    setTeacherScore("");
+    setTeacherFeedback("");
+    setMessage(null);
+  }
+
   async function selectAttempt(attempt: TeacherSpeakingAttempt) {
     if (!token) return;
+    selectedAttemptId.current = attempt.id;
     try {
       setAudioUrl(null);
       const detail = await teacherService.speakingAttemptDetail(token, attempt.id);
+      if (selectedAttemptId.current !== attempt.id) return;
       setSelectedAttempt(detail);
       setTeacherScore(detail.teacher_score?.toString() ?? "");
       setTeacherFeedback(detail.teacher_feedback ?? "");
       setMessage(null);
     } catch (err) {
-      setError(getFirstApiError(err));
+      if (selectedAttemptId.current === attempt.id) setError(getFirstApiError(err));
     }
   }
 
   async function submitFeedback(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!token || !selectedAttempt) return;
+    const attemptId = selectedAttempt.id;
     setIsSubmitting(true);
     try {
-      const updated = await teacherService.submitSpeakingFeedback(token, selectedAttempt.id, {
+      const updated = await teacherService.submitSpeakingFeedback(token, attemptId, {
         teacher_score: Number(teacherScore),
         teacher_feedback: teacherFeedback.trim() || null,
       });
-      setSelectedAttempt(updated);
+      if (selectedAttemptId.current === attemptId) setSelectedAttempt(updated);
       setAttempts((current) => current.map((item) => item.id === updated.id ? updated : item));
       setMessage("Feedback speaking berhasil disimpan.");
       setError(null);
@@ -111,21 +131,6 @@ export function TeacherSpeakingResults() {
     }
   }
 
-  const isReviewed = (attempt: TeacherSpeakingAttempt) => attempt.status === "reviewed" || attempt.teacher_score !== null;
-
-  const filteredAttempts = useMemo(() => {
-    const byTab = attempts.filter((attempt) => tab === "reviewed" ? isReviewed(attempt) : !isReviewed(attempt));
-    const keyword = search.trim().toLowerCase();
-    if (!keyword) return byTab;
-    return byTab.filter((attempt) => [
-      attempt.student?.full_name,
-      attempt.student?.email,
-      attempt.exercise?.title,
-      attempt.target_text,
-      attempt.status,
-    ].filter(Boolean).join(" ").toLowerCase().includes(keyword));
-  }, [attempts, search, tab]);
-
   const alignmentRows = (Array.isArray(selectedAttempt?.ai_alignment) ? [] : Object.entries(selectedAttempt?.ai_alignment ?? {}))
     .filter(([key, value]) => typeof value === "number" && /^\d+_/.test(key))
     .map(([key, value]) => {
@@ -133,9 +138,7 @@ export function TeacherSpeakingResults() {
       return { word, value: Math.round(value as number) };
     })
     .slice(0, 8);
-  const reviewedCount = attempts.filter((attempt) => attempt.status === "reviewed" || attempt.teacher_score !== null).length;
-  const pendingReviewCount = attempts.filter((attempt) => attempt.status === "completed" && attempt.teacher_score === null).length;
-  const failedCount = attempts.filter((attempt) => attempt.status === "failed").length;
+
 
   return (
     <div className="grid gap-8">
@@ -152,10 +155,10 @@ export function TeacherSpeakingResults() {
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Total", value: attempts.length, helper: "Percobaan yang masuk", icon: ListChecks },
-          { label: "Siap Ditinjau", value: pendingReviewCount, helper: "Perlu feedback guru", icon: Bot },
-          { label: "Ditinjau", value: reviewedCount, helper: "Sudah diberi skor guru", icon: CheckCheck },
-          { label: "Analisis Gagal", value: failedCount, helper: "Perlu cek ulang", icon: TriangleAlert },
+          { label: "Total", value: counts.total, helper: "Percobaan yang masuk", icon: ListChecks },
+          { label: "Siap Ditinjau", value: counts.pending, helper: "Perlu feedback guru", icon: Bot },
+          { label: "Ditinjau", value: counts.reviewed, helper: "Sudah diberi skor guru", icon: CheckCheck },
+          { label: "Analisis Gagal", value: counts.failed, helper: "Perlu cek ulang", icon: TriangleAlert },
         ].map((stat) => (
           <Card className="group h-full transition hover:-translate-y-1 hover:shadow-emi" key={stat.label}>
             <CardContent className="flex h-full items-center gap-4">
@@ -179,27 +182,27 @@ export function TeacherSpeakingResults() {
               <h2 className="text-xl font-black text-ink">Percobaan Siswa</h2>
               <div className="grid grid-cols-2 gap-2">
                 {([
-                  { key: "pending", label: `Perlu Ditinjau (${attempts.filter((attempt) => !isReviewed(attempt)).length})` },
-                  { key: "reviewed", label: `Sudah Ditinjau (${attempts.filter(isReviewed).length})` },
+                  { key: "pending", label: `Perlu Ditinjau (${counts.pending})` },
+                  { key: "reviewed", label: `Sudah Ditinjau (${counts.reviewed})` },
                 ] as const).map((item) => (
                   <button
                     className={`rounded-xl border-2 border-border px-3 py-2 text-sm font-black transition ${tab === item.key ? "bg-primary text-primary-foreground" : "bg-surface text-ink hover:bg-surface-muted"}`}
                     key={item.key}
-                    onClick={() => setTab(item.key)}
+                    onClick={() => { clearSelection(); setIsLoading(true); setTab(item.key); setPage(1); }}
                     type="button"
                   >
                     {item.label}
                   </button>
                 ))}
               </div>
-              <Input onChange={(event) => setSearch(event.target.value)} placeholder="Cari siswa, latihan, status..." value={search} />
+              <Input onChange={(event) => { clearSelection(); setIsLoading(true); setSearch(event.target.value); setPage(1); }} placeholder="Cari siswa, latihan, status..." value={search} />
             </div>
           </CardHeader>
           <CardContent className="flex min-h-0 flex-1 flex-col">
             {isLoading ? <LoadingState title="Memuat hasil speaking" /> : null}
-            {!isLoading && filteredAttempts.length === 0 ? <EmptyState description={tab === "pending" ? "Tidak ada percobaan yang menunggu tinjauan. Percobaan baru akan muncul setelah siswa mengirim audio." : "Belum ada percobaan yang selesai ditinjau. Buka tab Perlu Ditinjau untuk memberi feedback."} title={tab === "pending" ? "Tidak ada yang perlu ditinjau" : "Belum ada yang ditinjau"} /> : null}
+            {!isLoading && attempts.length === 0 ? <EmptyState description={tab === "pending" ? "Tidak ada percobaan yang menunggu tinjauan. Percobaan baru akan muncul setelah siswa mengirim audio." : "Belum ada percobaan yang selesai ditinjau. Buka tab Perlu Ditinjau untuk memberi feedback."} title={tab === "pending" ? "Tidak ada yang perlu ditinjau" : "Belum ada yang ditinjau"} /> : null}
             <div className="grid max-h-[34rem] content-start gap-3 overflow-y-auto pr-1 lg:max-h-none lg:min-h-0 lg:flex-1">
-              {filteredAttempts.map((attempt) => (
+              {attempts.map((attempt) => (
                 <button key={attempt.id} className={`rounded-xl border-2 border-border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-emi ${selectedAttempt?.id === attempt.id ? "bg-[var(--color-primary-muted)]" : "bg-surface hover:bg-surface-muted"}`} onClick={() => selectAttempt(attempt)} type="button">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -216,6 +219,7 @@ export function TeacherSpeakingResults() {
                 </button>
               ))}
             </div>
+            {totalPages > 1 ? <Pagination onPageChange={(nextPage) => { clearSelection(); setIsLoading(true); setPage(nextPage); }} page={page} totalPages={totalPages} /> : null}
           </CardContent>
         </Card>
 

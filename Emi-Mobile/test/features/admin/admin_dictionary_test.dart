@@ -356,6 +356,152 @@ void main() {
     ]);
   });
 
+  test('dictionary XLSX preview fields stay separate from confirm', () async {
+    final requests = <String>[];
+    final file = await File(
+      '${Directory.systemTemp.path}/emi_import.xlsx',
+    ).writeAsBytes([1]);
+    final repository = AdminCrudRepository(
+      Dio(BaseOptions(baseUrl: 'https://example.test'))
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              requests.add('${options.method} ${options.path}');
+              if (options.data is FormData) {
+                final form = options.data as FormData;
+                expect(form.files.single.key, 'csv_file');
+                expect(
+                  form.fields.any(
+                    (field) =>
+                        field.key == 'import_type' && field.value == 'combined',
+                  ),
+                  isTrue,
+                );
+                expect(
+                  form.fields.any(
+                    (field) =>
+                        field.key == 'duplicate_strategy' &&
+                        field.value == 'update',
+                  ),
+                  isTrue,
+                );
+              }
+              handler.resolve(
+                Response(
+                  requestOptions: options,
+                  data: {
+                    'data': {
+                      'id': 'job-1',
+                      'status': options.path.endsWith('/confirm')
+                          ? 'queued'
+                          : 'preview_ready',
+                      'valid_rows': 1,
+                    },
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      const DioErrorMapper(),
+    );
+
+    final preview = await repository.previewDictionaryImport(
+      csvFile: file,
+      importType: 'combined',
+      duplicateStrategy: 'update',
+    );
+    expect(requests, ['POST /admin/dictionary/imports/preview']);
+    await repository.confirmDictionaryImport(preview.id);
+    expect(requests.last, 'POST /admin/dictionary/imports/job-1/confirm');
+    await file.delete();
+  });
+
+  test('dictionary import history template and delete contracts', () async {
+    final requests = <String>[];
+    final repository = AdminCrudRepository(
+      Dio(BaseOptions(baseUrl: 'https://example.test'))
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              requests.add('${options.method} ${options.path}');
+              if (options.method == 'DELETE') {
+                expect(options.data, {'confirm': true});
+              }
+              final data = options.path.endsWith('xlsx-template')
+                  ? <int>[1, 2]
+                  : options.path == '/admin/dictionary/imports'
+                  ? {
+                      'data': <Object>[],
+                      'meta': {'current_page': 2, 'last_page': 3, 'total': 21},
+                    }
+                  : options.path == '/admin/dictionary/imports/job-1'
+                  ? {
+                      'data': {'id': 'job-1', 'status': 'processing'},
+                    }
+                  : {'data': null};
+              handler.resolve(Response(requestOptions: options, data: data));
+            },
+          ),
+        ),
+      const DioErrorMapper(),
+    );
+
+    final history = await repository.dictionaryImports(page: 2);
+    expect(history.lastPage, 3);
+    expect(
+      (await repository.dictionaryImportDetail('job-1')).status,
+      'processing',
+    );
+    expect(await repository.dictionaryImportTemplate(), [1, 2]);
+    await repository.deleteDictionaryImport('job-1');
+    await repository.deleteDictionaryImportError('job-1', 'error-1');
+    await repository.clearDictionaryImportErrors('job-1');
+    expect(requests, [
+      'GET /admin/dictionary/imports',
+      'GET /admin/dictionary/imports/job-1',
+      'GET /admin/dictionary/imports/xlsx-template',
+      'DELETE /admin/dictionary/imports/job-1',
+      'DELETE /admin/dictionary/imports/job-1/errors/error-1',
+      'DELETE /admin/dictionary/imports/job-1/errors',
+    ]);
+  });
+
+  test('dictionary import delete maps backend error', () async {
+    final repository = AdminCrudRepository(
+      Dio(BaseOptions(baseUrl: 'https://example.test'))
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) => handler.reject(
+              DioException.badResponse(
+                statusCode: 409,
+                requestOptions: options,
+                response: Response(
+                  requestOptions: options,
+                  statusCode: 409,
+                  data: {'message': 'Import masih diproses.'},
+                ),
+              ),
+            ),
+          ),
+        ),
+      const DioErrorMapper(),
+    );
+
+    await expectLater(
+      repository.clearDictionaryImportErrors('job-1'),
+      throwsA(
+        isA<AppError>()
+            .having((error) => error.type, 'type', AppErrorType.conflict)
+            .having(
+              (error) => error.message,
+              'message',
+              'Import masih diproses.',
+            ),
+      ),
+    );
+  });
+
   test('admin dictionary query identity includes filters', () {
     const a = AdminSearchQuery(
       search: 'mowali',

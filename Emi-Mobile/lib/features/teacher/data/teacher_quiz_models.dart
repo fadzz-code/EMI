@@ -272,9 +272,9 @@ class TeacherQuizReportSummary {
       lowestScorePercent: data['lowest_score_percent'] as num?,
       questions: list is List
           ? list
-              .whereType<Map<String, dynamic>>()
-              .map(TeacherQuizQuestionReport.fromJson)
-              .toList()
+                .whereType<Map<String, dynamic>>()
+                .map(TeacherQuizQuestionReport.fromJson)
+                .toList()
           : const [],
     );
   }

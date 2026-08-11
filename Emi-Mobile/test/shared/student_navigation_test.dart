@@ -8,6 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 class FakeAuthRepository implements AuthRepository {
+  int logoutCalls = 0;
+
   @override
   Future<List<PublicSchoolOption>> listPublicSchools() async => const [];
 
@@ -47,7 +49,9 @@ class FakeAuthRepository implements AuthRepository {
   Future<void> deleteAccount({required String currentPassword}) async {}
 
   @override
-  Future<void> logout() async {}
+  Future<void> logout() async {
+    logoutCalls++;
+  }
 
   @override
   Future<SessionUser?> restoreSession() async => _student;
@@ -124,6 +128,47 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(router.routeInformationProvider.value.uri.path, '/student/culture');
+  });
+
+  testWidgets('logout footer stays visible and cancel does not logout', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 568));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repository = FakeAuthRepository();
+    final router = _router('/student/dashboard');
+    await _pump(tester, router, repository: repository, textScale: 2);
+
+    await tester.tap(find.byKey(const Key('studentMenuButton')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('studentLogoutButton')), findsOneWidget);
+    expect(
+      tester.getBottomLeft(find.byKey(const Key('studentLogoutButton'))).dy,
+      lessThanOrEqualTo(568),
+    );
+
+    await tester.tap(find.byKey(const Key('studentLogoutButton')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Batal'));
+    await tester.pumpAndSettle();
+
+    expect(repository.logoutCalls, 0);
+  });
+
+  testWidgets('logout confirmation calls repository once', (tester) async {
+    final repository = FakeAuthRepository();
+    final router = _router('/student/dashboard');
+    await _pump(tester, router, repository: repository);
+
+    await tester.tap(find.byKey(const Key('studentMenuButton')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('studentLogoutButton')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('studentLogoutConfirmButton')));
+    await tester.pumpAndSettle();
+
+    expect(repository.logoutCalls, 1);
   });
 
   testWidgets('bottom navigation remains five student items', (tester) async {
@@ -210,13 +255,23 @@ Widget _page(String title, int? index) {
   );
 }
 
-Future<void> _pump(WidgetTester tester, GoRouter router) async {
+Future<void> _pump(
+  WidgetTester tester,
+  GoRouter router, {
+  FakeAuthRepository? repository,
+  double textScale = 1,
+}) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        authRepositoryProvider.overrideWithValue(FakeAuthRepository()),
+        authRepositoryProvider.overrideWithValue(
+          repository ?? FakeAuthRepository(),
+        ),
       ],
-      child: MaterialApp.router(routerConfig: router),
+      child: MediaQuery(
+        data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
+        child: MaterialApp.router(routerConfig: router),
+      ),
     ),
   );
   await tester.pumpAndSettle();

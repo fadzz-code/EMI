@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -101,6 +102,7 @@ class _ExercisesState extends ConsumerState<_Exercises> {
             DropdownMenuItem(value: '', child: Text('Semua status')),
             DropdownMenuItem(value: 'draft', child: Text('Draft')),
             DropdownMenuItem(value: 'published', child: Text('Terbit')),
+            DropdownMenuItem(value: 'archived', child: Text('Arsip')),
           ],
           onChanged: (v) => setState(() => status = v ?? ''),
         ),
@@ -362,7 +364,7 @@ class _ExerciseFormState
       target = TextEditingController(),
       translation = TextEditingController(),
       prompt = TextEditingController();
-  String? classroom, template;
+  String? classroom, template, audioPath, audioName, referenceAudioId;
   String difficulty = '', status = 'draft';
   bool loaded = false, dirty = false, saving = false;
   @override
@@ -415,6 +417,8 @@ class _ExerciseFormState
       classroom = e.classroomId;
       difficulty = _formDifficulty(e.difficulty);
       status = e.status;
+      referenceAudioId = e.referenceAudioMediaId;
+      audioName = e.referenceAudio?.fileName;
       loaded = true;
     }
     final classes = ref.watch(teacherClassesProvider((page: 1, search: '')));
@@ -452,6 +456,9 @@ class _ExerciseFormState
                           translation.text = t.targetTranslation ?? '';
                           prompt.text = t.promptText ?? '';
                           difficulty = _formDifficulty(t.difficulty);
+                          referenceAudioId = t.referenceAudioMediaId;
+                          audioName = t.referenceAudio?.fileName;
+                          audioPath = null;
                           dirty = true;
                         });
                       },
@@ -476,6 +483,20 @@ class _ExerciseFormState
                   ),
                   orElse: () => const SizedBox.shrink(),
                 ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: saving ? null : _pickAudio,
+                  icon: const Icon(Icons.audio_file_outlined),
+                  label: Text(
+                    audioName == null
+                        ? 'Pilih Audio Penutur Asli'
+                        : 'Ganti Audio: $audioName',
+                  ),
+                ),
+                if (e?.referenceAudio?.url != null && audioPath == null) ...[
+                  const SizedBox(height: 8),
+                  _ReferenceAudioPlayer(source: e!.referenceAudio!.url!),
+                ],
                 ...[
                   _input(title, 'Judul', required: true),
                   _input(target, 'Teks target', required: true),
@@ -542,10 +563,32 @@ class _ExerciseFormState
       validator: (v) => required && v!.trim().isEmpty ? 'Wajib diisi.' : null,
     ),
   );
+  Future<void> _pickAudio() async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.audio);
+    final file = result?.files.single;
+    if (file?.path == null) return;
+    setState(() {
+      audioPath = file!.path;
+      audioName = file.name;
+      dirty = true;
+    });
+  }
+
   Future<void> _save() async {
     if (saving || !key.currentState!.validate()) return;
     setState(() => saving = true);
     try {
+      if (audioPath != null) {
+        referenceAudioId =
+            (await ref
+                    .read(teacherRepositoryProvider)
+                    .uploadMedia(
+                      audioPath!,
+                      audioName ?? 'audio',
+                      purpose: 'speaking_reference_audio',
+                    ))
+                .id;
+      }
       final saved = await ref
           .read(teacherRepositoryProvider)
           .saveSpeakingExercise(
@@ -561,6 +604,7 @@ class _ExerciseFormState
               'prompt_text': prompt.text.trim().isEmpty
                   ? null
                   : prompt.text.trim(),
+              'reference_audio_media_id': referenceAudioId,
               'difficulty': difficulty.isEmpty ? null : difficulty,
               'language_code': 'mekongga',
               'status': status,
@@ -617,6 +661,41 @@ class _ExerciseFormState
   }
 }
 
+class _ReferenceAudioPlayer extends StatefulWidget {
+  const _ReferenceAudioPlayer({required this.source});
+  final String source;
+  @override
+  State<_ReferenceAudioPlayer> createState() => _ReferenceAudioPlayerState();
+}
+
+class _ReferenceAudioPlayerState extends State<_ReferenceAudioPlayer> {
+  final player = AudioPlayer();
+  @override
+  void dispose() {
+    player.dispose();
+    super.dispose();
+  }
+
+  Future<void> _toggle() async {
+    if (player.playing) {
+      await player.pause();
+    } else {
+      if (player.audioSource == null) await player.setUrl(widget.source);
+      await player.play();
+    }
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) => OutlinedButton.icon(
+    onPressed: _toggle,
+    icon: Icon(player.playing ? Icons.pause : Icons.play_arrow),
+    label: Text(
+      player.playing ? 'Jeda Audio Penutur Asli' : 'Putar Audio Penutur Asli',
+    ),
+  );
+}
+
 class _Attempts extends ConsumerStatefulWidget {
   const _Attempts();
   @override
@@ -626,6 +705,13 @@ class _Attempts extends ConsumerStatefulWidget {
 class _AttemptsState extends ConsumerState<_Attempts> {
   final searchController = TextEditingController();
   String search = '', review = '';
+  int page = 1;
+
+  ({int page, String search, String reviewStatus}) get query => (
+    page: page,
+    search: search,
+    reviewStatus: review == 'done' ? 'reviewed' : review,
+  );
 
   @override
   void dispose() {
@@ -646,7 +732,10 @@ class _AttemptsState extends ConsumerState<_Attempts> {
       TeacherSearchField(
         controller: searchController,
         label: 'Cari siswa atau latihan',
-        onChanged: (v) => setState(() => search = v.toLowerCase()),
+        onChanged: (v) => setState(() {
+          search = v.toLowerCase();
+          page = 1;
+        }),
       ),
       const SizedBox(height: EmiSpacing.sm),
       DropdownButtonFormField(
@@ -657,11 +746,14 @@ class _AttemptsState extends ConsumerState<_Attempts> {
           DropdownMenuItem(value: 'pending', child: Text('Belum dinilai')),
           DropdownMenuItem(value: 'done', child: Text('Sudah dinilai')),
         ],
-        onChanged: (v) => setState(() => review = v ?? ''),
+        onChanged: (v) => setState(() {
+          review = v ?? '';
+          page = 1;
+        }),
       ),
       const SizedBox(height: EmiSpacing.md),
       ref
-          .watch(teacherSpeakingAttemptsProvider)
+          .watch(teacherSpeakingAttemptsProvider(query))
           .when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (_, _) => SizedBox(
@@ -669,72 +761,78 @@ class _AttemptsState extends ConsumerState<_Attempts> {
               child: _error(
                 'Hasil Speaking Belum Bisa Dimuat',
                 'Hasil speaking siswa belum bisa dimuat. Silakan coba lagi.',
-                () => ref.refresh(teacherSpeakingAttemptsProvider),
+                () => ref.refresh(teacherSpeakingAttemptsProvider(query)),
               ),
             ),
-            data: (all) {
-              final items = all
-                  .where(
-                    (a) =>
-                        (search.isEmpty ||
-                            '${a.studentName} ${a.exerciseTitle}'
-                                .toLowerCase()
-                                .contains(search)) &&
-                        (review.isEmpty ||
-                            (review == 'done') == (a.teacherScore != null)),
-                  )
-                  .toList();
-              if (items.isEmpty) {
-                return const SizedBox(
-                  height: 240,
-                  child: FriendlyState(
-                    icon: Icons.record_voice_over_outlined,
-                    title: 'Belum Ada Hasil Speaking',
-                    message:
-                        'Hasil speaking siswa akan muncul setelah mereka mengirim rekaman.',
-                  ),
-                );
+            data: (result) {
+              final items = result.items;
+              if (items.isEmpty && page > result.lastPage) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && page > result.lastPage) {
+                    setState(() => page = result.lastPage);
+                  }
+                });
               }
               return Column(
-                children: items
-                    .map(
-                      (a) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: TeacherListCard(
-                          padding: EdgeInsets.zero,
-                          onTap: () => context.push(
-                            '/teacher/speaking/attempts/${a.id}',
+                children: [
+                  if (items.isEmpty)
+                    const SizedBox(
+                      height: 240,
+                      child: FriendlyState(
+                        icon: Icons.record_voice_over_outlined,
+                        title: 'Belum Ada Hasil Speaking',
+                        message:
+                            'Hasil speaking siswa akan muncul setelah mereka mengirim rekaman.',
+                      ),
+                    ),
+                  ...items.map(
+                    (a) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: TeacherListCard(
+                        padding: EdgeInsets.zero,
+                        onTap: () =>
+                            context.push('/teacher/speaking/attempts/${a.id}'),
+                        child: ListTile(
+                          title: Text(
+                            a.studentName,
+                            style: const TextStyle(color: TeacherStyle.ink),
                           ),
-                          child: ListTile(
-                            title: Text(
-                              a.studentName,
-                              style: const TextStyle(color: TeacherStyle.ink),
-                            ),
-                            subtitle: Text(
-                              [
-                                a.exerciseTitle,
-                                if (a.classroomName != null) a.classroomName!,
-                                if (a.aiScore != null)
-                                  'Skor AI ${a.aiScore!.toStringAsFixed(0)}',
-                                a.teacherScore == null
-                                    ? 'Belum dinilai'
-                                    : 'Sudah dinilai',
-                                _date(a.createdAt),
-                              ].join(' · '),
-                              style: const TextStyle(
-                                color: TeacherStyle.inkMuted,
-                              ),
-                            ),
-                            isThreeLine: true,
-                            trailing: const Icon(
-                              Icons.chevron_right,
+                          subtitle: Text(
+                            [
+                              a.exerciseTitle,
+                              if (a.classroomName != null) a.classroomName!,
+                              if (a.aiScore != null)
+                                'Skor AI ${a.aiScore!.toStringAsFixed(0)}',
+                              a.teacherScore == null
+                                  ? 'Belum dinilai'
+                                  : 'Sudah dinilai',
+                              _date(a.createdAt),
+                            ].join(' · '),
+                            style: const TextStyle(
                               color: TeacherStyle.inkMuted,
                             ),
                           ),
+                          isThreeLine: true,
+                          trailing: const Icon(
+                            Icons.chevron_right,
+                            color: TeacherStyle.inkMuted,
+                          ),
                         ),
                       ),
-                    )
-                    .toList(),
+                    ),
+                  ),
+                  if (result.lastPage > 1)
+                    TeacherPaginationBar(
+                      currentPage: result.currentPage,
+                      lastPage: result.lastPage,
+                      onPrevious: result.currentPage > 1
+                          ? () => setState(() => page--)
+                          : null,
+                      onNext: result.currentPage < result.lastPage
+                          ? () => setState(() => page++)
+                          : null,
+                    ),
+                ],
               );
             },
           ),
@@ -810,8 +908,12 @@ class _AttemptDetailState
                                   ? 'Belum dinilai'
                                   : 'Sudah dinilai',
                             ),
+                            if (a.targetText != null)
+                              _field('Teks target', a.targetText!),
                             if (a.transcription != null)
                               _field('Transkripsi AI', a.transcription!),
+                            if (a.aiError != null)
+                              _field('AI gagal menganalisis', a.aiError!),
                             if (a.aiScore != null)
                               _field('Skor AI', a.aiScore!.toStringAsFixed(0)),
                             if (a.status != null)
@@ -824,7 +926,11 @@ class _AttemptDetailState
                           ],
                         ),
                       ),
-                      const SizedBox(height: EmiSpacing.md),
+                      if (a.referenceAudio?.url != null) ...[
+                        const SizedBox(height: EmiSpacing.md),
+                        _ReferenceAudioPlayer(source: a.referenceAudio!.url!),
+                      ],
+                      const SizedBox(height: EmiSpacing.sm),
                       FilledButton.icon(
                         onPressed: audioLoading || a.audioMediaId == null
                             ? null
@@ -845,6 +951,23 @@ class _AttemptDetailState
                           audioError!,
                           style: const TextStyle(color: EmiColors.error),
                         ),
+                      if (_alignment(a.aiAlignment).isNotEmpty) ...[
+                        const SizedBox(height: EmiSpacing.md),
+                        TeacherSectionHeader(
+                          'Perbandingan ucapan',
+                          icon: Icons.compare_arrows,
+                        ),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _alignment(a.aiAlignment)
+                              .map(
+                                (row) =>
+                                    Chip(label: Text('${row.$1}: ${row.$2}%')),
+                              )
+                              .toList(),
+                        ),
+                      ],
                       TeacherSectionHeader(
                         'Penilaian Guru',
                         icon: Icons.rate_review_outlined,
@@ -928,10 +1051,8 @@ class _AttemptDetailState
           );
       savedAttempt = saved;
       loaded = true;
-      final refreshed = await ref.refresh(
-        teacherSpeakingAttemptsProvider.future,
-      );
-      if (refreshed.isEmpty && saved.id.isEmpty) return;
+      ref.invalidate(teacherSpeakingAttemptsProvider);
+      if (saved.id.isEmpty) return;
       if (mounted) _snack(context, 'Penilaian berhasil disimpan.');
     } catch (e) {
       if (mounted) {
@@ -1088,6 +1209,25 @@ String _analysis(String v) => v == 'completed'
     : v == 'reviewed'
     ? 'Sudah dinilai'
     : 'Menunggu analisis';
+List<(String, int)> _alignment(Object? value) {
+  if (value is! Map) return const [];
+  return value.entries
+      .where(
+        (entry) =>
+            entry.key is String &&
+            RegExp(r'^\d+_').hasMatch(entry.key as String) &&
+            entry.value is num,
+      )
+      .take(8)
+      .map(
+        (entry) => (
+          (entry.key as String).replaceFirst(RegExp(r'^\d+_'), ''),
+          (entry.value as num).round(),
+        ),
+      )
+      .toList();
+}
+
 String _source(String v) => switch (v) {
   'web_microphone' => 'Mikrofon web',
   'web_esp32_serial' => 'ESP32 web',

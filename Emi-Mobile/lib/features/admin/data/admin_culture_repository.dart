@@ -251,7 +251,7 @@ class AdminCultureRepository {
         data: FormData.fromMap({
           'file': await MultipartFile.fromFile(path, filename: name),
           'purpose': 'culture_media',
-          'visibility': 'public',
+          'visibility': 'private',
         }),
       );
       final id = _text(_map(response.data?['data'])['id']);

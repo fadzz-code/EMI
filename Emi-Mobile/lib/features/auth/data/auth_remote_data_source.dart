@@ -46,6 +46,8 @@ class AuthRemoteDataSource {
         'requested_role': payload.requestedRole.value,
         'school_id': payload.schoolId,
         'class_id': payload.classId,
+        'privacy_policy_accepted': payload.privacyPolicyAccepted,
+        'privacy_policy_version': payload.privacyPolicyVersion,
       },
     );
     final envelope = ApiResponse<Map<String, dynamic>>.fromJson(
@@ -206,7 +208,9 @@ class AuthRemoteDataSource {
 
   Future<Map<String, dynamic>> publicBranding() async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>('/public/login-branding');
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/public/login-branding',
+      );
       final data = response.data?['data'];
       return data is Map<String, dynamic> ? data : <String, dynamic>{};
     } catch (_) {

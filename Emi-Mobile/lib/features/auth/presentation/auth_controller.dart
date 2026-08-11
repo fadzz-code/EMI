@@ -85,12 +85,12 @@ class AuthController extends StateNotifier<AuthState> {
   }) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final user = await _repository.updatePassword(
+      await _repository.updatePassword(
         currentPassword: currentPassword,
         password: password,
         passwordConfirmation: passwordConfirmation,
       );
-      state = _stateForUser(user);
+      state = _stateForUser(await _repository.currentUser());
     } catch (error) {
       state = state.copyWith(isLoading: false, error: _asAppError(error));
     }
@@ -135,8 +135,11 @@ class AuthController extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
-    await _repository.logout();
-    state = const AuthState.unauthenticated();
+    try {
+      await _repository.logout();
+    } finally {
+      state = const AuthState.unauthenticated();
+    }
   }
 
   void invalidateSession() {

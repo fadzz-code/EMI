@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
+import '../../../shared/legal/privacy_policy.dart';
 import '../data/auth_providers.dart';
 import 'auth_banner.dart';
 import 'auth_brand_mark.dart';
@@ -38,7 +39,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
     final branding = ref.watch(loginBrandingProvider).valueOrNull;
-    final hasBanner = branding?['enabled'] == true && branding?['image_url'] != null;
+    final hasBanner =
+        branding?['enabled'] == true && branding?['image_url'] != null;
 
     return AuthThemeScope(
       child: Scaffold(
@@ -63,13 +65,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           if (hasBanner) ...[
                             const SizedBox(height: EmiSpacing.md),
                             ClipRRect(
-                              borderRadius: BorderRadius.circular(AuthStyle.fieldRadius),
+                              borderRadius: BorderRadius.circular(
+                                AuthStyle.fieldRadius,
+                              ),
                               child: Image.network(
                                 branding!['image_url'] as String,
                                 height: 140,
                                 width: double.infinity,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                                errorBuilder: (_, _, _) =>
+                                    const SizedBox.shrink(),
                               ),
                             ),
                           ],
@@ -162,6 +167,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   const SizedBox(height: EmiSpacing.md),
                                   const Divider(color: AuthStyle.divider),
                                   const SizedBox(height: EmiSpacing.md),
+                                  Center(
+                                    child: TextButton(
+                                      key: const Key('loginPrivacyPolicyLink'),
+                                      onPressed: () =>
+                                          openPrivacyPolicy(context),
+                                      child: const Text('Kebijakan Privasi'),
+                                    ),
+                                  ),
                                   Center(
                                     child: Wrap(
                                       alignment: WrapAlignment.center,

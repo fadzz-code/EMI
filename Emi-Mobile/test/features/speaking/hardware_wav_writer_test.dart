@@ -45,19 +45,22 @@ void main() {
     expect(bytes.sublist(0, 44), isNot(Uint8List(44)));
   });
 
-  test('streams PCM incrementally without buffering it all in memory first', () async {
-    final path = pathFor('stream.wav');
-    final writer = HardwareWavWriter(filePath: path);
-    await writer.open();
-    for (var i = 0; i < 5; i++) {
-      writer.addPcm(Uint8List.fromList(List.filled(640, i)));
-      expect(writer.bytesWritten, 640 * (i + 1));
-    }
-    final finished = await writer.finish();
-    expect(finished, isNotNull);
-    final bytes = await File(path).readAsBytes();
-    expect(bytes.length, 44 + 640 * 5);
-  });
+  test(
+    'streams PCM incrementally without buffering it all in memory first',
+    () async {
+      final path = pathFor('stream.wav');
+      final writer = HardwareWavWriter(filePath: path);
+      await writer.open();
+      for (var i = 0; i < 5; i++) {
+        writer.addPcm(Uint8List.fromList(List.filled(640, i)));
+        expect(writer.bytesWritten, 640 * (i + 1));
+      }
+      final finished = await writer.finish();
+      expect(finished, isNotNull);
+      final bytes = await File(path).readAsBytes();
+      expect(bytes.length, 44 + 640 * 5);
+    },
+  );
 
   test('rejects an empty recording and deletes the partial file', () async {
     final path = pathFor('empty.wav');
@@ -69,23 +72,23 @@ void main() {
     expect(await File(path).exists(), isFalse);
   });
 
-  test('rejects a too-short recording below the minimum byte threshold', () async {
-    final path = pathFor('short.wav');
-    final writer = HardwareWavWriter(filePath: path);
-    await writer.open();
-    writer.addPcm(Uint8List.fromList([1, 2]));
-    final finished = await writer.finish(minimumBytes: 3200);
+  test(
+    'rejects a too-short recording below the minimum byte threshold',
+    () async {
+      final path = pathFor('short.wav');
+      final writer = HardwareWavWriter(filePath: path);
+      await writer.open();
+      writer.addPcm(Uint8List.fromList([1, 2]));
+      final finished = await writer.finish(minimumBytes: 3200);
 
-    expect(finished, isNull);
-    expect(await File(path).exists(), isFalse);
-  });
+      expect(finished, isNull);
+      expect(await File(path).exists(), isFalse);
+    },
+  );
 
   test('addPcm throws if called before open (race guard)', () {
     final writer = HardwareWavWriter(filePath: '/tmp/never-opened.wav');
-    expect(
-      () => writer.addPcm(Uint8List.fromList([1])),
-      throwsStateError,
-    );
+    expect(() => writer.addPcm(Uint8List.fromList([1])), throwsStateError);
   });
 
   test('addPcm throws after finish (race guard)', () async {
@@ -95,10 +98,7 @@ void main() {
     writer.addPcm(Uint8List.fromList(List.filled(3200, 1)));
     await writer.finish();
 
-    expect(
-      () => writer.addPcm(Uint8List.fromList([1])),
-      throwsStateError,
-    );
+    expect(() => writer.addPcm(Uint8List.fromList([1])), throwsStateError);
   });
 
   test('open throws if called twice without finishing', () async {
@@ -117,10 +117,7 @@ void main() {
     await writer.abort();
 
     expect(await File(path).exists(), isFalse);
-    expect(
-      () => writer.addPcm(Uint8List.fromList([1])),
-      throwsStateError,
-    );
+    expect(() => writer.addPcm(Uint8List.fromList([1])), throwsStateError);
   });
 
   test('abort is safe even if open was never called', () async {

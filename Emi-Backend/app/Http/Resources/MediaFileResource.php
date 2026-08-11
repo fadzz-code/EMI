@@ -18,7 +18,9 @@ class MediaFileResource extends JsonResource
             'extension' => $this->extension,
             'size_bytes' => $this->size_bytes,
             'visibility' => $this->visibility,
-            'url' => $this->isPublic() ? app(MediaAccessService::class)->publicUrl($this->resource) : null,
+            'url' => $this->isPublic()
+                ? app(MediaAccessService::class)->publicUrl($this->resource)
+                : ($this->purpose === 'culture_media' ? app(MediaAccessService::class)->temporaryUrl($this->resource, now()->addMinutes((int) config('media.signed_url_ttl_minutes')), 'inline') : null),
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

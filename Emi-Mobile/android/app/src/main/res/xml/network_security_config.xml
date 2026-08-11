@@ -1,22 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Network security policy for EMI Mobile.
-
-  Production and staging traffic must always use HTTPS. Cleartext (plain
-  HTTP) is only permitted for local development against an emulator/device
-  running the backend on localhost, which is required because Android
-  emulators expose the host machine at 10.0.2.2 without TLS.
--->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="false">
-        <trust-anchors>
-            <certificates src="system" />
-        </trust-anchors>
-    </base-config>
-
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">10.0.2.2</domain>
-        <domain includeSubdomains="true">localhost</domain>
-        <domain includeSubdomains="true">127.0.0.1</domain>
-    </domain-config>
+    <base-config cleartextTrafficPermitted="false" />
 </network-security-config>

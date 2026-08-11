@@ -20,6 +20,15 @@ void main() {
     expect(env.apiBaseUrl, 'http://10.0.2.2:8000/api/v1');
   });
 
+  test('production defaults to HTTPS API', () {
+    final env = AppEnvironment.fromDefines(
+      appEnv: 'production',
+      apiBaseUrl: '',
+    );
+
+    expect(env.apiBaseUrl, 'https://api.emi-kolaka.id/api/v1');
+  });
+
   test('production requires HTTPS', () {
     expect(
       () => AppEnvironment.fromDefines(

@@ -174,6 +174,7 @@ class ChatbotController extends StateNotifier<ChatbotState> {
                   source: message.citations.isNotEmpty
                       ? message.citations.first
                       : null,
+                  sources: message.citations,
                 ),
               ),
             )

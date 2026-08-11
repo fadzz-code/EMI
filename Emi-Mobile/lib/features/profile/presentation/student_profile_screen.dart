@@ -15,6 +15,21 @@ import '../../auth/presentation/auth_controller.dart';
 import '../../teacher/presentation/teacher_shell.dart';
 import 'avatar_validator.dart';
 
+String _roleLabel(UserRole role) => switch (role) {
+  UserRole.admin => 'Administrator',
+  UserRole.teacher => 'Guru',
+  UserRole.student => 'Siswa',
+  UserRole.unknown => 'Tidak diketahui',
+};
+
+String _statusLabel(String status) => switch (status) {
+  'approved' => 'Disetujui',
+  'pending' => 'Menunggu persetujuan',
+  'rejected' => 'Ditolak',
+  'disabled' => 'Dinonaktifkan',
+  _ => status,
+};
+
 class StudentProfileScreen extends ConsumerStatefulWidget {
   const StudentProfileScreen({super.key, this.teacher = false});
 
@@ -36,6 +51,7 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
   final _passwordController = TextEditingController();
   final _passwordConfirmationController = TextEditingController();
   final _deleteAccountPasswordController = TextEditingController();
+  bool _isDeletingAccount = false;
 
   @override
   void dispose() {
@@ -86,8 +102,14 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
             children: [
               _ProfileRow(label: 'Email', value: user?.email ?? '-'),
               _ProfileRow(label: 'Telepon', value: user?.phone ?? '-'),
-              _ProfileRow(label: 'Role', value: user?.role.value ?? '-'),
-              _ProfileRow(label: 'Status', value: user?.status ?? '-'),
+              _ProfileRow(
+                label: 'Peran',
+                value: user == null ? '-' : _roleLabel(user.role),
+              ),
+              _ProfileRow(
+                label: 'Status',
+                value: user == null ? '-' : _statusLabel(user.status),
+              ),
               _ProfileRow(
                 label: 'Sekolah',
                 value: user?.activeSchoolName ?? '-',
@@ -252,6 +274,7 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
     final saved = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        scrollable: true,
         title: const Text('Edit Profil'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -305,6 +328,7 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
     final saved = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        scrollable: true,
         title: const Text('Ganti Password'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -360,16 +384,19 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
   }
 
   Future<void> _showDeleteAccount() async {
+    if (_isDeletingAccount || ref.read(authControllerProvider).isLoading)
+      return;
     _deleteAccountPasswordController.clear();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        scrollable: true,
         title: const Text('Hapus Akun'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'Akun akan dinonaktifkan dan sesi login dihapus. Masukkan password saat ini untuk melanjutkan.',
+              'Akun dan data pribadi akan dihapus atau dianonimkan permanen. Catatan akademik tanpa identitas dapat dipertahankan untuk integritas riwayat sekolah. Tindakan ini tidak dapat dibatalkan. Masukkan password saat ini untuk mengonfirmasi.',
             ),
             const SizedBox(height: EmiSpacing.md),
             TextField(
@@ -386,20 +413,22 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
           ),
           ElevatedButton(
             onPressed: () => context.pop(true),
-            child: const Text('Hapus Akun'),
+            child: const Text('Hapus Permanen'),
           ),
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (confirmed != true || _isDeletingAccount) return;
     final password = _deleteAccountPasswordController.text;
     if (password.isEmpty) {
       _snack('Password saat ini wajib diisi.');
       return;
     }
+    setState(() => _isDeletingAccount = true);
     await ref
         .read(authControllerProvider.notifier)
         .deleteAccount(currentPassword: password);
+    if (mounted) setState(() => _isDeletingAccount = false);
   }
 
   void _snack(String message) {

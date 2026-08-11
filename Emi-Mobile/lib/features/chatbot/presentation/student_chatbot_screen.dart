@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
@@ -104,8 +105,7 @@ class _StudentChatbotScreenState extends ConsumerState<StudentChatbotScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => ChatbotHistoryPanel(
         provider: chatbotControllerProvider,
-        notifierRead: () =>
-            ref.read(chatbotControllerProvider.notifier),
+        notifierRead: () => ref.read(chatbotControllerProvider.notifier),
       ),
     );
   }
@@ -216,7 +216,7 @@ class _IntroCard extends StatelessWidget {
           ),
           const SizedBox(height: EmiSpacing.md),
           const Text(
-            'Tanya arti kata Mekongga atau topik budaya — EMI jawab lengkap dengan referensinya.',
+            'Tanya arti kata Mekongga atau topik budaya — EMI jawab lengkap dengan referensinya. AI dapat keliru, periksa kembali jawaban penting.',
             style: TextStyle(color: StudentStyle.inkMuted),
           ),
         ],
@@ -311,7 +311,11 @@ class _AssistantBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final source = response?.source;
+    final sources = response == null
+        ? const <ChatbotSource>[]
+        : response!.sources.isNotEmpty
+        ? response!.sources
+        : [if (response!.source != null) response!.source!];
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
@@ -342,35 +346,41 @@ class _AssistantBubble extends StatelessWidget {
                 status: 'done',
               ),
             ],
-            if (source != null) ...[
+            if (sources.isNotEmpty) ...[
               const SizedBox(height: EmiSpacing.sm),
               ExpansionTile(
                 tilePadding: EdgeInsets.zero,
                 childrenPadding: EdgeInsets.zero,
                 title: Text(
-                  'Sumber: ${source.title}',
+                  'Sumber (${sources.length})',
                   style: const TextStyle(
                     color: StudentStyle.ink,
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
                   ),
                 ),
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Kategori: ${source.category ?? 'Umum'}',
-                      style: const TextStyle(color: StudentStyle.inkMuted),
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Jenis sumber: ${_sourceTypeLabel(source.sourceType)}',
-                      style: const TextStyle(color: StudentStyle.inkMuted),
-                    ),
-                  ),
-                ],
+                children: sources
+                    .map(
+                      (source) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(source.title),
+                        subtitle: Text(
+                          [
+                            source.category ?? 'Umum',
+                            _sourceTypeLabel(source.sourceType),
+                            if (source.pageNumber != null)
+                              'Halaman ${source.pageNumber}',
+                          ].join(' · '),
+                        ),
+                        trailing: source.sourceUrl == null
+                            ? null
+                            : const Icon(Icons.open_in_new, size: 18),
+                        onTap: source.sourceUrl == null
+                            ? null
+                            : () => launchUrl(Uri.parse(source.sourceUrl!)),
+                      ),
+                    )
+                    .toList(),
               ),
             ],
           ],

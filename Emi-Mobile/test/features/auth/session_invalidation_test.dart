@@ -8,6 +8,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _FakeAuthRepository implements AuthRepository {
+  _FakeAuthRepository({this.logoutError = false});
+
+  final bool logoutError;
+
   @override
   Future<List<PublicSchoolOption>> listPublicSchools() async => const [];
 
@@ -47,7 +51,9 @@ class _FakeAuthRepository implements AuthRepository {
   Future<void> deleteAccount({required String currentPassword}) async {}
 
   @override
-  Future<void> logout() async {}
+  Future<void> logout() async {
+    if (logoutError) throw StateError('logout failed');
+  }
 
   @override
   Future<SessionUser?> restoreSession() async => _student;
@@ -82,6 +88,15 @@ const _student = SessionUser(
 );
 
 void main() {
+  test('logout failure still clears controller session', () async {
+    final controller = AuthController(_FakeAuthRepository(logoutError: true));
+    await controller.restoreSession();
+
+    await expectLater(controller.logout(), throwsStateError);
+
+    expect(controller.state.status, AuthStatus.unauthenticated);
+  });
+
   test(
     'session invalidation changes authenticated state to unauthenticated',
     () async {

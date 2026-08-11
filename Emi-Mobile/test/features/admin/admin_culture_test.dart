@@ -106,7 +106,7 @@ void main() {
       ]),
     );
   });
-  test('upload uses culture public contract', () async {
+  test('upload uses culture private contract', () async {
     final requests = <RequestOptions>[];
     expect(
       await _repository(
@@ -123,7 +123,7 @@ void main() {
     );
     expect(
       data.fields.any(
-        (field) => field.key == 'visibility' && field.value == 'public',
+        (field) => field.key == 'visibility' && field.value == 'private',
       ),
       isTrue,
     );

@@ -141,174 +141,220 @@ class _TeacherBottomNav extends StatelessWidget {
   }
 }
 
-class _TeacherDrawer extends ConsumerWidget {
+class _TeacherDrawer extends ConsumerStatefulWidget {
   const _TeacherDrawer({required this.user, required this.location});
 
   final SessionUser? user;
   final String location;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => Drawer(
+  ConsumerState<_TeacherDrawer> createState() => _TeacherDrawerState();
+}
+
+class _TeacherDrawerState extends ConsumerState<_TeacherDrawer> {
+  bool _logoutPending = false;
+
+  Future<void> _logout() async {
+    if (_logoutPending) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Keluar dari akun?'),
+        content: const Text('Anda perlu masuk kembali untuk menggunakan EMI.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            key: const Key('teacherLogoutConfirmButton'),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted || _logoutPending) return;
+    setState(() => _logoutPending = true);
+    Navigator.of(context).pop();
+    await ref.read(authControllerProvider.notifier).logout();
+  }
+
+  @override
+  Widget build(BuildContext context) => Drawer(
     backgroundColor: TeacherStyle.surface,
     child: SafeArea(
-      child: SingleChildScrollView(
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(EmiSpacing.lg),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [EmiColors.primary, Color(0xFFFFA968)],
-                ),
-              ),
-              child: Row(
+      child: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: Colors.white,
-                    foregroundColor: EmiColors.primary,
-                    child: Text(
-                      (user?.fullName.isNotEmpty ?? false)
-                          ? user!.fullName.characters.first
-                          : 'G',
-                      style: const TextStyle(fontWeight: FontWeight.w800),
+                  Container(
+                    padding: const EdgeInsets.all(EmiSpacing.lg),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [EmiColors.primary, Color(0xFFFFA968)],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: EmiSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        Text(
-                          user?.fullName ?? 'Guru EMI',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(color: Colors.white),
-                        ),
-                        if (user?.email != null)
-                          Text(
-                            user!.email,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.9),
-                            ),
+                        CircleAvatar(
+                          radius: 28,
+                          backgroundColor: Colors.white,
+                          foregroundColor: EmiColors.primary,
+                          child: Text(
+                            (widget.user?.fullName.isNotEmpty ?? false)
+                                ? widget.user!.fullName.characters.first
+                                : 'G',
+                            style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
-                        Text(
-                          'Guru',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
+                        ),
+                        const SizedBox(width: EmiSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.user?.fullName ?? 'Guru EMI',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(color: Colors.white),
+                              ),
+                              if (widget.user?.email != null)
+                                Text(
+                                  widget.user!.email,
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                  ),
+                                ),
+                              Text(
+                                'Guru',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      EmiSpacing.md,
+                      EmiSpacing.md,
+                      EmiSpacing.md,
+                      EmiSpacing.xs,
+                    ),
+                    child: Text(
+                      'Menu EMI',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: TeacherStyle.inkMuted,
+                      ),
+                    ),
+                  ),
+                  _Item(
+                    label: 'Beranda',
+                    icon: Icons.dashboard_outlined,
+                    route: '/teacher/dashboard',
+                    selected:
+                        widget.location == '/teacher/dashboard' ||
+                        widget.location == '/teacher',
+                  ),
+                  _Item(
+                    label: 'Kelas',
+                    icon: Icons.school_outlined,
+                    route: '/teacher/classes',
+                    selected: widget.location.startsWith('/teacher/classes'),
+                  ),
+                  _Item(
+                    label: 'Persetujuan',
+                    icon: Icons.how_to_reg_outlined,
+                    route: '/teacher/approvals',
+                    selected: widget.location.startsWith('/teacher/approvals'),
+                  ),
+                  _Item(
+                    label: 'Siswa',
+                    icon: Icons.groups_outlined,
+                    route: '/teacher/students',
+                    selected: widget.location.startsWith('/teacher/students'),
+                  ),
+                  _Item(
+                    label: 'Progress',
+                    icon: Icons.trending_up_outlined,
+                    route: '/teacher/progress',
+                    selected: widget.location.startsWith('/teacher/progress'),
+                  ),
+                  _Item(
+                    label: 'Modul',
+                    icon: Icons.menu_book_outlined,
+                    route: '/teacher/modules',
+                    selected: widget.location.startsWith('/teacher/modules'),
+                  ),
+                  _Item(
+                    label: 'Kuis',
+                    icon: Icons.description_outlined,
+                    route: '/teacher/quizzes',
+                    selected: widget.location.startsWith('/teacher/quizzes'),
+                  ),
+                  _Item(
+                    label: 'Kamus',
+                    icon: Icons.menu_book_outlined,
+                    route: '/teacher/dictionary',
+                    selected: widget.location.startsWith('/teacher/dictionary'),
+                  ),
+                  _Item(
+                    label: 'Budaya Mekongga',
+                    icon: Icons.public_outlined,
+                    route: '/teacher/culture',
+                    selected: widget.location.startsWith('/teacher/culture'),
+                  ),
+                  _Item(
+                    label: 'Chatbot AI',
+                    icon: Icons.auto_awesome_outlined,
+                    route: '/teacher/chatbot',
+                    selected: widget.location.startsWith('/teacher/chatbot'),
+                  ),
+                  _Item(
+                    label: 'Target Speaking',
+                    icon: Icons.mic_none_outlined,
+                    route: '/teacher/speaking/exercises',
+                    selected: widget.location.startsWith(
+                      '/teacher/speaking/exercises',
+                    ),
+                  ),
+                  _Item(
+                    label: 'Hasil Speaking',
+                    icon: Icons.analytics_outlined,
+                    route: '/teacher/speaking/attempts',
+                    selected: widget.location.startsWith(
+                      '/teacher/speaking/attempts',
+                    ),
+                  ),
+                  _Item(
+                    label: 'Reset Password',
+                    icon: Icons.lock_reset_outlined,
+                    route: '/teacher/password-resets',
+                    selected: widget.location.startsWith(
+                      '/teacher/password-resets',
+                    ),
+                  ),
+                  _Item(
+                    label: 'Profil',
+                    icon: Icons.person_outline,
+                    route: '/teacher/profile',
+                    selected: widget.location.startsWith('/teacher/profile'),
+                  ),
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                EmiSpacing.md,
-                EmiSpacing.md,
-                EmiSpacing.md,
-                EmiSpacing.xs,
-              ),
-              child: Text(
-                'Menu EMI',
-                style: Theme.of(
-                  context,
-                ).textTheme.labelLarge?.copyWith(color: TeacherStyle.inkMuted),
-              ),
-            ),
-            _Item(
-              label: 'Beranda',
-              icon: Icons.dashboard_outlined,
-              route: '/teacher/dashboard',
-              selected:
-                  location == '/teacher/dashboard' || location == '/teacher',
-            ),
-            _Item(
-              label: 'Kelas',
-              icon: Icons.school_outlined,
-              route: '/teacher/classes',
-              selected: location.startsWith('/teacher/classes'),
-            ),
-            _Item(
-              label: 'Persetujuan',
-              icon: Icons.how_to_reg_outlined,
-              route: '/teacher/approvals',
-              selected: location.startsWith('/teacher/approvals'),
-            ),
-            _Item(
-              label: 'Siswa',
-              icon: Icons.groups_outlined,
-              route: '/teacher/students',
-              selected: location.startsWith('/teacher/students'),
-            ),
-            _Item(
-              label: 'Progress',
-              icon: Icons.trending_up_outlined,
-              route: '/teacher/progress',
-              selected: location.startsWith('/teacher/progress'),
-            ),
-            _Item(
-              label: 'Modul',
-              icon: Icons.menu_book_outlined,
-              route: '/teacher/modules',
-              selected: location.startsWith('/teacher/modules'),
-            ),
-            _Item(
-              label: 'Kuis',
-              icon: Icons.description_outlined,
-              route: '/teacher/quizzes',
-              selected: location.startsWith('/teacher/quizzes'),
-            ),
-            _Item(
-              label: 'Kamus',
-              icon: Icons.menu_book_outlined,
-              route: '/teacher/dictionary',
-              selected: location.startsWith('/teacher/dictionary'),
-            ),
-            _Item(
-              label: 'Budaya Mekongga',
-              icon: Icons.public_outlined,
-              route: '/teacher/culture',
-              selected: location.startsWith('/teacher/culture'),
-            ),
-            _Item(
-              label: 'Chatbot AI',
-              icon: Icons.auto_awesome_outlined,
-              route: '/teacher/chatbot',
-              selected: location.startsWith('/teacher/chatbot'),
-            ),
-            _Item(
-              label: 'Target Speaking',
-              icon: Icons.mic_none_outlined,
-              route: '/teacher/speaking/exercises',
-              selected: location.startsWith('/teacher/speaking/exercises'),
-            ),
-            _Item(
-              label: 'Hasil Speaking',
-              icon: Icons.analytics_outlined,
-              route: '/teacher/speaking/attempts',
-              selected: location.startsWith('/teacher/speaking/attempts'),
-            ),
-            _Item(
-              label: 'Reset Password',
-              icon: Icons.lock_reset_outlined,
-              route: '/teacher/password-resets',
-              selected: location.startsWith('/teacher/password-resets'),
-            ),
-            _Item(
-              label: 'Profil',
-              icon: Icons.person_outline,
-              route: '/teacher/profile',
-              selected: location.startsWith('/teacher/profile'),
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: EmiSpacing.xs),
-              child: Divider(height: 1, color: TeacherStyle.tint),
-            ),
-            ListTile(
+          ),
+          const Divider(height: 1, color: TeacherStyle.tint),
+          Padding(
+            padding: const EdgeInsets.all(EmiSpacing.sm),
+            child: ListTile(
               key: const Key('teacherLogoutButton'),
               leading: const Icon(
                 Icons.logout_rounded,
@@ -318,13 +364,11 @@ class _TeacherDrawer extends ConsumerWidget {
                 'Keluar',
                 style: TextStyle(color: TeacherStyle.inkMuted),
               ),
-              onTap: () async {
-                Navigator.of(context).pop();
-                await ref.read(authControllerProvider.notifier).logout();
-              },
+              enabled: !_logoutPending,
+              onTap: _logout,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     ),
   );

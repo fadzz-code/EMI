@@ -1,6 +1,14 @@
 import { env } from "./env";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
+const unauthorizedListeners = new Set<() => void>();
+
+export function onUnauthorized(listener: () => void) {
+  unauthorizedListeners.add(listener);
+  return () => {
+    unauthorizedListeners.delete(listener);
+  };
+}
 
 export type ApiPaginationMeta = {
   current_page?: number;
@@ -172,6 +180,10 @@ export async function apiRequest<T>(
         } satisfies ApiResponse<T>);
 
     if (!response.ok || payload.success === false) {
+      if (response.status === 401 && options.token) {
+        unauthorizedListeners.forEach((listener) => listener());
+      }
+
       throw new ApiError({
         message: safeErrorMessage(response.status, payload.message, payload.code),
         status: response.status,

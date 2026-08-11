@@ -3,6 +3,7 @@
 return [
     'import_disk' => env('DICTIONARY_IMPORT_DISK', 'local'),
     'max_csv_kb' => (int) env('DICTIONARY_IMPORT_MAX_CSV_KB', 10240),
+    'max_xlsx_kb' => (int) env('DICTIONARY_IMPORT_MAX_XLSX_KB', 20480),
     'max_zip_kb' => (int) env('DICTIONARY_IMPORT_MAX_ZIP_KB', 256000),
     'max_rows' => (int) env('DICTIONARY_IMPORT_MAX_ROWS', 10000),
     'max_audio_files' => (int) env('DICTIONARY_IMPORT_MAX_AUDIO_FILES', 10000),
@@ -43,5 +44,4 @@ return [
             'Kata Mekongga Terkait',
         ],
     ],
-    'max_xlsx_kb' => (int) env('DICTIONARY_IMPORT_MAX_XLSX_KB', 20480),
 ];

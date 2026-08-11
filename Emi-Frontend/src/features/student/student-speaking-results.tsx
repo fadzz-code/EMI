@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowLeft, MessageSquareText, Mic } from "lucide-react";
 
-import { Alert, Badge, Card, CardContent, EmptyState } from "@/components/ui";
+import { Alert, Badge, Card, CardContent, EmptyState, Pagination } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
@@ -24,6 +24,8 @@ function date(value?: string | null) {
 export function StudentSpeakingResults() {
   const { token } = useAuth();
   const [attempts, setAttempts] = useState<SpeakingAttempt[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [exercises, setExercises] = useState<SpeakingExercise[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,12 +34,13 @@ export function StudentSpeakingResults() {
     if (!token) return;
     let ignore = false;
     Promise.all([
-      studentService.speakingAttempts(token),
+      studentService.speakingAttempts(token, page),
       studentService.speakingExercises(token).catch(() => [] as SpeakingExercise[]),
     ])
-      .then(([items, exerciseItems]) => {
+      .then(([result, exerciseItems]) => {
         if (ignore) return;
-        setAttempts(items);
+        setAttempts(result.items);
+        setTotalPages(result.meta?.last_page ?? 1);
         setExercises(exerciseItems);
       })
       .catch((err) => !ignore && setError(getFirstApiError(err)))
@@ -45,7 +48,7 @@ export function StudentSpeakingResults() {
     return () => {
       ignore = true;
     };
-  }, [token]);
+  }, [page, token]);
 
   const latest = latestSpeakingAttempt(attempts);
   const latestExercise = latest ? (latest.exercise ?? exercises.find((exercise) => exercise.id === latest.exercise_id) ?? null) : null;
@@ -112,6 +115,7 @@ export function StudentSpeakingResults() {
                 </div>
               ))}
             </div>
+            {totalPages > 1 ? <div className="mt-4"><Pagination onPageChange={setPage} page={page} totalPages={totalPages} /></div> : null}
           </CardContent>
         </Card>
       ) : null}

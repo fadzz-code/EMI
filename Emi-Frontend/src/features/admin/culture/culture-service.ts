@@ -107,7 +107,7 @@ export const adminCultureService = {
     const formData = new FormData();
     formData.append("file", file, file.name);
     formData.append("purpose", "culture_media");
-    formData.append("visibility", "public");
+    formData.append("visibility", "private");
 
     const response = await apiClient.post<MediaFile>("/media", formData, { token, timeoutMs: 60_000 });
     if (!response.data) throw new Error("Upload gagal");

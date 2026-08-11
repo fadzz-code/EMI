@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:emi_mobile/core/errors/app_error.dart';
@@ -62,6 +63,12 @@ TeacherSpeakingExercise _exercise({
   'classroom': {'id': 'class-1', 'name': 'Kelas 7A'},
   'title': 'Salam Tolaki',
   'target_text': 'Tabe',
+  'reference_audio_media_id': 'reference-1',
+  'reference_audio': {
+    'id': 'reference-1',
+    'url': 'https://example.test/reference.mp3',
+    'original_name': 'native.mp3',
+  },
   'target_translation': 'Permisi',
   'prompt_text': 'Ucapkan dengan jelas',
   'difficulty': difficulty,
@@ -70,6 +77,20 @@ TeacherSpeakingExercise _exercise({
   'updated_at': '2026-07-18T09:00:00Z',
 });
 
+TeacherSpeakingAttemptPage _attemptPage(
+  List<TeacherSpeakingAttempt> items, {
+  int currentPage = 1,
+  int lastPage = 1,
+}) => TeacherSpeakingAttemptPage(
+  items: items,
+  currentPage: currentPage,
+  lastPage: lastPage,
+  total: items.length,
+  pendingCount: items.where((item) => item.teacherScore == null).length,
+  reviewedCount: items.where((item) => item.teacherScore != null).length,
+  failedCount: 0,
+);
+
 TeacherSpeakingAttempt _attempt({double? teacherScore}) =>
     TeacherSpeakingAttempt.fromJson({
       'id': 'attempt-1',
@@ -77,9 +98,16 @@ TeacherSpeakingAttempt _attempt({double? teacherScore}) =>
       'exercise': {
         'title': 'Salam Tolaki',
         'classroom': {'name': 'Kelas 7A'},
+        'reference_audio': {
+          'id': 'reference-1',
+          'url': 'https://example.test/reference.mp3',
+        },
       },
       'audio_media_id': 'media-secret',
+      'target_text': 'Tabe target',
       'ai_transcription': 'Tabe',
+      'ai_alignment': {'0_Tabe': 91},
+      'ai_error': 'Model sementara gagal',
       'ai_score': 87,
       'teacher_score': teacherScore,
       'teacher_feedback': teacherScore == null ? null : 'Bagus sekali',
@@ -246,7 +274,11 @@ void main() {
         classroomId: 'class-1',
         status: 'published',
       );
-      await repository.speakingAttempts();
+      await repository.speakingAttempts(
+        page: 2,
+        search: 'Nina',
+        reviewStatus: 'pending',
+      );
       expect(requests.map((r) => r.path), [
         '/teacher/speaking/templates',
         '/teacher/speaking/exercises',
@@ -257,8 +289,63 @@ void main() {
         'classroom_id': 'class-1',
         'status': 'published',
       });
+      expect(requests[2].queryParameters, {
+        'page': 2,
+        'per_page': 15,
+        'search': 'Nina',
+        'review_status': 'pending',
+      });
     },
   );
+
+  test('speaking models parse reference review and count fields', () {
+    final exercise = _exercise();
+    final attempt = _attempt();
+    final page = TeacherSpeakingAttemptPage.fromJson({
+      'data': [
+        {'id': 'attempt-1'},
+      ],
+      'meta': {
+        'current_page': 2,
+        'last_page': 3,
+        'total': 201,
+        'counts': {'total': 201, 'pending': 120, 'reviewed': 78, 'failed': 3},
+      },
+    });
+    expect(exercise.referenceAudioMediaId, 'reference-1');
+    expect(exercise.referenceAudio?.fileName, 'native.mp3');
+    expect(attempt.targetText, 'Tabe target');
+    expect(attempt.referenceAudio?.id, 'reference-1');
+    expect(attempt.aiAlignment, {'0_Tabe': 91});
+    expect(attempt.aiError, 'Model sementara gagal');
+    expect(
+      [
+        page.currentPage,
+        page.lastPage,
+        page.total,
+        page.pendingCount,
+        page.reviewedCount,
+        page.failedCount,
+      ],
+      [2, 3, 201, 120, 78, 3],
+    );
+  });
+
+  test('reference audio upload is public and uses exact purpose', () async {
+    final file = File('${Directory.systemTemp.path}/teacher-speaking-test.mp3');
+    await file.writeAsBytes([1, 2, 3]);
+    addTearDown(() => file.deleteSync());
+    await repository.uploadMedia(
+      file.path,
+      'native.mp3',
+      purpose: 'speaking_reference_audio',
+    );
+    final form = requests.single.data as FormData;
+    expect(Map.fromEntries(form.fields), {
+      'purpose': 'speaking_reference_audio',
+      'visibility': 'public',
+    });
+  });
 
   test(
     'repository mutations and temporary URL preserve exact payloads',
@@ -562,7 +649,9 @@ void main() {
         ],
       );
       await _bounded(tester);
-      expect(find.text('Pemula'), findsOneWidget);
+      await tester.drag(find.byType(ListView).first, const Offset(0, -500));
+      await tester.pump();
+      expect(find.text('Pemula'), findsWidgets);
       expect(tester.takeException(), isNull);
     }
   });
@@ -751,12 +840,12 @@ void main() {
   testWidgets('attempt loading empty error exact copy and retry', (
     tester,
   ) async {
-    final pending = Completer<List<TeacherSpeakingAttempt>>();
+    final pending = Completer<TeacherSpeakingAttemptPage>();
     await _pump(
       tester,
       location: '/teacher/speaking/attempts',
       overrides: [
-        teacherSpeakingAttemptsProvider.overrideWith((_) => pending.future),
+        teacherSpeakingAttemptsProvider.overrideWith((_, _) => pending.future),
       ],
     );
     await tester.pump();
@@ -765,7 +854,9 @@ void main() {
       tester,
       location: '/teacher/speaking/attempts',
       overrides: [
-        teacherSpeakingAttemptsProvider.overrideWith((_) async => []),
+        teacherSpeakingAttemptsProvider.overrideWith(
+          (_, _) async => _attemptPage([]),
+        ),
       ],
     );
     await _bounded(tester);
@@ -781,7 +872,7 @@ void main() {
       tester,
       location: '/teacher/speaking/attempts',
       overrides: [
-        teacherSpeakingAttemptsProvider.overrideWith((_) async {
+        teacherSpeakingAttemptsProvider.overrideWith((_, _) async {
           calls++;
           throw Exception('network');
         }),
@@ -804,7 +895,9 @@ void main() {
       tester,
       location: '/teacher/speaking/attempts',
       overrides: [
-        teacherSpeakingAttemptsProvider.overrideWith((_) async => [_attempt()]),
+        teacherSpeakingAttemptsProvider.overrideWith(
+          (_, _) async => _attemptPage([_attempt()]),
+        ),
       ],
     );
     await _bounded(tester);
@@ -838,13 +931,20 @@ void main() {
       'Kelas 7A',
       'Tabe',
       '87',
+      'Tabe target',
+      'Model sementara gagal',
       'Analisis selesai',
       'Mikrofon ponsel',
     ]) {
       expect(find.text(text), findsWidgets);
     }
-    await tester.scrollUntilVisible(find.text('Putar Audio'), 200);
-    expect(find.text('Putar Audio'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Putar Audio Penutur Asli'), 200);
+    expect(find.text('Putar Audio Penutur Asli'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Tabe: 91%'), 200);
+    expect(find.text('Tabe: 91%'), findsOneWidget);
+    final studentAudio = find.widgetWithText(FilledButton, 'Putar Audio');
+    await tester.ensureVisible(studentAudio);
+    expect(studentAudio, findsOneWidget);
     for (final raw in [
       'attempt-1',
       'media-secret',
@@ -892,7 +992,7 @@ void main() {
             (_, _) async => _attempt(),
           ),
           teacherSpeakingAttemptsProvider.overrideWith(
-            (_) async => [_attempt(teacherScore: 90)],
+            (_, _) async => _attemptPage([_attempt(teacherScore: 90)]),
           ),
         ],
       );

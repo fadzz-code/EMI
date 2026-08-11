@@ -5,6 +5,8 @@ import 'package:emi_mobile/features/auth/data/auth_remote_data_source.dart';
 import 'package:emi_mobile/features/auth/data/auth_repository_impl.dart';
 import 'package:emi_mobile/features/auth/domain/auth_repository.dart';
 import 'package:emi_mobile/features/auth/domain/session_user.dart';
+import 'package:emi_mobile/features/auth/presentation/auth_controller.dart';
+import 'package:emi_mobile/features/auth/presentation/auth_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _MemoryTokenStorage implements TokenStorage {
@@ -186,6 +188,8 @@ void main() {
       remoteDataSource: AuthRemoteDataSource(
         _dio((options, handler) {
           expect(options.path, '/auth/register');
+          expect(options.data['privacy_policy_accepted'], isTrue);
+          expect(options.data['privacy_policy_version'], '2026-08-11');
           handler.resolve(
             Response(
               requestOptions: options,
@@ -208,6 +212,8 @@ void main() {
         requestedRole: UserRole.student,
         schoolId: 'school-1',
         classId: 'class-1',
+        privacyPolicyAccepted: true,
+        privacyPolicyVersion: '2026-08-11',
       ),
     );
 
@@ -259,6 +265,31 @@ void main() {
     );
   });
 
+  test('delete account sends password and clears local session', () async {
+    final storage = _MemoryTokenStorage()..token = 'safe-test-token';
+    final repository = AuthRepositoryImpl(
+      remoteDataSource: AuthRemoteDataSource(
+        _dio((options, handler) {
+          expect(options.path, '/auth/account');
+          expect(options.data, {'current_password': 'rahasia'});
+          handler.resolve(
+            Response(
+              requestOptions: options,
+              statusCode: 200,
+              data: {'data': []},
+            ),
+          );
+        }),
+      ),
+      tokenStorage: storage,
+    );
+
+    await repository.deleteAccount(currentPassword: 'rahasia');
+
+    expect(storage.cleared, isTrue);
+    expect(storage.token, isNull);
+  });
+
   test(
     'delete account keeps local token when backend rejects password',
     () async {
@@ -289,11 +320,63 @@ void main() {
     },
   );
 
+  test('delete account success clears controller session', () async {
+    final repository = _ControllerRepository();
+    final controller = AuthController(repository);
+    await controller.login(email: 'user@test', password: 'rahasia');
+
+    await controller.deleteAccount(currentPassword: 'rahasia');
+
+    expect(controller.state.status, AuthStatus.unauthenticated);
+    expect(controller.state.user, isNull);
+  });
+
+  test(
+    'delete account failure retains controller session and shows error',
+    () async {
+      final repository = _ControllerRepository(failDelete: true);
+      final controller = AuthController(repository);
+      await controller.login(email: 'user@test', password: 'rahasia');
+
+      await controller.deleteAccount(currentPassword: 'salah');
+
+      expect(controller.state.status, AuthStatus.authenticatedStudent);
+      expect(controller.state.user, isNotNull);
+      expect(controller.state.error, isNotNull);
+      expect(controller.state.isLoading, isFalse);
+    },
+  );
+
   test('session user parses unknown role safely', () {
     final user = SessionUser.fromJson(_user(role: 'owner'));
 
     expect(user.role, UserRole.unknown);
   });
+}
+
+class _ControllerRepository implements AuthRepository {
+  _ControllerRepository({this.failDelete = false});
+
+  final bool failDelete;
+
+  @override
+  Future<SessionUser> login({
+    required String email,
+    required String password,
+  }) async => SessionUser.fromJson(_user());
+
+  @override
+  Future<void> deleteAccount({required String currentPassword}) async {
+    if (failDelete) {
+      throw const AppError(
+        type: AppErrorType.validation,
+        message: 'Password lama tidak sesuai.',
+      );
+    }
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 Dio _dio(void Function(RequestOptions, RequestInterceptorHandler) onRequest) =>

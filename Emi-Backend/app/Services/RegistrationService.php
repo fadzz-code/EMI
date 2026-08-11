@@ -17,6 +17,8 @@ class RegistrationService
                 'password' => $data['password'],
                 'role' => $data['requested_role'],
                 'status' => 'pending',
+                'privacy_policy_accepted_at' => now(),
+                'privacy_policy_version' => $data['privacy_policy_version'],
             ]);
 
             RegistrationRequest::query()->create([

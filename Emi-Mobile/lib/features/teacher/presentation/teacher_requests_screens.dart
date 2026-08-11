@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
+import '../../../core/errors/app_error.dart';
 import '../data/teacher_providers.dart';
 import 'teacher_shell.dart';
 import 'teacher_widgets.dart';
@@ -346,7 +347,13 @@ class _TeacherRequestDetailScreenState
       );
       _message('Permintaan berhasil diproses.');
     } catch (error) {
-      if (mounted) _message(error.toString());
+      if (mounted) {
+        _message(
+          error is AppError
+              ? error.message
+              : 'Permintaan belum bisa diproses. Silakan coba lagi.',
+        );
+      }
     } finally {
       if (mounted) setState(() => saving = false);
     }

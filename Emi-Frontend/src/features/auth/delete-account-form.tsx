@@ -10,22 +10,17 @@ import { getFirstApiError } from "@/lib/api-client";
 import { useAuth } from "./auth-provider";
 import { authService } from "./auth-service";
 
-/**
- * Reusable "delete/deactivate account" action shared by Student, Teacher,
- * and Admin profile pages. Backend `DELETE /auth/account` deactivates the
- * account (not a hard delete); requires current password confirmation.
- */
 export function DeleteAccountForm() {
-  const { token, logout } = useAuth();
+  const { token, clearSession } = useAuth();
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [password, setPassword] = useState("");
 
   const mutation = useMutation({
     mutationFn: () => authService.deleteAccount(token ?? "", { current_password: password }),
-    onSuccess: async () => {
+    onSuccess: () => {
       setConfirmOpen(false);
-      await logout();
+      clearSession();
       router.replace("/login");
     },
   });
@@ -34,10 +29,12 @@ export function DeleteAccountForm() {
     <div className="grid gap-3">
       {mutation.error ? <Alert tone="error">{getFirstApiError(mutation.error)}</Alert> : null}
       <p className="text-sm text-muted">
-        Akun akan dinonaktifkan dan Anda tidak dapat login kembali sampai diaktifkan ulang oleh Admin.
+        Akun dan data pribadi Anda akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.
       </p>
       <Button
+        disabled={mutation.isPending}
         onClick={() => {
+          if (confirmOpen || mutation.isPending) return;
           setPassword("");
           setConfirmOpen(true);
         }}
@@ -47,8 +44,8 @@ export function DeleteAccountForm() {
         Hapus Akun
       </Button>
 
-      <Modal onClose={() => setConfirmOpen(false)} open={confirmOpen} title="Hapus akun ini?">
-        <p className="text-sm text-slate-700">Masukkan password Anda untuk mengonfirmasi penghapusan akun.</p>
+      <Modal onClose={() => setConfirmOpen(false)} open={confirmOpen} title="Hapus akun secara permanen?">
+        <p className="text-sm text-slate-700">Masukkan password Anda untuk mengonfirmasi penghapusan permanen akun.</p>
         <Input
           className="mt-3"
           onChange={(event) => setPassword(event.target.value)}
@@ -61,7 +58,7 @@ export function DeleteAccountForm() {
             Batal
           </Button>
           <Button disabled={mutation.isPending || !password} onClick={() => mutation.mutate()} variant="danger">
-            {mutation.isPending ? "Memproses..." : "Ya, Hapus Akun"}
+            {mutation.isPending ? "Menghapus..." : "Ya, Hapus Permanen"}
           </Button>
         </div>
       </Modal>

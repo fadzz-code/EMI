@@ -111,8 +111,7 @@ class _TeacherChatbotScreenState extends ConsumerState<TeacherChatbotScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => ChatbotHistoryPanel(
         provider: teacherChatbotControllerProvider,
-        notifierRead: () =>
-            ref.read(teacherChatbotControllerProvider.notifier),
+        notifierRead: () => ref.read(teacherChatbotControllerProvider.notifier),
         palette: const ChatbotPanelPalette(
           surface: TeacherStyle.surface,
           ink: TeacherStyle.ink,
@@ -230,7 +229,7 @@ class _IntroCard extends StatelessWidget {
           ),
           const SizedBox(height: EmiSpacing.md),
           const Text(
-            'EMI menjawab dari Basis AI yang dipublish admin dan menampilkan referensi jika cocok.',
+            'EMI menjawab dari Basis AI yang dipublish admin dan menampilkan referensi jika cocok. AI dapat keliru, periksa kembali jawaban penting.',
             style: TextStyle(color: TeacherStyle.inkMuted),
           ),
         ],

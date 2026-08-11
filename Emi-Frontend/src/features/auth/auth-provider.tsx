@@ -9,6 +9,8 @@ import {
   useState,
 } from "react";
 
+import { onUnauthorized } from "@/lib/api-client";
+
 import { authService } from "./auth-service";
 import type { AuthUser, LoginPayload, RegisterPayload } from "./auth-types";
 
@@ -24,6 +26,7 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   login: (payload: LoginPayload) => Promise<AuthUser>;
   logout: () => Promise<void>;
+  clearSession: () => void;
   registerTeacher: (
     payload: Omit<RegisterPayload, "requested_role">,
   ) => Promise<void>;
@@ -50,6 +53,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const clearSession = useCallback(() => {
+    persistToken(null);
+    setUser(null);
+    setStatus("unauthenticated");
+  }, [persistToken]);
+
   const refreshUser = useCallback(async () => {
     if (!token) {
       setUser(null);
@@ -74,6 +83,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  useEffect(() => onUnauthorized(clearSession), [clearSession]);
+
   useEffect(() => {
     if (!token) {
       return;
@@ -91,16 +102,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {
         if (isMounted) {
-          persistToken(null);
-          setUser(null);
-          setStatus("unauthenticated");
+          clearSession();
         }
       });
 
     return () => {
       isMounted = false;
     };
-  }, [persistToken, token]);
+  }, [clearSession, token]);
 
   const login = useCallback(
     async (payload: LoginPayload) => {
@@ -115,9 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     const activeToken = token;
-    persistToken(null);
-    setUser(null);
-    setStatus("unauthenticated");
+    clearSession();
 
     if (activeToken) {
       try {
@@ -126,7 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Token lokal tetap dibersihkan meski server sudah menganggap sesi tidak valid.
       }
     }
-  }, [persistToken, token]);
+  }, [clearSession, token]);
 
   const registerTeacher = useCallback(
     async (payload: Omit<RegisterPayload, "requested_role">) => {
@@ -151,11 +158,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: status === "authenticated" && Boolean(token && user),
       login,
       logout,
+      clearSession,
       registerTeacher,
       registerStudent,
       refreshUser,
     }),
     [
+      clearSession,
       login,
       logout,
       refreshUser,

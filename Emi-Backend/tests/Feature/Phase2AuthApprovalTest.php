@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\DeleteStoredFiles;
+use App\Models\MediaFile;
 use App\Models\RegistrationRequest;
 use App\Models\School;
 use App\Models\SchoolClass;
@@ -12,6 +14,8 @@ use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class Phase2AuthApprovalTest extends TestCase
@@ -83,6 +87,8 @@ class Phase2AuthApprovalTest extends TestCase
         $this->assertSame('student', $user->role);
         $this->assertSame('pending', $user->status);
         $this->assertTrue(Hash::check('Password123', $user->password));
+        $this->assertNotNull($user->privacy_policy_accepted_at);
+        $this->assertSame(config('legal.privacy_policy_version'), $user->privacy_policy_version);
         $this->assertDatabaseHas('registration_requests', [
             'user_id' => $user->id,
             'school_id' => $school->id,
@@ -90,6 +96,26 @@ class Phase2AuthApprovalTest extends TestCase
             'requested_role' => 'student',
             'status' => 'pending',
         ]);
+    }
+
+    public function test_registration_requires_current_privacy_policy_consent(): void
+    {
+        [$school, $schoolClass] = $this->activeSchoolAndClass();
+        $payload = $this->registerPayload([
+            'school_id' => $school->id,
+            'class_id' => $schoolClass->id,
+        ]);
+
+        unset($payload['privacy_policy_accepted']);
+        $this->postJson('/api/v1/auth/register', $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('privacy_policy_accepted');
+
+        $payload['privacy_policy_accepted'] = true;
+        $payload['privacy_policy_version'] = 'outdated';
+        $this->postJson('/api/v1/auth/register', $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('privacy_policy_version');
     }
 
     public function test_teacher_can_register_as_pending(): void
@@ -268,9 +294,21 @@ class Phase2AuthApprovalTest extends TestCase
         $this->withToken($token)->getJson('/api/v1/auth/me')->assertOk();
     }
 
-    public function test_account_delete_requires_password_deactivates_user_and_revokes_tokens(): void
+    public function test_account_delete_requires_authentication(): void
     {
-        $student = User::factory()->student()->approved()->create(['password' => 'Password123']);
+        $this->deleteJson('/api/v1/auth/account', ['current_password' => 'Password123'])
+            ->assertUnauthorized();
+    }
+
+    public function test_account_delete_anonymizes_user_removes_personal_rows_and_revokes_access(): void
+    {
+        Queue::fake();
+        $student = User::factory()->student()->approved()->create([
+            'full_name' => 'Data Pribadi',
+            'email' => 'hapus@example.test',
+            'phone' => '08123456789',
+            'password' => 'Password123',
+        ]);
         $schoolClass = SchoolClass::factory()->create();
         StudentClassMembership::factory()->create([
             'student_id' => $student->id,
@@ -286,12 +324,46 @@ class Phase2AuthApprovalTest extends TestCase
             'current_password' => 'Password123',
         ])->assertOk();
 
-        $this->assertSame('inactive', $student->refresh()->status);
-        $this->assertDatabaseHas('student_class_memberships', [
-            'student_id' => $student->id,
-            'is_active' => false,
-        ]);
+        $student->refresh();
+        $this->assertSame('inactive', $student->status);
+        $this->assertSame('Pengguna Dihapus', $student->full_name);
+        $this->assertSame("deleted+{$student->id}@invalid.local", $student->email);
+        $this->assertNull($student->phone);
+        $this->assertDatabaseHas('student_class_memberships', ['student_id' => $student->id, 'is_active' => false]);
+        $this->assertDatabaseHas('classes', ['id' => $schoolClass->id]);
         $this->assertDatabaseCount('personal_access_tokens', 0);
+        Queue::assertPushed(DeleteStoredFiles::class);
+        $this->refreshApplication();
+        $this->withToken($token)->getJson('/api/v1/auth/me')->assertUnauthorized();
+    }
+
+    public function test_account_delete_queues_personal_media_cleanup_and_job_is_idempotent(): void
+    {
+        Storage::fake('local');
+        Queue::fake();
+        $student = User::factory()->student()->approved()->create(['password' => 'Password123']);
+        $avatar = MediaFile::factory()->create([
+            'uploaded_by' => $student->id,
+            'purpose' => 'avatar',
+            'disk' => 'local',
+            'path' => 'avatars/private.png',
+        ]);
+        Storage::disk('local')->put($avatar->path, 'private');
+        $student->update(['avatar_media_id' => $avatar->id]);
+
+        $this->withToken($this->tokenFor($student))->deleteJson('/api/v1/auth/account', [
+            'current_password' => 'Password123',
+        ])->assertOk();
+
+        Queue::assertPushed(DeleteStoredFiles::class, function (DeleteStoredFiles $job) use ($avatar): bool {
+            $job->handle();
+            $job->handle();
+            Storage::disk('local')->assertMissing($avatar->path);
+
+            return true;
+        });
+        $this->assertDatabaseMissing('media_files', ['id' => $avatar->id]);
+        $this->assertNull($student->refresh()->avatar_media_id);
     }
 
     public function test_last_admin_cannot_delete_own_account(): void
@@ -566,6 +638,8 @@ class Phase2AuthApprovalTest extends TestCase
             'requested_role' => 'student',
             'school_id' => null,
             'class_id' => null,
+            'privacy_policy_accepted' => true,
+            'privacy_policy_version' => config('legal.privacy_policy_version'),
         ], $overrides);
     }
 

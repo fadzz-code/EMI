@@ -51,7 +51,12 @@ class TeacherModulesScreen extends ConsumerWidget {
       actions: [
         IconButton(
           tooltip: 'Ubah Urutan Modul',
-          onPressed: () => _showReorderModulesDialog(context, ref, classId, modules.valueOrNull ?? const []),
+          onPressed: () => _showReorderModulesDialog(
+            context,
+            ref,
+            classId,
+            modules.valueOrNull ?? const [],
+          ),
           icon: const Icon(Icons.swap_vert),
         ),
         IconButton(
@@ -377,12 +382,18 @@ class _TeacherModuleEditScreenState
                 if (item.lessons.length > 1)
                   IconButton(
                     tooltip: 'Ubah Urutan Materi',
-                    onPressed: () => _showReorderLessonsDialog(context, ref, item.id, item.lessons),
+                    onPressed: () => _showReorderLessonsDialog(
+                      context,
+                      ref,
+                      item.id,
+                      item.lessons,
+                    ),
                     icon: const Icon(Icons.swap_vert),
                   ),
                 FilledButton.icon(
-                  onPressed: () =>
-                      context.push('/teacher/modules/${item.id}/lessons/create'),
+                  onPressed: () => context.push(
+                    '/teacher/modules/${item.id}/lessons/create',
+                  ),
                   icon: const Icon(Icons.add),
                   label: const Text('Tambah Materi'),
                 ),
@@ -1366,12 +1377,14 @@ void _showReorderModulesDialog(
             children: [
               Text(
                 'Ubah Urutan Modul',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: EmiSpacing.xs),
-              const Text('Tahan dan geser item untuk mengubah urutan pengerjaan modul.'),
+              const Text(
+                'Tahan dan geser item untuk mengubah urutan pengerjaan modul.',
+              ),
               const SizedBox(height: EmiSpacing.md),
               SizedBox(
                 height: 320,
@@ -1408,7 +1421,9 @@ void _showReorderModulesDialog(
                     : () async {
                         setModalState(() => saving = true);
                         try {
-                          await ref.read(teacherRepositoryProvider).reorderModules(
+                          await ref
+                              .read(teacherRepositoryProvider)
+                              .reorderModules(
                                 classId,
                                 ordered.map((e) => e.id).toList(),
                               );
@@ -1417,9 +1432,9 @@ void _showReorderModulesDialog(
                         } catch (e) {
                           setModalState(() => saving = false);
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(_error(e))),
-                            );
+                            ScaffoldMessenger.of(
+                              context,
+                            ).showSnackBar(SnackBar(content: Text(_error(e))));
                           }
                         }
                       },
@@ -1459,12 +1474,14 @@ void _showReorderLessonsDialog(
             children: [
               Text(
                 'Ubah Urutan Materi',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: EmiSpacing.xs),
-              const Text('Tahan dan geser item untuk mengubah urutan alur materi.'),
+              const Text(
+                'Tahan dan geser item untuk mengubah urutan alur materi.',
+              ),
               const SizedBox(height: EmiSpacing.md),
               SizedBox(
                 height: 320,
@@ -1502,7 +1519,9 @@ void _showReorderLessonsDialog(
                     : () async {
                         setModalState(() => saving = true);
                         try {
-                          await ref.read(teacherRepositoryProvider).reorderLessons(
+                          await ref
+                              .read(teacherRepositoryProvider)
+                              .reorderLessons(
                                 moduleId,
                                 ordered.map((e) => e.id).toList(),
                               );
@@ -1511,9 +1530,9 @@ void _showReorderLessonsDialog(
                         } catch (e) {
                           setModalState(() => saving = false);
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(_error(e))),
-                            );
+                            ScaffoldMessenger.of(
+                              context,
+                            ).showSnackBar(SnackBar(content: Text(_error(e))));
                           }
                         }
                       },

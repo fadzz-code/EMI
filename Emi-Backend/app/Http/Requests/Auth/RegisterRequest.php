@@ -34,6 +34,8 @@ class RegisterRequest extends ApiFormRequest
                     ->where('status', 'active')
                     ->where('school_id', (string) $this->input('school_id')),
             ],
+            'privacy_policy_accepted' => ['required', 'accepted'],
+            'privacy_policy_version' => ['required', 'string', Rule::in([config('legal.privacy_policy_version')])],
         ];
     }
 }

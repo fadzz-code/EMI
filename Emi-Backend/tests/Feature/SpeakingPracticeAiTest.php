@@ -12,6 +12,7 @@ use App\Models\StudentClassMembership;
 use App\Models\TeacherClassAssignment;
 use App\Models\User;
 use App\Services\SpeakingAiClient;
+use App\Services\SpeakingAuthorizationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\UploadedFile;
@@ -287,6 +288,70 @@ class SpeakingPracticeAiTest extends TestCase
         $this->withToken($this->tokenFor($teacher))->patchJson('/api/v1/teacher/speaking/attempts/'.$attempt->id.'/feedback', [
             'teacher_score' => 80,
         ])->assertForbidden();
+    }
+
+    public function test_teacher_can_only_review_global_exercise_attempts_from_their_active_class(): void
+    {
+        [$student, $teacher] = $this->classroomUsers();
+        $globalExercise = $this->globalExercise();
+        $ownAttempt = $this->attemptFor($student, $globalExercise);
+        $otherStudent = User::factory()->student()->approved()->create();
+        $otherClass = SchoolClass::factory()->create();
+        StudentClassMembership::factory()->create(['student_id' => $otherStudent->id, 'class_id' => $otherClass->id, 'is_active' => true]);
+        $otherAttempt = $this->attemptFor($otherStudent, $globalExercise);
+        $token = $this->tokenFor($teacher);
+
+        $this->withToken($token)->getJson('/api/v1/teacher/speaking/attempts')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $ownAttempt->id])
+            ->assertJsonMissing(['id' => $otherAttempt->id]);
+        $this->withToken($token)->getJson('/api/v1/teacher/speaking/attempts/'.$ownAttempt->id)->assertOk();
+        $this->withToken($token)->getJson('/api/v1/teacher/speaking/attempts/'.$otherAttempt->id)->assertForbidden();
+        $this->withToken($token)->patchJson('/api/v1/teacher/speaking/attempts/'.$otherAttempt->id.'/feedback', ['teacher_score' => 80])->assertForbidden();
+        $this->withToken($token)->postJson('/api/v1/media/'.$otherAttempt->audio_media_id.'/temporary-url')->assertForbidden();
+    }
+
+    public function test_class_exercise_requires_student_membership_in_exact_exercise_class(): void
+    {
+        [$student, $teacher, $exerciseClass] = $this->classroomUsers();
+        $otherClass = SchoolClass::factory()->create();
+        $student->studentClassMemberships()->update(['class_id' => $otherClass->id]);
+        $attempt = $this->attemptFor($student, $this->exercise($exerciseClass));
+        $token = $this->tokenFor($teacher);
+
+        $this->withToken($token)->getJson('/api/v1/teacher/speaking/attempts')->assertOk()->assertJsonMissing(['id' => $attempt->id]);
+        $this->withToken($token)->getJson('/api/v1/teacher/speaking/attempts/'.$attempt->id)->assertForbidden();
+        $this->withToken($token)->patchJson('/api/v1/teacher/speaking/attempts/'.$attempt->id.'/feedback', ['teacher_score' => 80])->assertForbidden();
+        $this->withToken($token)->postJson('/api/v1/media/'.$attempt->audio_media_id.'/temporary-url')->assertForbidden();
+    }
+
+    public function test_inactive_class_or_school_denies_all_teacher_attempt_access(): void
+    {
+        foreach (['class', 'school'] as $inactive) {
+            [$student, $teacher, $class] = $this->classroomUsers();
+            $attempt = $this->attemptFor($student, $this->exercise($class));
+            $inactive === 'class' ? $class->update(['status' => 'inactive']) : $class->school()->update(['status' => 'inactive']);
+            $token = $this->tokenFor($teacher);
+
+            $this->withToken($token)->getJson('/api/v1/teacher/speaking/attempts')->assertOk()->assertJsonMissing(['id' => $attempt->id]);
+            $this->withToken($token)->getJson('/api/v1/teacher/speaking/attempts/'.$attempt->id)->assertForbidden();
+            $this->withToken($token)->patchJson('/api/v1/teacher/speaking/attempts/'.$attempt->id.'/feedback', ['teacher_score' => 80])->assertForbidden();
+            $this->withToken($token)->postJson('/api/v1/media/'.$attempt->audio_media_id.'/temporary-url')->assertForbidden();
+        }
+    }
+
+    public function test_inactive_or_invalid_attempt_student_denies_teacher_access(): void
+    {
+        foreach (['inactive', 'teacher'] as $invalid) {
+            [$student, $teacher, $class] = $this->classroomUsers();
+            $attempt = $this->attemptFor($student, $this->exercise($class));
+            $student->update($invalid === 'inactive' ? ['status' => 'inactive'] : ['role' => 'teacher']);
+            $token = $this->tokenFor($teacher);
+
+            $this->withToken($token)->getJson('/api/v1/teacher/speaking/attempts')->assertOk()->assertJsonMissing(['id' => $attempt->id]);
+            $this->withToken($token)->getJson('/api/v1/teacher/speaking/attempts/'.$attempt->id)->assertForbidden();
+            $this->withToken($token)->postJson('/api/v1/media/'.$attempt->audio_media_id.'/temporary-url')->assertForbidden();
+        }
     }
 
     public function test_teacher_review_validates_score_range_and_allows_omitted_feedback(): void
@@ -1025,6 +1090,36 @@ class SpeakingPracticeAiTest extends TestCase
         $this->withToken($this->tokenFor($student))->post('/api/v1/student/speaking/exercises/'.$exercise->id.'/attempts', [
             'file' => UploadedFile::fake()->create('big.mp3', 2048, 'audio/mpeg'),
         ])->assertUnprocessable();
+    }
+
+    public function test_teacher_attempt_filters_return_search_scoped_counts_and_pagination_meta(): void
+    {
+        [$student, $teacher, $class] = $this->classroomUsers();
+        $student->update(['full_name' => 'Nina Target']);
+        $exercise = $this->exercise($class);
+        $pending = $this->attemptFor($student, $exercise);
+        $pending->update(['analysis_status' => 'completed', 'review_status' => 'pending']);
+        $reviewed = $this->attemptFor($student, $exercise);
+        $reviewed->update(['analysis_status' => 'completed', 'review_status' => 'reviewed']);
+        $failed = $this->attemptFor($student, $exercise);
+        $failed->update(['analysis_status' => 'failed', 'review_status' => 'pending']);
+        $otherStudent = User::factory()->student()->approved()->create(['full_name' => 'Nina Target']);
+        $otherClass = SchoolClass::factory()->create();
+        StudentClassMembership::factory()->create(['student_id' => $otherStudent->id, 'class_id' => $otherClass->id, 'is_active' => true]);
+        $this->attemptFor($otherStudent, $this->exercise($otherClass));
+
+        $this->withToken($this->tokenFor($teacher))->getJson('/api/v1/teacher/speaking/attempts?search=Nina&review_status=reviewed&per_page=1')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $reviewed->id)
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('meta.counts.total', 3)
+            ->assertJsonPath('meta.counts.pending', 2)
+            ->assertJsonPath('meta.counts.reviewed', 1)
+            ->assertJsonPath('meta.counts.failed', 1);
+
+        $teacher->forceFill(['role' => null]);
+        $this->assertFalse(app(SpeakingAuthorizationService::class)->teacherAttemptQuery($teacher)->exists());
     }
 
     public function test_canonical_speaking_filters_pagination_validation_and_admin_reports(): void

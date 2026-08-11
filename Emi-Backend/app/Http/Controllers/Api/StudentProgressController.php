@@ -9,13 +9,17 @@ use App\Http\Resources\LessonProgressResource;
 use App\Http\Resources\ModuleProgressResource;
 use App\Models\ClassLesson;
 use App\Models\ModuleProgress;
+use App\Services\LearningAccessService;
 use App\Services\LearningProgressService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class StudentProgressController extends Controller
 {
-    public function __construct(private readonly LearningProgressService $progressService) {}
+    public function __construct(
+        private readonly LearningProgressService $progressService,
+        private readonly LearningAccessService $accessService,
+    ) {}
 
     public function updateLesson(UpdateLessonProgressRequest $request, string $id): JsonResponse
     {
@@ -32,8 +36,10 @@ class StudentProgressController extends Controller
 
     public function modules(Request $request): JsonResponse
     {
+        $classId = $this->accessService->studentClassId($request->user());
         $progress = ModuleProgress::query()
             ->where('student_id', $request->user()->id)
+            ->whereHas('classModule', fn ($query) => $query->where('class_id', $classId))
             ->with('classModule')
             ->paginate(15);
 

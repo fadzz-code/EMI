@@ -156,9 +156,9 @@ export const studentService = {
     return response.data ?? [];
   },
 
-  async speakingAttempts(token: string) {
-    const response = await apiClient.get<SpeakingAttempt[]>("/student/speaking/attempts", { token });
-    return response.data ?? [];
+  async speakingAttempts(token: string, page = 1) {
+    const response = await apiClient.get<SpeakingAttempt[]>("/student/speaking/attempts", { token, query: { page, per_page: 100 } });
+    return paginated(response.data, response.meta);
   },
 
   async speakingAttemptDetail(token: string, attemptId: string) {

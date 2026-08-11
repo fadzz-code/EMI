@@ -366,7 +366,14 @@ export type TeacherQuizResultRow = {
   latest_submitted_at?: string | null;
 };
 
-export type PaginatedResult<T> = {
+export type TeacherSpeakingAttemptCounts = {
+  total: number;
+  pending: number;
+  reviewed: number;
+  failed: number;
+};
+
+export type PaginatedResult<T, TMeta extends ApiPaginationMeta = ApiPaginationMeta> = {
   items: T[];
-  meta?: ApiPaginationMeta;
+  meta?: TMeta;
 };

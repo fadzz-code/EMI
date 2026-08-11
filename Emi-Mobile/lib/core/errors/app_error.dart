@@ -6,6 +6,7 @@ enum AppErrorType {
   validation,
   notFound,
   conflict,
+  rateLimited,
   server,
   unknown,
 }

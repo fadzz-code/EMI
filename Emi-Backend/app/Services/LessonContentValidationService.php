@@ -4,10 +4,11 @@ namespace App\Services;
 
 use App\Exceptions\ApiException;
 use App\Models\MediaFile;
+use App\Models\User;
 
 class LessonContentValidationService
 {
-    public function validate(array $data): array
+    public function validate(array $data, ?User $actor = null): array
     {
         $type = (string) ($data['content_type'] ?? '');
         $contentBody = $data['content_body'] ?? null;
@@ -20,9 +21,9 @@ class LessonContentValidationService
 
         return match ($type) {
             'text' => $this->validateText($contentBody, $mediaId, $externalUrl),
-            'image' => $this->validateMedia($mediaId, 'lesson_image', $externalUrl),
-            'audio' => $this->validateMedia($mediaId, 'audio', $externalUrl),
-            'pdf' => $this->validateMedia($mediaId, 'document', $externalUrl),
+            'image' => $this->validateMedia($mediaId, 'lesson_image', $externalUrl, $actor),
+            'audio' => $this->validateMedia($mediaId, 'audio', $externalUrl, $actor),
+            'pdf' => $this->validateMedia($mediaId, 'document', $externalUrl, $actor),
             'video', 'link' => $this->validateExternalUrl($externalUrl, $mediaId),
             default => throw new ApiException('Tipe konten materi tidak valid.', 'INVALID_LESSON_CONTENT', 422),
         };
@@ -47,7 +48,7 @@ class LessonContentValidationService
         return ['media_id' => null, 'external_url' => null];
     }
 
-    private function validateMedia(mixed $mediaId, string $purpose, mixed $externalUrl): array
+    private function validateMedia(mixed $mediaId, string $purpose, mixed $externalUrl, ?User $actor): array
     {
         if (! is_string($mediaId) || $mediaId === '' || $externalUrl !== null) {
             throw new ApiException('Media materi tidak valid.', 'INVALID_LESSON_MEDIA', 422);
@@ -55,7 +56,7 @@ class LessonContentValidationService
 
         $media = MediaFile::query()->active()->find($mediaId);
 
-        if (! $media || $media->purpose !== $purpose) {
+        if (! $media || $media->purpose !== $purpose || ($actor?->role === 'teacher' && $media->uploaded_by !== $actor->id)) {
             throw new ApiException('Media materi tidak valid.', 'INVALID_LESSON_MEDIA', 422);
         }
 

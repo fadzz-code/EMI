@@ -97,6 +97,10 @@ void main() {
           .onPressed,
       isNull,
     );
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Inggris'));
+    await tester.pumpAndSettle();
+    expect(queries.last.page, 1);
+    expect(queries.last.language, 'english');
     await tester.tap(find.widgetWithText(ChoiceChip, 'Kategori'));
     await tester.pumpAndSettle();
     expect(queries.last.page, 1);
@@ -204,6 +208,14 @@ Future<GoRouter> _pumpDictionary(
       overrides: [
         authRepositoryProvider.overrideWithValue(_AuthRepository()),
         dictionaryAudioPlayerFactoryProvider.overrideWithValue(() => audio),
+        dictionaryCategorySourceProvider.overrideWith(
+          (_) async => DictionaryPage(
+            items: [_entry(audioAvailable: audioAvailable)],
+            currentPage: 1,
+            lastPage: 1,
+            total: 1,
+          ),
+        ),
         dictionaryListProvider.overrideWith((_, query) async {
           queries?.add(query);
           return DictionaryPage(

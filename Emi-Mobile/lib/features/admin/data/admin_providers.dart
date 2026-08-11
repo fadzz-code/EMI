@@ -70,6 +70,8 @@ final adminUserDetailProvider = FutureProvider.family<AdminUser, String>(
 
 class AdminClassesController extends AsyncNotifier<AdminClassPage> {
   AdminListQuery _query = const AdminListQuery();
+  int _generation = 0;
+  bool _loadingMore = false;
 
   AdminListQuery get query => _query;
 
@@ -80,13 +82,16 @@ class AdminClassesController extends AsyncNotifier<AdminClassPage> {
       ref.read(adminRepositoryProvider).classes(query);
 
   Future<void> search(String value) async {
-    _query = _query.copyWith(search: value, page: 1);
+    final generation = ++_generation;
+    final query = _query = _query.copyWith(search: value, page: 1);
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _load(_query));
+    final next = await AsyncValue.guard(() => _load(query));
+    if (generation == _generation) state = next;
   }
 
   Future<void> filter({String? schoolId, String? status}) async {
-    _query = _query.copyWith(
+    final generation = ++_generation;
+    final query = _query = _query.copyWith(
       schoolId: schoolId,
       status: status,
       clearSchool: schoolId == null,
@@ -94,7 +99,8 @@ class AdminClassesController extends AsyncNotifier<AdminClassPage> {
       page: 1,
     );
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _load(_query));
+    final next = await AsyncValue.guard(() => _load(query));
+    if (generation == _generation) state = next;
   }
 
   Future<void> refresh() async {
@@ -103,26 +109,35 @@ class AdminClassesController extends AsyncNotifier<AdminClassPage> {
 
   Future<void> loadMore() async {
     final current = state.valueOrNull;
-    if (current == null || !current.hasMore || state.isLoading) return;
+    if (current == null || !current.hasMore || _loadingMore) return;
+    _loadingMore = true;
+    final generation = _generation;
     final nextQuery = _query.copyWith(page: current.currentPage + 1);
-    final next = await _load(nextQuery);
-    final byId = {
-      for (final item in [...current.items, ...next.items]) item.id: item,
-    };
-    _query = nextQuery;
-    state = AsyncData(
-      AdminClassPage(
-        items: byId.values.toList(),
-        currentPage: next.currentPage,
-        lastPage: next.lastPage,
-        total: next.total,
-      ),
-    );
+    try {
+      final next = await _load(nextQuery);
+      if (generation != _generation) return;
+      final byId = {
+        for (final item in [...current.items, ...next.items]) item.id: item,
+      };
+      _query = nextQuery;
+      state = AsyncData(
+        AdminClassPage(
+          items: byId.values.toList(),
+          currentPage: next.currentPage,
+          lastPage: next.lastPage,
+          total: next.total,
+        ),
+      );
+    } finally {
+      _loadingMore = false;
+    }
   }
 }
 
 class AdminSchoolsController extends AsyncNotifier<AdminSchoolPage> {
   AdminListQuery _query = const AdminListQuery();
+  int _generation = 0;
+  bool _loadingMore = false;
 
   AdminListQuery get query => _query;
 
@@ -133,19 +148,23 @@ class AdminSchoolsController extends AsyncNotifier<AdminSchoolPage> {
       ref.read(adminRepositoryProvider).schools(query);
 
   Future<void> search(String value) async {
-    _query = _query.copyWith(search: value, page: 1);
+    final generation = ++_generation;
+    final query = _query = _query.copyWith(search: value, page: 1);
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _load(_query));
+    final next = await AsyncValue.guard(() => _load(query));
+    if (generation == _generation) state = next;
   }
 
   Future<void> filter({String? status}) async {
-    _query = _query.copyWith(
+    final generation = ++_generation;
+    final query = _query = _query.copyWith(
       status: status,
       clearStatus: status == null,
       page: 1,
     );
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _load(_query));
+    final next = await AsyncValue.guard(() => _load(query));
+    if (generation == _generation) state = next;
   }
 
   Future<void> refresh() async {
@@ -154,26 +173,35 @@ class AdminSchoolsController extends AsyncNotifier<AdminSchoolPage> {
 
   Future<void> loadMore() async {
     final current = state.valueOrNull;
-    if (current == null || !current.hasMore || state.isLoading) return;
+    if (current == null || !current.hasMore || _loadingMore) return;
+    _loadingMore = true;
+    final generation = _generation;
     final nextQuery = _query.copyWith(page: current.currentPage + 1);
-    final next = await _load(nextQuery);
-    final byId = {
-      for (final item in [...current.items, ...next.items]) item.id: item,
-    };
-    _query = nextQuery;
-    state = AsyncData(
-      AdminSchoolPage(
-        items: byId.values.toList(),
-        currentPage: next.currentPage,
-        lastPage: next.lastPage,
-        total: next.total,
-      ),
-    );
+    try {
+      final next = await _load(nextQuery);
+      if (generation != _generation) return;
+      final byId = {
+        for (final item in [...current.items, ...next.items]) item.id: item,
+      };
+      _query = nextQuery;
+      state = AsyncData(
+        AdminSchoolPage(
+          items: byId.values.toList(),
+          currentPage: next.currentPage,
+          lastPage: next.lastPage,
+          total: next.total,
+        ),
+      );
+    } finally {
+      _loadingMore = false;
+    }
   }
 }
 
 class AdminUsersController extends AsyncNotifier<AdminUserPage> {
   AdminListQuery _query = const AdminListQuery();
+  int _generation = 0;
+  bool _loadingMore = false;
 
   AdminListQuery get query => _query;
 
@@ -184,13 +212,16 @@ class AdminUsersController extends AsyncNotifier<AdminUserPage> {
       ref.read(adminRepositoryProvider).users(query);
 
   Future<void> search(String value) async {
-    _query = _query.copyWith(search: value, page: 1);
+    final generation = ++_generation;
+    final query = _query = _query.copyWith(search: value, page: 1);
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _load(_query));
+    final next = await AsyncValue.guard(() => _load(query));
+    if (generation == _generation) state = next;
   }
 
   Future<void> filter({String? role, String? status}) async {
-    _query = _query.copyWith(
+    final generation = ++_generation;
+    final query = _query = _query.copyWith(
       role: role,
       status: status,
       clearRole: role == null,
@@ -198,7 +229,8 @@ class AdminUsersController extends AsyncNotifier<AdminUserPage> {
       page: 1,
     );
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _load(_query));
+    final next = await AsyncValue.guard(() => _load(query));
+    if (generation == _generation) state = next;
   }
 
   Future<void> refresh() async {
@@ -207,21 +239,28 @@ class AdminUsersController extends AsyncNotifier<AdminUserPage> {
 
   Future<void> loadMore() async {
     final current = state.valueOrNull;
-    if (current == null || !current.hasMore || state.isLoading) return;
+    if (current == null || !current.hasMore || _loadingMore) return;
+    _loadingMore = true;
+    final generation = _generation;
     final nextQuery = _query.copyWith(page: current.currentPage + 1);
-    final next = await _load(nextQuery);
-    final byId = {
-      for (final item in [...current.items, ...next.items]) item.id: item,
-    };
-    _query = nextQuery;
-    state = AsyncData(
-      AdminUserPage(
-        items: byId.values.toList(),
-        currentPage: next.currentPage,
-        lastPage: next.lastPage,
-        total: next.total,
-      ),
-    );
+    try {
+      final next = await _load(nextQuery);
+      if (generation != _generation) return;
+      final byId = {
+        for (final item in [...current.items, ...next.items]) item.id: item,
+      };
+      _query = nextQuery;
+      state = AsyncData(
+        AdminUserPage(
+          items: byId.values.toList(),
+          currentPage: next.currentPage,
+          lastPage: next.lastPage,
+          total: next.total,
+        ),
+      );
+    } finally {
+      _loadingMore = false;
+    }
   }
 }
 

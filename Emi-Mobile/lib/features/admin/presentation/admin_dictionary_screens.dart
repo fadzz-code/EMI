@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -5,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../core/errors/app_error.dart';
@@ -858,15 +861,33 @@ class AdminDictionaryImportScreen extends ConsumerStatefulWidget {
 
 class _AdminDictionaryImportScreenState
     extends ConsumerState<AdminDictionaryImportScreen> {
-  File? _csv;
+  File? _file;
   File? _zip;
-  var _importType = 'vocabulary';
   var _duplicateStrategy = 'skip';
-  bool _uploading = false;
-  double? _progress;
+  var _page = 1;
+  var _errorPage = 1;
+  var _busy = false;
+  var _polling = false;
   DictionaryImportJobAdmin? _job;
+  AdminCrudPage<DictionaryImportJobAdmin>? _history;
   AdminCrudPage<DictionaryImportErrorAdmin>? _errors;
-  String? _error;
+  String? _actionError;
+  String? _historyError;
+  String? _pollError;
+  String? _errorListError;
+  Timer? _poll;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => AdminShell(
@@ -875,111 +896,151 @@ class _AdminDictionaryImportScreenState
     child: ListView(
       padding: const EdgeInsets.all(EmiSpacing.md),
       children: [
-        _PageIntro(
-          title: 'Import Data',
-          subtitle: 'Pilih file, cek nama file, lalu mulai import Kamus.',
+        const _PageIntro(
+          title: 'Import Kamus',
+          subtitle:
+              'Buat pratinjau Excel, periksa hasil, lalu konfirmasi import.',
           icon: Icons.upload_file,
         ),
         _SectionCard(
-          title: 'Pilih File',
+          title: 'File Import',
           icon: Icons.folder_open_outlined,
           children: [
             const Text(
-              'Format CSV: kode, indonesia, english, mekongga, kategori, audio_filename',
+              'Excel gabungan memuat Kosakata dan Contoh Kalimat. CSV lama tetap didukung.',
             ),
-            const SizedBox(height: EmiSpacing.md),
-            _GapField(
-              child: DropdownButtonFormField<String>(
-                initialValue: _importType,
-                decoration: const InputDecoration(labelText: 'Jenis Import'),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'vocabulary',
-                    child: Text('Kosakata'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'sentence_examples',
-                    child: Text('Contoh Kalimat'),
-                  ),
-                ],
-                onChanged: _uploading
-                    ? null
-                    : (v) => setState(() => _importType = v ?? 'vocabulary'),
-              ),
+            const SizedBox(height: EmiSpacing.sm),
+            OutlinedButton.icon(
+              key: const Key('dictionaryImport-template'),
+              onPressed: _busy ? null : _shareTemplate,
+              icon: const Icon(Icons.download_outlined),
+              label: const Text('Download Template Excel'),
             ),
-            _GapField(
-              child: DropdownButtonFormField<String>(
-                initialValue: _duplicateStrategy,
-                decoration: const InputDecoration(labelText: 'Data yang Sama'),
-                items: const [
-                  DropdownMenuItem(value: 'skip', child: Text('Lewati')),
-                  DropdownMenuItem(value: 'update', child: Text('Perbarui')),
-                  DropdownMenuItem(value: 'reject', child: Text('Tolak')),
-                ],
-                onChanged: _uploading
-                    ? null
-                    : (v) => setState(() => _duplicateStrategy = v ?? 'skip'),
-              ),
+            DropdownButtonFormField<String>(
+              initialValue: _duplicateStrategy,
+              decoration: const InputDecoration(labelText: 'Data yang Sama'),
+              items: const [
+                DropdownMenuItem(value: 'skip', child: Text('Lewati')),
+                DropdownMenuItem(value: 'update', child: Text('Perbarui')),
+                DropdownMenuItem(value: 'reject', child: Text('Tolak')),
+              ],
+              onChanged: _busy
+                  ? null
+                  : (v) => setState(() => _duplicateStrategy = v ?? 'skip'),
             ),
+            const SizedBox(height: EmiSpacing.sm),
             Wrap(
               spacing: EmiSpacing.sm,
               runSpacing: EmiSpacing.sm,
               children: [
                 OutlinedButton.icon(
-                  onPressed: _uploading ? null : _pickCsv,
+                  onPressed: _busy ? null : _pickFile,
                   icon: const Icon(Icons.description_outlined),
                   label: Text(
-                    _csv == null
-                        ? 'Pilih CSV'
-                        : _csv!.path.split(Platform.pathSeparator).last,
+                    _file == null ? 'Pilih XLSX atau CSV' : _name(_file!),
                   ),
                 ),
                 OutlinedButton.icon(
-                  onPressed: _uploading ? null : _pickZip,
+                  onPressed: _busy ? null : _pickZip,
                   icon: const Icon(Icons.volume_up_outlined),
-                  label: Text(
-                    _zip == null
-                        ? 'Pilih ZIP Audio'
-                        : _zip!.path.split(Platform.pathSeparator).last,
-                  ),
+                  label: Text(_zip == null ? 'Pilih ZIP Audio' : _name(_zip!)),
                 ),
               ],
             ),
-            if (_progress != null) ...[
-              const SizedBox(height: EmiSpacing.md),
-              LinearProgressIndicator(value: _progress),
-            ],
-            if (_uploading)
-              const Padding(
-                padding: EdgeInsets.only(top: EmiSpacing.sm),
-                child: Text('Mengunggah data Kamus...'),
+            if (_actionError != null)
+              Text(
+                _actionError!,
+                style: const TextStyle(color: EmiColors.error),
               ),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: EmiSpacing.sm),
-                child: Text(_error!),
-              ),
-            const SizedBox(height: EmiSpacing.md),
+            const SizedBox(height: EmiSpacing.sm),
             FilledButton.icon(
-              onPressed: _uploading || _csv == null ? null : _preview,
-              icon: const Icon(Icons.upload_file),
-              label: const Text('Import Data'),
+              key: const Key('dictionaryImport-preview'),
+              onPressed: _busy || _file == null ? null : _preview,
+              icon: const Icon(Icons.preview_outlined),
+              label: Text(_busy ? 'Memproses...' : 'Lihat Preview'),
             ),
           ],
         ),
         if (_job != null)
-          _ImportResult(job: _job!, errors: _errors?.items ?? const []),
+          _ImportResult(
+            job: _job!,
+            errors: _errors?.items ?? const [],
+            errorPage: _errors,
+            loadingError: _errorListError ?? _pollError,
+            busy: _busy,
+            onConfirm: _job!.status == 'preview_ready' && _job!.validRows > 0
+                ? _confirm
+                : null,
+            onDeleteError: _deleteError,
+            onPreviousErrors: _errorPage > 1
+                ? () => _changeErrorPage(_errorPage - 1)
+                : null,
+            onNextErrors: _errorPage < (_errors?.lastPage ?? 1)
+                ? () => _changeErrorPage(_errorPage + 1)
+                : null,
+            onClearErrors: _errors?.items.isNotEmpty == true
+                ? _clearErrors
+                : null,
+          ),
+        _SectionCard(
+          title: 'Riwayat Import',
+          icon: Icons.history,
+          children: [
+            if (_history == null && _historyError == null)
+              const LinearProgressIndicator(),
+            if (_historyError != null)
+              Text(
+                _historyError!,
+                style: const TextStyle(color: EmiColors.error),
+              ),
+            for (final item
+                in _history?.items ?? const <DictionaryImportJobAdmin>[])
+              ListTile(
+                title: Text(item.originalName ?? 'Import Kamus'),
+                subtitle: Text(
+                  '${item.status} · ${item.validRows}/${item.invalidRows} valid/tidak valid',
+                ),
+                onTap: () => _select(item),
+                trailing: IconButton(
+                  onPressed:
+                      item.status == 'queued' || item.status == 'processing'
+                      ? null
+                      : () => _deleteJob(item.id),
+                  icon: const Icon(Icons.delete_outline),
+                ),
+              ),
+            if ((_history?.lastPage ?? 1) > 1)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: _page > 1 ? () => _changePage(_page - 1) : null,
+                    child: const Text('Sebelumnya'),
+                  ),
+                  Text('$_page / ${_history?.lastPage ?? 1}'),
+                  TextButton(
+                    onPressed: _page < (_history?.lastPage ?? 1)
+                        ? () => _changePage(_page + 1)
+                        : null,
+                    child: const Text('Berikutnya'),
+                  ),
+                ],
+              ),
+          ],
+        ),
       ],
     ),
   );
 
-  Future<void> _pickCsv() async {
+  String _name(File file) => file.path.split(Platform.pathSeparator).last;
+
+  Future<void> _pickFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['csv'],
+      allowedExtensions: ['xlsx', 'csv'],
     );
     final path = result?.files.single.path;
-    if (path != null) setState(() => _csv = File(path));
+    if (path != null) setState(() => _file = File(path));
   }
 
   Future<void> _pickZip() async {
@@ -992,69 +1053,322 @@ class _AdminDictionaryImportScreenState
   }
 
   Future<void> _preview() async {
-    final csv = _csv;
-    if (csv == null || _uploading) return;
-    setState(() {
-      _uploading = true;
-      _error = null;
-      _progress = null;
-    });
-    try {
-      final job = await ref
+    final file = _file;
+    if (file == null) return;
+    await _run(() async {
+      final xlsx = file.path.toLowerCase().endsWith('.xlsx');
+      _job = await ref
           .read(adminCrudRepositoryProvider)
           .previewDictionaryImport(
-            csvFile: csv,
+            csvFile: file,
             audioZip: _zip,
-            importType: _importType,
+            importType: xlsx ? 'combined' : 'vocabulary',
             duplicateStrategy: _duplicateStrategy,
-            onSendProgress: (sent, total) {
-              if (mounted && total > 0) {
-                setState(() => _progress = sent / total);
-              }
-            },
           );
-      final confirmed = await ref
+      await _refreshErrors();
+      await _loadHistory();
+    });
+  }
+
+  Future<void> _confirm() async {
+    final job = _job;
+    if (job == null ||
+        await _confirmDialog('Import data valid dari preview ini?') != true) {
+      return;
+    }
+    await _run(() async {
+      _job = await ref
           .read(adminCrudRepositoryProvider)
           .confirmDictionaryImport(job.id);
-      final errors = await ref
+      _startPolling();
+      await _loadHistory();
+    });
+  }
+
+  void _startPolling() {
+    _poll?.cancel();
+    final id = _job?.id;
+    if (id == null) return;
+    _poll = Timer.periodic(const Duration(seconds: 2), (_) => _pollJob(id));
+  }
+
+  Future<void> _pollJob(String id) async {
+    if (_polling || !mounted || _job?.id != id) return;
+    _polling = true;
+    try {
+      final latest = await ref
           .read(adminCrudRepositoryProvider)
-          .dictionaryImportErrors(job.id);
-      if (mounted) {
-        setState(() {
-          _job = confirmed;
-          _errors = errors;
-        });
+          .dictionaryImportDetail(id);
+      if (!mounted || _job?.id != id) return;
+      setState(() {
+        _job = latest;
+        _pollError = null;
+      });
+      if (const {'completed', 'failed', 'cancelled'}.contains(latest.status)) {
+        _poll?.cancel();
+        await _refreshErrors(id: id);
+        await _loadHistory();
         ref.invalidate(adminDictionaryProvider);
       }
     } catch (e) {
-      if (mounted) setState(() => _error = _importError(e));
+      if (mounted && _job?.id == id) {
+        setState(() => _pollError = _importError(e));
+      }
     } finally {
-      if (mounted) setState(() => _uploading = false);
+      _polling = false;
+    }
+  }
+
+  Future<void> _loadHistory() async {
+    try {
+      final history = await ref
+          .read(adminCrudRepositoryProvider)
+          .dictionaryImports(page: _page);
+      if (mounted) {
+        setState(() {
+          _history = history;
+          _historyError = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _historyError = _importError(e));
+    }
+  }
+
+  Future<void> _select(DictionaryImportJobAdmin job) async {
+    _poll?.cancel();
+    setState(() {
+      _job = job;
+      _errors = null;
+      _errorPage = 1;
+      _pollError = null;
+    });
+    await _refreshErrors(id: job.id);
+    if (job.status == 'queued' || job.status == 'processing') _startPolling();
+  }
+
+  Future<void> _refreshErrors({String? id}) async {
+    final jobId = id ?? _job?.id;
+    if (jobId == null) return;
+    try {
+      final errors = await ref
+          .read(adminCrudRepositoryProvider)
+          .dictionaryImportErrors(jobId, page: _errorPage);
+      if (mounted && _job?.id == jobId) {
+        setState(() {
+          _errors = errors;
+          _errorListError = null;
+        });
+      }
+    } catch (e) {
+      if (mounted && _job?.id == jobId) {
+        setState(() => _errorListError = _importError(e));
+      }
+    }
+  }
+
+  Future<void> _deleteJob(String id) async {
+    if (await _confirmDialog(
+          'Hapus riwayat import ini? Data kamus tetap tersimpan.',
+        ) !=
+        true) {
+      return;
+    }
+    await _run(() async {
+      await ref.read(adminCrudRepositoryProvider).deleteDictionaryImport(id);
+      if (_job?.id == id) {
+        _job = null;
+        _errors = null;
+      }
+      await _loadHistory();
+      if (_history?.items.isEmpty == true && _page > 1) {
+        _page--;
+        await _loadHistory();
+      }
+    });
+  }
+
+  Future<void> _deleteError(String errorId) async {
+    try {
+      await ref
+          .read(adminCrudRepositoryProvider)
+          .deleteDictionaryImportError(_job!.id, errorId);
+      await _refreshErrors();
+      if (_errors?.items.isEmpty == true && _errorPage > 1) {
+        _errorPage--;
+        await _refreshErrors();
+      }
+    } catch (e) {
+      if (mounted) setState(() => _errorListError = _importError(e));
+    }
+  }
+
+  Future<void> _clearErrors() async {
+    if (await _confirmDialog('Hapus semua error import ini?') != true) return;
+    try {
+      await ref
+          .read(adminCrudRepositoryProvider)
+          .clearDictionaryImportErrors(_job!.id);
+      _errorPage = 1;
+      await _refreshErrors();
+    } catch (e) {
+      if (mounted) setState(() => _errorListError = _importError(e));
+    }
+  }
+
+  Future<void> _shareTemplate() async {
+    await _run(() async {
+      final bytes = await ref
+          .read(adminCrudRepositoryProvider)
+          .dictionaryImportTemplate();
+      final file = File(
+        '${(await getTemporaryDirectory()).path}/template-import-kamus-emi.xlsx',
+      );
+      await file.writeAsBytes(bytes, flush: true);
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          subject: 'Template Import Kamus EMI',
+        ),
+      );
+    });
+  }
+
+  void _changePage(int page) {
+    setState(() => _page = page);
+    _loadHistory();
+  }
+
+  void _changeErrorPage(int page) {
+    setState(() => _errorPage = page);
+    _refreshErrors();
+  }
+
+  Future<bool?> _confirmDialog(String text) => showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      content: Text(text),
+      actions: [
+        TextButton(
+          onPressed: () => context.pop(false),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          key: const Key('dictionaryImport-confirm-dialog'),
+          onPressed: () => context.pop(true),
+          child: const Text('Lanjutkan'),
+        ),
+      ],
+    ),
+  );
+
+  Future<void> _run(Future<void> Function() action) async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _actionError = null;
+    });
+    try {
+      await action();
+    } catch (e) {
+      if (mounted) setState(() => _actionError = _importError(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 }
 
 class _ImportResult extends StatelessWidget {
-  const _ImportResult({required this.job, required this.errors});
+  const _ImportResult({
+    required this.job,
+    required this.errors,
+    required this.errorPage,
+    required this.loadingError,
+    required this.busy,
+    this.onConfirm,
+    required this.onDeleteError,
+    this.onPreviousErrors,
+    this.onNextErrors,
+    this.onClearErrors,
+  });
   final DictionaryImportJobAdmin job;
   final List<DictionaryImportErrorAdmin> errors;
+  final AdminCrudPage<DictionaryImportErrorAdmin>? errorPage;
+  final String? loadingError;
+  final bool busy;
+  final VoidCallback? onConfirm;
+  final ValueChanged<String> onDeleteError;
+  final VoidCallback? onPreviousErrors;
+  final VoidCallback? onNextErrors;
+  final VoidCallback? onClearErrors;
   @override
   Widget build(BuildContext context) => AdminCard(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Import Selesai',
+          'Ringkasan Preview',
           style: Theme.of(
             context,
           ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: EmiSpacing.xs),
-        Text('Berhasil: ${job.insertedRows + job.updatedRows} kosakata'),
-        Text('Dilewati: ${job.skippedRows} kosakata'),
-        Text('Gagal: ${job.invalidRows} kosakata'),
-        for (final error in errors.take(10))
-          Text('Baris ${error.rowNumber ?? '-'}: ${_importErrorText(error)}'),
+        Text('Status: ${job.status}'),
+        Text(
+          'Total: ${job.totalRows} · Valid: ${job.validRows} · Tidak valid: ${job.invalidRows}',
+        ),
+        Text(
+          'Ditambahkan: ${job.insertedRows} · Diperbarui: ${job.updatedRows} · Dilewati: ${job.skippedRows}',
+        ),
+        if (job.failureMessage != null)
+          Text(
+            job.failureMessage!,
+            style: const TextStyle(color: EmiColors.error),
+          ),
+        FilledButton(
+          key: const Key('dictionaryImport-confirm'),
+          onPressed: busy ? null : onConfirm,
+          child: const Text('Import'),
+        ),
+        if (loadingError != null)
+          Text(loadingError!, style: const TextStyle(color: EmiColors.error)),
+        if (errors.isNotEmpty) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Error Import'),
+              TextButton(
+                onPressed: onClearErrors,
+                child: const Text('Hapus Semua Error'),
+              ),
+            ],
+          ),
+          for (final error in errors)
+            ListTile(
+              title: Text(
+                'Baris ${error.rowNumber ?? '-'}: ${_importErrorText(error)}',
+              ),
+              trailing: IconButton(
+                onPressed: () => onDeleteError(error.id),
+                icon: const Icon(Icons.delete_outline),
+              ),
+            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              TextButton(
+                onPressed: onPreviousErrors,
+                child: const Text('Sebelumnya'),
+              ),
+              Text(
+                '${errorPage?.currentPage ?? 1} / ${errorPage?.lastPage ?? 1} · ${errorPage?.total ?? errors.length}',
+              ),
+              TextButton(
+                onPressed: onNextErrors,
+                child: const Text('Berikutnya'),
+              ),
+            ],
+          ),
+        ],
       ],
     ),
   );

@@ -87,6 +87,20 @@ class DictionaryExcelImportTest extends TestCase
         ])->assertUnprocessable()->assertJsonValidationErrors('import_type');
     }
 
+    public function test_source_size_limits_use_extension_specific_config(): void
+    {
+        $admin = User::factory()->admin()->create();
+        config(['dictionary.max_csv_kb' => 1, 'dictionary.max_xlsx_kb' => 2]);
+
+        foreach ([['csv', 2, 1], ['xlsx', 3, 2]] as [$extension, $size, $limit]) {
+            $this->withToken($this->tokenFor($admin))->post('/api/v1/admin/dictionary/imports/preview', [
+                'csv_file' => UploadedFile::fake()->create("kamus.{$extension}", $size),
+            ])->assertUnprocessable()
+                ->assertJsonValidationErrors('csv_file')
+                ->assertJsonPath('errors.csv_file.0', "Ukuran file {$extension} maksimal {$limit} KB.");
+        }
+    }
+
     public function test_ambiguous_mekongga_link_is_rejected(): void
     {
         $admin = User::factory()->admin()->create();

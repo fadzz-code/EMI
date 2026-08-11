@@ -35,8 +35,11 @@ class AdminSettingsScreen extends ConsumerStatefulWidget {
       _AdminSettingsScreenState();
 }
 
+enum _SettingsSection { application, profile, banner, security, password }
+
 class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
-  final _formKey = GlobalKey<FormState>();
+  final _applicationFormKey = GlobalKey<FormState>();
+  final _profileFormKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _subtitle = TextEditingController();
   final _year = TextEditingController();
@@ -55,39 +58,54 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
   String _timezone = 'Asia/Jakarta';
   PlatformFile? _bannerFile;
   bool _hydrated = false;
-  bool _saving = false;
-  AppError? _error;
-  String? _success;
+  final Set<_SettingsSection> _saving = {};
+  final Map<_SettingsSection, AppError> _errors = {};
+  final Map<_SettingsSection, String> _successes = {};
 
   bool get _passwordDirty =>
       _currentPassword.text.isNotEmpty ||
       _password.text.isNotEmpty ||
       _passwordConfirmation.text.isNotEmpty;
 
-  bool get _dirty {
-    final app = _applicationBaseline;
-    final profile = _profileBaseline;
-    final security = _securityBaseline;
-    final banner = _bannerBaseline;
-    if (!_hydrated ||
-        app == null ||
-        profile == null ||
-        security == null ||
-        banner == null) {
-      return false;
-    }
-    return _name.text.trim() != app.name ||
-        _subtitle.text.trim() != app.subtitle ||
-        _year.text.trim() != app.activeAcademicYear ||
-        _timezone != app.timezone ||
-        _fullName.text.trim() != profile.fullName ||
-        _phone.text.trim() != (profile.phone ?? '') ||
-        _newLoginAlert != security.newLoginAlert ||
-        _weeklyReportEmail != security.weeklyReportEmail ||
-        _bannerEnabled != banner.enabled ||
-        _bannerFile != null ||
-        _passwordDirty;
+  bool get _applicationDirty {
+    final baseline = _applicationBaseline;
+    return _hydrated &&
+        baseline != null &&
+        (_name.text.trim() != baseline.name ||
+            _subtitle.text.trim() != baseline.subtitle ||
+            _year.text.trim() != baseline.activeAcademicYear ||
+            _timezone != baseline.timezone);
   }
+
+  bool get _profileDirty {
+    final baseline = _profileBaseline;
+    return _hydrated &&
+        baseline != null &&
+        (_fullName.text.trim() != baseline.fullName ||
+            _phone.text.trim() != (baseline.phone ?? ''));
+  }
+
+  bool get _bannerDirty =>
+      _hydrated &&
+      _bannerBaseline != null &&
+      (_bannerEnabled != _bannerBaseline!.enabled || _bannerFile != null);
+
+  bool get _securityDirty {
+    final baseline = _securityBaseline;
+    return _hydrated &&
+        baseline != null &&
+        (_newLoginAlert != baseline.newLoginAlert ||
+            _weeklyReportEmail != baseline.weeklyReportEmail);
+  }
+
+  bool get _dirty =>
+      _applicationDirty ||
+      _profileDirty ||
+      _bannerDirty ||
+      _securityDirty ||
+      _passwordDirty;
+
+  bool _isSaving(_SettingsSection section) => _saving.contains(section);
 
   @override
   void initState() {
@@ -172,128 +190,181 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
     );
   }
 
-  Widget _content(AdminSettings data, SessionUser? user) => Form(
-    key: _formKey,
-    child: SingleChildScrollView(
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(EmiSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (_success != null) _message(_success!, EmiColors.success),
-          if (_error != null)
-            _message(_friendlyError(_error!), EmiColors.error),
-          _section('Pengaturan Aplikasi', [
-            _field(_name, 'Nama Aplikasi', required: true),
-            _field(_subtitle, 'Subtitle / Slogan'),
-            _field(_year, 'Tahun Ajaran Aktif', required: true),
-            DropdownButtonFormField<String>(
-              initialValue: _timezone,
-              decoration: const InputDecoration(labelText: 'Zona Waktu'),
-              items:
-                  {_timezone, 'Asia/Jakarta', 'Asia/Makassar', 'Asia/Jayapura'}
-                      .map(
-                        (value) =>
-                            DropdownMenuItem(value: value, child: Text(value)),
-                      )
-                      .toList(),
-              onChanged: _saving
-                  ? null
-                  : (value) => setState(() => _timezone = value ?? _timezone),
-            ),
-          ]),
-          _section('Profil Admin', [
-            _field(_fullName, 'Nama Lengkap', required: true),
-            _field(_phone, 'Telepon Admin', keyboardType: TextInputType.phone),
-            TextFormField(
-              initialValue: user?.email ?? '',
-              enabled: false,
-              decoration: const InputDecoration(labelText: 'Email Kantor'),
-            ),
-            TextFormField(
-              initialValue: user?.status ?? '',
-              enabled: false,
-              decoration: const InputDecoration(labelText: 'Status Akun'),
-            ),
-          ]),
-          _section('Pengaturan Banner Login', [
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              value: _bannerEnabled,
-              onChanged: _saving
-                  ? null
-                  : (value) => setState(() => _bannerEnabled = value),
-              title: const Text('Aktifkan Banner'),
-            ),
-            if (_bannerFile != null)
-              Image.file(
-                File(_bannerFile!.path!),
-                height: 140,
-                fit: BoxFit.cover,
-              )
-            else if (data.banner.imageUrl?.isNotEmpty == true)
-              Image.network(
-                data.banner.imageUrl!,
-                height: 140,
-                fit: BoxFit.cover,
-              )
-            else
-              const Text('Banner belum diunggah.'),
-            OutlinedButton.icon(
-              onPressed: _saving ? null : _pickBanner,
-              icon: const Icon(Icons.image_outlined),
-              label: const Text('Pilih Gambar Banner'),
-            ),
-          ]),
-          _section('Keamanan', [
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              value: _newLoginAlert,
-              onChanged: _saving
-                  ? null
-                  : (value) => setState(() => _newLoginAlert = value),
-              title: const Text('Peringatan Login Baru'),
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              value: _weeklyReportEmail,
-              onChanged: _saving
-                  ? null
-                  : (value) => setState(() => _weeklyReportEmail = value),
-              title: const Text('Email Laporan Mingguan'),
-            ),
-          ]),
-          _section('Ubah Password', [
-            const Text('Kosongkan jika tidak ingin mengubah password.'),
-            _secret(_currentPassword, 'Password Lama'),
-            _secret(_password, 'Password Baru'),
-            _secret(_passwordConfirmation, 'Konfirmasi Password Baru'),
-          ]),
-          _section('Aktivitas', [
-            if (data.activityLogs.isEmpty)
-              const Text('Aktivitas belum tersedia.'),
-            for (final log in data.activityLogs) ...[
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(log.title),
-                subtitle: Text(
-                  '${log.admin} • ${log.createdAt ?? '-'} • ${log.status ? 'aktif' : 'nonaktif'}',
+  Widget _content(
+    AdminSettings data,
+    SessionUser? user,
+  ) => SingleChildScrollView(
+    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+    physics: const AlwaysScrollableScrollPhysics(),
+    padding: const EdgeInsets.all(EmiSpacing.md),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _section('Pengaturan Aplikasi', [
+          Form(
+            key: _applicationFormKey,
+            child: Column(
+              children: [
+                _field(_name, 'Nama Aplikasi', required: true),
+                const SizedBox(height: EmiSpacing.md),
+                _field(_subtitle, 'Subtitle / Slogan'),
+                const SizedBox(height: EmiSpacing.md),
+                _field(_year, 'Tahun Ajaran Aktif', required: true),
+                const SizedBox(height: EmiSpacing.md),
+                DropdownButtonFormField<String>(
+                  initialValue: _timezone,
+                  decoration: const InputDecoration(labelText: 'Zona Waktu'),
+                  items:
+                      {
+                            _timezone,
+                            'Asia/Jakarta',
+                            'Asia/Makassar',
+                            'Asia/Jayapura',
+                          }
+                          .map(
+                            (value) => DropdownMenuItem(
+                              value: value,
+                              child: Text(value),
+                            ),
+                          )
+                          .toList(),
+                  onChanged: _isSaving(_SettingsSection.application)
+                      ? null
+                      : (value) =>
+                            setState(() => _timezone = value ?? _timezone),
                 ),
-              ),
-              const Divider(height: 1),
-            ],
-          ]),
-          SafeArea(
-            top: false,
-            child: FilledButton(
-              key: const Key('saveAdminSettings'),
-              onPressed: !_dirty || _saving ? null : _save,
-              child: Text(_saving ? 'Menyimpan...' : 'Simpan Pengaturan'),
+              ],
             ),
           ),
-        ],
-      ),
+          _sectionStatus(_SettingsSection.application),
+          _saveButton(
+            key: const Key('saveApplicationSettings'),
+            section: _SettingsSection.application,
+            dirty: _applicationDirty,
+            label: 'Simpan Pengaturan Aplikasi',
+            onPressed: _saveApplication,
+          ),
+        ]),
+        _section('Profil Admin', [
+          Form(
+            key: _profileFormKey,
+            child: Column(
+              children: [
+                _field(_fullName, 'Nama Lengkap', required: true),
+                const SizedBox(height: EmiSpacing.md),
+                _field(
+                  _phone,
+                  'Telepon Admin',
+                  keyboardType: TextInputType.phone,
+                ),
+                const SizedBox(height: EmiSpacing.md),
+                TextFormField(
+                  initialValue: user?.email ?? '',
+                  enabled: false,
+                  decoration: const InputDecoration(labelText: 'Email Kantor'),
+                ),
+                const SizedBox(height: EmiSpacing.md),
+                TextFormField(
+                  initialValue: user?.status ?? '',
+                  enabled: false,
+                  decoration: const InputDecoration(labelText: 'Status Akun'),
+                ),
+              ],
+            ),
+          ),
+          _sectionStatus(_SettingsSection.profile),
+          _saveButton(
+            key: const Key('saveProfileSettings'),
+            section: _SettingsSection.profile,
+            dirty: _profileDirty,
+            label: 'Simpan Profil',
+            onPressed: _saveProfile,
+          ),
+        ]),
+        _section('Pengaturan Banner Login', [
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _bannerEnabled,
+            onChanged: _isSaving(_SettingsSection.banner)
+                ? null
+                : (value) => setState(() => _bannerEnabled = value),
+            title: const Text('Aktifkan Banner'),
+          ),
+          if (_bannerFile != null)
+            Image.file(File(_bannerFile!.path!), height: 140, fit: BoxFit.cover)
+          else if (data.banner.imageUrl?.isNotEmpty == true)
+            Image.network(data.banner.imageUrl!, height: 140, fit: BoxFit.cover)
+          else
+            const Text('Banner belum diunggah.'),
+          OutlinedButton.icon(
+            onPressed: _isSaving(_SettingsSection.banner) ? null : _pickBanner,
+            icon: const Icon(Icons.image_outlined),
+            label: const Text('Pilih Gambar Banner'),
+          ),
+          _sectionStatus(_SettingsSection.banner),
+          _saveButton(
+            key: const Key('saveBannerSettings'),
+            section: _SettingsSection.banner,
+            dirty: _bannerDirty,
+            label: 'Simpan Banner',
+            onPressed: _saveBanner,
+          ),
+        ]),
+        _section('Keamanan', [
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _newLoginAlert,
+            onChanged: _isSaving(_SettingsSection.security)
+                ? null
+                : (value) => setState(() => _newLoginAlert = value),
+            title: const Text('Peringatan Login Baru'),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _weeklyReportEmail,
+            onChanged: _isSaving(_SettingsSection.security)
+                ? null
+                : (value) => setState(() => _weeklyReportEmail = value),
+            title: const Text('Email Laporan Mingguan'),
+          ),
+          _sectionStatus(_SettingsSection.security),
+          _saveButton(
+            key: const Key('saveSecuritySettings'),
+            section: _SettingsSection.security,
+            dirty: _securityDirty,
+            label: 'Simpan Keamanan',
+            onPressed: _saveSecurity,
+          ),
+        ]),
+        _section('Ubah Password', [
+          const Text('Kosongkan jika tidak ingin mengubah password.'),
+          _secret(_currentPassword, 'Password Lama'),
+          _secret(_password, 'Password Baru'),
+          _secret(_passwordConfirmation, 'Konfirmasi Password Baru'),
+          _sectionStatus(_SettingsSection.password),
+          _saveButton(
+            key: const Key('savePasswordSettings'),
+            section: _SettingsSection.password,
+            dirty: _passwordDirty,
+            label: 'Ubah Password',
+            onPressed: _savePassword,
+          ),
+        ]),
+        _section('Aktivitas', [
+          if (data.activityLogs.isEmpty)
+            const Text('Aktivitas belum tersedia.'),
+          for (final log in data.activityLogs) ...[
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(log.title),
+              subtitle: Text(
+                '${log.admin} • ${log.createdAt ?? '-'} • ${log.status ? 'aktif' : 'nonaktif'}',
+              ),
+            ),
+            const Divider(height: 1),
+          ],
+        ]),
+      ],
     ),
   );
 
@@ -339,6 +410,29 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
         autocorrect: false,
         decoration: InputDecoration(labelText: label),
       );
+
+  Widget _sectionStatus(_SettingsSection section) {
+    final success = _successes[section];
+    final error = _errors[section];
+    if (error != null) return _message(_friendlyError(error), EmiColors.error);
+    if (success != null) return _message(success, EmiColors.success);
+    return const SizedBox.shrink();
+  }
+
+  Widget _saveButton({
+    required Key key,
+    required _SettingsSection section,
+    required bool dirty,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    final saving = _isSaving(section);
+    return FilledButton(
+      key: key,
+      onPressed: !dirty || saving ? null : onPressed,
+      child: Text(saving ? 'Menyimpan...' : label),
+    );
+  }
 
   Widget _message(String text, Color color) => Padding(
     padding: const EdgeInsets.only(bottom: EmiSpacing.md),
@@ -402,90 +496,24 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
     return null;
   }
 
-  Future<void> _save() async {
-    if (_saving || !_dirty || !_formKey.currentState!.validate()) return;
-    final passwordError = _passwordValidation();
-    if (passwordError != null) {
-      setState(
-        () => _error = AppError(
-          type: AppErrorType.validation,
-          message: passwordError,
-        ),
-      );
-      return;
-    }
+  Future<void> _runSave(
+    _SettingsSection section,
+    String success,
+    Future<void> Function() save,
+  ) async {
+    if (_isSaving(section)) return;
     setState(() {
-      _saving = true;
-      _error = null;
-      _success = null;
+      _saving.add(section);
+      _errors.remove(section);
+      _successes.remove(section);
     });
     try {
-      final settingsRepository = ref.read(adminSettingsRepositoryProvider);
-      final authRepository = ref.read(authRepositoryProvider);
-      var profile = _profileBaseline!;
-      if (_fullName.text.trim() != profile.fullName ||
-          _phone.text.trim() != (profile.phone ?? '')) {
-        profile = await authRepository.updateProfile(
-          fullName: _fullName.text.trim(),
-          phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
-        );
-      }
-      var application = _applicationBaseline!;
-      if (_name.text.trim() != application.name ||
-          _subtitle.text.trim() != application.subtitle ||
-          _year.text.trim() != application.activeAcademicYear ||
-          _timezone != application.timezone) {
-        application = await settingsRepository.updateApplication(
-          ApplicationSettings(
-            name: _name.text.trim(),
-            subtitle: _subtitle.text.trim(),
-            activeAcademicYear: _year.text.trim(),
-            timezone: _timezone,
-          ),
-        );
-      }
-      var banner = _bannerBaseline!;
-      if (_bannerEnabled != banner.enabled || _bannerFile != null) {
-        banner = await settingsRepository.updateBanner(
-          enabled: _bannerEnabled,
-          path: _bannerFile?.path,
-          fileName: _bannerFile?.name,
-        );
-      }
-      var security = _securityBaseline!;
-      if (_newLoginAlert != security.newLoginAlert ||
-          _weeklyReportEmail != security.weeklyReportEmail) {
-        security = await settingsRepository.updateSecurity(
-          SecuritySettings(
-            newLoginAlert: _newLoginAlert,
-            weeklyReportEmail: _weeklyReportEmail,
-          ),
-        );
-      }
-      if (_passwordDirty) {
-        profile = await authRepository.updatePassword(
-          currentPassword: _currentPassword.text,
-          password: _password.text,
-          passwordConfirmation: _passwordConfirmation.text,
-        );
-      }
-      if (!mounted) return;
-      _currentPassword.clear();
-      _password.clear();
-      _passwordConfirmation.clear();
-      setState(() {
-        _applicationBaseline = application;
-        _profileBaseline = profile;
-        _bannerBaseline = banner;
-        _securityBaseline = security;
-        _bannerFile = null;
-        _success = 'Pengaturan berhasil disimpan.';
-      });
-      ref.invalidate(adminSettingsProvider);
+      await save();
+      if (mounted) setState(() => _successes[section] = success);
     } catch (error) {
       if (mounted) {
         setState(
-          () => _error = error is AppError
+          () => _errors[section] = error is AppError
               ? error
               : const AppError(
                   type: AppErrorType.unknown,
@@ -494,8 +522,115 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) setState(() => _saving.remove(section));
     }
+  }
+
+  Future<void> _saveApplication() async {
+    if (!_applicationDirty || !_applicationFormKey.currentState!.validate()) {
+      return;
+    }
+    await _runSave(
+      _SettingsSection.application,
+      'Pengaturan aplikasi berhasil disimpan.',
+      () async {
+        _applicationBaseline = await ref
+            .read(adminSettingsRepositoryProvider)
+            .updateApplication(
+              ApplicationSettings(
+                name: _name.text.trim(),
+                subtitle: _subtitle.text.trim(),
+                activeAcademicYear: _year.text.trim(),
+                timezone: _timezone,
+              ),
+            );
+        ref.invalidate(adminSettingsProvider);
+      },
+    );
+  }
+
+  Future<void> _saveProfile() async {
+    if (!_profileDirty || !_profileFormKey.currentState!.validate()) return;
+    await _runSave(
+      _SettingsSection.profile,
+      'Profil admin berhasil disimpan.',
+      () async {
+        _profileBaseline = await ref
+            .read(authRepositoryProvider)
+            .updateProfile(
+              fullName: _fullName.text.trim(),
+              phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
+            );
+      },
+    );
+  }
+
+  Future<void> _saveBanner() async {
+    if (!_bannerDirty) return;
+    await _runSave(
+      _SettingsSection.banner,
+      'Banner login berhasil disimpan.',
+      () async {
+        _bannerBaseline = await ref
+            .read(adminSettingsRepositoryProvider)
+            .updateBanner(
+              enabled: _bannerEnabled,
+              path: _bannerFile?.path,
+              fileName: _bannerFile?.name,
+            );
+        _bannerFile = null;
+        ref.invalidate(adminSettingsProvider);
+      },
+    );
+  }
+
+  Future<void> _saveSecurity() async {
+    if (!_securityDirty) return;
+    await _runSave(
+      _SettingsSection.security,
+      'Preferensi keamanan berhasil disimpan.',
+      () async {
+        _securityBaseline = await ref
+            .read(adminSettingsRepositoryProvider)
+            .updateSecurity(
+              SecuritySettings(
+                newLoginAlert: _newLoginAlert,
+                weeklyReportEmail: _weeklyReportEmail,
+              ),
+            );
+        ref.invalidate(adminSettingsProvider);
+      },
+    );
+  }
+
+  Future<void> _savePassword() async {
+    if (!_passwordDirty) return;
+    final error = _passwordValidation();
+    if (error != null) {
+      setState(
+        () => _errors[_SettingsSection.password] = AppError(
+          type: AppErrorType.validation,
+          message: error,
+        ),
+      );
+      return;
+    }
+    await _runSave(
+      _SettingsSection.password,
+      'Password berhasil diperbarui.',
+      () async {
+        _profileBaseline = await ref
+            .read(authRepositoryProvider)
+            .updatePassword(
+              currentPassword: _currentPassword.text,
+              password: _password.text,
+              passwordConfirmation: _passwordConfirmation.text,
+            );
+        _currentPassword.clear();
+        _password.clear();
+        _passwordConfirmation.clear();
+      },
+    );
   }
 
   Future<bool?> _confirmLeave() => showDialog<bool>(

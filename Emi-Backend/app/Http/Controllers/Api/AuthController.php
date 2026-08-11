@@ -76,7 +76,7 @@ class AuthController extends Controller
     {
         $this->authService->deleteAccount($request->user(), $request->validated());
 
-        return ApiResponse::success('Akun berhasil dinonaktifkan.', []);
+        return ApiResponse::success('Akun berhasil dihapus dan data pribadi dianonimkan.', []);
     }
 
     public function requestPasswordResetApproval(Request $request): JsonResponse

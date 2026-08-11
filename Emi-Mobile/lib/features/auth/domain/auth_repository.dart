@@ -9,6 +9,8 @@ class AuthRegistrationPayload {
     required this.requestedRole,
     required this.schoolId,
     required this.classId,
+    required this.privacyPolicyAccepted,
+    required this.privacyPolicyVersion,
   });
 
   final String fullName;
@@ -18,6 +20,8 @@ class AuthRegistrationPayload {
   final UserRole requestedRole;
   final String schoolId;
   final String classId;
+  final bool privacyPolicyAccepted;
+  final String privacyPolicyVersion;
 }
 
 class AuthRegistrationResult {

@@ -127,21 +127,21 @@ TEXT;
         foreach ($this->geminiModels() as $selectedModel) {
             // Menggunakan format OpenAI-Compatible untuk Sumopod
             $response = Http::withHeaders([
-                    'Content-Type' => 'application/json',
-                    'Authorization' => 'Bearer ' . $this->apiKey,
-                ])
+                'Content-Type' => 'application/json',
+                'Authorization' => 'Bearer '.$this->apiKey,
+            ])
                 ->withOptions([
                     'verify' => false,
                     'curl' => [
                         CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
-                    ]
+                    ],
                 ])
                 ->timeout($this->timeoutSeconds) // Menggunakan timeout dari env (20s)
                 ->post('https://ai.sumopod.com/v1/chat/completions', [
                     'model' => $selectedModel,
                     'messages' => [
                         ['role' => 'system', 'content' => $this->getSystemInstruction()],
-                        ['role' => 'user', 'content' => $prompt]
+                        ['role' => 'user', 'content' => $prompt],
                     ],
                     'temperature' => 0.4,
                     'max_tokens' => 1024,

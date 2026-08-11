@@ -9,32 +9,42 @@ use App\Http\Requests\Speaking\ReviewSpeakingAttemptRequest;
 use App\Http\Resources\SpeakingAttemptResource;
 use App\Models\SpeakingAttempt;
 use App\Services\SpeakingAttemptService;
+use App\Services\SpeakingAuthorizationService;
 use Illuminate\Http\JsonResponse;
 
 class TeacherSpeakingController extends Controller
 {
-    public function __construct(private readonly SpeakingAttemptService $attemptService) {}
+    public function __construct(
+        private readonly SpeakingAttemptService $attemptService,
+        private readonly SpeakingAuthorizationService $authorizationService,
+    ) {}
 
     public function attempts(ListSpeakingAttemptsRequest $request): JsonResponse
     {
-        $classIds = $request->user()->teacherClassAssignments()->where('is_active', true)->pluck('class_id');
         $sort = $request->validated('sort', 'created_at');
         $direction = $request->validated('direction', 'desc');
         $search = $request->validated('search');
-        $attempts = SpeakingAttempt::query()
-            ->with(['exercise.referenceAudio', 'student', 'reviewer'])
-            ->whereHas('exercise', fn ($query) => $query
-                ->where(fn ($nested) => $nested->whereIn('classroom_id', $classIds)->orWhereNull('classroom_id')))
-            ->when($request->validated('analysis_status'), fn ($query, $status) => $query->where('analysis_status', $status))
-            ->when($request->validated('review_status'), fn ($query, $status) => $query->where('review_status', $status))
+        $query = $this->authorizationService->teacherAttemptQuery($request->user())
             ->when($search, fn ($query, $value) => $query->where(fn ($nested) => $nested
                 ->whereHas('student', fn ($student) => $student->where('full_name', 'ilike', "%{$value}%")->orWhere('email', 'ilike', "%{$value}%"))
-                ->orWhereHas('exercise', fn ($exercise) => $exercise->where('title', 'ilike', "%{$value}%"))))
+                ->orWhereHas('exercise', fn ($exercise) => $exercise->where('title', 'ilike', "%{$value}%"))));
+        $counts = [
+            'total' => (clone $query)->count(),
+            'pending' => (clone $query)->where('review_status', 'pending')->count(),
+            'reviewed' => (clone $query)->where('review_status', 'reviewed')->count(),
+            'failed' => (clone $query)->where('analysis_status', 'failed')->count(),
+        ];
+        $attempts = $query
+            ->with(['exercise.referenceAudio', 'student', 'reviewer'])
+            ->when($request->validated('analysis_status'), fn ($query, $status) => $query->where('analysis_status', $status))
+            ->when($request->validated('review_status'), fn ($query, $status) => $query->where('review_status', $status))
             ->orderBy($sort, $direction)
             ->orderBy('id', $direction)
             ->paginate($request->validated('per_page', 15));
+        $response = ApiResponse::paginated('Percobaan speaking siswa berhasil diambil.', $attempts, SpeakingAttemptResource::collection($attempts->getCollection())->resolve());
+        $response->setData(array_replace_recursive($response->getData(true), ['meta' => ['counts' => $counts]]));
 
-        return ApiResponse::paginated('Percobaan speaking siswa berhasil diambil.', $attempts, SpeakingAttemptResource::collection($attempts->getCollection())->resolve());
+        return $response;
     }
 
     public function showAttempt(SpeakingAttempt $attempt): JsonResponse
@@ -54,6 +64,7 @@ class TeacherSpeakingController extends Controller
             'reviewed_by_id' => $request->user()->id,
             'reviewed_at' => now(),
             'review_status' => 'reviewed',
+            'status' => 'reviewed',
         ])->save();
 
         return ApiResponse::success('Feedback speaking berhasil disimpan.', new SpeakingAttemptResource($attempt->refresh()->load(['exercise', 'student', 'reviewer'])));

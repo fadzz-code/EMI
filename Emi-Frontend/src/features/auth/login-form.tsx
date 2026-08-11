@@ -12,7 +12,11 @@ import { Alert, Button, FormField, Input } from "@/components/ui";
 
 import { useAuth } from "./auth-provider";
 
-export function LoginForm() {
+function safeReturnTo(returnTo?: string) {
+  return returnTo?.startsWith("/") && !returnTo.startsWith("//") ? returnTo : null;
+}
+
+export function LoginForm({ returnTo }: { returnTo?: string }) {
   const router = useRouter();
   const { login } = useAuth();
   const [formError, setFormError] = useState<string | null>(null);
@@ -43,7 +47,7 @@ export function LoginForm() {
 
     try {
       const user = await login(parsed.data);
-      router.replace(getDashboardPath(user.role));
+      router.replace(safeReturnTo(returnTo) ?? getDashboardPath(user.role));
     } catch (error) {
       setFormError(
         error instanceof ApiError
@@ -64,14 +68,21 @@ export function LoginForm() {
             <p className="text-xl font-black text-ink">EMI</p>
           </div>
           <div>
-            <h1 className="text-3xl font-black tracking-tight text-ink">Selamat Datang di EMI</h1>
-            <p className="mt-2 text-sm font-bold text-slate-500">Platform E-Learning Mekongga Indonesia</p>
+            <h1 className="text-3xl font-black tracking-tight text-ink">
+              Selamat Datang di EMI
+            </h1>
+            <p className="mt-2 text-sm font-bold text-slate-500">
+              Platform E-Learning Mekongga Indonesia
+            </p>
           </div>
         </div>
 
         <form className="grid gap-5" onSubmit={handleSubmit(onSubmit)}>
           {formError ? (
-            <Alert className="border-4 font-bold shadow-[3px_3px_0_var(--color-ink)]" tone="error">
+            <Alert
+              className="border-4 font-bold shadow-[3px_3px_0_var(--color-ink)]"
+              tone="error"
+            >
               {formError}
             </Alert>
           ) : null}
@@ -96,7 +107,10 @@ export function LoginForm() {
           <input type="hidden" {...register("device_name")} />
 
           <div className="flex justify-end">
-            <Link className="text-sm font-bold text-slate-500 hover:text-ink hover:underline" href="/forgot-password">
+            <Link
+              className="text-sm font-bold text-slate-500 hover:text-ink hover:underline"
+              href="/forgot-password"
+            >
               Lupa kata sandi?
             </Link>
           </div>
@@ -110,11 +124,20 @@ export function LoginForm() {
           </Button>
         </form>
 
+        <p className="text-center text-sm font-bold text-slate-600">
+          <Link className="hover:text-ink hover:underline" href="/privacy">
+            Kebijakan Privasi
+          </Link>
+        </p>
+
         <div className="h-1 rounded-full bg-slate-200" />
 
         <p className="text-center text-sm font-bold text-slate-600">
           Belum punya akun?{" "}
-          <Link className="font-black text-[#ff8c42] hover:text-[#e07530] hover:underline" href="/register">
+          <Link
+            className="font-black text-[#ff8c42] hover:text-[#e07530] hover:underline"
+            href="/register"
+          >
             Daftar sekarang
           </Link>
         </p>

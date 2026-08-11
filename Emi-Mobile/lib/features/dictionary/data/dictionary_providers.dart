@@ -49,9 +49,15 @@ final dictionaryRepositoryProvider = Provider<DictionaryRepository>(
 );
 
 class DictionaryQuery {
-  const DictionaryQuery({this.search, this.categoryId, this.page = 1});
+  const DictionaryQuery({
+    this.search,
+    this.language = 'all',
+    this.categoryId,
+    this.page = 1,
+  });
 
   final String? search;
+  final String language;
   final String? categoryId;
   final int page;
 
@@ -59,12 +65,13 @@ class DictionaryQuery {
   bool operator ==(Object other) {
     return other is DictionaryQuery &&
         other.search == search &&
+        other.language == language &&
         other.categoryId == categoryId &&
         other.page == page;
   }
 
   @override
-  int get hashCode => Object.hash(search, categoryId, page);
+  int get hashCode => Object.hash(search, language, categoryId, page);
 }
 
 final dictionaryListProvider = FutureProvider.autoDispose
@@ -73,9 +80,15 @@ final dictionaryListProvider = FutureProvider.autoDispose
           .watch(dictionaryRepositoryProvider)
           .list(
             search: query.search,
+            language: query.language,
             categoryId: query.categoryId,
             page: query.page,
           ),
+    );
+
+final dictionaryCategorySourceProvider =
+    FutureProvider.autoDispose<DictionaryPage>(
+      (ref) => ref.watch(dictionaryRepositoryProvider).list(perPage: 100),
     );
 
 final dictionaryDetailProvider = FutureProvider.autoDispose

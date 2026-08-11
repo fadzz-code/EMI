@@ -5,6 +5,7 @@ class ChatbotSource {
     this.category,
     this.sourceType,
     this.sourceUrl,
+    this.pageNumber,
   });
 
   final String id;
@@ -12,6 +13,7 @@ class ChatbotSource {
   final String? category;
   final String? sourceType;
   final String? sourceUrl;
+  final int? pageNumber;
 
   factory ChatbotSource.fromJson(Map<String, dynamic> json) {
     return ChatbotSource(
@@ -20,6 +22,7 @@ class ChatbotSource {
       category: json['category'] as String?,
       sourceType: json['source_type'] as String?,
       sourceUrl: json['source_url'] as String?,
+      pageNumber: json['page_number'] as int?,
     );
   }
 }
@@ -32,6 +35,7 @@ class ChatbotResponse {
     required this.provider,
     required this.conversationId,
     this.source,
+    this.sources = const [],
     this.confidence,
   });
 
@@ -40,6 +44,7 @@ class ChatbotResponse {
   final String mode;
   final String provider;
   final ChatbotSource? source;
+  final List<ChatbotSource> sources;
   final num? confidence;
 
   /// The conversation this message was appended to (server creates one if
@@ -50,6 +55,7 @@ class ChatbotResponse {
 
   factory ChatbotResponse.fromJson(Map<String, dynamic> json) {
     final source = json['source'];
+    final sources = json['sources'];
     return ChatbotResponse(
       answer: json['answer'] as String? ?? '',
       matched: json['matched'] == true,
@@ -58,6 +64,12 @@ class ChatbotResponse {
       source: source is Map<String, dynamic>
           ? ChatbotSource.fromJson(source)
           : null,
+      sources: sources is List
+          ? sources
+                .whereType<Map<String, dynamic>>()
+                .map(ChatbotSource.fromJson)
+                .toList()
+          : const [],
       confidence: json['confidence'] as num?,
       conversationId: json['conversation_id'] as String? ?? '',
     );

@@ -14,4 +14,14 @@ describe("teacher progress service", () => {
     await expect(teacherService.classProgress("token", "class-1")).resolves.toBe(data);
     expect(get).toHaveBeenCalledWith("/teacher/reports/progress/class", { token: "token", query: { class_id: "class-1" } });
   });
+
+  it("requests visible speaking attempt page and preserves pagination metadata", async () => {
+    const meta = { current_page: 2, last_page: 3, total: 201, counts: { total: 201, pending: 120, reviewed: 78, failed: 3 } };
+    get.mockResolvedValue({ data: [{ id: "attempt-101" }], meta });
+    await expect(teacherService.speakingAttempts("token", 2, { search: "Nina", review_status: "pending" })).resolves.toEqual({ items: [{ id: "attempt-101" }], meta });
+    expect(get).toHaveBeenCalledWith("/teacher/speaking/attempts", {
+      token: "token",
+      query: { page: 2, per_page: 100, search: "Nina", review_status: "pending" },
+    });
+  });
 });

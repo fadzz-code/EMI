@@ -13,7 +13,10 @@ use Illuminate\Support\Facades\DB;
 
 class SpeakingAttemptService
 {
-    public function __construct(private readonly MediaUploadService $mediaUploadService) {}
+    public function __construct(
+        private readonly MediaUploadService $mediaUploadService,
+        private readonly SpeakingAuthorizationService $authorizationService,
+    ) {}
 
     public function create(User $student, SpeakingExercise $exercise, UploadedFile $file, Request $request, ?int $durationSeconds = null, string $captureSource = 'web_microphone'): SpeakingAttempt
     {
@@ -56,16 +59,7 @@ class SpeakingAttemptService
 
     public function teacherCanAccess(User $teacher, SpeakingAttempt $attempt): bool
     {
-        $classId = $attempt->exercise?->classroom_id;
-        if (! $classId) {
-            // Latihan global (dibuat admin) dapat direview guru manapun.
-            return true;
-        }
-
-        return $teacher->teacherClassAssignments()
-            ->where('class_id', $classId)
-            ->where('is_active', true)
-            ->exists();
+        return $this->authorizationService->teacherCanAccessAttempt($teacher, $attempt);
     }
 
     public function studentCanAccessExercise(User $student, SpeakingExercise $exercise): bool

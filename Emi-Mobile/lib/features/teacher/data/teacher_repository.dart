@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../../core/errors/app_error.dart';
 import '../../../core/errors/dio_error_mapper.dart';
 import '../../culture/data/culture_models.dart';
+import '../../speaking/data/speaking_models.dart';
 
 class TeacherRequestItem {
   const TeacherRequestItem({
@@ -515,9 +516,15 @@ class TeacherSpeakingTemplate {
     this.targetTranslation,
     this.promptText,
     this.difficulty,
+    this.referenceAudioMediaId,
+    this.referenceAudio,
   });
   final String id, title, targetText;
-  final String? targetTranslation, promptText, difficulty;
+  final String? targetTranslation,
+      promptText,
+      difficulty,
+      referenceAudioMediaId;
+  final SpeakingReferenceAudio? referenceAudio;
   factory TeacherSpeakingTemplate.fromJson(Map<String, dynamic> json) =>
       TeacherSpeakingTemplate(
         id: _string(json['id']),
@@ -526,6 +533,14 @@ class TeacherSpeakingTemplate {
         targetTranslation: _nullableString(json['target_translation']),
         promptText: _nullableString(json['prompt_text']),
         difficulty: _nullableString(json['difficulty']),
+        referenceAudioMediaId: _nullableString(
+          json['reference_audio_media_id'],
+        ),
+        referenceAudio: json['reference_audio'] is Map<String, dynamic>
+            ? SpeakingReferenceAudio.fromJson(
+                json['reference_audio'] as Map<String, dynamic>,
+              )
+            : null,
       );
 }
 
@@ -540,11 +555,18 @@ class TeacherSpeakingExercise {
     this.targetTranslation,
     this.promptText,
     this.difficulty,
+    this.referenceAudioMediaId,
+    this.referenceAudio,
     this.updatedAt,
     this.attemptsCount,
   });
   final String id, classroomId, title, targetText, status;
-  final String? classroomName, targetTranslation, promptText, difficulty;
+  final String? classroomName,
+      targetTranslation,
+      promptText,
+      difficulty,
+      referenceAudioMediaId;
+  final SpeakingReferenceAudio? referenceAudio;
   final DateTime? updatedAt;
   final int? attemptsCount;
   factory TeacherSpeakingExercise.fromJson(Map<String, dynamic> json) {
@@ -561,10 +583,62 @@ class TeacherSpeakingExercise {
       targetTranslation: _nullableString(json['target_translation']),
       promptText: _nullableString(json['prompt_text']),
       difficulty: _nullableString(json['difficulty']),
+      referenceAudioMediaId: _nullableString(json['reference_audio_media_id']),
+      referenceAudio: json['reference_audio'] is Map<String, dynamic>
+          ? SpeakingReferenceAudio.fromJson(
+              json['reference_audio'] as Map<String, dynamic>,
+            )
+          : null,
       updatedAt: DateTime.tryParse(_string(json['updated_at'])),
       attemptsCount: json['attempts_count'] is num
           ? (json['attempts_count'] as num).toInt()
           : null,
+    );
+  }
+}
+
+class TeacherSpeakingAttemptPage {
+  const TeacherSpeakingAttemptPage({
+    required this.items,
+    required this.currentPage,
+    required this.lastPage,
+    required this.total,
+    required this.pendingCount,
+    required this.reviewedCount,
+    required this.failedCount,
+  });
+
+  final List<TeacherSpeakingAttempt> items;
+  final int currentPage,
+      lastPage,
+      total,
+      pendingCount,
+      reviewedCount,
+      failedCount;
+
+  factory TeacherSpeakingAttemptPage.fromJson(Map<String, dynamic>? json) {
+    final rows = json?['data'];
+    final meta = _map(json?['meta']);
+    final counts = _map(meta['counts']);
+    final items = rows is List
+        ? rows
+              .whereType<Map<String, dynamic>>()
+              .map(TeacherSpeakingAttempt.fromJson)
+              .toList()
+        : <TeacherSpeakingAttempt>[];
+    final currentPage = _int(meta['current_page'], fallback: 1);
+    final lastPage = _int(meta['last_page'], fallback: 1);
+    return TeacherSpeakingAttemptPage(
+      items: items,
+      currentPage: currentPage < 1 ? 1 : currentPage,
+      lastPage: lastPage < 1 ? 1 : lastPage,
+      total: _int(
+        counts['total'],
+        fallback: _int(meta['total'], fallback: items.length),
+      ),
+      pendingCount: _int(counts['pending']),
+      reviewedCount: _int(counts['reviewed']),
+      failedCount: _int(counts['failed']),
     );
   }
 }
@@ -576,7 +650,11 @@ class TeacherSpeakingAttempt {
     required this.exerciseTitle,
     this.classroomName,
     this.audioMediaId,
+    this.targetText,
+    this.referenceAudio,
     this.transcription,
+    this.aiAlignment,
+    this.aiError,
     this.aiScore,
     this.teacherScore,
     this.teacherFeedback,
@@ -587,10 +665,14 @@ class TeacherSpeakingAttempt {
   final String id, studentName, exerciseTitle;
   final String? classroomName,
       audioMediaId,
+      targetText,
       transcription,
+      aiError,
       teacherFeedback,
       status,
       captureSource;
+  final SpeakingReferenceAudio? referenceAudio;
+  final Object? aiAlignment;
   final double? aiScore, teacherScore;
   final DateTime? createdAt;
   factory TeacherSpeakingAttempt.fromJson(Map<String, dynamic> json) {
@@ -620,8 +702,20 @@ class TeacherSpeakingAttempt {
             _map(json['audio_media'])['id'] ??
             _map(json['media'])['id'],
       ),
+      targetText: _nullableString(
+        json['target_text'] ?? json['target_text_snapshot'],
+      ),
+      referenceAudio: exercise['reference_audio'] is Map<String, dynamic>
+          ? SpeakingReferenceAudio.fromJson(
+              exercise['reference_audio'] as Map<String, dynamic>,
+            )
+          : null,
       transcription: _nullableString(
         json['ai_transcription'] ?? json['transcription'],
+      ),
+      aiAlignment: json['ai_alignment'] ?? _map(json['analysis'])['alignment'],
+      aiError: _nullableString(
+        json['ai_error'] ?? _map(json['analysis'])['error'],
       ),
       aiScore: number(json['ai_score']),
       teacherScore: number(json['teacher_score']),
@@ -789,12 +883,21 @@ class TeacherRepository {
     }
   }
 
-  Future<List<TeacherSpeakingAttempt>> speakingAttempts() => _request(
-    () => _dio.get<Map<String, dynamic>>('/teacher/speaking/attempts'),
-    (json) => (json?['data'] is List ? json!['data'] as List : const [])
-        .whereType<Map<String, dynamic>>()
-        .map(TeacherSpeakingAttempt.fromJson)
-        .toList(),
+  Future<TeacherSpeakingAttemptPage> speakingAttempts({
+    int page = 1,
+    String? search,
+    String? reviewStatus,
+  }) => _request(
+    () => _dio.get<Map<String, dynamic>>(
+      '/teacher/speaking/attempts',
+      queryParameters: {
+        'page': page,
+        'per_page': 15,
+        if (search?.trim().isNotEmpty == true) 'search': search!.trim(),
+        if (reviewStatus?.isNotEmpty == true) 'review_status': reviewStatus,
+      },
+    ),
+    TeacherSpeakingAttemptPage.fromJson,
   );
 
   Future<TeacherSpeakingAttempt> speakingAttempt(String id) => _request(
@@ -982,7 +1085,7 @@ class TeacherRepository {
         data: FormData.fromMap({
           'file': await MultipartFile.fromFile(path, filename: name),
           'purpose': 'culture_media',
-          'visibility': 'public',
+          'visibility': 'private',
         }),
       );
       return _string(_data(response.data, 'Media')['id']);
@@ -1014,7 +1117,9 @@ class TeacherRepository {
         data: FormData.fromMap({
           'file': await MultipartFile.fromFile(path, filename: name),
           'purpose': purpose,
-          'visibility': 'private',
+          'visibility': purpose == 'speaking_reference_audio'
+              ? 'public'
+              : 'private',
         }),
       );
       final data = _data(response.data, 'Media');
@@ -1094,7 +1199,8 @@ class TeacherRepository {
         '/teacher/reports/progress/students/export',
         queryParameters: {
           if (classId != null && classId.isNotEmpty) 'class_id': classId,
-          if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+          if (search != null && search.trim().isNotEmpty)
+            'search': search.trim(),
         },
         options: Options(responseType: ResponseType.bytes),
       );

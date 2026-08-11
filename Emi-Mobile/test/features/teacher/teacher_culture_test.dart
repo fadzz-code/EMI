@@ -256,7 +256,7 @@ void main() {
     expect(requests.where((r) => r.path == '/media'), isEmpty);
   });
 
-  test('public multipart upload uses culture purpose', () async {
+  test('private multipart upload uses culture purpose', () async {
     final file = File('${Directory.systemTemp.path}/culture.jpg');
     await file.writeAsBytes([1, 2, 3]);
     try {
@@ -278,7 +278,7 @@ void main() {
         form.fields,
         contains(
           predicate<MapEntry<String, String>>(
-            (entry) => entry.key == 'visibility' && entry.value == 'public',
+            (entry) => entry.key == 'visibility' && entry.value == 'private',
           ),
         ),
       );

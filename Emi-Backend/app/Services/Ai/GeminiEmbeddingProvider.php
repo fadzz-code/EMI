@@ -41,19 +41,19 @@ class GeminiEmbeddingProvider implements EmbeddingProviderInterface
             $usedModel = 'gemini/gemini-embedding-001';
 
             $response = Http::withHeaders([
-                    'Content-Type' => 'application/json',
-                    'Authorization' => 'Bearer ' . $this->apiKey,
-                ])
+                'Content-Type' => 'application/json',
+                'Authorization' => 'Bearer '.$this->apiKey,
+            ])
                 ->withOptions([
                     'verify' => false,
                     'curl' => [
                         CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
-                    ]
+                    ],
                 ])
                 ->timeout(max(1, $this->timeoutSeconds))
                 ->post($this->endpoint(), [
                     'model' => $usedModel,
-                    'input' => $text 
+                    'input' => $text,
                 ]);
 
             if (! $response->successful()) {
@@ -90,7 +90,7 @@ class GeminiEmbeddingProvider implements EmbeddingProviderInterface
                 'task_type' => $taskType,
             ]);
         } catch (Throwable $e) {
-            return $this->failure('Provider embedding tidak dapat dihubungi: ' . $e->getMessage(), $inputType);
+            return $this->failure('Provider embedding tidak dapat dihubungi: '.$e->getMessage(), $inputType);
         }
     }
 

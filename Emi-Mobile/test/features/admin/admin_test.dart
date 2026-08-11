@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:emi_mobile/features/admin/presentation/admin_screens.dart';
@@ -165,7 +167,7 @@ void main() {
     },
   );
 
-  test('admin summary maps web dashboard metrics without fake numbers', () {
+  test('admin summary maps dashboard response paths', () {
     final summary = AdminSummary.fromJson({
       'overview': {
         'active_students': 10,
@@ -174,18 +176,77 @@ void main() {
         'active_classes': 3,
         'pending_registration_requests': 4,
       },
-      'quizzes': {'submitted_attempts': 5},
+      'learning': {'average_learning_progress_percent': 62.5},
+      'quizzes': {'submitted_attempts': 5, 'participation_rate_percent': 80},
+      'generated_at': '2026-06-16T09:00:00.000000Z',
     });
 
-    expect(
-      summary.items.map((item) => item.label),
-      contains('Pendaftaran yang Perlu Diperiksa'),
+    expect({
+      for (final item in summary.items) item.label: item.value,
+    }, containsPair('Guru Aktif', '2'));
+    expect({
+      for (final item in summary.items) item.label: item.value,
+    }, containsPair('Siswa Aktif', '10'));
+    expect({
+      for (final item in summary.items) item.label: item.value,
+    }, containsPair('Percobaan Kuis Terkirim', '5'));
+    expect({
+      for (final item in summary.items) item.label: item.value,
+    }, containsPair('Rata-rata Progres Belajar', '62.5%'));
+    expect({
+      for (final item in summary.items) item.label: item.value,
+    }, containsPair('Partisipasi Kuis', '80%'));
+    expect(summary.generatedAt, DateTime.utc(2026, 6, 16, 9));
+  });
+
+  testWidgets('admin dashboard shows expanded metrics in compact grid', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(990, 2210);
+    tester.view.devicePixelRatio = 2.75;
+    addTearDown(tester.view.reset);
+    final summary = AdminSummary.fromJson({
+      'overview': {
+        'active_students': 10,
+        'active_teachers': 2,
+        'active_schools': 1,
+        'active_classes': 3,
+        'pending_registration_requests': 4,
+      },
+      'learning': {'average_learning_progress_percent': 62.5},
+      'quizzes': {'submitted_attempts': 5, 'participation_rate_percent': 80},
+      'generated_at': '2026-06-16T09:00:00Z',
+    });
+    final router = GoRouter(
+      initialLocation: '/admin/dashboard',
+      routes: [
+        GoRoute(
+          path: '/admin/dashboard',
+          builder: (_, _) => const AdminDashboardScreen(),
+        ),
+      ],
     );
-    expect(summary.items.map((item) => item.value), contains('12'));
-    expect(
-      summary.items.map((item) => item.helper),
-      contains('Guru dan Siswa.'),
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [adminDashboardProvider.overrideWith((_) async => summary)],
+        child: MaterialApp.router(routerConfig: router),
+      ),
     );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Guru Aktif'), findsOneWidget);
+    expect(find.text('Siswa Aktif'), findsOneWidget);
+    expect(find.text('Percobaan Kuis Terkirim'), findsOneWidget);
+    expect(find.text('Rata-rata Progres Belajar'), findsOneWidget);
+    expect(find.text('Partisipasi Kuis'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.textContaining('Diperbarui'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.textContaining('Diperbarui'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   test('admin query keeps stable provider identity', () {
@@ -245,6 +306,137 @@ void main() {
     expect(page.items.single.address, isNull);
     expect(page.items.single.phone, isNull);
     expect(page.items.single.classesCount, 6);
+  });
+
+  test(
+    'admin schools ignores duplicate loadMore while request is in flight',
+    () async {
+      final pageTwo = Completer<Response<dynamic>>();
+      final pageTwoStarted = Completer<void>();
+      var pageTwoRequests = 0;
+      final repository = AdminRepository(
+        Dio(BaseOptions(baseUrl: 'https://example.test'))
+          ..interceptors.add(
+            InterceptorsWrapper(
+              onRequest: (options, handler) async {
+                if (options.queryParameters['page'] == 2) {
+                  pageTwoRequests++;
+                  if (!pageTwoStarted.isCompleted) pageTwoStarted.complete();
+                  handler.resolve(await pageTwo.future);
+                  return;
+                }
+                handler.resolve(
+                  Response(
+                    requestOptions: options,
+                    data: {
+                      'data': [
+                        {'id': 's1', 'name': 'School 1', 'status': 'active'},
+                      ],
+                      'meta': {'current_page': 1, 'last_page': 2, 'total': 2},
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        const DioErrorMapper(),
+      );
+      final container = ProviderContainer(
+        overrides: [adminRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+      await container.read(adminSchoolsProvider.future);
+      final controller = container.read(adminSchoolsProvider.notifier);
+
+      final first = controller.loadMore();
+      final second = controller.loadMore();
+      await pageTwoStarted.future;
+      expect(pageTwoRequests, 1);
+      pageTwo.complete(
+        Response(
+          requestOptions: RequestOptions(path: '/schools'),
+          data: {
+            'data': [
+              {'id': 's2', 'name': 'School 2', 'status': 'active'},
+            ],
+            'meta': {'current_page': 2, 'last_page': 2, 'total': 2},
+          },
+        ),
+      );
+      await Future.wait([first, second]);
+      expect(container.read(adminSchoolsProvider).requireValue.items.length, 2);
+    },
+  );
+
+  test('admin schools ignores stale search response', () async {
+    final oldSearch = Completer<Response<dynamic>>();
+    final newSearch = Completer<Response<dynamic>>();
+    final repository = AdminRepository(
+      Dio(BaseOptions(baseUrl: 'https://example.test'))
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) async {
+              final search = options.queryParameters['search'];
+              if (search == 'old') {
+                handler.resolve(await oldSearch.future);
+                return;
+              }
+              if (search == 'new') {
+                handler.resolve(await newSearch.future);
+                return;
+              }
+              handler.resolve(
+                Response(
+                  requestOptions: options,
+                  data: {
+                    'data': <Object?>[],
+                    'meta': {'current_page': 1, 'last_page': 1, 'total': 0},
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      const DioErrorMapper(),
+    );
+    final container = ProviderContainer(
+      overrides: [adminRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+    await container.read(adminSchoolsProvider.future);
+    final controller = container.read(adminSchoolsProvider.notifier);
+
+    final oldRequest = controller.search('old');
+    final newRequest = controller.search('new');
+    newSearch.complete(
+      Response(
+        requestOptions: RequestOptions(path: '/schools'),
+        data: {
+          'data': [
+            {'id': 'new', 'name': 'New result', 'status': 'active'},
+          ],
+          'meta': {'current_page': 1, 'last_page': 1, 'total': 1},
+        },
+      ),
+    );
+    await newRequest;
+    oldSearch.complete(
+      Response(
+        requestOptions: RequestOptions(path: '/schools'),
+        data: {
+          'data': [
+            {'id': 'old', 'name': 'Old result', 'status': 'active'},
+          ],
+          'meta': {'current_page': 1, 'last_page': 1, 'total': 1},
+        },
+      ),
+    );
+    await oldRequest;
+
+    expect(
+      container.read(adminSchoolsProvider).requireValue.items.single.id,
+      'new',
+    );
   });
 
   test('admin school create update activate deactivate contracts', () async {
@@ -376,7 +568,11 @@ void main() {
       const DioErrorMapper(),
     );
 
-    expect((await repository.dashboard()).items.last.value, '1');
+    final summary = await repository.dashboard();
+    expect(
+      summary.items.singleWhere((item) => item.label == 'Siswa Aktif').value,
+      '1',
+    );
     expect(
       (await repository.list(
         '/users',

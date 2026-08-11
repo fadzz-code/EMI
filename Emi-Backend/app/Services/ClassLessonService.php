@@ -19,7 +19,7 @@ class ClassLessonService
 
     public function create(ClassModule $module, array $data, User $actor, Request $request): ClassLesson
     {
-        $this->contentValidationService->validate($data);
+        $this->contentValidationService->validate($data, $actor);
 
         return DB::transaction(function () use ($module, $data, $actor, $request) {
             $lesson = $module->lessons()->create($this->payload($data) + [
@@ -36,7 +36,7 @@ class ClassLessonService
     public function update(ClassLesson $lesson, array $data, User $actor, Request $request): ClassLesson
     {
         $merged = array_merge($lesson->only(['content_type', 'content_body', 'media_id', 'external_url']), $data);
-        $this->contentValidationService->validate($merged);
+        $this->contentValidationService->validate($merged, $actor);
 
         return DB::transaction(function () use ($lesson, $data, $actor, $request) {
             $old = $lesson->only(['title', 'content_type', 'status']);

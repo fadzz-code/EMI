@@ -119,7 +119,10 @@ void main() {
         'Peringatan Login Baru',
         'Email Laporan Mingguan',
         'Update pengaturan',
-        'Simpan Pengaturan',
+        'Simpan Pengaturan Aplikasi',
+        'Simpan Profil',
+        'Simpan Banner',
+        'Simpan Keamanan',
       ]) {
         await _findByScrolling(tester, text);
       }
@@ -127,7 +130,9 @@ void main() {
       expect(find.text('new_login_alert'), findsNothing);
       expect(
         tester
-            .widget<FilledButton>(find.byKey(const Key('saveAdminSettings')))
+            .widget<FilledButton>(
+              find.byKey(const Key('saveApplicationSettings')),
+            )
             .onPressed,
         isNull,
       );
@@ -189,7 +194,9 @@ void main() {
     expect(find.text('Asia/Jayapura'), findsOneWidget);
     expect(
       tester
-          .widget<FilledButton>(find.byKey(const Key('saveAdminSettings')))
+          .widget<FilledButton>(
+            find.byKey(const Key('saveApplicationSettings')),
+          )
           .onPressed,
       isNotNull,
     );
@@ -209,7 +216,9 @@ void main() {
         'old-secret',
       );
       tester
-          .widget<FilledButton>(find.byKey(const Key('saveAdminSettings')))
+          .widget<FilledButton>(
+            find.byKey(const Key('saveApplicationSettings')),
+          )
           .onPressed!();
       await tester.pump();
 
@@ -253,9 +262,11 @@ void main() {
     );
     tester.testTextInput.hide();
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const Key('saveAdminSettings')));
+    await tester.ensureVisible(
+      find.byKey(const Key('saveApplicationSettings')),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('saveAdminSettings')));
+    await tester.tap(find.byKey(const Key('saveApplicationSettings')));
     await tester.pumpAndSettle();
 
     await tester.drag(
@@ -263,7 +274,7 @@ void main() {
       const Offset(0, 3000),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Pengaturan berhasil disimpan.'), findsOneWidget);
+    expect(find.text('Pengaturan aplikasi berhasil disimpan.'), findsOneWidget);
     expect(requests, contains('PUT /admin/settings/application'));
     expect(payloads.single['subtitle'], 'Subtitle Baru');
     verifyNever(
@@ -275,10 +286,51 @@ void main() {
     );
     expect(
       tester
-          .widget<FilledButton>(find.byKey(const Key('saveAdminSettings')))
+          .widget<FilledButton>(
+            find.byKey(const Key('saveApplicationSettings')),
+          )
           .onPressed,
       isNull,
     );
+  });
+
+  testWidgets('section failure does not block another section save', (
+    tester,
+  ) async {
+    final requests = <String>[];
+    await _pump(
+      tester,
+      repository: _repository(
+        requests: requests,
+        failPath: '/admin/settings/application',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nama Aplikasi'),
+      'Gagal Disimpan',
+    );
+    tester.testTextInput.hide();
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const Key('saveApplicationSettings')),
+    );
+    await tester.tap(find.byKey(const Key('saveApplicationSettings')));
+    await tester.pumpAndSettle();
+    expect(find.text('Permintaan API gagal.'), findsOneWidget);
+
+    await _findByScrolling(tester, 'Peringatan Login Baru');
+    await tester.tap(find.text('Peringatan Login Baru'));
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(const Key('saveSecuritySettings')));
+    await tester.tap(find.byKey(const Key('saveSecuritySettings')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Preferensi keamanan berhasil disimpan.'), findsOneWidget);
+    expect(find.text('Permintaan API gagal.'), findsOneWidget);
+    expect(requests, contains('PUT /admin/settings/application'));
+    expect(requests, contains('PUT /admin/settings/security'));
   });
 
   testWidgets('save failure retains input and stays dirty', (tester) async {
@@ -291,9 +343,11 @@ void main() {
     );
     tester.testTextInput.hide();
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const Key('saveAdminSettings')));
+    await tester.ensureVisible(
+      find.byKey(const Key('saveApplicationSettings')),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('saveAdminSettings')));
+    await tester.tap(find.byKey(const Key('saveApplicationSettings')));
     await tester.pumpAndSettle();
 
     expect(
@@ -313,7 +367,9 @@ void main() {
     expect(find.text('Permintaan API gagal.'), findsOneWidget);
     expect(
       tester
-          .widget<FilledButton>(find.byKey(const Key('saveAdminSettings')))
+          .widget<FilledButton>(
+            find.byKey(const Key('saveApplicationSettings')),
+          )
           .onPressed,
       isNotNull,
     );
@@ -360,10 +416,10 @@ void main() {
     await tester.showKeyboard(
       find.widgetWithText(TextFormField, 'Nama Aplikasi'),
     );
-    await _findByScrolling(tester, 'Simpan Pengaturan');
+    await _findByScrolling(tester, 'Simpan Pengaturan Aplikasi');
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('saveAdminSettings')), findsOneWidget);
+    expect(find.byKey(const Key('saveApplicationSettings')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
@@ -429,7 +485,7 @@ Future<void> _findByScrolling(WidgetTester tester, String text) async {
         matching: find.byType(Scrollable),
       )
       .first;
-  await tester.scrollUntilVisible(find.text(text), 300, scrollable: list);
+  await tester.scrollUntilVisible(find.text(text).first, 300, scrollable: list);
   await tester.pump();
 }
 
@@ -439,6 +495,7 @@ AdminSettingsRepository _repository({
   Future<void>? wait,
   int failures = 0,
   bool failUpdates = false,
+  String? failPath,
   bool invalid = false,
 }) {
   var remainingFailures = failures;
@@ -453,7 +510,8 @@ AdminSettingsRepository _repository({
             }
             if (wait != null) await wait;
             if (remainingFailures > 0 ||
-                (failUpdates && options.method != 'GET')) {
+                (failUpdates && options.method != 'GET') ||
+                options.path == failPath) {
               if (remainingFailures > 0) remainingFailures--;
               handler.reject(DioException(requestOptions: options));
               return;

@@ -500,6 +500,26 @@ class Phase9CultureGlobalIsolationTest extends TestCase
         return $teacher;
     }
 
+    public function test_culture_media_is_only_accessible_from_the_students_active_class(): void
+    {
+        $admin = User::factory()->admin()->create();
+        [$classA, $classB] = $this->classes($admin, 2);
+        $studentA = $this->studentFor($classA, $admin);
+        $studentB = $this->studentFor($classB, $admin);
+        $media = MediaFile::factory()->private()->create(['uploaded_by' => $admin->id, 'purpose' => 'culture_media']);
+        ClassCultureItem::query()->create([
+            'class_id' => $classB->id,
+            'title' => 'Budaya Kelas B',
+            'media_id' => $media->id,
+            'content_type' => 'image',
+            'status' => 'published',
+            'created_by' => $admin->id,
+        ]);
+
+        $this->withToken($this->tokenFor($studentA))->postJson("/api/v1/media/{$media->id}/temporary-url")->assertForbidden();
+        $this->withToken($this->tokenFor($studentB))->postJson("/api/v1/media/{$media->id}/temporary-url")->assertOk();
+    }
+
     private function studentFor(SchoolClass $class, User $admin): User
     {
         $student = User::factory()->student()->approved()->create();

@@ -49,6 +49,7 @@ class DioErrorMapper {
       404 => AppErrorType.notFound,
       409 => AppErrorType.conflict,
       422 => AppErrorType.validation,
+      429 => AppErrorType.rateLimited,
       >= 500 => AppErrorType.server,
       _ => AppErrorType.unknown,
     };
@@ -61,6 +62,7 @@ class DioErrorMapper {
       404 => 'Data tidak ditemukan.',
       409 => 'Terdapat konflik pada data.',
       422 => 'Data yang diberikan belum valid.',
+      429 => 'Terlalu banyak percobaan. Coba lagi beberapa saat lagi.',
       >= 500 => 'Layanan sedang bermasalah. Coba lagi beberapa saat lagi.',
       _ => 'Permintaan API gagal.',
     };

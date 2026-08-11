@@ -13,20 +13,8 @@
         android:name="android.hardware.microphone"
         android:required="false" />
 
-    <!-- Legacy Bluetooth permissions, required up through Android 11 (API 30)
-         for the SPP link to the EMI Speaking hardware (ESP32 "EMI_KOLAKA").
+    <!-- Bonded-device enumeration in flutter_bluetooth_serial 0.4.0 uses legacy location. -->
 
-         `tools:node="replace"` is required on the location permissions below:
-         the `flutter_bluetooth_serial` plugin's own manifest declares
-         ACCESS_FINE_LOCATION/ACCESS_COARSE_LOCATION with NO maxSdkVersion
-         cap, and the Android manifest merger keeps whichever declaration is
-         *least* restrictive when the same permission appears twice. Without
-         this override, the merged app manifest ends up requesting location
-         access on Android 12+ even though the app has no location feature
-         at all — a red flag during Google Play's permission review ("why
-         does an education app need location?"). This app only connects to
-         an already-paired device by name, so no location capability is
-         ever actually needed on any Android version. -->
     <uses-permission
         android:name="android.permission.BLUETOOTH"
         android:maxSdkVersion="30" />
@@ -35,26 +23,20 @@
         android:maxSdkVersion="30" />
     <uses-permission
         android:name="android.permission.ACCESS_FINE_LOCATION"
-        tools:node="replace" />
+        android:maxSdkVersion="30"
+        tools:replace="android:maxSdkVersion" />
     <uses-permission
         android:name="android.permission.ACCESS_COARSE_LOCATION"
-        tools:node="replace" />
+        android:maxSdkVersion="30"
+        tools:replace="android:maxSdkVersion" />
 
-    <!-- Android 12+ (API 31+) runtime Bluetooth permissions. `usesPermissionFlags`
-         with `neverForLocation` avoids also requiring location permission/services
-         since this app only connects to an already-paired device by name, it
-         never scans to physically locate nearby devices. -->
-    <uses-permission
-        android:name="android.permission.BLUETOOTH_SCAN"
-        android:usesPermissionFlags="neverForLocation"
-        tools:targetApi="s" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
     <application
         android:label="EMI Mobile"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:networkSecurityConfig="@xml/network_security_config">
+        android:allowBackup="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"

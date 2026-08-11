@@ -29,6 +29,32 @@ void main() {
     expect(response.confidence, 83);
   });
 
+  test('maps multiple chatbot sources with page and link', () {
+    final response = ChatbotResponse.fromJson({
+      'answer': 'Jawaban',
+      'matched': true,
+      'mode': 'default_extractive',
+      'provider': 'default',
+      'sources': [
+        {
+          'id': 'src-1',
+          'title': 'Dokumen Mekongga',
+          'source_type': 'pdf',
+          'source_url': 'https://example.test/mekongga.pdf',
+          'page_number': 7,
+        },
+        {'id': 'src-2', 'title': 'Kamus'},
+      ],
+    });
+
+    expect(response.sources, hasLength(2));
+    expect(response.sources.first.pageNumber, 7);
+    expect(
+      response.sources.first.sourceUrl,
+      'https://example.test/mekongga.pdf',
+    );
+  });
+
   test('keeps user then assistant ordering', () {
     const messages = [
       ChatbotMessage(
@@ -305,101 +331,107 @@ void main() {
     expect(deleted, isTrue);
   });
 
-  test('controller openConversation loads history and sets active thread', () async {
-    final repository = ChatbotRepository(
-      _dio((options, handler) {
-        if (options.path.endsWith('/conversations')) {
+  test(
+    'controller openConversation loads history and sets active thread',
+    () async {
+      final repository = ChatbotRepository(
+        _dio((options, handler) {
+          if (options.path.endsWith('/conversations')) {
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {'success': true, 'message': 'OK', 'data': []},
+              ),
+            );
+            return;
+          }
           handler.resolve(
             Response(
               requestOptions: options,
               statusCode: 200,
-              data: {'success': true, 'message': 'OK', 'data': []},
+              data: {
+                'success': true,
+                'message': 'OK',
+                'data': {
+                  'id': 'conv-1',
+                  'title': 'Riwayat',
+                  'status': 'active',
+                  'messages': [
+                    {
+                      'id': 'msg-1',
+                      'role': 'user',
+                      'content': 'Halo',
+                      'citations': [],
+                    },
+                  ],
+                },
+              },
             ),
           );
-          return;
-        }
-        handler.resolve(
-          Response(
-            requestOptions: options,
-            statusCode: 200,
-            data: {
-              'success': true,
-              'message': 'OK',
-              'data': {
-                'id': 'conv-1',
-                'title': 'Riwayat',
-                'status': 'active',
-                'messages': [
-                  {
-                    'id': 'msg-1',
-                    'role': 'user',
-                    'content': 'Halo',
-                    'citations': [],
-                  },
-                ],
-              },
-            },
-          ),
-        );
-      }),
-      const DioErrorMapper(),
-    );
-    final controller = ChatbotController(repository);
+        }),
+        const DioErrorMapper(),
+      );
+      final controller = ChatbotController(repository);
 
-    await controller.openConversation('conv-1');
+      await controller.openConversation('conv-1');
 
-    expect(controller.state.activeConversationId, 'conv-1');
-    expect(controller.state.messages, hasLength(1));
-    expect(controller.state.isLoadingHistory, isFalse);
-    controller.dispose();
-  });
+      expect(controller.state.activeConversationId, 'conv-1');
+      expect(controller.state.messages, hasLength(1));
+      expect(controller.state.isLoadingHistory, isFalse);
+      controller.dispose();
+    },
+  );
 
-  test('controller startNewSession clears active thread and messages', () async {
-    final repository = ChatbotRepository(
-      _dio((options, handler) {
-        if (options.path.endsWith('/conversations')) {
+  test(
+    'controller startNewSession clears active thread and messages',
+    () async {
+      final repository = ChatbotRepository(
+        _dio((options, handler) {
+          if (options.path.endsWith('/conversations')) {
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {'success': true, 'message': 'OK', 'data': []},
+              ),
+            );
+            return;
+          }
           handler.resolve(
             Response(
               requestOptions: options,
               statusCode: 200,
-              data: {'success': true, 'message': 'OK', 'data': []},
+              data: {
+                'success': true,
+                'message': 'OK',
+                'data': {
+                  'answer': 'Jawaban',
+                  'matched': false,
+                  'mode': 'default_extractive',
+                  'provider': 'default',
+                  'source': null,
+                  'conversation_id': 'conv-2',
+                },
+              },
             ),
           );
-          return;
-        }
-        handler.resolve(
-          Response(
-            requestOptions: options,
-            statusCode: 200,
-            data: {
-              'success': true,
-              'message': 'OK',
-              'data': {
-                'answer': 'Jawaban',
-                'matched': false,
-                'mode': 'default_extractive',
-                'provider': 'default',
-                'source': null,
-                'conversation_id': 'conv-2',
-              },
-            },
-          ),
-        );
-      }),
-      const DioErrorMapper(),
-    );
-    final controller = ChatbotController(repository);
+        }),
+        const DioErrorMapper(),
+      );
+      final controller = ChatbotController(repository);
 
-    await controller.send('Halo');
-    expect(controller.state.activeConversationId, 'conv-2');
-    expect(controller.state.messages, isNotEmpty);
+      await controller.send('Halo');
+      expect(controller.state.activeConversationId, 'conv-2');
+      expect(controller.state.messages, isNotEmpty);
 
-    controller.startNewSession();
+      controller.startNewSession();
 
-    expect(controller.state.activeConversationId, isNull);
-    expect(controller.state.messages, isEmpty);
-    controller.dispose();
-  });
+      expect(controller.state.activeConversationId, isNull);
+      expect(controller.state.messages, isEmpty);
+      controller.dispose();
+    },
+  );
 
   test('repository maps validation error', () async {
     final repository = ChatbotRepository(

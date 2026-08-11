@@ -3,10 +3,7 @@ import 'dart:typed_data';
 import 'package:emi_mobile/features/speaking/data/hardware_packet_parser.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Uint8List _packet({
-  int type = 1,
-  Uint8List? payload,
-}) {
+Uint8List _packet({int type = 1, Uint8List? payload}) {
   return encodeHardwarePacket(type, payload ?? Uint8List.fromList([1, 2]));
 }
 
@@ -21,10 +18,7 @@ void main() {
       final parser = HardwarePacketParser();
       expect(parser.push(Uint8List.fromList([0xaa])), isEmpty);
       final full = _packet();
-      expect(
-        parser.push(Uint8List.sublistView(full, 1)),
-        hasLength(1),
-      );
+      expect(parser.push(Uint8List.sublistView(full, 1)), hasLength(1));
     });
 
     test('keeps fragmented payload across pushes', () {
@@ -82,23 +76,18 @@ void main() {
 
     test('parses sequential PCM-like packets independently', () {
       final parser = HardwarePacketParser();
-      final first = parser.push(
-        _packet(payload: Uint8List.fromList([1])),
-      );
-      final second = parser.push(
-        _packet(payload: Uint8List.fromList([2])),
-      );
+      final first = parser.push(_packet(payload: Uint8List.fromList([1])));
+      final second = parser.push(_packet(payload: Uint8List.fromList([2])));
       expect(first.single.payload, Uint8List.fromList([1]));
       expect(second.single.payload, Uint8List.fromList([2]));
     });
 
     test('bounds internal buffer growth against a noise flood', () {
       final parser = HardwarePacketParser();
-      parser.push(Uint8List(kHardwareMaxBufferBytes + 100)..fillRange(
-        0,
-        kHardwareMaxBufferBytes + 100,
-        0xaa,
-      ));
+      parser.push(
+        Uint8List(kHardwareMaxBufferBytes + 100)
+          ..fillRange(0, kHardwareMaxBufferBytes + 100, 0xaa),
+      );
       expect(parser.bufferedBytes, lessThanOrEqualTo(kHardwareMaxBufferBytes));
     });
 
@@ -113,10 +102,7 @@ void main() {
 
   group('encodeHardwarePacket', () {
     test('rejects unknown packet types', () {
-      expect(
-        () => encodeHardwarePacket(7, Uint8List(0)),
-        throwsArgumentError,
-      );
+      expect(() => encodeHardwarePacket(7, Uint8List(0)), throwsArgumentError);
     });
 
     test('rejects payloads above the maximum size', () {
@@ -132,10 +118,7 @@ void main() {
     test('round-trips through the parser', () {
       final parser = HardwarePacketParser();
       final payload = Uint8List.fromList([10, 20, 30]);
-      final encoded = encodeHardwarePacket(
-        kHardwareControlPacketType,
-        payload,
-      );
+      final encoded = encodeHardwarePacket(kHardwareControlPacketType, payload);
       final packets = parser.push(encoded);
       expect(packets.single.type, kHardwareControlPacketType);
       expect(packets.single.payload, payload);

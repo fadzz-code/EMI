@@ -86,120 +86,172 @@ class EmiScaffold extends ConsumerWidget {
   }
 }
 
-class _StudentDrawer extends StatelessWidget {
+class _StudentDrawer extends ConsumerStatefulWidget {
   const _StudentDrawer({required this.user, required this.location});
 
   final SessionUser? user;
   final String location;
 
   @override
+  ConsumerState<_StudentDrawer> createState() => _StudentDrawerState();
+}
+
+class _StudentDrawerState extends ConsumerState<_StudentDrawer> {
+  bool _logoutPending = false;
+
+  Future<void> _logout() async {
+    if (_logoutPending) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Keluar dari akun?'),
+        content: const Text('Anda perlu masuk kembali untuk menggunakan EMI.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            key: const Key('studentLogoutConfirmButton'),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted || _logoutPending) return;
+    setState(() => _logoutPending = true);
+    Navigator.of(context).pop();
+    await ref.read(authControllerProvider.notifier).logout();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Drawer(
       backgroundColor: StudentStyle.pageBackground,
       child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: EmiSpacing.sm,
-            vertical: EmiSpacing.md,
-          ),
+        child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.all(EmiSpacing.md),
-              decoration: BoxDecoration(
-                color: StudentStyle.surface,
-                borderRadius: BorderRadius.circular(StudentStyle.cardRadius),
-                boxShadow: StudentStyle.softShadow(),
-              ),
-              child: Row(
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: EmiSpacing.sm,
+                  vertical: EmiSpacing.md,
+                ),
                 children: [
-                  _DrawerAvatar(user: user),
-                  const SizedBox(width: EmiSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  Container(
+                    padding: const EdgeInsets.all(EmiSpacing.md),
+                    decoration: BoxDecoration(
+                      color: StudentStyle.surface,
+                      borderRadius: BorderRadius.circular(
+                        StudentStyle.cardRadius,
+                      ),
+                      boxShadow: StudentStyle.softShadow(),
+                    ),
+                    child: Row(
                       children: [
-                        Text(
-                          user?.fullName ?? 'Siswa EMI',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(color: StudentStyle.ink),
-                        ),
-                        Text(
-                          'Ruang Siswa',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: EmiColors.primary),
-                        ),
-                        if (user?.email != null)
-                          Text(
-                            user!.email,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: StudentStyle.inkMuted),
+                        _DrawerAvatar(user: widget.user),
+                        const SizedBox(width: EmiSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.user?.fullName ?? 'Siswa EMI',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(color: StudentStyle.ink),
+                              ),
+                              Text(
+                                'Ruang Siswa',
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(color: EmiColors.primary),
+                              ),
+                              if (widget.user?.email != null)
+                                Text(
+                                  widget.user!.email,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(color: StudentStyle.inkMuted),
+                                ),
+                            ],
                           ),
+                        ),
                       ],
                     ),
+                  ),
+                  const SizedBox(height: EmiSpacing.md),
+                  _DrawerItem(
+                    label: 'Beranda',
+                    icon: Icons.home_outlined,
+                    route: '/student/dashboard',
+                    selected: widget.location == '/student/dashboard',
+                  ),
+                  _DrawerItem(
+                    label: 'Modul Belajar',
+                    icon: Icons.menu_book_outlined,
+                    route: '/student/modules',
+                    selected:
+                        widget.location.startsWith('/student/modules') ||
+                        widget.location.startsWith('/student/lessons'),
+                  ),
+                  _DrawerItem(
+                    label: 'Kamus',
+                    icon: Icons.translate_outlined,
+                    route: '/student/dictionary',
+                    selected: widget.location.startsWith('/student/dictionary'),
+                  ),
+                  _DrawerItem(
+                    label: 'Latihan Speaking',
+                    icon: Icons.mic_none_outlined,
+                    route: '/student/speaking',
+                    selected: widget.location.startsWith('/student/speaking'),
+                  ),
+                  _DrawerItem(
+                    label: 'Kuis',
+                    icon: Icons.quiz_outlined,
+                    route: '/student/quizzes',
+                    selected: widget.location.startsWith('/student/quizzes'),
+                  ),
+                  _DrawerItem(
+                    label: 'Budaya Mekongga',
+                    icon: Icons.public_outlined,
+                    route: '/student/culture',
+                    selected: widget.location.startsWith('/student/culture'),
+                  ),
+                  _DrawerItem(
+                    label: 'Chatbot AI',
+                    icon: Icons.auto_awesome_outlined,
+                    route: '/student/chatbot',
+                    selected: widget.location == '/student/chatbot',
+                  ),
+                  _DrawerItem(
+                    label: 'Progres Belajar',
+                    icon: Icons.trending_up_outlined,
+                    route: '/student/progress',
+                    selected: widget.location == '/student/progress',
+                  ),
+                  _DrawerItem(
+                    label: 'Profil',
+                    icon: Icons.person_outline,
+                    route: '/student/profile',
+                    selected: widget.location.startsWith('/student/profile'),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: EmiSpacing.md),
-            _DrawerItem(
-              label: 'Beranda',
-              icon: Icons.home_outlined,
-              route: '/student/dashboard',
-              selected: location == '/student/dashboard',
-            ),
-            _DrawerItem(
-              label: 'Modul Belajar',
-              icon: Icons.menu_book_outlined,
-              route: '/student/modules',
-              selected:
-                  location.startsWith('/student/modules') ||
-                  location.startsWith('/student/lessons'),
-            ),
-            _DrawerItem(
-              label: 'Kamus',
-              icon: Icons.translate_outlined,
-              route: '/student/dictionary',
-              selected: location.startsWith('/student/dictionary'),
-            ),
-            _DrawerItem(
-              label: 'Latihan Speaking',
-              icon: Icons.mic_none_outlined,
-              route: '/student/speaking',
-              selected: location.startsWith('/student/speaking'),
-            ),
-            _DrawerItem(
-              label: 'Kuis',
-              icon: Icons.quiz_outlined,
-              route: '/student/quizzes',
-              selected: location.startsWith('/student/quizzes'),
-            ),
-            _DrawerItem(
-              label: 'Budaya Mekongga',
-              icon: Icons.public_outlined,
-              route: '/student/culture',
-              selected: location.startsWith('/student/culture'),
-            ),
-            _DrawerItem(
-              label: 'Chatbot AI',
-              icon: Icons.auto_awesome_outlined,
-              route: '/student/chatbot',
-              selected: location == '/student/chatbot',
-            ),
-            _DrawerItem(
-              label: 'Progres Belajar',
-              icon: Icons.trending_up_outlined,
-              route: '/student/progress',
-              selected: location == '/student/progress',
-            ),
-            _DrawerItem(
-              label: 'Profil',
-              icon: Icons.person_outline,
-              route: '/student/profile',
-              selected: location.startsWith('/student/profile'),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.all(EmiSpacing.sm),
+              child: ListTile(
+                key: const Key('studentLogoutButton'),
+                leading: const Icon(Icons.logout_rounded),
+                title: const Text('Keluar'),
+                enabled: !_logoutPending,
+                onTap: _logout,
+              ),
             ),
           ],
         ),

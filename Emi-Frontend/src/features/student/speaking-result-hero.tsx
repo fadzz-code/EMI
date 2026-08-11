@@ -176,7 +176,7 @@ export function ComparePlayer({ src, label, icon: Icon, onError }: { src?: strin
   };
 
   return (
-    <div className={cn("flex items-center gap-4 rounded-xl border-2 border-border bg-surface p-4 shadow-[2px_2px_0_var(--border)]", isPlaying && "wave-playing")}>
+    <div className={cn("grid min-w-0 max-w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-xl border-2 border-border bg-surface p-3 shadow-[2px_2px_0_var(--border)] sm:grid-cols-[auto_auto_minmax(0,1fr)] sm:gap-4 sm:p-4", isPlaying && "wave-playing")}>
       <audio
         className="hidden"
         onEnded={() => setIsPlaying(false)}
@@ -195,14 +195,14 @@ export function ComparePlayer({ src, label, icon: Icon, onError }: { src?: strin
       >
         {isPlaying ? <Pause className="size-5" strokeWidth={3} /> : <Play className="ml-0.5 size-5" strokeWidth={3} />}
       </button>
-      <div className="min-w-0 shrink-0">
-        <p className="flex items-center gap-1.5 text-sm font-black text-ink"><Icon className="size-4 text-primary" strokeWidth={3} />{label}</p>
+      <div className="min-w-0">
+        <p className="flex min-w-0 items-center gap-1.5 text-sm font-black text-ink"><Icon className="size-4 shrink-0 text-primary" strokeWidth={3} /><span className="truncate">{label}</span></p>
         <p className="mt-0.5 text-xs font-bold text-muted">{formatDuration(duration)}</p>
       </div>
-      <div aria-hidden="true" className="flex h-9 min-w-0 flex-1 items-center justify-end gap-[3px]">
+      <div aria-hidden="true" className="col-span-2 flex h-9 min-w-0 max-w-full items-center justify-center gap-[clamp(1px,0.6vw,3px)] overflow-hidden sm:col-span-1 sm:justify-end">
         {bars.map((height, index) => (
           <span
-            className={cn("wave-bar w-1 shrink-0 rounded-full", isPlaying ? "bg-primary" : "bg-primary/35")}
+            className={cn("wave-bar min-w-px max-w-1 flex-1 rounded-full", isPlaying ? "bg-primary" : "bg-primary/35")}
             key={index}
             style={{ height: `${height}px`, animationDelay: `${index * 60}ms` }}
           />

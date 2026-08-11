@@ -31,6 +31,16 @@ class PreviewDictionaryImportRequest extends ApiFormRequest
             }
 
             $extension = mb_strtolower($file->getClientOriginalExtension());
+            $maxKilobytes = match ($extension) {
+                'csv' => (int) config('dictionary.max_csv_kb'),
+                'xlsx' => (int) config('dictionary.max_xlsx_kb'),
+                default => null,
+            };
+
+            if ($maxKilobytes !== null && $file->getSize() > $maxKilobytes * 1024) {
+                $validator->errors()->add('csv_file', "Ukuran file {$extension} maksimal {$maxKilobytes} KB.");
+            }
+
             $importType = $this->input('import_type');
 
             if (($extension === 'xlsx' && $importType !== null && $importType !== 'combined') || ($extension === 'csv' && $importType === 'combined')) {

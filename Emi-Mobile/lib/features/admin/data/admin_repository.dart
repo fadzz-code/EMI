@@ -4,13 +4,17 @@ import '../../../core/errors/app_error.dart';
 import '../../../core/errors/dio_error_mapper.dart';
 
 class AdminSummary {
-  const AdminSummary({required this.items});
+  const AdminSummary({required this.items, this.generatedAt});
 
   final List<AdminMetric> items;
+  final DateTime? generatedAt;
 
   factory AdminSummary.fromJson(Map<String, dynamic> json) {
     final overview = _map(json['overview']);
+    final learning = _map(json['learning']);
+    final quizzes = _map(json['quizzes']);
     return AdminSummary(
+      generatedAt: DateTime.tryParse(json['generated_at']?.toString() ?? ''),
       items: [
         AdminMetric(
           label: 'Pendaftaran yang Perlu Diperiksa',
@@ -32,12 +36,29 @@ class AdminSummary {
           iconName: 'class',
         ),
         AdminMetric(
-          label: 'Jumlah Pengguna',
-          value: _number(
-            _sum(overview['active_teachers'], overview['active_students']),
-          ),
-          helper: 'Guru dan Siswa.',
-          iconName: 'users',
+          label: 'Guru Aktif',
+          value: _number(overview['active_teachers']),
+          iconName: 'teacher',
+        ),
+        AdminMetric(
+          label: 'Siswa Aktif',
+          value: _number(overview['active_students']),
+          iconName: 'student',
+        ),
+        AdminMetric(
+          label: 'Percobaan Kuis Terkirim',
+          value: _number(quizzes['submitted_attempts']),
+          iconName: 'quiz',
+        ),
+        AdminMetric(
+          label: 'Rata-rata Progres Belajar',
+          value: _percent(learning['average_learning_progress_percent']),
+          iconName: 'progress',
+        ),
+        AdminMetric(
+          label: 'Partisipasi Kuis',
+          value: _percent(quizzes['participation_rate_percent']),
+          iconName: 'participation',
         ),
       ],
     );
@@ -48,12 +69,7 @@ Map<String, dynamic> _map(Object? value) =>
     value is Map<String, dynamic> ? value : const <String, dynamic>{};
 
 String _number(Object? value) => value is num ? value.toString() : '0';
-
-int _sum(Object? first, Object? second) {
-  final a = first is num ? first.toInt() : 0;
-  final b = second is num ? second.toInt() : 0;
-  return a + b;
-}
+String _percent(Object? value) => value is num ? '${value.toString()}%' : '0%';
 
 class AdminMetric {
   const AdminMetric({

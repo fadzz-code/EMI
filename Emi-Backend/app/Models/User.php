@@ -37,6 +37,8 @@ class User extends Authenticatable
         'approved_at',
         'rejected_reason',
         'last_login_at',
+        'privacy_policy_accepted_at',
+        'privacy_policy_version',
     ];
 
     /**
@@ -62,6 +64,7 @@ class User extends Authenticatable
             'password_must_change' => 'boolean',
             'approved_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'privacy_policy_accepted_at' => 'datetime',
         ];
     }
 

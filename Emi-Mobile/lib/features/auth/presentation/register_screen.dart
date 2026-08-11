@@ -36,6 +36,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   String? _classId;
   AppError? _error;
   var _loadingOptions = true;
+  var _privacyPolicyAccepted = false;
 
   @override
   void initState() {
@@ -198,6 +199,65 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                   ? null
                                   : (value) => setState(() => _classId = value),
                             ),
+                            const SizedBox(height: EmiSpacing.md),
+                            FormField<bool>(
+                              initialValue: _privacyPolicyAccepted,
+                              validator: (_) => _privacyPolicyAccepted
+                                  ? null
+                                  : 'Persetujuan kebijakan privasi wajib diberikan.',
+                              builder: (field) => Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  CheckboxListTile(
+                                    key: const Key('privacyPolicyCheckbox'),
+                                    contentPadding: EdgeInsets.zero,
+                                    controlAffinity:
+                                        ListTileControlAffinity.leading,
+                                    value: _privacyPolicyAccepted,
+                                    onChanged: auth.isLoading
+                                        ? null
+                                        : (value) {
+                                            setState(
+                                              () => _privacyPolicyAccepted =
+                                                  value ?? false,
+                                            );
+                                            field.didChange(value);
+                                          },
+                                    title: Wrap(
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      children: [
+                                        const Text('Saya menyetujui '),
+                                        TextButton(
+                                          key: const Key(
+                                            'registrationPrivacyPolicyLink',
+                                          ),
+                                          onPressed: () =>
+                                              openPrivacyPolicy(context),
+                                          child: const Text(
+                                            'Kebijakan Privasi',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (field.hasError)
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: EmiSpacing.md,
+                                      ),
+                                      child: Text(
+                                        field.errorText!,
+                                        style: TextStyle(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.error,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
                             const SizedBox(height: EmiSpacing.lg),
                             ElevatedButton(
                               onPressed: auth.isLoading || _loadingOptions
@@ -305,8 +365,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final accepted = await _confirmPrivacyPolicy();
-    if (accepted != true || !mounted) return;
     setState(() => _error = null);
     try {
       await ref
@@ -320,6 +378,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               requestedRole: _role,
               schoolId: _schoolId!,
               classId: _classId!,
+              privacyPolicyAccepted: _privacyPolicyAccepted,
+              privacyPolicyVersion: kPrivacyPolicyVersion,
             ),
           );
       if (mounted) context.go('/account-status');
@@ -328,31 +388,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       setState(() => _error = ref.read(authControllerProvider).error);
     }
   }
-
-  Future<bool?> _confirmPrivacyPolicy() => showDialog<bool>(
-    context: context,
-    barrierDismissible: false,
-    builder: (dialogContext) => AlertDialog(
-      title: const Text('Kebijakan Privasi'),
-      content: const Text(
-        'EMI mengumpulkan nama, email, sekolah, kelas, data penggunaan, dan hasil belajar untuk membuat akun, memverifikasi pengguna, menjalankan fitur pembelajaran, serta meningkatkan keamanan layanan.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => openPrivacyPolicy(context),
-          child: const Text('Baca Kebijakan'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext, false),
-          child: const Text('Tidak Setuju'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(dialogContext, true),
-          child: const Text('Saya Setuju'),
-        ),
-      ],
-    ),
-  );
 
   bool _validEmail(String value) {
     return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim());

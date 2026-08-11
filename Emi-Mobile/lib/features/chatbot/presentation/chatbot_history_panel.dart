@@ -84,8 +84,9 @@ class _ChatbotHistoryPanelState extends ConsumerState<ChatbotHistoryPanel> {
                   Expanded(
                     child: Text(
                       'Riwayat Percakapan',
-                      style: Theme.of(context).textTheme.titleMedium
-                          ?.copyWith(color: palette.ink),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleMedium?.copyWith(color: palette.ink),
                     ),
                   ),
                   IconButton(

@@ -377,14 +377,21 @@ class _TeacherQuizDetailScreenState
                 trailing: Wrap(
                   spacing: EmiSpacing.xs,
                   children: [
-                    if (quiz.questions.length > 1 && (quiz.status == 'draft' || quiz.status == 'archived'))
+                    if (quiz.questions.length > 1 &&
+                        (quiz.status == 'draft' || quiz.status == 'archived'))
                       IconButton(
                         tooltip: 'Ubah Urutan Soal',
-                        onPressed: () => _showReorderQuestionsDialog(context, ref, quiz.id, quiz.questions),
+                        onPressed: () => _showReorderQuestionsDialog(
+                          context,
+                          ref,
+                          quiz.id,
+                          quiz.questions,
+                        ),
                         icon: const Icon(Icons.swap_vert),
                       ),
                     FilledButton.icon(
-                      onPressed: quiz.status == 'draft' || quiz.status == 'archived'
+                      onPressed:
+                          quiz.status == 'draft' || quiz.status == 'archived'
                           ? () => context.push(
                               '/teacher/quizzes/${widget.id}/questions/create',
                             )
@@ -1300,11 +1307,12 @@ class _TeacherQuizResultsScreenState
 
   Future<void> _exportCsv() async {
     try {
-      final bytes = await ref.read(teacherQuizRepositoryProvider).reportCsv(
-        quizId: widget.quizId,
-        status: status,
+      final bytes = await ref
+          .read(teacherQuizRepositoryProvider)
+          .reportCsv(quizId: widget.quizId, status: status);
+      final file = File(
+        '${(await getTemporaryDirectory()).path}/hasil-kuis.csv',
       );
-      final file = File('${(await getTemporaryDirectory()).path}/hasil-kuis.csv');
       await file.writeAsBytes(bytes, flush: true);
       await SharePlus.instance.share(
         ShareParams(files: [XFile(file.path)], subject: 'Hasil Kuis CSV'),
@@ -1324,14 +1332,21 @@ class _TeacherQuizResultsScreenState
     final attempts = ref.watch(teacherQuizAttemptsProvider(filter));
     final reportFilter = (page: page, quizId: widget.quizId, status: status);
     final report = ref.watch(teacherQuizReportProvider(reportFilter));
-    final classQuizReport = ref.watch(teacherClassQuizReportProvider(widget.quizId));
+    final classQuizReport = ref.watch(
+      teacherClassQuizReportProvider(widget.quizId),
+    );
     return TeacherShell(
       title: 'Hasil Kuis',
       fallbackRoute: '/teacher/quizzes/${widget.quizId}',
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(EmiSpacing.md, EmiSpacing.md, EmiSpacing.md, 0),
+            padding: const EdgeInsets.fromLTRB(
+              EmiSpacing.md,
+              EmiSpacing.md,
+              EmiSpacing.md,
+              0,
+            ),
             child: Align(
               alignment: Alignment.centerLeft,
               child: OutlinedButton.icon(
@@ -1345,18 +1360,27 @@ class _TeacherQuizResultsScreenState
             loading: () => const SizedBox.shrink(),
             error: (_, _) => const SizedBox.shrink(),
             data: (summary) => Padding(
-              padding: const EdgeInsets.fromLTRB(EmiSpacing.md, EmiSpacing.sm, EmiSpacing.md, 0),
+              padding: const EdgeInsets.fromLTRB(
+                EmiSpacing.md,
+                EmiSpacing.sm,
+                EmiSpacing.md,
+                0,
+              ),
               child: TeacherListCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.analytics_outlined, color: EmiColors.primary),
+                        const Icon(
+                          Icons.analytics_outlined,
+                          color: EmiColors.primary,
+                        ),
                         const SizedBox(width: EmiSpacing.xs),
                         Text(
                           'Statistik Kuis Kelas',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: TeacherStyle.ink,
                               ),
@@ -1368,11 +1392,27 @@ class _TeacherQuizResultsScreenState
                       spacing: EmiSpacing.md,
                       runSpacing: EmiSpacing.xs,
                       children: [
-                        Text('Siswa: ${summary.studentCount}', style: const TextStyle(fontSize: 12)),
-                        Text('Total Attempt: ${summary.attemptsCount}', style: const TextStyle(fontSize: 12)),
-                        Text('Selesai: ${summary.submittedCount}', style: const TextStyle(fontSize: 12)),
+                        Text(
+                          'Siswa: ${summary.studentCount}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        Text(
+                          'Total Attempt: ${summary.attemptsCount}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        Text(
+                          'Selesai: ${summary.submittedCount}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
                         if (summary.averageScorePercent != null)
-                          Text('Rata-rata: ${summary.averageScorePercent}%', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: EmiColors.primary)),
+                          Text(
+                            'Rata-rata: ${summary.averageScorePercent}%',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: EmiColors.primary,
+                            ),
+                          ),
                       ],
                     ),
                   ],
@@ -1698,12 +1738,14 @@ void _showReorderQuestionsDialog(
             children: [
               Text(
                 'Ubah Urutan Soal',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: EmiSpacing.xs),
-              const Text('Tahan dan geser item untuk mengubah nomor urut soal.'),
+              const Text(
+                'Tahan dan geser item untuk mengubah nomor urut soal.',
+              ),
               const SizedBox(height: EmiSpacing.md),
               SizedBox(
                 height: 320,
@@ -1744,7 +1786,9 @@ void _showReorderQuestionsDialog(
                     : () async {
                         setModalState(() => saving = true);
                         try {
-                          await ref.read(teacherQuizRepositoryProvider).reorderQuestions(
+                          await ref
+                              .read(teacherQuizRepositoryProvider)
+                              .reorderQuestions(
                                 quizId,
                                 ordered.map((e) => e.id).toList(),
                               );
@@ -1753,9 +1797,9 @@ void _showReorderQuestionsDialog(
                         } catch (e) {
                           setModalState(() => saving = false);
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(_error(e))),
-                            );
+                            ScaffoldMessenger.of(
+                              context,
+                            ).showSnackBar(SnackBar(content: Text(_error(e))));
                           }
                         }
                       },

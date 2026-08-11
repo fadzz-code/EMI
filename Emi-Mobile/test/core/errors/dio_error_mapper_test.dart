@@ -16,6 +16,17 @@ void main() {
     expect(error.type, AppErrorType.timeout);
   });
 
+  test('maps rate limit errors', () {
+    final error = mapper.map(
+      DioException(
+        requestOptions: RequestOptions(),
+        response: Response(requestOptions: RequestOptions(), statusCode: 429),
+      ),
+    );
+
+    expect(error.type, AppErrorType.rateLimited);
+  });
+
   test('maps validation errors', () {
     final error = mapper.map(
       DioException(
