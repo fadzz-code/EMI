@@ -84,6 +84,70 @@ void main() {
     );
   });
 
+  test('reference audio direct URL skips temporary URL', () async {
+    var temporaryCalls = 0;
+
+    final source = await resolveSpeakingAudioSource(
+      url: '/api/v1/public/media/media-1/content',
+      mediaId: 'media-1',
+      resolveUrl: (url) =>
+          Uri.parse('https://example.test/api/v1').resolve(url).toString(),
+      temporaryUrl: (_) async {
+        temporaryCalls++;
+        return 'https://example.test/private.m4a';
+      },
+    );
+
+    expect(source, 'https://example.test/api/v1/public/media/media-1/content');
+    expect(temporaryCalls, 0);
+  });
+
+  test('reference audio without URL uses temporary URL', () async {
+    var temporaryCalls = 0;
+
+    final source = await resolveSpeakingAudioSource(
+      url: ' ',
+      mediaId: 'media-1',
+      resolveUrl: (url) => url,
+      temporaryUrl: (mediaId) async {
+        temporaryCalls++;
+        expect(mediaId, 'media-1');
+        return 'https://example.test/private.m4a';
+      },
+    );
+
+    expect(source, 'https://example.test/private.m4a');
+    expect(temporaryCalls, 1);
+  });
+
+  test('direct reference audio becomes ready before play', () async {
+    final calls = <String>[];
+
+    await loadSpeakingAudio(
+      source: 'https://example.test/audio.m4a',
+      setUrl: (source) async => calls.add('ready:$source'),
+      play: () async => calls.add('play'),
+    );
+
+    expect(calls, ['ready:https://example.test/audio.m4a', 'play']);
+  });
+
+  test('reference audio without source keeps unavailable error', () async {
+    expect(
+      resolveSpeakingAudioSource(
+        resolveUrl: (url) => url,
+        temporaryUrl: (_) async => '',
+      ),
+      throwsA(
+        isA<AppError>().having(
+          (error) => error.message,
+          'message',
+          'Audio tidak tersedia.',
+        ),
+      ),
+    );
+  });
+
   test('normalizes multipart filename mime and size validation', () {
     const file = SpeakingSubmissionFile(
       path: r'C:\tmp\take.m4a',

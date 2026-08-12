@@ -18,6 +18,29 @@ import 'speaking_recorder_controller.dart';
 
 enum SpeakingPollingStop { terminal, timeout, error }
 
+Future<String> resolveSpeakingAudioSource({
+  String? url,
+  String? mediaId,
+  required String Function(String) resolveUrl,
+  required Future<String> Function(String) temporaryUrl,
+}) async {
+  if (url != null && url.trim().isNotEmpty) return resolveUrl(url);
+  if (mediaId != null && mediaId.isNotEmpty) return temporaryUrl(mediaId);
+  throw const AppError(
+    type: AppErrorType.unknown,
+    message: 'Audio tidak tersedia.',
+  );
+}
+
+Future<void> loadSpeakingAudio({
+  required String source,
+  required Future<void> Function(String) setUrl,
+  required Future<void> Function() play,
+}) async {
+  await setUrl(source);
+  await play();
+}
+
 class SpeakingPollingController {
   SpeakingPollingController({
     required this.fetch,
@@ -805,18 +828,24 @@ class _AudioBoxState extends State<_AudioBox> {
       } else {
         await widget.beforePlay();
         final source = widget.local ? widget.url! : await _playbackUrl();
+        var started = false;
         if (_loadedSource != source) {
           if (widget.local) {
             await widget.player.setFilePath(source);
           } else {
-            await widget.player.setUrl(source);
+            await loadSpeakingAudio(
+              source: source,
+              setUrl: widget.player.setUrl,
+              play: widget.player.play,
+            );
+            started = true;
           }
           _loadedSource = source;
         }
         if (widget.player.processingState == ProcessingState.completed) {
           await widget.player.seek(Duration.zero);
         }
-        await widget.player.play();
+        if (!started) await widget.player.play();
       }
     } catch (_) {
       if (mounted) setState(() => _error = 'Audio gagal diputar.');
@@ -825,17 +854,18 @@ class _AudioBoxState extends State<_AudioBox> {
     }
   }
 
-  Future<String> _playbackUrl() async {
-    final mediaId = widget.mediaId;
+  Future<String> _playbackUrl() {
     final repository = widget.repository;
-    if (mediaId != null && mediaId.isNotEmpty && repository != null) {
-      return repository.temporaryMediaUrl(mediaId);
-    }
-    final url = widget.url;
-    if (url != null && url.isNotEmpty) return url;
-    throw const AppError(
-      type: AppErrorType.unknown,
-      message: 'Audio tidak tersedia.',
+    return resolveSpeakingAudioSource(
+      url: widget.url,
+      mediaId: widget.mediaId,
+      resolveUrl: repository?.resolveMediaUrl ?? (url) => url.trim(),
+      temporaryUrl:
+          repository?.temporaryMediaUrl ??
+          (_) => throw const AppError(
+            type: AppErrorType.unknown,
+            message: 'Audio tidak tersedia.',
+          ),
     );
   }
 }

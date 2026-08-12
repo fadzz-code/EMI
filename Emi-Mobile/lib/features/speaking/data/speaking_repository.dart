@@ -60,6 +60,13 @@ class SpeakingRepository {
     }
   }
 
+  String resolveMediaUrl(String url) {
+    final value = url.trim();
+    final uri = Uri.tryParse(value);
+    if (uri == null) return value;
+    return Uri.parse(_dio.options.baseUrl).resolveUri(uri).toString();
+  }
+
   Future<String> temporaryMediaUrl(String mediaId) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
