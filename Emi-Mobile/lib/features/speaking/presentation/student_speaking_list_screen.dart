@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../../../app/theme/emi_theme.dart';
+import '../../../core/errors/app_error.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
 import '../../../shared/widgets/student_style.dart';
 import '../../../shared/widgets/student_widgets.dart';
@@ -89,6 +90,7 @@ class _StudentSpeakingListScreenState
                         ? page.items.skip(1).toList()
                         : page.items,
                     onOpen: (attemptId) => _showAttempt(context, attemptId),
+                    onDeleteExercise: _deleteExerciseHistory,
                   ),
                   if (page.lastPage > 1) ...[
                     const SizedBox(height: EmiSpacing.sm),
@@ -110,6 +112,43 @@ class _StudentSpeakingListScreenState
         ),
       ),
     );
+  }
+
+  Future<void> _deleteExerciseHistory(SpeakingAttempt attempt) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Riwayat Latihan?'),
+        content: const Text(
+          'Semua percobaan yang belum dikumpulkan untuk latihan ini akan dihapus.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref
+          .read(speakingRepositoryProvider)
+          .deleteExerciseAttempts(attempt.exerciseId);
+      ref.invalidate(speakingAttemptsProvider);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_mutationError(error, 'Riwayat belum bisa dihapus.')),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _showAttempt(BuildContext context, String attemptId) async {
@@ -314,10 +353,15 @@ class _LatestResultHero extends StatelessWidget {
 }
 
 class _AttemptList extends StatelessWidget {
-  const _AttemptList({required this.items, required this.onOpen});
+  const _AttemptList({
+    required this.items,
+    required this.onOpen,
+    required this.onDeleteExercise,
+  });
 
   final List<SpeakingAttempt> items;
   final ValueChanged<String> onOpen;
+  final ValueChanged<SpeakingAttempt> onDeleteExercise;
 
   @override
   Widget build(BuildContext context) {
@@ -354,8 +398,23 @@ class _AttemptList extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (item.aiScore != null)
-                  StudentStatusChip(label: '${item.aiScore}', status: 'done'),
+                if (item.isReviewed)
+                  const StudentStatusChip(
+                    label: 'Sudah dinilai',
+                    status: 'done',
+                  )
+                else if (item.isSubmitted)
+                  const StudentStatusChip(label: 'Dikumpulkan', status: 'done')
+                else
+                  PopupMenuButton<String>(
+                    onSelected: (_) => onDeleteExercise(item),
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Text('Hapus riwayat latihan'),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ),
@@ -377,9 +436,11 @@ class _AttemptDetail extends ConsumerStatefulWidget {
 class _AttemptDetailState extends ConsumerState<_AttemptDetail> {
   final _player = AudioPlayer();
   var _loading = false;
+  var _mutating = false;
+  SpeakingAttempt? _updatedAttempt;
   String? _audioError;
 
-  SpeakingAttempt get attempt => widget.attempt;
+  SpeakingAttempt get attempt => _updatedAttempt ?? widget.attempt;
 
   @override
   void dispose() {
@@ -457,6 +518,13 @@ class _AttemptDetailState extends ConsumerState<_AttemptDetail> {
                   _row(context, 'Nilai guru', '${attempt.teacherScore}'),
                 if (attempt.teacherFeedback != null)
                   _row(context, 'Feedback guru', attempt.teacherFeedback!),
+                if (attempt.isReviewed)
+                  const StudentStatusChip(
+                    label: 'Sudah dinilai',
+                    status: 'done',
+                  )
+                else if (attempt.isSubmitted)
+                  const StudentStatusChip(label: 'Dikumpulkan', status: 'done'),
                 if (attempt.audioUrl != null || attempt.audioMediaId != null)
                   StreamBuilder<PlayerState>(
                     stream: _player.playerStateStream,
@@ -494,12 +562,107 @@ class _AttemptDetailState extends ConsumerState<_AttemptDetail> {
                       );
                     },
                   ),
+                if (attempt.canSubmit || attempt.canDelete) ...[
+                  const SizedBox(height: EmiSpacing.sm),
+                  Wrap(
+                    spacing: EmiSpacing.sm,
+                    children: [
+                      if (attempt.canSubmit)
+                        FilledButton(
+                          onPressed: _mutating ? null : _submit,
+                          child: const Text('Kumpulkan'),
+                        ),
+                      if (attempt.canDelete)
+                        OutlinedButton(
+                          onPressed: _mutating ? null : _delete,
+                          child: const Text('Hapus'),
+                        ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Future<bool> _confirm(String title, String message, String action) async =>
+      await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(action),
+            ),
+          ],
+        ),
+      ) ??
+      false;
+
+  Future<void> _submit() async {
+    if (!await _confirm(
+      'Kumpulkan Rekaman?',
+      'Rekaman yang dikumpulkan akan dilindungi dan dapat dinilai guru.',
+      'Kumpulkan',
+    )) {
+      return;
+    }
+    setState(() => _mutating = true);
+    try {
+      _updatedAttempt = await ref
+          .read(speakingRepositoryProvider)
+          .submitCompletedAttempt(attempt.id);
+      ref.invalidate(speakingAttemptsProvider);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _mutationError(error, 'Rekaman belum bisa dikumpulkan.'),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _mutating = false);
+    }
+  }
+
+  Future<void> _delete() async {
+    if (!await _confirm(
+      'Hapus Percobaan?',
+      'Percobaan ini akan dihapus permanen.',
+      'Hapus',
+    )) {
+      return;
+    }
+    setState(() => _mutating = true);
+    try {
+      await ref.read(speakingRepositoryProvider).deleteAttempt(attempt.id);
+      ref.invalidate(speakingAttemptsProvider);
+      if (mounted) Navigator.pop(context);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _mutationError(error, 'Percobaan belum bisa dihapus.'),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _mutating = false);
+    }
   }
 
   String _alignmentSummary(Object alignment) {
@@ -530,12 +693,19 @@ class _AttemptDetailState extends ConsumerState<_AttemptDetail> {
         await _player.pause();
       } else {
         if (_player.audioSource == null) {
-          final directUrl = attempt.audioUrl;
-          final url = directUrl != null && directUrl.isNotEmpty
-              ? directUrl
-              : await ref
-                    .read(speakingRepositoryProvider)
-                    .temporaryMediaUrl(attempt.audioMediaId!);
+          final repository = ref.read(speakingRepositoryProvider);
+          final mediaId = attempt.audioMediaId;
+          final url = mediaId != null && mediaId.isNotEmpty
+              ? await repository.temporaryMediaUrl(mediaId)
+              : attempt.audioUrl != null && attempt.audioUrl!.isNotEmpty
+              ? repository.resolveMediaUrl(attempt.audioUrl!)
+              : null;
+          if (url == null) {
+            throw const AppError(
+              type: AppErrorType.unknown,
+              message: 'Audio tidak tersedia.',
+            );
+          }
           await _player.setUrl(url);
         }
         if (_player.processingState == ProcessingState.completed) {
@@ -572,6 +742,9 @@ class _AttemptDetailState extends ConsumerState<_AttemptDetail> {
     );
   }
 }
+
+String _mutationError(Object error, String fallback) =>
+    error is AppError ? error.message : '$fallback Coba lagi.';
 
 class _ErrorCard extends StatelessWidget {
   const _ErrorCard({required this.onRetry});

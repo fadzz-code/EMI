@@ -37,6 +37,7 @@ class SpeakingAttempt extends Model
         'teacher_feedback',
         'reviewed_by_id',
         'reviewed_at',
+        'submitted_at',
     ];
 
     protected function casts(): array
@@ -49,6 +50,7 @@ class SpeakingAttempt extends Model
             'ai_alignment' => 'array',
             'ai_raw_response' => 'array',
             'reviewed_at' => 'datetime',
+            'submitted_at' => 'datetime',
             'deleted_at' => 'datetime',
         ];
     }

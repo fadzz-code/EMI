@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { get } = vi.hoisted(() => ({ get: vi.fn() }));
-vi.mock("@/lib/api-client", () => ({ apiClient: { get } }));
+const { get, remove } = vi.hoisted(() => ({ get: vi.fn(), remove: vi.fn() }));
+vi.mock("@/lib/api-client", () => ({ apiClient: { get, delete: remove } }));
 
 import { teacherService } from "./teacher-service";
 
 describe("teacher progress service", () => {
-  beforeEach(() => get.mockReset());
+  beforeEach(() => { get.mockReset(); remove.mockReset(); });
 
   it("loads canonical class aggregate with class scope", async () => {
     const data = { class: { id: "class-1", name: "Kelas 1" }, summary: { active_students: 0, average_module_progress_percent: 0, average_best_final_quiz_score_percent: null, last_activity_at: null, completed_students: 0, not_started_students: 0 } };
@@ -23,5 +23,11 @@ describe("teacher progress service", () => {
       token: "token",
       query: { page: 2, per_page: 100, search: "Nina", review_status: "pending" },
     });
+  });
+
+  it("deletes pending submitted speaking attempt", async () => {
+    remove.mockResolvedValue({});
+    await teacherService.deleteSpeakingAttempt("token", "attempt-1");
+    expect(remove).toHaveBeenCalledWith("/teacher/speaking/attempts/attempt-1", { token: "token" });
   });
 });

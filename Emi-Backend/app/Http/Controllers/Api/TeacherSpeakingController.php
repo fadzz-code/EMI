@@ -54,19 +54,22 @@ class TeacherSpeakingController extends Controller
         return ApiResponse::success('Detail percobaan speaking siswa berhasil diambil.', new SpeakingAttemptResource($attempt->load(['exercise.referenceAudio', 'student', 'reviewer'])));
     }
 
+    public function destroyAttempt(SpeakingAttempt $attempt): JsonResponse
+    {
+        $this->attemptService->deletePendingForTeacher(request()->user(), $attempt);
+
+        return ApiResponse::success('Kiriman speaking berhasil dihapus.');
+    }
+
     public function feedback(ReviewSpeakingAttemptRequest $request, SpeakingAttempt $attempt): JsonResponse
     {
-        abort_unless($this->attemptService->teacherCanAccess($request->user(), $attempt->load('exercise')), 403);
+        $attempt = $this->attemptService->review(
+            $request->user(),
+            $attempt,
+            $request->validated('teacher_score'),
+            $request->validated('teacher_feedback'),
+        );
 
-        $attempt->forceFill([
-            'teacher_score' => $request->validated('teacher_score'),
-            'teacher_feedback' => $request->validated('teacher_feedback'),
-            'reviewed_by_id' => $request->user()->id,
-            'reviewed_at' => now(),
-            'review_status' => 'reviewed',
-            'status' => 'reviewed',
-        ])->save();
-
-        return ApiResponse::success('Feedback speaking berhasil disimpan.', new SpeakingAttemptResource($attempt->refresh()->load(['exercise', 'student', 'reviewer'])));
+        return ApiResponse::success('Feedback speaking berhasil disimpan.', new SpeakingAttemptResource($attempt));
     }
 }

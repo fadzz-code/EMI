@@ -24,7 +24,7 @@ class StudentSpeakingController extends Controller
         $exercises = SpeakingExercise::query()
             ->with(['referenceAudio'])
             ->published()
-            ->where(fn ($query) => $query->whereNull('classroom_id')->orWhereIn('classroom_id', $classIds))
+            ->whereIn('classroom_id', $classIds)
             ->orderBy('created_at')
             ->get();
 
@@ -61,6 +61,30 @@ class StudentSpeakingController extends Controller
         return ApiResponse::success('Detail percobaan speaking berhasil diambil.', new SpeakingAttemptResource($attempt->load(['exercise', 'reviewer'])));
     }
 
+    public function submitAttempt(SpeakingAttempt $attempt): JsonResponse
+    {
+        $attempt = $this->attemptService->submit(request()->user(), $attempt);
+
+        return ApiResponse::success('Percobaan speaking berhasil dikirim.', new SpeakingAttemptResource($attempt));
+    }
+
+    public function destroyAttempt(SpeakingAttempt $attempt): JsonResponse
+    {
+        $this->attemptService->deleteForStudent(request()->user(), $attempt);
+
+        return ApiResponse::success('Percobaan speaking berhasil dihapus.');
+    }
+
+    public function destroyPrivateHistory(SpeakingExercise $exercise): JsonResponse
+    {
+        $count = $this->attemptService->deletePrivateHistory(request()->user(), $exercise);
+
+        return ApiResponse::success('Riwayat speaking privat untuk latihan berhasil dihapus.', [
+            'exercise_id' => $exercise->id,
+            'deleted_count' => $count,
+        ]);
+    }
+
     public function storeAttempt(StoreSpeakingAttemptRequest $request, SpeakingExercise $exercise): JsonResponse
     {
         abort_unless($this->attemptService->studentCanAccessExercise($request->user(), $exercise), 403);
@@ -74,6 +98,6 @@ class StudentSpeakingController extends Controller
             $request->validated('capture_source', 'web_microphone'),
         );
 
-        return ApiResponse::success('Percobaan speaking berhasil dikirim.', new SpeakingAttemptResource($attempt), 201);
+        return ApiResponse::success('Latihan speaking privat berhasil dibuat.', new SpeakingAttemptResource($attempt), 201);
     }
 }

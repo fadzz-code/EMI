@@ -660,6 +660,8 @@ class TeacherSpeakingAttempt {
     this.teacherFeedback,
     this.status,
     this.captureSource,
+    this.reviewStatus,
+    this.submittedAt,
     this.createdAt,
   });
   final String id, studentName, exerciseTitle;
@@ -670,11 +672,14 @@ class TeacherSpeakingAttempt {
       aiError,
       teacherFeedback,
       status,
-      captureSource;
+      captureSource,
+      reviewStatus;
   final SpeakingReferenceAudio? referenceAudio;
   final Object? aiAlignment;
   final double? aiScore, teacherScore;
-  final DateTime? createdAt;
+  final DateTime? submittedAt, createdAt;
+  bool get isReviewed => reviewStatus == 'reviewed' || teacherScore != null;
+  bool get canDelete => !isReviewed;
   factory TeacherSpeakingAttempt.fromJson(Map<String, dynamic> json) {
     final student = _map(json['student']);
     final exercise = _map(json['exercise']);
@@ -722,6 +727,10 @@ class TeacherSpeakingAttempt {
       teacherFeedback: _nullableString(json['teacher_feedback']),
       status: _nullableString(json['status']),
       captureSource: _nullableString(json['capture_source']),
+      reviewStatus: _nullableString(
+        json['review_status'] ?? _map(json['review'])['status'],
+      ),
+      submittedAt: DateTime.tryParse(_string(json['submitted_at'])),
       createdAt: DateTime.tryParse(
         _string(json['created_at'] ?? json['submitted_at']),
       ),
@@ -905,6 +914,14 @@ class TeacherRepository {
     (json) =>
         TeacherSpeakingAttempt.fromJson(_data(json, 'Detail hasil speaking')),
   );
+
+  Future<void> deleteSpeakingAttempt(String id) async {
+    try {
+      await _dio.delete<void>('/teacher/speaking/attempts/$id');
+    } catch (error) {
+      throw error is AppError ? error : _mapper.map(error);
+    }
+  }
 
   Future<TeacherSpeakingAttempt> saveSpeakingFeedback(
     String id, {

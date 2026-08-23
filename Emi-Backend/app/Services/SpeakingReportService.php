@@ -42,12 +42,13 @@ class SpeakingReportService
         return DB::table('speaking_attempts as sa')
             ->join('speaking_exercises as se', 'se.id', '=', 'sa.speaking_exercise_id')
             ->whereNull('sa.deleted_at')
+            ->whereNotNull('sa.submitted_at')
             ->when($filters['analysis_status'] ?? null, fn ($query, $status) => $query->where('sa.analysis_status', $status))
             ->when($filters['review_status'] ?? null, fn ($query, $status) => $query->where('sa.review_status', $status))
             ->when($filters['school_id'] ?? null, fn ($query, $id) => $query->whereIn('se.classroom_id', DB::table('classes')->where('school_id', $id)->select('id')))
             ->when($filters['class_id'] ?? null, fn ($query, $id) => $query->where('se.classroom_id', $id))
-            ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->where('sa.created_at', '>=', $date.' 00:00:00'))
-            ->when($filters['date_to'] ?? null, fn ($query, $date) => $query->where('sa.created_at', '<=', $date.' 23:59:59.999999'));
+            ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->where('sa.submitted_at', '>=', $date.' 00:00:00'))
+            ->when($filters['date_to'] ?? null, fn ($query, $date) => $query->where('sa.submitted_at', '<=', $date.' 23:59:59.999999'));
     }
 
     private function page($paginator): array

@@ -64,7 +64,11 @@ class SpeakingRepository {
     final value = url.trim();
     final uri = Uri.tryParse(value);
     if (uri == null) return value;
-    return Uri.parse(_dio.options.baseUrl).resolveUri(uri).toString();
+    final baseUri = Uri.parse(_dio.options.baseUrl);
+    if (uri.path.startsWith('/api/v1/')) {
+      return baseUri.replace(path: uri.path, query: uri.query).toString();
+    }
+    return baseUri.resolveUri(uri).toString();
   }
 
   Future<String> temporaryMediaUrl(String mediaId) async {
@@ -76,11 +80,40 @@ class SpeakingRepository {
       final data = response.data?['data'];
       if (data is Map<String, dynamic>) {
         final url = data['url'] ?? data['temporary_url'];
-        if (url is String && url.isNotEmpty) return url;
+        if (url is String && url.isNotEmpty) return resolveMediaUrl(url);
       }
       throw const AppError(
         type: AppErrorType.unknown,
         message: 'URL media tidak valid.',
+      );
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<SpeakingAttempt> submitCompletedAttempt(String id) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/student/speaking/attempts/$id/submit',
+      );
+      return _one(response.data, SpeakingAttempt.fromJson);
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<void> deleteAttempt(String id) async {
+    try {
+      await _dio.delete<void>('/student/speaking/attempts/$id');
+    } catch (error) {
+      throw _map(error);
+    }
+  }
+
+  Future<void> deleteExerciseAttempts(String exerciseId) async {
+    try {
+      await _dio.delete<void>(
+        '/student/speaking/exercises/$exerciseId/attempts/history',
       );
     } catch (error) {
       throw _map(error);

@@ -38,6 +38,7 @@ use App\Http\Controllers\Api\QuizTemplateApplyController;
 use App\Http\Controllers\Api\ReportExportController;
 use App\Http\Controllers\Api\SchoolClassController;
 use App\Http\Controllers\Api\SchoolController;
+use App\Http\Controllers\Api\SpeakingTemplateApplyController;
 use App\Http\Controllers\Api\StudentChatbotController;
 use App\Http\Controllers\Api\StudentChatbotConversationController;
 use App\Http\Controllers\Api\StudentCultureItemController;
@@ -107,6 +108,7 @@ Route::prefix('v1')->group(function () {
         Route::get('speaking/exercises/{exercise}', [AdminSpeakingExerciseController::class, 'show']);
         Route::match(['put', 'patch'], 'speaking/exercises/{exercise}', [AdminSpeakingExerciseController::class, 'update']);
         Route::patch('speaking/exercises/{exercise}/archive', [AdminSpeakingExerciseController::class, 'archive']);
+        Route::post('speaking/exercises/{id}/apply', SpeakingTemplateApplyController::class);
 
         Route::get('dashboard/summary', [AdminDashboardController::class, 'summary']);
         Route::get('reports/progress/overview', [AdminProgressReportController::class, 'overview']);
@@ -302,7 +304,10 @@ Route::prefix('v1')->group(function () {
         Route::get('speaking/exercises', [StudentSpeakingController::class, 'exercises']);
         Route::get('speaking/exercises/{exercise}', [StudentSpeakingController::class, 'showExercise']);
         Route::get('speaking/attempts', [StudentSpeakingController::class, 'attempts']);
+        Route::delete('speaking/exercises/{exercise}/attempts/history', [StudentSpeakingController::class, 'destroyPrivateHistory']);
         Route::get('speaking/attempts/{attempt}', [StudentSpeakingController::class, 'showAttempt']);
+        Route::post('speaking/attempts/{attempt}/submit', [StudentSpeakingController::class, 'submitAttempt']);
+        Route::delete('speaking/attempts/{attempt}', [StudentSpeakingController::class, 'destroyAttempt']);
         Route::post('speaking/exercises/{exercise}/attempts', [StudentSpeakingController::class, 'storeAttempt']);
     });
 
@@ -320,6 +325,7 @@ Route::prefix('v1')->group(function () {
         Route::patch('speaking/exercises/{exercise}/archive', [TeacherSpeakingExerciseController::class, 'archive']);
         Route::get('speaking/attempts', [TeacherSpeakingController::class, 'attempts']);
         Route::get('speaking/attempts/{attempt}', [TeacherSpeakingController::class, 'showAttempt']);
+        Route::delete('speaking/attempts/{attempt}', [TeacherSpeakingController::class, 'destroyAttempt']);
         Route::patch('speaking/attempts/{attempt}/feedback', [TeacherSpeakingController::class, 'feedback']);
         Route::get('reports/progress/students/export', [ReportExportController::class, 'teacherStudents']);
         Route::get('reports/quiz-results/export', [ReportExportController::class, 'teacherQuizResults']);

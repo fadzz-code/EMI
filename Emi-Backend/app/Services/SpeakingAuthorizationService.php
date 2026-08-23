@@ -23,6 +23,7 @@ class SpeakingAuthorizationService
             ->select('class_id');
 
         return SpeakingAttempt::query()
+            ->whereNotNull('submitted_at')
             ->whereHas('student', fn ($query) => $query
                 ->where('role', 'student')
                 ->where('status', 'approved'))

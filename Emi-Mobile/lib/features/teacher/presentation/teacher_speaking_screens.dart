@@ -677,13 +677,29 @@ class _ReferenceAudioPlayerState extends State<_ReferenceAudioPlayer> {
   }
 
   Future<void> _toggle() async {
-    if (player.playing) {
-      await player.pause();
-    } else {
-      if (player.audioSource == null) await player.setUrl(widget.source);
-      await player.play();
+    try {
+      if (player.playing) {
+        await player.pause();
+      } else {
+        if (player.audioSource == null) {
+          final uri = Uri.parse(widget.source);
+          final mobileUri = (uri.host == 'localhost' || uri.host == '127.0.0.1')
+              ? uri.replace(host: '10.0.2.2')
+              : uri;
+          await player.setUrl(mobileUri.toString());
+        }
+        await player.play();
+      }
+      if (mounted) setState(() {});
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Audio belum bisa diputar. Silakan coba lagi.'),
+          ),
+        );
+      }
     }
-    if (mounted) setState(() {});
   }
 
   @override
@@ -717,6 +733,42 @@ class _AttemptsState extends ConsumerState<_Attempts> {
   void dispose() {
     searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _deleteAttempt(TeacherSpeakingAttempt attempt) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Hasil Speaking?'),
+        content: const Text('Hasil yang belum dinilai akan dihapus permanen.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref
+          .read(teacherRepositoryProvider)
+          .deleteSpeakingAttempt(attempt.id);
+      ref.invalidate(teacherSpeakingAttemptsProvider);
+    } catch (error) {
+      if (mounted) {
+        _snack(
+          context,
+          error is AppError
+              ? error.message
+              : 'Hasil speaking belum bisa dihapus. Silakan coba lagi.',
+        );
+      }
+    }
   }
 
   @override
@@ -813,10 +865,13 @@ class _AttemptsState extends ConsumerState<_Attempts> {
                             ),
                           ),
                           isThreeLine: true,
-                          trailing: const Icon(
-                            Icons.chevron_right,
-                            color: TeacherStyle.inkMuted,
-                          ),
+                          trailing: a.canDelete
+                              ? IconButton(
+                                  tooltip: 'Hapus hasil',
+                                  onPressed: () => _deleteAttempt(a),
+                                  icon: const Icon(Icons.delete_outline),
+                                )
+                              : const TeacherStatusChip(label: 'Sudah dinilai'),
                         ),
                       ),
                     ),
@@ -974,6 +1029,7 @@ class _AttemptDetailState
                       ),
                       TextFormField(
                         controller: score,
+                        readOnly: a.isReviewed,
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
                           labelText: 'Nilai (0–100)',
@@ -982,6 +1038,7 @@ class _AttemptDetailState
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: feedback,
+                        readOnly: a.isReviewed,
                         maxLength: 5000,
                         minLines: 3,
                         maxLines: 6,
@@ -997,8 +1054,14 @@ class _AttemptDetailState
                   child: SizedBox(
                     width: double.infinity,
                     child: FilledButton(
-                      onPressed: saving ? null : _save,
-                      child: Text(saving ? 'Menyimpan...' : 'Simpan Penilaian'),
+                      onPressed: a.isReviewed || saving ? null : _save,
+                      child: Text(
+                        a.isReviewed
+                            ? 'Penilaian Terkunci'
+                            : saving
+                            ? 'Menyimpan...'
+                            : 'Simpan Penilaian',
+                      ),
                     ),
                   ),
                 ),

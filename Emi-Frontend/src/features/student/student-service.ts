@@ -167,6 +167,21 @@ export const studentService = {
     return response.data;
   },
 
+  async submitSpeakingResult(token: string, attemptId: string) {
+    const response = await apiClient.post<SpeakingAttempt>(`/student/speaking/attempts/${attemptId}/submit`, {}, { token });
+    if (!response.data) throw new Error("Kiriman speaking tidak tersedia.");
+    return response.data;
+  },
+
+  async deleteSpeakingAttempt(token: string, attemptId: string) {
+    await apiClient.delete(`/student/speaking/attempts/${attemptId}`, { token });
+  },
+
+  async deletePrivateSpeakingHistory(token: string, exerciseId: string) {
+    const response = await apiClient.delete<{ deleted_count: number }>(`/student/speaking/exercises/${exerciseId}/attempts/history`, { token });
+    return response.data?.deleted_count ?? 0;
+  },
+
   async submitSpeakingAttempt(token: string, exerciseId: string, file: File, captureSource: "web_microphone" | "web_esp32_serial" = "web_microphone", duration?: number) {
     const formData = speakingAttemptForm(file, captureSource, duration);
 

@@ -11,6 +11,7 @@ use App\Models\LessonTemplate;
 use App\Models\MediaFile;
 use App\Models\QuizQuestion;
 use App\Models\QuizTemplateQuestion;
+use App\Models\SpeakingAttempt;
 use App\Models\User;
 
 class MediaUsageService
@@ -25,6 +26,7 @@ class MediaUsageService
             || QuizQuestion::query()->where('image_media_id', $mediaFile->id)->exists()
             || AdminCultureItem::query()->where('media_id', $mediaFile->id)->exists()
             || ClassCultureItem::query()->where(fn ($query) => $query->where('media_id', $mediaFile->id)->orWhere('thumbnail_media_id', $mediaFile->id))->exists()
-            || CultureTemplateItem::query()->where(fn ($query) => $query->where('media_id', $mediaFile->id)->orWhere('thumbnail_media_id', $mediaFile->id))->exists();
+            || CultureTemplateItem::query()->where(fn ($query) => $query->where('media_id', $mediaFile->id)->orWhere('thumbnail_media_id', $mediaFile->id))->exists()
+            || SpeakingAttempt::query()->where('audio_media_id', $mediaFile->id)->exists();
     }
 }

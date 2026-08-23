@@ -3,7 +3,7 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Bot, CheckCheck, ListChecks, Mic, TriangleAlert, Volume2 } from "lucide-react";
 
-import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, FormField, Input, LoadingState, Pagination, Textarea } from "@/components/ui";
+import { Alert, Badge, Button, Card, CardContent, CardHeader, ConfirmDialog, EmptyState, FormField, Input, LoadingState, Pagination, Textarea } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
@@ -44,6 +44,7 @@ export function TeacherSpeakingResults() {
   const [tab, setTab] = useState<"pending" | "reviewed">("pending");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<TeacherSpeakingAttempt | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -131,6 +132,24 @@ export function TeacherSpeakingResults() {
     }
   }
 
+  async function deleteAttempt() {
+    if (!token || !deleteTarget) return;
+    setIsSubmitting(true);
+    try {
+      await teacherService.deleteSpeakingAttempt(token, deleteTarget.id);
+      setAttempts((current) => current.filter((item) => item.id !== deleteTarget.id));
+      if (selectedAttemptId.current === deleteTarget.id) clearSelection();
+      setCounts((current) => ({ ...current, total: Math.max(0, current.total - 1), pending: Math.max(0, current.pending - 1) }));
+      setDeleteTarget(null);
+      setMessage("Kiriman speaking berhasil dihapus.");
+      setError(null);
+    } catch (err) {
+      setError(getFirstApiError(err));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   const alignmentRows = (Array.isArray(selectedAttempt?.ai_alignment) ? [] : Object.entries(selectedAttempt?.ai_alignment ?? {}))
     .filter(([key, value]) => typeof value === "number" && /^\d+_/.test(key))
     .map(([key, value]) => {
@@ -208,7 +227,7 @@ export function TeacherSpeakingResults() {
                     <div>
                       <p className="font-black text-ink">{attempt.student?.full_name ?? "Siswa"}</p>
                       <p className="mt-1 text-sm font-bold text-muted">{attempt.exercise?.title ?? "Latihan Speaking"}</p>
-                      <p className="mt-1 text-xs text-muted">{date(attempt.created_at)}</p>
+                       <p className="mt-1 text-xs text-muted">Dikirim: {date(attempt.submitted_at)}</p>
                     </div>
                     <Badge tone={attempt.status === "failed" ? "orange" : attempt.status === "reviewed" ? "blue" : "yellow"}>{statusLabel(attempt.status)}</Badge>
                   </div>
@@ -264,13 +283,15 @@ export function TeacherSpeakingResults() {
                     Isi skor setelah mendengar audio siswa. Feedback akan tampil untuk siswa sebagai arahan latihan berikutnya.
                   </p>
                   <FormField label="Feedback guru"><Textarea className="min-h-32" onChange={(event) => setTeacherFeedback(event.target.value)} placeholder="Contoh: Pengucapan sudah cukup jelas, ulangi bagian akhir." value={teacherFeedback} /></FormField>
-                  <Button disabled={isSubmitting} type="submit">{isSubmitting ? "Menyimpan..." : "Simpan Feedback Guru"}</Button>
-                </form>
+                   <Button disabled={isSubmitting} type="submit">{isSubmitting ? "Menyimpan..." : selectedAttempt.review_status === "reviewed" ? "Perbarui Feedback Guru" : "Simpan Feedback Guru"}</Button>
+                   {selectedAttempt.review_status !== "reviewed" ? <Button disabled={isSubmitting} onClick={() => setDeleteTarget(selectedAttempt)} type="button" variant="danger">Hapus kiriman belum ditinjau</Button> : null}
+                 </form>
               </div>
             )}
           </CardContent>
         </Card>
       </section>
+      <ConfirmDialog description="Kiriman siswa dan audio terkait akan dihapus permanen. Kiriman yang sudah ditinjau tidak dapat dihapus." isConfirming={isSubmitting} onCancel={() => setDeleteTarget(null)} onConfirm={deleteAttempt} open={Boolean(deleteTarget)} title="Hapus kiriman speaking?" />
     </div>
   );
 }

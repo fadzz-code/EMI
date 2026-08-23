@@ -13,9 +13,11 @@ use App\Models\TeacherClassAssignment;
 use App\Models\User;
 use App\Services\SpeakingAiClient;
 use App\Services\SpeakingAuthorizationService;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -36,6 +38,29 @@ class SpeakingPracticeAiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.0.id', $published->id)
             ->assertJsonCount(1, 'data');
+    }
+
+    public function test_student_list_excludes_global_admin_templates(): void
+    {
+        [$student, , $class] = $this->classroomUsers();
+        $publishedClass = $this->exercise($class, ['title' => 'Target kelas']);
+        $this->globalExercise(['title' => 'Template admin']);
+
+        $this->withToken($this->tokenFor($student))->getJson('/api/v1/student/speaking/exercises')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $publishedClass->id)
+            ->assertJsonCount(1, 'data');
+    }
+
+    public function test_student_cannot_submit_attempt_for_global_template(): void
+    {
+        Storage::fake('local');
+        [$student] = $this->classroomUsers();
+        $global = $this->globalExercise();
+
+        $this->withToken($this->tokenFor($student))->post('/api/v1/student/speaking/exercises/'.$global->id.'/attempts', [
+            'file' => UploadedFile::fake()->create('recording.webm', 10, 'audio/webm'),
+        ])->assertForbidden();
     }
 
     public function test_student_can_submit_audio_attempt_and_fake_ai_result_is_stored(): void
@@ -189,8 +214,8 @@ class SpeakingPracticeAiTest extends TestCase
         $exercise = $this->exercise($class);
         $ownAttempts = collect([
             $this->attemptFor($student, $exercise),
-            $this->attemptFor($student, $exercise),
-            $this->attemptFor($student, $exercise),
+            $this->attemptFor($student, $this->exercise($class)),
+            $this->attemptFor($student, $this->exercise($class)),
         ]);
         $other = User::factory()->student()->approved()->create();
         StudentClassMembership::factory()->create(['student_id' => $other->id, 'class_id' => $class->id, 'is_active' => true]);
@@ -879,6 +904,92 @@ class SpeakingPracticeAiTest extends TestCase
         ])->assertUnprocessable();
     }
 
+    public function test_admin_can_apply_published_speaking_template_to_active_classes(): void
+    {
+        [$student, $teacher, $class] = $this->classroomUsers();
+        $admin = User::factory()->admin()->create();
+        $media = MediaFile::factory()->create([
+            'uploaded_by' => $admin->id,
+            'purpose' => 'speaking_reference_audio',
+            'visibility' => 'public',
+        ]);
+        $template = $this->globalExercise([
+            'title' => 'Template kelas',
+            'target_text' => 'Teks template',
+            'reference_audio_media_id' => $media->id,
+            'status' => 'published',
+        ]);
+
+        Sanctum::actingAs($admin, ['*']);
+        $this->postJson('/api/v1/admin/speaking/exercises/'.$template->id.'/apply', [
+            'class_ids' => [$class->id],
+        ])->assertOk()->assertJsonPath('data.applied.0.class_id', $class->id);
+
+        $this->assertDatabaseHas('speaking_exercises', [
+            'source_speaking_exercise_id' => $template->id,
+            'classroom_id' => $class->id,
+            'title' => 'Template kelas',
+            'status' => 'draft',
+        ]);
+
+        $teacher->teacherClassAssignments()->update(['is_active' => true]);
+        Sanctum::actingAs($teacher, ['*']);
+        $this->getJson('/api/v1/teacher/speaking/exercises')
+            ->assertOk()
+            ->assertJsonFragment(['source_speaking_exercise_id' => $template->id]);
+
+        Sanctum::actingAs($student, ['*']);
+        $this->getJson('/api/v1/student/speaking/exercises')
+            ->assertOk()
+            ->assertJsonMissing(['id' => $template->id]);
+    }
+
+    public function test_apply_skips_existing_class_copy_unless_sync_enabled(): void
+    {
+        [, , $class] = $this->classroomUsers();
+        $admin = User::factory()->admin()->create();
+        $template = $this->globalExercise(['status' => 'published']);
+
+        Sanctum::actingAs($admin, ['*']);
+        $this->postJson('/api/v1/admin/speaking/exercises/'.$template->id.'/apply', [
+            'class_ids' => [$class->id],
+        ])->assertOk()->assertJsonCount(1, 'data.applied');
+
+        $this->postJson('/api/v1/admin/speaking/exercises/'.$template->id.'/apply', [
+            'class_ids' => [$class->id],
+        ])->assertOk()->assertJsonCount(1, 'data.skipped');
+
+        $template->update(['title' => 'Template terbaru']);
+
+        $this->postJson('/api/v1/admin/speaking/exercises/'.$template->id.'/apply', [
+            'class_ids' => [$class->id],
+            'sync_existing' => true,
+        ])->assertOk()->assertJsonCount(1, 'data.synced');
+
+        $this->assertDatabaseHas('speaking_exercises', [
+            'source_speaking_exercise_id' => $template->id,
+            'classroom_id' => $class->id,
+            'title' => 'Template terbaru',
+        ]);
+    }
+
+    public function test_apply_rejects_unpublished_or_non_global_template(): void
+    {
+        [, , $class] = $this->classroomUsers();
+        $admin = User::factory()->admin()->create();
+        $draft = $this->globalExercise(['status' => 'draft']);
+        $classExercise = $this->exercise($class);
+
+        Sanctum::actingAs($admin, ['*']);
+        $this->postJson('/api/v1/admin/speaking/exercises/'.$draft->id.'/apply', [
+            'class_ids' => [$class->id],
+        ])->assertStatus(409);
+
+        $this->postJson('/api/v1/admin/speaking/exercises/'.$classExercise->id.'/apply', [
+            'class_ids' => [$class->id],
+        ])->assertForbidden();
+    }
+
     public function test_student_sees_template_created_class_exercise_with_reference_audio(): void
     {
         [$student, $teacher, $class] = $this->classroomUsers();
@@ -1099,9 +1210,9 @@ class SpeakingPracticeAiTest extends TestCase
         $exercise = $this->exercise($class);
         $pending = $this->attemptFor($student, $exercise);
         $pending->update(['analysis_status' => 'completed', 'review_status' => 'pending']);
-        $reviewed = $this->attemptFor($student, $exercise);
+        $reviewed = $this->attemptFor($student, $this->exercise($class));
         $reviewed->update(['analysis_status' => 'completed', 'review_status' => 'reviewed']);
-        $failed = $this->attemptFor($student, $exercise);
+        $failed = $this->attemptFor($student, $this->exercise($class));
         $failed->update(['analysis_status' => 'failed', 'review_status' => 'pending']);
         $otherStudent = User::factory()->student()->approved()->create(['full_name' => 'Nina Target']);
         $otherClass = SchoolClass::factory()->create();
@@ -1129,7 +1240,7 @@ class SpeakingPracticeAiTest extends TestCase
         $exercise = $this->exercise($class);
         $completed = $this->attemptFor($student, $exercise);
         $completed->update(['analysis_status' => 'completed', 'review_status' => 'pending', 'ai_score' => 80]);
-        $pending = $this->attemptFor($student, $exercise);
+        $pending = $this->attemptFor($student, $this->exercise($class));
         $pending->update(['analysis_status' => 'pending', 'review_status' => 'reviewed', 'teacher_score' => null]);
 
         $this->withToken($this->tokenFor($teacher))->getJson('/api/v1/teacher/speaking/attempts?analysis_status=completed&review_status=pending&per_page=1')
@@ -1162,6 +1273,133 @@ class SpeakingPracticeAiTest extends TestCase
         $this->assertContains('api/v1/admin/reports/speaking/classes', $uris);
         $this->assertContains('api/v1/teacher/reports/progress/class', $uris);
         $this->assertTrue($routes->contains(fn ($route): bool => $route->uri() === 'api/v1/teacher/speaking/exercises/{exercise}' && in_array('DELETE', $route->methods(), true)));
+    }
+
+    public function test_submission_replaces_pending_canonical_but_reviewed_blocks_replacement(): void
+    {
+        [$student, $teacher, $class] = $this->classroomUsers();
+        $exercise = $this->exercise($class);
+        $first = $this->attemptFor($student, $exercise);
+        $replacement = $this->attemptFor($student, $exercise, false);
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/speaking/attempts/'.$replacement->id.'/submit')
+            ->assertOk()->assertJsonPath('data.id', $replacement->id);
+        $this->assertSoftDeleted('speaking_attempts', ['id' => $first->id]);
+        $this->assertNotNull($replacement->refresh()->submitted_at);
+        $replacement->update(['review_status' => 'reviewed']);
+        $private = $this->attemptFor($student, $exercise, false);
+
+        $this->withToken($this->tokenFor($student))->postJson('/api/v1/student/speaking/attempts/'.$private->id.'/submit')
+            ->assertConflict()->assertJsonPath('code', 'SPEAKING_ATTEMPT_REVIEWED');
+        $this->app['auth']->forgetGuards();
+        $this->withToken($this->tokenFor($teacher))->deleteJson('/api/v1/teacher/speaking/attempts/'.$replacement->id)
+            ->assertConflict();
+    }
+
+    public function test_private_attempt_is_hidden_from_teacher_and_bulk_delete_removes_media_after_commit(): void
+    {
+        Storage::fake('local');
+        [$student, $teacher, $class] = $this->classroomUsers();
+        $attempt = $this->attemptFor($student, $this->exercise($class), false);
+        Storage::disk($attempt->audio_disk)->put($attempt->audio_path, 'audio');
+
+        $this->withToken($this->tokenFor($teacher))->getJson('/api/v1/teacher/speaking/attempts')->assertOk()->assertJsonMissing(['id' => $attempt->id]);
+        $this->app['auth']->forgetGuards();
+        $this->withToken($this->tokenFor($student))->deleteJson('/api/v1/student/speaking/exercises/'.$attempt->speaking_exercise_id.'/attempts/history')
+            ->assertOk()->assertJsonPath('data.exercise_id', $attempt->speaking_exercise_id)->assertJsonPath('data.deleted_count', 1);
+
+        $this->assertSoftDeleted('speaking_attempts', ['id' => $attempt->id]);
+        $this->assertSoftDeleted('media_files', ['id' => $attempt->audio_media_id]);
+        Storage::disk($attempt->audio_disk)->assertMissing($attempt->audio_path);
+    }
+
+    public function test_submission_migration_backfill_ranks_without_deleting_legacy_attempts(): void
+    {
+        [$student, , $class] = $this->classroomUsers();
+        $reviewedExercise = $this->exercise($class);
+        $completedExercise = $this->exercise($class);
+        $ineligibleExercise = $this->exercise($class);
+        $deletedExercise = $this->exercise($class);
+        $migration = require database_path('migrations/2026_08_24_000000_add_submission_identity_to_speaking_attempts.php');
+        $migration->down();
+        $now = now();
+        $insert = function (SpeakingExercise $exercise, string $analysis, string $review, int $minutes, bool $deleted = false) use ($student, $now): string {
+            $id = (string) str()->uuid();
+            DB::table('speaking_attempts')->insert([
+                'id' => $id,
+                'speaking_exercise_id' => $exercise->id,
+                'student_id' => $student->id,
+                'target_text_snapshot' => $exercise->target_text,
+                'status' => $review === 'reviewed' ? 'reviewed' : $analysis,
+                'analysis_status' => $analysis,
+                'review_status' => $review,
+                'reviewed_at' => $review === 'reviewed' ? $now->copy()->subMinutes($minutes) : null,
+                'created_at' => $now->copy()->subMinutes($minutes),
+                'updated_at' => $now,
+                'deleted_at' => $deleted ? $now : null,
+            ]);
+
+            return $id;
+        };
+        $newerCompleted = $insert($reviewedExercise, 'completed', 'pending', 1);
+        $reviewed = $insert($reviewedExercise, 'completed', 'reviewed', 10);
+        $olderCompleted = $insert($completedExercise, 'completed', 'pending', 10);
+        $latestCompleted = $insert($completedExercise, 'completed', 'pending', 1);
+        $ineligible = $insert($ineligibleExercise, 'pending', 'pending', 1);
+        $deleted = $insert($deletedExercise, 'completed', 'reviewed', 1, true);
+
+        $migration->up();
+
+        $this->assertNotNull(DB::table('speaking_attempts')->where('id', $reviewed)->value('submitted_at'));
+        $this->assertNull(DB::table('speaking_attempts')->where('id', $newerCompleted)->value('submitted_at'));
+        $this->assertNotNull(DB::table('speaking_attempts')->where('id', $latestCompleted)->value('submitted_at'));
+        $this->assertNull(DB::table('speaking_attempts')->where('id', $olderCompleted)->value('submitted_at'));
+        $this->assertNull(DB::table('speaking_attempts')->where('id', $ineligible)->value('submitted_at'));
+        $this->assertNull(DB::table('speaking_attempts')->where('id', $deleted)->value('submitted_at'));
+        $this->assertSame(6, DB::table('speaking_attempts')->whereIn('id', [$newerCompleted, $reviewed, $olderCompleted, $latestCompleted, $ineligible, $deleted])->count());
+        $this->assertSame(1, DB::table('speaking_attempts')->where('student_id', $student->id)->where('speaking_exercise_id', $reviewedExercise->id)->whereNotNull('submitted_at')->count());
+    }
+
+    public function test_database_rejects_two_active_submissions_for_same_student_and_exercise(): void
+    {
+        [$student, , $class] = $this->classroomUsers();
+        $exercise = $this->exercise($class);
+        $this->attemptFor($student, $exercise);
+
+        $this->expectException(QueryException::class);
+        $this->attemptFor($student, $exercise);
+    }
+
+    public function test_student_cannot_delete_submitted_attempt_and_teacher_gets_domain_error_for_private_attempt(): void
+    {
+        [$student, $teacher, $class] = $this->classroomUsers();
+        $submitted = $this->attemptFor($student, $this->exercise($class));
+        $private = $this->attemptFor($student, $this->exercise($class), false);
+
+        $this->withToken($this->tokenFor($student))->deleteJson('/api/v1/student/speaking/attempts/'.$submitted->id)
+            ->assertConflict()->assertJsonPath('code', 'SPEAKING_ATTEMPT_SUBMITTED');
+        $this->app['auth']->forgetGuards();
+        $this->withToken($this->tokenFor($teacher))->deleteJson('/api/v1/teacher/speaking/attempts/'.$private->id)
+            ->assertConflict()->assertJsonPath('code', 'SPEAKING_ATTEMPT_NOT_SUBMITTED');
+    }
+
+    public function test_deleting_attempt_preserves_media_still_used_by_active_attempt(): void
+    {
+        Storage::fake('local');
+        [$student, , $class] = $this->classroomUsers();
+        $attempt = $this->attemptFor($student, $this->exercise($class), false);
+        $shared = $this->attemptFor($student, $this->exercise($class), false);
+        $shared->update([
+            'audio_media_id' => $attempt->audio_media_id,
+            'audio_path' => $attempt->audio_path,
+            'audio_disk' => $attempt->audio_disk,
+        ]);
+        Storage::disk($attempt->audio_disk)->put($attempt->audio_path, 'audio');
+
+        $this->withToken($this->tokenFor($student))->deleteJson('/api/v1/student/speaking/attempts/'.$attempt->id)->assertOk();
+
+        $this->assertNull(MediaFile::query()->findOrFail($attempt->audio_media_id)->deleted_at);
+        Storage::disk($attempt->audio_disk)->assertExists($attempt->audio_path);
     }
 
     private function classroomUsers(): array
@@ -1201,7 +1439,7 @@ class SpeakingPracticeAiTest extends TestCase
         ]);
     }
 
-    private function attemptFor(User $student, SpeakingExercise $exercise): SpeakingAttempt
+    private function attemptFor(User $student, SpeakingExercise $exercise, bool $submitted = true): SpeakingAttempt
     {
         $media = MediaFile::factory()->speakingRecording()->create(['uploaded_by' => $student->id]);
 
@@ -1215,6 +1453,8 @@ class SpeakingPracticeAiTest extends TestCase
             'audio_size_bytes' => $media->size_bytes,
             'target_text_snapshot' => $exercise->target_text,
             'status' => 'completed',
+            'analysis_status' => 'completed',
+            'submitted_at' => $submitted ? now() : null,
         ]);
     }
 

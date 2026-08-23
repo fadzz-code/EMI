@@ -89,6 +89,8 @@ class SpeakingAttempt {
     this.audioUrl,
     this.createdAt,
     this.updatedAt,
+    this.submittedAt,
+    this.reviewStatus,
     this.exercise,
   });
 
@@ -107,9 +109,18 @@ class SpeakingAttempt {
   final String? audioUrl;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final DateTime? submittedAt;
+  final String? reviewStatus;
   final SpeakingExercise? exercise;
 
   String get effectiveAnalysisStatus => analysisStatus ?? status;
+  bool get isSubmitted => submittedAt != null || isReviewed;
+  bool get isReviewed =>
+      reviewStatus == 'reviewed' ||
+      teacherScore != null ||
+      teacherFeedback != null;
+  bool get canSubmit => isCompleted && !isSubmitted;
+  bool get canDelete => !isSubmitted && !isReviewed;
   bool get isProcessing =>
       effectiveAnalysisStatus == 'pending' ||
       effectiveAnalysisStatus == 'processing';
@@ -167,6 +178,9 @@ class SpeakingAttempt {
       audioUrl: json['audio_url'] as String?,
       createdAt: DateTime.tryParse(json['created_at'] as String? ?? ''),
       updatedAt: DateTime.tryParse(json['updated_at'] as String? ?? ''),
+      submittedAt: DateTime.tryParse(json['submitted_at'] as String? ?? ''),
+      reviewStatus:
+          (json['review_status'] ?? _mapValue(review, 'status')) as String?,
       exercise: exercise is Map<String, dynamic>
           ? SpeakingExercise.fromJson(exercise)
           : null,

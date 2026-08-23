@@ -47,6 +47,7 @@ class SpeakingAttemptResource extends JsonResource
             'teacher_score' => $this->teacher_score !== null ? (float) $this->teacher_score : null,
             'teacher_feedback' => $this->teacher_feedback,
             'reviewed_at' => $this->reviewed_at?->toISOString(),
+            'submitted_at' => $this->submitted_at?->toISOString(),
             'audio_media_id' => $this->audio_media_id,
             'capture_source' => $this->capture_source,
             'audio_url' => $this->audio_media_id ? '/api/v1/media/'.$this->audio_media_id : null,

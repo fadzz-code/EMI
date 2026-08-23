@@ -563,6 +563,10 @@ export const teacherService = {
     return response.data;
   },
 
+  async deleteSpeakingAttempt(token: string, attemptId: string) {
+    await apiClient.delete(`/teacher/speaking/attempts/${attemptId}`, { token });
+  },
+
   async submitSpeakingFeedback(token: string, attemptId: string, payload: SpeakingFeedbackRequest) {
     const response = await apiClient.patch<TeacherSpeakingAttempt>(
       `/teacher/speaking/attempts/${attemptId}/feedback`,

@@ -84,6 +84,27 @@ void main() {
     );
   });
 
+  test(
+    'private attempt media ID takes priority over stale audio URL',
+    () async {
+      var temporaryCalls = 0;
+
+      final source = await resolveSpeakingAudioSource(
+        url: '/api/v1/media/media-1',
+        mediaId: 'media-1',
+        resolveUrl: (url) => 'wrong:$url',
+        temporaryUrl: (mediaId) async {
+          temporaryCalls++;
+          expect(mediaId, 'media-1');
+          return 'https://signed.example.test/audio.wav';
+        },
+      );
+
+      expect(source, 'https://signed.example.test/audio.wav');
+      expect(temporaryCalls, 1);
+    },
+  );
+
   test('reference audio direct URL skips temporary URL', () async {
     var temporaryCalls = 0;
 
@@ -100,6 +121,20 @@ void main() {
 
     expect(source, 'https://example.test/api/v1/public/media/media-1/content');
     expect(temporaryCalls, 0);
+  });
+
+  test('reference audio uses configured API origin', () {
+    final repository = SpeakingRepository(
+      Dio(BaseOptions(baseUrl: 'https://api.emi-kolaka.id/api/v1')),
+      const DioErrorMapper(),
+    );
+
+    expect(
+      repository.resolveMediaUrl(
+        'http://internal-proxy/api/v1/public/media/media-1/content?token=abc',
+      ),
+      'https://api.emi-kolaka.id/api/v1/public/media/media-1/content?token=abc',
+    );
   });
 
   test('reference audio without URL uses temporary URL', () async {
@@ -321,6 +356,50 @@ void main() {
       expect(submitted.id, 'attempt-1');
     },
   );
+
+  test('submission state and mutation endpoints stay protected', () async {
+    final reviewed = SpeakingAttempt.fromJson({
+      'id': 'attempt-1',
+      'exercise_id': 'exercise-1',
+      'status': 'completed',
+      'submitted_at': '2026-08-24T10:00:00Z',
+      'review_status': 'reviewed',
+    });
+    expect(reviewed.isSubmitted, isTrue);
+    expect(reviewed.isReviewed, isTrue);
+    expect(reviewed.canDelete, isFalse);
+    final legacyStatusOnly = SpeakingAttempt.fromJson({
+      'id': 'attempt-legacy',
+      'exercise_id': 'exercise-1',
+      'status': 'submitted',
+    });
+    expect(legacyStatusOnly.isSubmitted, isFalse);
+    expect(legacyStatusOnly.canDelete, isTrue);
+
+    final requests = <String>[];
+    final repository = SpeakingRepository(
+      _dio((options, handler) {
+        requests.add('${options.method} ${options.path}');
+        handler.resolve(
+          Response(
+            requestOptions: options,
+            data: options.path.endsWith('/submit')
+                ? {'data': _attemptJson}
+                : null,
+          ),
+        );
+      }),
+      const DioErrorMapper(),
+    );
+    await repository.submitCompletedAttempt('attempt-1');
+    await repository.deleteAttempt('attempt-1');
+    await repository.deleteExerciseAttempts('exercise-1');
+    expect(requests, [
+      'POST /student/speaking/attempts/attempt-1/submit',
+      'DELETE /student/speaking/attempts/attempt-1',
+      'DELETE /student/speaking/exercises/exercise-1/attempts/history',
+    ]);
+  });
 
   test('repository maps backend error', () async {
     final repository = SpeakingRepository(

@@ -318,6 +318,10 @@ void main() {
     expect(attempt.referenceAudio?.id, 'reference-1');
     expect(attempt.aiAlignment, {'0_Tabe': 91});
     expect(attempt.aiError, 'Model sementara gagal');
+    expect(attempt.canDelete, isTrue);
+    final reviewed = _attempt(teacherScore: 90);
+    expect(reviewed.isReviewed, isTrue);
+    expect(reviewed.canDelete, isFalse);
     expect(
       [
         page.currentPage,
@@ -360,6 +364,7 @@ void main() {
       await repository.saveSpeakingExercise(data: payload);
       await repository.saveSpeakingExercise(id: 'exercise-1', data: payload);
       await repository.archiveSpeakingExercise('exercise-1');
+      await repository.deleteSpeakingAttempt('attempt-delete');
       final saved = await repository.saveSpeakingFeedback(
         'attempt-1',
         teacherScore: 90,
@@ -374,14 +379,15 @@ void main() {
         'POST /teacher/speaking/exercises',
         'PATCH /teacher/speaking/exercises/exercise-1',
         'PATCH /teacher/speaking/exercises/exercise-1/archive',
+        'DELETE /teacher/speaking/attempts/attempt-delete',
         'PATCH /teacher/speaking/attempts/attempt-1/feedback',
         'POST /media/media-secret/temporary-url',
       ]);
-      expect(requests[3].data, {
+      expect(requests[4].data, {
         'teacher_score': 90,
         'teacher_feedback': 'Bagus sekali',
       });
-      expect(requests[4].data, {
+      expect(requests[5].data, {
         'expires_in_minutes': 15,
         'disposition': 'inline',
       });
@@ -910,6 +916,7 @@ void main() {
     );
     expect(find.textContaining('Skor AI 87'), findsOneWidget);
     expect(find.textContaining('Belum dinilai'), findsOneWidget);
+    expect(find.byTooltip('Hapus hasil'), findsOneWidget);
     expect(find.textContaining('attempt-1'), findsNothing);
     expect(find.textContaining('media-secret'), findsNothing);
   });

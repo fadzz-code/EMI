@@ -247,6 +247,9 @@ export type SpeakingAttempt = {
   teacher_score?: number | null;
   teacher_feedback?: string | null;
   reviewed_at?: string | null;
+  submitted_at?: string | null;
+  analysis_status?: "pending" | "processing" | "completed" | "failed" | string;
+  review_status?: "pending" | "reviewed" | string;
   audio_media_id?: string | null;
   audio_url?: string | null;
   created_at?: string | null;
