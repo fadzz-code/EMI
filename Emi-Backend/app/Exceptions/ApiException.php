@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use RuntimeException;
+use Throwable;
 
 class ApiException extends RuntimeException
 {
@@ -11,7 +12,8 @@ class ApiException extends RuntimeException
         public string $errorCode,
         public int $statusCode,
         public array $errors = [],
+        ?Throwable $previous = null,
     ) {
-        parent::__construct($message);
+        parent::__construct($message, 0, $previous);
     }
 }

@@ -39,6 +39,13 @@ return [
             'Audio (opsional)',
         ],
         'sentence_examples' => [
+            'Kata Indonesia Terkait',
+            'Kata Mekongga Terkait (opsional)',
+            'Bahasa Indonesia',
+            'Bahasa Mekongga',
+            'Audio (opsional)',
+        ],
+        'legacy_sentence_examples' => [
             'Bahasa Indonesia',
             'Bahasa Mekongga',
             'Kata Mekongga Terkait',

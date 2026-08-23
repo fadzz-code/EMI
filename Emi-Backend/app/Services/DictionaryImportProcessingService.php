@@ -7,9 +7,11 @@ use App\Models\DictionaryEntry;
 use App\Models\DictionaryImportJob;
 use App\Models\DictionarySentenceExample;
 use App\Models\MediaFile;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class DictionaryImportProcessingService
@@ -154,7 +156,14 @@ class DictionaryImportProcessingService
                 throw $e;
             }
 
-            throw new ApiException('Import gagal diproses.', 'IMPORT_PROCESSING_FAILED', 500);
+            Log::error('Dictionary import processing failed.', [
+                'import_job_id' => $job->id,
+                'exception_class' => $e::class,
+                'exception_message' => $e->getMessage(),
+                'exception' => $e,
+            ]);
+
+            throw new ApiException('Import gagal diproses.', 'IMPORT_PROCESSING_FAILED', 500, previous: $e);
         } finally {
             if (is_array($analysis ?? null)) {
                 $this->fileService->cleanupDirectory($analysis['zip_temp_dir'] ?? null);
@@ -168,26 +177,28 @@ class DictionaryImportProcessingService
         $vocabInserted = 0;
         $vocabUpdated = 0;
         $vocabSkipped = 0;
-        $processedTriples = [];
-        $entryIdByMekongga = [];
+        $processedIndoKeys = [];
+        $entryIdByIndonesia = [];
         $chunkSize = max(1, (int) config('dictionary.chunk_size'));
 
         foreach (array_chunk($analysis['rows']['vocabulary'], $chunkSize) as $chunk) {
-            DB::transaction(function () use ($chunk, $job, $actor, &$mediaByFilename, &$vocabInserted, &$vocabUpdated, &$vocabSkipped, &$processedTriples, &$entryIdByMekongga, $analysis): void {
+            DB::transaction(function () use ($chunk, $job, $actor, &$mediaByFilename, &$vocabInserted, &$vocabUpdated, &$vocabSkipped, &$processedIndoKeys, &$entryIdByIndonesia, $analysis): void {
                 foreach ($chunk as $row) {
-                    if (isset($processedTriples[$row['triple_key']])) {
+                    $mergeKey = $row['merge_key'];
+
+                    if (isset($processedIndoKeys[$mergeKey])) {
                         $vocabSkipped++;
 
                         continue;
                     }
 
-                    $processedTriples[$row['triple_key']] = true;
+                    $processedIndoKeys[$mergeKey] = true;
                     $data = $row['data'];
                     $existing = DictionaryEntry::query()->whereKey($row['existing_id'])->first();
 
                     if ($existing && $job->duplicate_strategy === 'skip') {
                         $vocabSkipped++;
-                        $entryIdByMekongga[$row['mekongga_normalized']] = $existing->id;
+                        $entryIdByIndonesia[$mergeKey] = $existing->id;
 
                         continue;
                     }
@@ -197,43 +208,39 @@ class DictionaryImportProcessingService
                         $audioMediaId = $mediaByFilename[$data['audio_filename']] ??= $this->createAudioMedia($job, $actor, $data['audio_filename'], $analysis['zip_files'][$data['audio_filename']]['path']);
                     }
 
-                    $payload = [
-                        'category_id' => $row['category_id'],
-                        'code' => $data['kode'],
-                        'indonesia' => $data['indonesia'],
-                        'english' => $data['english'],
-                        'mekongga' => $data['mekongga'],
-                        'example_mekongga' => null,
-                        'example_indonesia' => null,
-                        'audio_media_id' => $audioMediaId,
-                        'status' => 'active',
-                    ];
-
                     if ($existing && $job->duplicate_strategy === 'update') {
-                        $existing->fill($this->dictionaryEntryService->payload(array_merge($payload, [
-                            'audio_media_id' => $audioMediaId ?? $existing->audio_media_id,
-                        ])) + [
+                        $existing->fill($this->progressiveEntryPayload($existing, $data, $row['category_id'], $audioMediaId) + [
                             'updated_by' => $actor->id,
                             'source_import_job_id' => $job->id,
                         ])->save();
                         $vocabUpdated++;
-                        $entryIdByMekongga[$row['mekongga_normalized']] = $existing->id;
+                        $entryIdByIndonesia[$mergeKey] = $existing->id;
 
                         continue;
                     }
 
                     if (! $existing) {
-                        $entry = DictionaryEntry::query()->create($this->dictionaryEntryService->payload($payload) + [
+                        $entry = DictionaryEntry::query()->create($this->dictionaryEntryService->payload([
+                            'category_id' => $row['category_id'],
+                            'code' => $data['kode'],
+                            'indonesia' => $data['indonesia'],
+                            'english' => $data['english'],
+                            'mekongga' => $data['mekongga'],
+                            'example_mekongga' => null,
+                            'example_indonesia' => null,
+                            'audio_media_id' => $audioMediaId,
+                            'status' => 'active',
+                        ]) + [
                             'created_by' => $actor->id,
                             'source_import_job_id' => $job->id,
                         ]);
                         $vocabInserted++;
-                        $entryIdByMekongga[$row['mekongga_normalized']] = $entry->id;
+                        $entryIdByIndonesia[$mergeKey] = $entry->id;
 
                         continue;
                     }
 
-                    $entryIdByMekongga[$row['mekongga_normalized']] = $existing->id;
+                    $entryIdByIndonesia[$mergeKey] = $existing->id;
                 }
             });
         }
@@ -244,7 +251,7 @@ class DictionaryImportProcessingService
         $processedPairs = [];
 
         foreach (array_chunk($analysis['rows']['sentence_examples'], $chunkSize) as $chunk) {
-            DB::transaction(function () use ($chunk, $job, $actor, &$sentenceInserted, &$sentenceUpdated, &$sentenceSkipped, &$processedPairs, $entryIdByMekongga): void {
+            DB::transaction(function () use ($chunk, $job, $actor, &$mediaByFilename, &$sentenceInserted, &$sentenceUpdated, &$sentenceSkipped, &$processedPairs, $entryIdByIndonesia, $analysis): void {
                 foreach ($chunk as $row) {
                     if (isset($processedPairs[$row['pair_key']])) {
                         $sentenceSkipped++;
@@ -252,7 +259,7 @@ class DictionaryImportProcessingService
                         continue;
                     }
 
-                    $entryId = $row['entry_id'] ?? ($row['pending_vocab_mekongga'] !== null ? ($entryIdByMekongga[$row['pending_vocab_mekongga']] ?? null) : null);
+                    $entryId = $row['entry_id'] ?? ($row['pending_vocab_indonesia'] !== null ? ($entryIdByIndonesia[$row['pending_vocab_indonesia']] ?? null) : null);
 
                     if ($entryId === null) {
                         $sentenceSkipped++;
@@ -262,25 +269,25 @@ class DictionaryImportProcessingService
 
                     $processedPairs[$row['pair_key']] = true;
                     $data = $row['data'];
-                    $existing = DictionarySentenceExample::query()->whereKey($row['existing_id'])->first();
-                    $payload = [
-                        'dictionary_entry_id' => $entryId,
-                        'code' => $data['kode'],
-                        'example_mekongga' => $data['contoh_mekongga'],
-                        'example_indonesia' => $data['contoh_indonesia'],
-                        'example_mekongga_normalized' => app(DictionaryNormalizer::class)->normalize($data['contoh_mekongga']),
-                        'example_indonesia_normalized' => app(DictionaryNormalizer::class)->normalize($data['contoh_indonesia']),
-                        'status' => 'active',
-                    ];
+                    $sentenceKey = app(DictionaryNormalizer::class)->normalize($data['contoh_indonesia'] ?? '');
+                    $existing = DictionarySentenceExample::query()
+                        ->where('dictionary_entry_id', $entryId)
+                        ->where('example_indonesia_normalized', $sentenceKey)
+                        ->first();
 
-                    if ($existing && $job->duplicate_strategy === 'skip') {
+                    if ($existing && $job->duplicate_strategy !== 'update') {
                         $sentenceSkipped++;
 
                         continue;
                     }
 
+                    $audioMediaId = null;
+                    if (($data['audio_filename'] ?? '') !== '' && isset($analysis['zip_files'][$data['audio_filename']])) {
+                        $audioMediaId = $mediaByFilename[$data['audio_filename']] ??= $this->createAudioMedia($job, $actor, $data['audio_filename'], $analysis['zip_files'][$data['audio_filename']]['path']);
+                    }
+
                     if ($existing && $job->duplicate_strategy === 'update') {
-                        $existing->fill($payload + [
+                        $existing->fill($this->progressiveSentencePayload($existing, $data, $entryId, $audioMediaId) + [
                             'updated_by' => $actor->id,
                             'source_import_job_id' => $job->id,
                         ])->save();
@@ -290,17 +297,38 @@ class DictionaryImportProcessingService
                     }
 
                     if (! $existing) {
-                        DictionarySentenceExample::query()->create($payload + [
-                            'created_by' => $actor->id,
-                            'source_import_job_id' => $job->id,
-                        ]);
-                        $sentenceInserted++;
+                        try {
+                            DB::transaction(fn () => DictionarySentenceExample::query()->create($this->sentencePayload($data, $entryId, $audioMediaId) + [
+                                'created_by' => $actor->id,
+                                'source_import_job_id' => $job->id,
+                            ]));
+                            $sentenceInserted++;
+                        } catch (UniqueConstraintViolationException $e) {
+                            $existing = DictionarySentenceExample::query()
+                                ->where('dictionary_entry_id', $entryId)
+                                ->where('example_indonesia_normalized', $sentenceKey)
+                                ->first();
+
+                            if (! $existing) {
+                                throw $e;
+                            }
+
+                            if ($job->duplicate_strategy === 'update') {
+                                $existing->fill($this->progressiveSentencePayload($existing, $data, $entryId, $audioMediaId) + [
+                                    'updated_by' => $actor->id,
+                                    'source_import_job_id' => $job->id,
+                                ])->save();
+                                $sentenceUpdated++;
+                            } else {
+                                $sentenceSkipped++;
+                            }
+                        }
                     }
                 }
             });
         }
 
-        $status = $job->invalid_rows > 0 ? 'completed_with_errors' : 'completed';
+        $status = $analysis['summary']['invalid_rows'] > 0 ? 'completed_with_errors' : 'completed';
         $job->forceFill([
             'status' => $status,
             'inserted_rows' => $vocabInserted + $sentenceInserted,
@@ -330,6 +358,59 @@ class DictionaryImportProcessingService
         );
 
         return $job->refresh();
+    }
+
+    private function progressiveEntryPayload(DictionaryEntry $existing, array $data, ?string $categoryId, ?string $audioMediaId): array
+    {
+        $merged = $existing->only(['category_id', 'indonesia', 'english', 'mekongga', 'example_mekongga', 'example_indonesia', 'audio_media_id', 'status']);
+
+        if ($categoryId !== null) {
+            $merged['category_id'] = $categoryId;
+        }
+
+        foreach (['indonesia', 'english', 'mekongga'] as $field) {
+            if (($data[$field] ?? '') !== '') {
+                $merged[$field] = $data[$field];
+            }
+        }
+
+        $merged['audio_media_id'] = $audioMediaId ?? $merged['audio_media_id'];
+        $merged['status'] = 'active';
+
+        return $this->dictionaryEntryService->payload($merged);
+    }
+
+    private function sentencePayload(array $data, string $entryId, ?string $audioMediaId): array
+    {
+        return [
+            'dictionary_entry_id' => $entryId,
+            'code' => $data['kode'],
+            'example_mekongga' => $data['contoh_mekongga'],
+            'example_indonesia' => $data['contoh_indonesia'],
+            'example_mekongga_normalized' => app(DictionaryNormalizer::class)->normalize($data['contoh_mekongga']),
+            'example_indonesia_normalized' => app(DictionaryNormalizer::class)->normalize($data['contoh_indonesia']),
+            'audio_media_id' => $audioMediaId,
+            'status' => 'active',
+        ];
+    }
+
+    private function progressiveSentencePayload(DictionarySentenceExample $existing, array $data, string $entryId, ?string $audioMediaId): array
+    {
+        $payload = [
+            'dictionary_entry_id' => $entryId,
+            'example_mekongga' => ($data['contoh_mekongga'] ?? '') !== '' ? $data['contoh_mekongga'] : $existing->example_mekongga,
+            'example_indonesia' => ($data['contoh_indonesia'] ?? '') !== '' ? $data['contoh_indonesia'] : $existing->example_indonesia,
+            'example_mekongga_normalized' => ($data['contoh_mekongga'] ?? '') !== '' ? app(DictionaryNormalizer::class)->normalize($data['contoh_mekongga']) : $existing->example_mekongga_normalized,
+            'example_indonesia_normalized' => ($data['contoh_indonesia'] ?? '') !== '' ? app(DictionaryNormalizer::class)->normalize($data['contoh_indonesia']) : $existing->example_indonesia_normalized,
+            'audio_media_id' => $audioMediaId ?? $existing->audio_media_id,
+            'status' => 'active',
+        ];
+
+        if (($data['kode'] ?? '') !== '') {
+            $payload['code'] = $data['kode'];
+        }
+
+        return $payload;
     }
 
     private function processSentenceExamples(DictionaryImportJob $job, $actor, array $analysis): DictionaryImportJob

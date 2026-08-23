@@ -138,7 +138,10 @@ class DictionaryImportFileService
 
         return [
             'vocabulary' => $this->extractSheetRows($vocabularySheet->toArray(null, true, true, false), config('dictionary.xlsx_headers.vocabulary'), 'vocabulary'),
-            'sentence_examples' => $this->extractSheetRows($sentenceSheet->toArray(null, true, true, false), config('dictionary.xlsx_headers.sentence_examples'), 'sentence_examples'),
+            'sentence_examples' => $this->extractSheetRows($sentenceSheet->toArray(null, true, true, false), [
+                config('dictionary.xlsx_headers.sentence_examples'),
+                config('dictionary.xlsx_headers.legacy_sentence_examples'),
+            ], 'sentence_examples'),
         ];
     }
 
@@ -152,14 +155,15 @@ class DictionaryImportFileService
         $rows = [];
         $rowNumber = 0;
         $header = null;
+        $normalizedKeys = [];
 
         foreach ($sheetRows as $rawRow) {
             $rowNumber++;
             $row = array_map(fn ($value) => is_string($value) ? trim($value) : (string) ($value ?? ''), $rawRow);
 
             if ($header === null) {
-                $header = array_map(fn ($value) => trim((string) $value), array_slice($row, 0, count($expectedHeader)));
-                $this->validateXlsxHeader($header, $expectedHeader, $sheetKey);
+                $acceptedHeaders = isset($expectedHeader[0]) && is_array($expectedHeader[0]) ? $expectedHeader : [$expectedHeader];
+                [$header, $normalizedKeys] = $this->resolveXlsxHeader($row, $acceptedHeaders, $sheetKey);
 
                 continue;
             }
@@ -168,16 +172,15 @@ class DictionaryImportFileService
                 continue;
             }
 
-            if (array_filter(array_slice($row, count($expectedHeader)), fn ($value) => trim((string) $value) !== '') !== []) {
+            if (array_filter(array_slice($row, count($header)), fn ($value) => trim((string) $value) !== '') !== []) {
                 $sheetLabel = $sheetKey === 'vocabulary' ? config('dictionary.xlsx_sheets.vocabulary') : config('dictionary.xlsx_sheets.sentence_examples');
                 throw new ApiException("Sheet \"{$sheetLabel}\" memiliki kolom tambahan yang tidak diizinkan.", 'INVALID_XLSX_EXTRA_COLUMNS', 422);
             }
 
-            $normalizedKeys = $sheetKey === 'vocabulary'
-                ? ['indonesia', 'mekongga', 'english', 'kategori', 'audio_filename']
-                : ['contoh_indonesia', 'contoh_mekongga', 'related_mekongga'];
-
             $data = array_combine($normalizedKeys, array_slice(array_pad($row, count($normalizedKeys), ''), 0, count($normalizedKeys)));
+            if ($sheetKey === 'sentence_examples' && count($normalizedKeys) === 3) {
+                $data += ['related_indonesia' => '', 'audio_filename' => '', 'legacy_relation' => '1'];
+            }
 
             $rows[] = [
                 'row_number' => $rowNumber,
@@ -196,18 +199,29 @@ class DictionaryImportFileService
         return $rows;
     }
 
-    private function validateXlsxHeader(array $header, array $expected, string $sheetKey): void
+    private function resolveXlsxHeader(array $row, array $acceptedHeaders, string $sheetKey): array
     {
-        $trimmedExpected = array_slice($expected, 0, count($header));
+        foreach ($acceptedHeaders as $expected) {
+            $header = array_map(fn ($value) => trim((string) $value), array_slice($row, 0, count($expected)));
+            if ($header !== $expected) {
+                continue;
+            }
 
-        if ($header !== $trimmedExpected) {
-            $sheetLabel = $sheetKey === 'vocabulary' ? config('dictionary.xlsx_sheets.vocabulary') : config('dictionary.xlsx_sheets.sentence_examples');
-            throw new ApiException(
-                "Kolom pada sheet \"{$sheetLabel}\" tidak sesuai template. Unduh ulang template terbaru dan jangan mengubah urutan kolom.",
-                'INVALID_XLSX_HEADER',
-                422,
-            );
+            $normalizedKeys = $sheetKey === 'vocabulary'
+                ? ['indonesia', 'mekongga', 'english', 'kategori', 'audio_filename']
+                : (count($expected) === 3
+                    ? ['contoh_indonesia', 'contoh_mekongga', 'related_mekongga']
+                    : ['related_indonesia', 'related_mekongga', 'contoh_indonesia', 'contoh_mekongga', 'audio_filename']);
+
+            return [$header, $normalizedKeys];
         }
+
+        $sheetLabel = $sheetKey === 'vocabulary' ? config('dictionary.xlsx_sheets.vocabulary') : config('dictionary.xlsx_sheets.sentence_examples');
+        throw new ApiException(
+            "Kolom pada sheet \"{$sheetLabel}\" tidak dikenali.",
+            'INVALID_XLSX_HEADER',
+            422,
+        );
     }
 
     public function extractZipAudio(?string $zipPath): array

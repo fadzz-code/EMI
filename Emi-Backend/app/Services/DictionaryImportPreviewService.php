@@ -120,23 +120,42 @@ class DictionaryImportPreviewService
         $workbook = $this->fileService->parseXlsxWorkbook($xlsxPath);
 
         $vocabAnalysis = $this->analyzeCombinedVocabularyRows($job, $workbook['vocabulary'], $zipFiles);
-        $sentenceAnalysis = $this->analyzeCombinedSentenceRows($job, $workbook['sentence_examples'], $vocabAnalysis['valid_rows']);
+        $sentenceAnalysis = $this->analyzeCombinedSentenceRows($job, $workbook['sentence_examples'], $vocabAnalysis['valid_rows'], $zipFiles);
+
+        $audioReferenced = array_keys($vocabAnalysis['audio_referenced'] + $sentenceAnalysis['audio_referenced']);
+        $unusedAudio = array_values(array_diff(array_keys($zipFiles), $audioReferenced));
+        $errors = array_merge($vocabAnalysis['errors'], $sentenceAnalysis['errors']);
+        $errors = array_values(array_filter(
+            $errors,
+            fn (array $error) => ! ($error['code'] === 'UNUSED_AUDIO_FILE' && isset($vocabAnalysis['audio_referenced'][$error['raw_data']['audio_filename'] ?? '']) === false && isset($sentenceAnalysis['audio_referenced'][$error['raw_data']['audio_filename'] ?? '']))
+        ));
+
+        foreach ($unusedAudio as $filename) {
+            $errors[] = [
+                'row_number' => null,
+                'field' => 'audio_zip',
+                'sheet' => 'vocabulary',
+                'code' => 'UNUSED_AUDIO_FILE',
+                'message' => "File audio {$filename} tidak direferensikan sheet Kosakata.",
+                'raw_data' => ['audio_filename' => $filename],
+            ];
+        }
 
         return [
             'valid_rows' => [
                 'vocabulary' => $vocabAnalysis['valid_rows'],
                 'sentence_examples' => $sentenceAnalysis['valid_rows'],
             ],
-            'errors' => array_merge($vocabAnalysis['errors'], $sentenceAnalysis['errors']),
+            'errors' => $errors,
             'summary' => [
                 'total_rows' => $vocabAnalysis['summary']['total_rows'] + $sentenceAnalysis['summary']['total_rows'],
                 'valid_rows' => $vocabAnalysis['summary']['valid_rows'] + $sentenceAnalysis['summary']['valid_rows'],
                 'invalid_rows' => $vocabAnalysis['summary']['invalid_rows'] + $sentenceAnalysis['summary']['invalid_rows'],
                 'warning_count' => $vocabAnalysis['summary']['warning_count'] + $sentenceAnalysis['summary']['warning_count'],
-                'audio_referenced' => $vocabAnalysis['summary']['audio_referenced'],
-                'audio_missing' => $vocabAnalysis['summary']['audio_missing'],
-                'unused_audio_files' => $vocabAnalysis['summary']['unused_audio_files'],
-                'audio' => $vocabAnalysis['summary']['audio'],
+                'audio_referenced' => count($audioReferenced),
+                'audio_missing' => count(array_filter($errors, fn ($error) => in_array($error['code'], ['AUDIO_FILE_NOT_FOUND', 'AUDIO_AUTO_NOT_FOUND'], true))),
+                'unused_audio_files' => count($unusedAudio),
+                'audio' => $this->audioSummary($zipFiles, array_flip($audioReferenced), $errors, $unusedAudio),
                 'sample_rows' => array_slice(array_merge($vocabAnalysis['summary']['sample_rows'], $sentenceAnalysis['summary']['sample_rows']), 0, config('dictionary.sample_limit')),
                 'sample_errors' => array_slice(array_merge($vocabAnalysis['summary']['sample_errors'], $sentenceAnalysis['summary']['sample_errors']), 0, config('dictionary.sample_limit')),
                 'vocabulary' => $vocabAnalysis['summary'],
@@ -151,65 +170,36 @@ class DictionaryImportPreviewService
             ->active()
             ->get()
             ->keyBy(fn (DictionaryCategory $category) => $this->normalizer->normalize($category->name));
-        $existingByTriple = $this->existingEntriesByTriple();
-        $seen = [];
-        $validRows = [];
+        $existingByIndonesia = $this->existingEntriesByIndonesia();
+        $validatedRows = [];
         $errors = [];
         $sampleRows = [];
         $sampleErrors = [];
-        $duplicateRows = 0;
-        $audioReferenced = [];
-        $dbDuplicates = 0;
         $errorBreakdown = [];
+        $invalidCount = 0;
 
         foreach ($rows as $row) {
             $data = $this->cleanRow($row['data']);
             $rowErrors = [];
-            $triple = [
-                $this->normalizer->normalize($data['indonesia'] ?? ''),
-                $this->normalizer->normalize($data['english'] ?? ''),
-                $this->normalizer->normalize($data['mekongga'] ?? ''),
-            ];
-            $tripleKey = implode('|', $triple);
 
             if (($data['indonesia'] ?? '') === '') {
                 $rowErrors[] = $this->error($row['row_number'], 'indonesia', 'REQUIRED', 'Kolom Bahasa Indonesia kosong. Saran: isi kata Indonesia-nya; kolom lain boleh dikosongkan dulu.', $data, true, 'vocabulary');
             }
 
-            $category = $categories[$this->normalizer->normalize($data['kategori'] ?? '')] ?? null;
+            [$category, $categoryAlias] = $this->resolveCategory($data['kategori'] ?? '', $categories);
 
-            if (($data['kategori'] ?? '') !== '' && ! $category) {
-                $rowErrors[] = $this->error($row['row_number'], 'kategori', 'CATEGORY_NOT_FOUND', "Kategori \"{$data['kategori']}\" tidak ada atau nonaktif. Saran: pilih kategori dari menu Kamus, atau kosongkan kolomnya.", $data, true, 'vocabulary');
-            }
-
-            $workbookDuplicate = isset($seen[$tripleKey]);
-            if ($workbookDuplicate) {
-                $duplicateRows++;
-                $rowErrors[] = $this->error($row['row_number'], null, $job->duplicate_strategy === 'reject' ? 'DICTIONARY_DUPLICATE' : 'CSV_DUPLICATE_SKIPPED', $job->duplicate_strategy === 'reject' ? 'Baris ini sama persis dengan baris lain di sheet Kosakata. Saran: hapus salah satu baris.' : 'Baris ini sama dengan baris lain di sheet Kosakata, jadi otomatis dilewati. Saran: hapus baris gandanya.', $data, $job->duplicate_strategy === 'reject', 'vocabulary');
-            } else {
-                $seen[$tripleKey] = true;
-            }
-
-            $existingId = $existingByTriple[$tripleKey] ?? null;
-
-            if ($existingId !== null) {
-                $dbDuplicates++;
-
-                if ($job->duplicate_strategy === 'reject') {
-                    $rowErrors[] = $this->error($row['row_number'], null, 'DICTIONARY_DUPLICATE', 'Kata ini sudah ada di kamus. Saran: ganti strategi duplikat ke "Lewati" atau "Perbarui".', $data, true, 'vocabulary');
-                }
-            }
-
-            [$resolvedAudio, $audioError] = $this->resolveAudio($data['audio_filename'] ?? '', $data['mekongga'] ?? '', $zipFiles, $row['row_number'], $data, 'vocabulary');
-            $data['audio_filename'] = $resolvedAudio ?? '';
-            if ($audioError) {
-                $rowErrors[] = $audioError;
-            }
-            if ($resolvedAudio !== null) {
-                $audioReferenced[$resolvedAudio] = true;
+            if ($categoryAlias !== null) {
+                $data['kategori'] = $categoryAlias;
+                $rowErrors[] = $this->error($row['row_number'], 'kategori', 'CATEGORY_NORMALIZED', "Kategori dinormalisasi menjadi \"{$categoryAlias}\".", $data, false, 'vocabulary');
+            } elseif (($data['kategori'] ?? '') !== '' && ! $category) {
+                $rowErrors[] = $this->error($row['row_number'], 'kategori', 'WARNING_UNKNOWN_CATEGORY', "Kategori \"{$data['kategori']}\" tidak dikenal. Kosakata tetap diproses tanpa kategori.", $data, false, 'vocabulary');
             }
 
             $fatalRowErrors = array_filter($rowErrors, fn ($error) => $error['is_error']);
+
+            if ($fatalRowErrors !== []) {
+                $invalidCount++;
+            }
 
             foreach ($fatalRowErrors as $fatalError) {
                 $errorBreakdown[$fatalError['code']] = ($errorBreakdown[$fatalError['code']] ?? 0) + 1;
@@ -222,13 +212,118 @@ class DictionaryImportPreviewService
                 }
             }
 
-            if ($fatalRowErrors === [] && ! $workbookDuplicate) {
-                $validRows[] = [
+            if ($fatalRowErrors === []) {
+                $validatedRows[] = [
                     'row_number' => $row['row_number'],
-                    'data' => $data + ['kode' => $this->generateEntryCode($data['mekongga'] ?? '', $row['row_number'])],
-                    'category_id' => $category?->id,
-                    'triple_key' => $tripleKey,
-                    'mekongga_normalized' => $triple[2],
+                    'data' => $data,
+                    'category' => $category,
+                ];
+            }
+        }
+
+        $merged = [];
+        foreach ($validatedRows as $item) {
+            $key = $this->normalizer->normalize($item['data']['indonesia']);
+            $mekonggaKey = $this->normalizer->normalize($item['data']['mekongga'] ?? '');
+            $categoryId = $item['category']?->id;
+
+            $mergeKey = $key.'|'.($mekonggaKey !== '' ? $mekonggaKey : 'no_mek');
+
+            if (! isset($merged[$mergeKey])) {
+                $merged[$mergeKey] = [
+                    'row_number' => $item['row_number'],
+                    'data' => $item['data'],
+                    'indonesia_key' => $key,
+                    'merge_key' => $mergeKey,
+                    'category_id' => $categoryId,
+                    'count' => 1,
+                ];
+
+                continue;
+            }
+
+            $merged[$mergeKey]['count']++;
+            foreach (['indonesia', 'mekongga', 'english', 'kategori', 'audio_filename'] as $field) {
+                if (($item['data'][$field] ?? '') !== '') {
+                    $merged[$mergeKey]['data'][$field] = $item['data'][$field];
+                }
+            }
+            if ($categoryId !== null) {
+                $merged[$mergeKey]['category_id'] = $categoryId;
+            }
+        }
+
+        $duplicateRows = 0;
+        $dbDuplicates = 0;
+        $audioReferenced = [];
+        $validRows = [];
+
+        foreach ($merged as $mergeKey => $candidate) {
+            $duplicateRows += $candidate['count'] - 1;
+            $key = $candidate['indonesia_key'];
+            $rowNumber = $candidate['row_number'];
+            $data = $candidate['data'];
+            $existingIds = $existingByIndonesia[$key] ?? [];
+            $rowErrors = [];
+
+            $existingId = null;
+            $mekonggaNormalized = $this->normalizer->normalize($data['mekongga'] ?? '');
+
+            if (count($existingIds) === 1) {
+                $existingId = $existingIds[0];
+            } elseif (count($existingIds) > 1) {
+                if ($mekonggaNormalized === '') {
+                    $rowErrors[] = $this->error($rowNumber, 'indonesia', 'AMBIGUOUS_INDONESIA', "Kata Indonesia \"{$data['indonesia']}\" memiliki beberapa padanan Mekongga. Isi kolom Mekongga untuk menentukan kosakata yang ingin diperbarui.", $data, true, 'vocabulary');
+                } else {
+                    $matches = DictionaryEntry::query()
+                        ->whereIn('id', $existingIds)
+                        ->where('mekongga_normalized', $mekonggaNormalized)
+                        ->pluck('id');
+
+                    if ($matches->count() === 1) {
+                        $existingId = $matches->first();
+                    } elseif ($matches->count() > 1) {
+                        $rowErrors[] = $this->error($rowNumber, 'indonesia', 'AMBIGUOUS_INDONESIA_MEKONGGA', "Kombinasi kata Indonesia \"{$data['indonesia']}\" dan Mekongga \"{$data['mekongga']}\" cocok dengan lebih dari satu entri.", $data, true, 'vocabulary');
+                    }
+                }
+            }
+            if ($existingId !== null) {
+                $dbDuplicates++;
+            }
+
+            [$resolvedAudio, $audioError] = $this->resolveAudio($data['audio_filename'] ?? '', count($existingIds) === 1 ? [$data['indonesia'] ?? '', $data['mekongga'] ?? '', $data['english'] ?? ''] : [$data['mekongga'] ?? '', $data['english'] ?? ''], $zipFiles, $rowNumber, $data, 'vocabulary');
+            $data['audio_filename'] = $resolvedAudio ?? '';
+            if ($audioError) {
+                $rowErrors[] = $audioError;
+            }
+            if ($resolvedAudio !== null) {
+                $audioReferenced[$resolvedAudio] = true;
+            }
+
+            $fatalRowErrors = array_filter($rowErrors, fn ($error) => $error['is_error']);
+
+            if ($fatalRowErrors !== []) {
+                $invalidCount++;
+            }
+
+            foreach ($fatalRowErrors as $fatalError) {
+                $errorBreakdown[$fatalError['code']] = ($errorBreakdown[$fatalError['code']] ?? 0) + 1;
+            }
+
+            foreach ($rowErrors as $error) {
+                $errors[] = collect($error)->except('is_error')->all();
+                if (count($sampleErrors) < config('dictionary.sample_limit')) {
+                    $sampleErrors[] = collect($error)->except('is_error')->all();
+                }
+            }
+
+            if ($fatalRowErrors === []) {
+                $validRows[] = [
+                    'row_number' => $rowNumber,
+                    'data' => $data + ['kode' => $this->generateEntryCode($data['mekongga'] ?? '', $rowNumber)],
+                    'category_id' => $candidate['category_id'],
+                    'indonesia_key' => $key,
+                    'merge_key' => $mergeKey,
                     'existing_id' => $existingId,
                 ];
 
@@ -254,17 +349,20 @@ class DictionaryImportPreviewService
         return [
             'valid_rows' => $validRows,
             'errors' => $errors,
+            'audio_referenced' => $audioReferenced,
             'summary' => [
                 'total_rows' => count($rows),
                 'valid_rows' => count($validRows),
-                'invalid_rows' => count($rows) - count($validRows),
+                'invalid_rows' => $invalidCount,
                 'new_rows' => count(array_filter($validRows, fn ($row) => $row['existing_id'] === null)),
                 'duplicate_rows' => $duplicateRows + $dbDuplicates,
                 'audio_referenced' => count($audioReferenced),
                 'audio_missing' => count(array_filter($errors, fn ($error) => in_array($error['code'], ['AUDIO_FILE_NOT_FOUND', 'AUDIO_AUTO_NOT_FOUND'], true))),
                 'unused_audio_files' => count($unusedAudio),
                 'audio' => $this->audioSummary($zipFiles, $audioReferenced, $errors, $unusedAudio),
-                'warning_count' => count($unusedAudio) + count(array_filter($errors, fn ($error) => in_array($error['code'], ['CSV_DUPLICATE_SKIPPED', 'AUDIO_FILE_NOT_FOUND', 'AUDIO_AUTO_NOT_FOUND', 'AUDIO_AUTO_AMBIGUOUS'], true))),
+                'warning_count' => count($unusedAudio) + count(array_filter($errors, fn ($error) => in_array($error['code'], ['CSV_DUPLICATE_SKIPPED', 'AUDIO_FILE_NOT_FOUND', 'AUDIO_AUTO_NOT_FOUND', 'AUDIO_AUTO_AMBIGUOUS', 'CATEGORY_NORMALIZED', 'WARNING_UNKNOWN_CATEGORY'], true))),
+                'categories_normalized' => count(array_filter($errors, fn ($error) => $error['code'] === 'CATEGORY_NORMALIZED')),
+                'unknown_categories' => count(array_filter($errors, fn ($error) => $error['code'] === 'WARNING_UNKNOWN_CATEGORY')),
                 'error_breakdown' => $errorBreakdown,
                 'sample_rows' => $sampleRows,
                 'sample_errors' => $sampleErrors,
@@ -273,36 +371,36 @@ class DictionaryImportPreviewService
     }
 
     /**
-     * @param  array<int, array{row_number: int, data: array<string, string>, mekongga_normalized: string}>  $validVocabRows  Rows already validated from the Kosakata sheet in this same workbook, used to auto-link sentences to a word that has not been persisted yet.
+     * @param  array<int, array{row_number: int, data: array<string, string>, indonesia_key: string, category_id: string|null, existing_id: string|null}>  $validVocabRows  Rows already validated and merged from the Kosakata sheet in this same workbook, used to auto-link sentences to a word that has not been persisted yet.
      */
-    private function analyzeCombinedSentenceRows(DictionaryImportJob $job, array $rows, array $validVocabRows): array
+    private function analyzeCombinedSentenceRows(DictionaryImportJob $job, array $rows, array $validVocabRows, array $zipFiles): array
     {
-        $vocabByMekongga = [];
+        $pendingByIndonesia = [];
         foreach ($validVocabRows as $vocabRow) {
-            $vocabByMekongga[$vocabRow['mekongga_normalized']][] = $vocabRow;
+            $pendingByIndonesia[$vocabRow['indonesia_key']][] = $vocabRow;
         }
 
+        $rows = $this->adaptLegacySentenceRows($rows, $validVocabRows);
+
         $relatedValues = collect($rows)
-            ->map(fn (array $row): string => $this->normalizer->normalize($row['data']['related_mekongga'] ?? ''))
+            ->map(fn (array $row): string => $this->normalizer->normalize($row['data']['related_indonesia'] ?? ''))
             ->filter()
             ->unique()
             ->values();
-        $entriesByMekongga = $relatedValues->isEmpty()
+        $entriesByIndonesia = $relatedValues->isEmpty()
             ? collect()
-            : DictionaryEntry::query()->whereIn('mekongga_normalized', $relatedValues)->get()->groupBy('mekongga_normalized');
+            : DictionaryEntry::query()->whereIn('indonesia_normalized', $relatedValues)->get()->groupBy('indonesia_normalized');
         $existingSentences = DictionarySentenceExample::query()
-            ->whereIn('dictionary_entry_id', $entriesByMekongga->flatten(1)->pluck('id'))
-            ->get(['id', 'dictionary_entry_id', 'example_mekongga_normalized', 'example_indonesia_normalized'])
-            ->keyBy(fn (DictionarySentenceExample $sentence): string => implode('|', [$sentence->dictionary_entry_id, $sentence->example_mekongga_normalized, $sentence->example_indonesia_normalized]));
+            ->whereIn('dictionary_entry_id', $entriesByIndonesia->flatten(1)->pluck('id'))
+            ->get(['id', 'dictionary_entry_id', 'example_indonesia_normalized'])
+            ->keyBy(fn (DictionarySentenceExample $sentence): string => implode('|', [$sentence->dictionary_entry_id, $sentence->example_indonesia_normalized]));
 
-        $seen = [];
-        $validRows = [];
+        $validatedRows = [];
         $errors = [];
         $sampleRows = [];
         $sampleErrors = [];
-        $duplicateRows = 0;
-        $dbDuplicates = 0;
         $errorBreakdown = [];
+        $invalidCount = 0;
 
         foreach ($rows as $row) {
             $data = $this->cleanRow($row['data']);
@@ -312,59 +410,87 @@ class DictionaryImportPreviewService
                 $rowErrors[] = $this->error($row['row_number'], 'contoh_indonesia', 'REQUIRED', 'Kolom Bahasa Indonesia kosong. Saran: isi kalimat Indonesia-nya; contoh Mekongga boleh menyusul.', $data, true, 'sentence_examples');
             }
 
-            if (($data['related_mekongga'] ?? '') === '') {
-                $rowErrors[] = $this->error($row['row_number'], 'related_mekongga', 'REQUIRED', 'Kolom Kata Mekongga Terkait kosong. Saran: isi kata Mekongga yang punya contoh ini, persis seperti di sheet Kosakata.', $data, true, 'sentence_examples');
+            if (($data['legacy_relation_error'] ?? '') !== '') {
+                $code = $data['legacy_relation_error'];
+                $message = $code === 'AMBIGUOUS_LEGACY_MEKONGGA_RELATION'
+                    ? "Kata Mekongga terkait \"{$data['related_mekongga']}\" cocok dengan lebih dari satu kosakata."
+                    : "Kata Mekongga terkait \"{$data['related_mekongga']}\" tidak ditemukan.";
+                $rowErrors[] = $this->error($row['row_number'], 'related_mekongga', $code, $message, $data, true, 'sentence_examples');
+            } elseif (($data['related_indonesia'] ?? '') === '') {
+                $rowErrors[] = $this->error($row['row_number'], 'related_indonesia', 'REQUIRED', 'Kolom Kata Indonesia Terkait kosong. Saran: isi kata Indonesia yang punya contoh ini, persis seperti di sheet Kosakata.', $data, true, 'sentence_examples');
             }
 
-            $relatedNormalized = $this->normalizer->normalize($data['related_mekongga'] ?? '');
-            $entries = $relatedNormalized !== ''
-                ? collect($entriesByMekongga[$relatedNormalized] ?? [])
-                : collect();
-            $pendingVocabRows = $vocabByMekongga[$relatedNormalized] ?? [];
-            $matchCount = $entries->count() + count($pendingVocabRows);
-            $entry = $matchCount === 1 ? $entries->first() : null;
+            $relatedNormalized = $this->normalizer->normalize($data['related_indonesia'] ?? '');
+            $relatedMekonggaNormalized = $this->normalizer->normalize($data['related_mekongga'] ?? '');
 
-            if ($relatedNormalized !== '' && $matchCount > 1) {
-                $rowErrors[] = $this->error($row['row_number'], 'related_mekongga', 'AMBIGUOUS_RELATED_MEKONGGA', "Kata Mekongga \"{$data['related_mekongga']}\" cocok dengan lebih dari satu entri kamus. Saran: perjelas kata terkait atau rapikan duplikat entri di kamus.", $data, true, 'sentence_examples');
-            } elseif ($relatedNormalized !== '' && $matchCount === 0) {
+            $pendingMatch = null;
+            if (isset($pendingByIndonesia[$relatedNormalized])) {
+                $matches = collect($pendingByIndonesia[$relatedNormalized]);
+                if ($matches->count() === 1) {
+                    $pendingMatch = $matches->first();
+                } else {
+                    if ($relatedMekonggaNormalized === '') {
+                        $rowErrors[] = $this->error($row['row_number'], 'related_indonesia', 'AMBIGUOUS_RELATED_INDONESIA', "Kata \"{$data['related_indonesia']}\" memiliki beberapa padanan Mekongga. Isi 'Kata Mekongga Terkait' pada sheet Contoh Kalimat.", $data, true, 'sentence_examples');
+                    } else {
+                        $subMatches = $matches->filter(fn ($m) => $this->normalizer->normalize($m['data']['mekongga'] ?? '') === $relatedMekonggaNormalized);
+                        if ($subMatches->count() === 1) {
+                            $pendingMatch = $subMatches->first();
+                        } elseif ($subMatches->count() > 1) {
+                            $rowErrors[] = $this->error($row['row_number'], 'related_indonesia', 'AMBIGUOUS_RELATED_INDONESIA_MEKONGGA', "Kombinasi kata terkait \"{$data['related_indonesia']}\" dan \"{$data['related_mekongga']}\" cocok dengan lebih dari satu baris Kosakata baru.", $data, true, 'sentence_examples');
+                        } else {
+                            $rowErrors[] = $this->error($row['row_number'], 'related_indonesia', 'RELATED_INDONESIA_MEKONGGA_NOT_FOUND', "Kombinasi kata terkait \"{$data['related_indonesia']}\" dan \"{$data['related_mekongga']}\" tidak ditemukan.", $data, true, 'sentence_examples');
+                        }
+                    }
+                }
+            }
+
+            $existingMatch = null;
+            if (! $pendingMatch && isset($entriesByIndonesia[$relatedNormalized])) {
+                $matches = $entriesByIndonesia[$relatedNormalized];
+                if ($matches->count() === 1) {
+                    $existingMatch = $matches->first();
+                } else {
+                    if ($relatedMekonggaNormalized === '') {
+                        $rowErrors[] = $this->error($row['row_number'], 'related_indonesia', 'AMBIGUOUS_RELATED_INDONESIA', "Kata \"{$data['related_indonesia']}\" memiliki beberapa padanan Mekongga. Isi 'Kata Mekongga Terkait' pada sheet Contoh Kalimat.", $data, true, 'sentence_examples');
+                    } else {
+                        $subMatches = $matches->filter(fn ($m) => $m->mekongga_normalized === $relatedMekonggaNormalized);
+                        if ($subMatches->count() === 1) {
+                            $existingMatch = $subMatches->first();
+                        } elseif ($subMatches->count() > 1) {
+                            $rowErrors[] = $this->error($row['row_number'], 'related_indonesia', 'AMBIGUOUS_RELATED_INDONESIA_MEKONGGA', "Kombinasi kata terkait \"{$data['related_indonesia']}\" dan \"{$data['related_mekongga']}\" cocok dengan lebih dari satu entri kamus.", $data, true, 'sentence_examples');
+                        } else {
+                            $rowErrors[] = $this->error($row['row_number'], 'related_indonesia', 'RELATED_INDONESIA_MEKONGGA_NOT_FOUND', "Kombinasi kata terkait \"{$data['related_indonesia']}\" dan \"{$data['related_mekongga']}\" tidak ditemukan di kamus.", $data, true, 'sentence_examples');
+                        }
+                    }
+                }
+            }
+
+            if ($relatedNormalized !== '' && ! $pendingMatch && ! $existingMatch && ! array_filter($rowErrors, fn ($error) => $error['is_error'])) {
                 $rowErrors[] = $this->error(
                     $row['row_number'],
-                    'related_mekongga',
-                    'RELATED_MEKONGGA_NOT_FOUND',
-                    "Kata Mekongga \"{$data['related_mekongga']}\" tidak ditemukan di sheet Kosakata maupun kamus. Saran: impor kata itu dulu di sheet Kosakata, atau samakan ejaannya persis dengan kolom Mekongga.",
+                    'related_indonesia',
+                    'RELATED_INDONESIA_NOT_FOUND',
+                    "Kata Indonesia \"{$data['related_indonesia']}\" tidak ditemukan di sheet Kosakata maupun kamus. Saran: impor kata itu dulu di sheet Kosakata, atau samakan ejaannya persis dengan kolom Indonesia.",
                     $data,
                     true,
                     'sentence_examples',
                 );
             }
 
-            $pair = [
-                $this->normalizer->normalize($data['contoh_mekongga'] ?? ''),
-                $this->normalizer->normalize($data['contoh_indonesia'] ?? ''),
-            ];
-            $pairKey = implode('|', $pair);
+            $entry = $existingMatch;
+            $pendingKey = ($entry === null && $pendingMatch !== null) ? $pendingMatch['merge_key'] : null;
 
-            $workbookDuplicate = isset($seen[$pairKey]);
-            if ($workbookDuplicate) {
-                $duplicateRows++;
-                $rowErrors[] = $this->error($row['row_number'], null, $job->duplicate_strategy === 'reject' ? 'SENTENCE_DUPLICATE' : 'CSV_DUPLICATE_SKIPPED', $job->duplicate_strategy === 'reject' ? 'Kalimat ini sama dengan baris lain di sheet Contoh Kalimat. Saran: hapus salah satu baris.' : 'Kalimat ini sama dengan baris lain di sheet Contoh Kalimat, jadi otomatis dilewati. Saran: hapus baris gandanya.', $data, $job->duplicate_strategy === 'reject', 'sentence_examples');
-            } else {
-                $seen[$pairKey] = true;
-            }
-
-            $existingId = $entry
-                ? ($existingSentences[implode('|', [$entry->id, $pair[0], $pair[1]])] ?? null)
-                : null;
-
-            if ($existingId !== null) {
-                $dbDuplicates++;
-
-                if ($job->duplicate_strategy === 'reject') {
-                    $rowErrors[] = $this->error($row['row_number'], null, 'SENTENCE_DUPLICATE', 'Contoh kalimat ini sudah ada di kamus. Saran: ganti strategi duplikat ke "Lewati" atau "Perbarui".', $data, true, 'sentence_examples');
-                }
+            [$resolvedAudio, $audioError] = $this->resolveAudio($data['audio_filename'] ?? '', [], $zipFiles, $row['row_number'], $data, 'sentence_examples');
+            $data['audio_filename'] = $resolvedAudio ?? '';
+            if ($audioError) {
+                $rowErrors[] = $audioError;
             }
 
             $fatalRowErrors = array_filter($rowErrors, fn ($error) => $error['is_error']);
+
+            if ($fatalRowErrors !== []) {
+                $invalidCount++;
+            }
 
             foreach ($fatalRowErrors as $fatalError) {
                 $errorBreakdown[$fatalError['code']] = ($errorBreakdown[$fatalError['code']] ?? 0) + 1;
@@ -377,40 +503,140 @@ class DictionaryImportPreviewService
                 }
             }
 
-            if ($fatalRowErrors === [] && ! $workbookDuplicate) {
-                $validRows[] = [
+            if ($fatalRowErrors === []) {
+                $validatedRows[] = [
                     'row_number' => $row['row_number'],
-                    'data' => $data + ['kode' => $this->generateEntryCode($data['contoh_mekongga'] ?? '', $row['row_number']).'-CK'],
-                    'pair_key' => $pairKey,
+                    'data' => $data,
                     'entry_id' => $entry?->id,
-                    'pending_vocab_mekongga' => $entry ? null : $relatedNormalized,
-                    'existing_id' => $existingId,
+                    'pending_vocab_indonesia' => $pendingKey,
+                    'sentence_key' => $this->normalizer->normalize($data['contoh_indonesia'] ?? ''),
+                    'existing_id' => $entry ? ($existingSentences[implode('|', [$entry->id, $this->normalizer->normalize($data['contoh_indonesia'] ?? '')])] ?? null) : null,
                 ];
+            }
+        }
 
-                if (count($sampleRows) < config('dictionary.sample_limit')) {
-                    $sampleRows[] = $data;
+        $merged = [];
+        foreach ($validatedRows as $item) {
+            $key = implode('|', [$item['entry_id'] ?? 'pending:'.$item['pending_vocab_indonesia'].':'.($item['data']['related_mekongga'] ?? ''), $item['sentence_key']]);
+
+            if (! isset($merged[$key])) {
+                $merged[$key] = $item + ['count' => 1];
+
+                continue;
+            }
+
+            $merged[$key]['count']++;
+            foreach (['contoh_indonesia', 'contoh_mekongga', 'audio_filename'] as $field) {
+                if (($item['data'][$field] ?? '') !== '') {
+                    $merged[$key]['data'][$field] = $item['data'][$field];
                 }
+            }
+            $merged[$key]['existing_id'] = $merged[$key]['existing_id'] ?? $item['existing_id'];
+        }
+
+        $duplicateRows = 0;
+        $dbDuplicates = 0;
+        $audioReferenced = [];
+        $validRows = [];
+
+        foreach ($merged as $candidate) {
+            $duplicateRows += $candidate['count'] - 1;
+            $rowNumber = $candidate['row_number'];
+            $data = $candidate['data'];
+
+            if ($candidate['existing_id'] !== null) {
+                $dbDuplicates++;
+            }
+
+            if (($data['audio_filename'] ?? '') !== '') {
+                $audioReferenced[$data['audio_filename']] = true;
+            }
+
+            $validRows[] = [
+                'row_number' => $rowNumber,
+                'data' => $data + ['kode' => $this->generateEntryCode($data['contoh_mekongga'] ?? '', $rowNumber).'-CK'],
+                'entry_id' => $candidate['entry_id'],
+                'pending_vocab_indonesia' => $candidate['pending_vocab_indonesia'],
+                'pair_key' => implode('|', [$this->normalizer->normalize($data['contoh_mekongga'] ?? ''), $this->normalizer->normalize($data['contoh_indonesia'] ?? '')]),
+                'existing_id' => $candidate['existing_id'],
+            ];
+
+            if (count($sampleRows) < config('dictionary.sample_limit')) {
+                $sampleRows[] = $data;
             }
         }
 
         return [
             'valid_rows' => $validRows,
             'errors' => $errors,
+            'audio_referenced' => $audioReferenced,
             'summary' => [
                 'total_rows' => count($rows),
                 'valid_rows' => count($validRows),
-                'invalid_rows' => count($rows) - count($validRows),
+                'invalid_rows' => $invalidCount,
                 'new_rows' => count(array_filter($validRows, fn ($row) => $row['existing_id'] === null)),
                 'duplicate_rows' => $duplicateRows + $dbDuplicates,
-                'audio_referenced' => 0,
+                'audio_referenced' => count($audioReferenced),
                 'audio_missing' => 0,
                 'unused_audio_files' => 0,
-                'warning_count' => count(array_filter($errors, fn ($error) => $error['code'] === 'CSV_DUPLICATE_SKIPPED')),
+                'warning_count' => count(array_filter($errors, fn ($error) => in_array($error['code'], ['CSV_DUPLICATE_SKIPPED', 'AUDIO_FILE_NOT_FOUND'], true))),
                 'error_breakdown' => $errorBreakdown,
                 'sample_rows' => $sampleRows,
                 'sample_errors' => $sampleErrors,
             ],
         ];
+    }
+
+    private function adaptLegacySentenceRows(array $rows, array $validVocabRows): array
+    {
+        $legacyRows = array_filter($rows, fn (array $row): bool => ($row['data']['legacy_relation'] ?? '') === '1');
+        if ($legacyRows === []) {
+            return $rows;
+        }
+
+        $pendingByMekongga = collect($validVocabRows)
+            ->filter(fn (array $row): bool => $this->normalizer->normalize($row['data']['mekongga'] ?? '') !== '')
+            ->groupBy(fn (array $row): string => $this->normalizer->normalize($row['data']['mekongga']));
+        $tokens = collect($legacyRows)
+            ->flatMap(fn (array $row): array => preg_split('/\s*[,;\/]\s*/u', $row['data']['related_mekongga'] ?? '', -1, PREG_SPLIT_NO_EMPTY) ?: [])
+            ->map(fn (string $token): string => $this->normalizer->normalize($token))
+            ->filter()
+            ->unique();
+        $existingByMekongga = $tokens->isEmpty()
+            ? collect()
+            : DictionaryEntry::query()->where('status', 'active')->whereIn('mekongga_normalized', $tokens)->get()->groupBy('mekongga_normalized');
+        $adapted = [];
+
+        foreach ($rows as $row) {
+            if (($row['data']['legacy_relation'] ?? '') !== '1') {
+                $adapted[] = $row;
+
+                continue;
+            }
+
+            $relatedTokens = preg_split('/\s*[,;\/]\s*/u', $row['data']['related_mekongga'] ?? '', -1, PREG_SPLIT_NO_EMPTY) ?: [''];
+            foreach ($relatedTokens as $token) {
+                $key = $this->normalizer->normalize($token);
+                $matches = $pendingByMekongga->get($key, collect());
+                if ($matches->isEmpty()) {
+                    $matches = $existingByMekongga->get($key, collect());
+                }
+
+                $data = $row['data'];
+                $data['related_mekongga'] = $this->normalizer->normalizeDisplay($token) ?? '';
+                if ($matches->count() === 1) {
+                    $match = $matches->first();
+                    $data['related_indonesia'] = is_array($match) ? $match['data']['indonesia'] : $match->indonesia;
+                } else {
+                    $data['legacy_relation_error'] = $matches->isEmpty()
+                        ? 'LEGACY_MEKONGGA_RELATION_NOT_FOUND'
+                        : 'AMBIGUOUS_LEGACY_MEKONGGA_RELATION';
+                }
+                $adapted[] = ['row_number' => $row['row_number'], 'data' => $data];
+            }
+        }
+
+        return $adapted;
     }
 
     private function generateEntryCode(string $seed, int $rowNumber): string
@@ -437,6 +663,7 @@ class DictionaryImportPreviewService
         $audioReferenced = [];
         $dbDuplicates = 0;
         $errorBreakdown = [];
+        $invalidCount = 0;
 
         foreach ($rows as $row) {
             $data = $this->cleanRow($row['data']);
@@ -478,7 +705,7 @@ class DictionaryImportPreviewService
                 }
             }
 
-            [$resolvedAudio, $audioError] = $this->resolveAudio($data['audio_filename'] ?? '', $data['mekongga'] ?? '', $zipFiles, $row['row_number'], $data);
+            [$resolvedAudio, $audioError] = $this->resolveAudio($data['audio_filename'] ?? '', [$data['mekongga'] ?? ''], $zipFiles, $row['row_number'], $data);
             $data['audio_filename'] = $resolvedAudio ?? '';
             if ($audioError) {
                 $rowErrors[] = $audioError;
@@ -488,6 +715,10 @@ class DictionaryImportPreviewService
             }
 
             $fatalRowErrors = array_filter($rowErrors, fn ($error) => $error['is_error']);
+
+            if ($fatalRowErrors !== []) {
+                $invalidCount++;
+            }
 
             foreach ($fatalRowErrors as $fatalError) {
                 $errorBreakdown[$fatalError['code']] = ($errorBreakdown[$fatalError['code']] ?? 0) + 1;
@@ -534,7 +765,7 @@ class DictionaryImportPreviewService
             'summary' => [
                 'total_rows' => count($rows),
                 'valid_rows' => count($validRows),
-                'invalid_rows' => count($rows) - count($validRows),
+                'invalid_rows' => $invalidCount,
                 'new_rows' => count(array_filter($validRows, fn ($row) => $row['existing_id'] === null)),
                 'duplicate_rows' => $duplicateRows + $dbDuplicates,
                 'audio_referenced' => count($audioReferenced),
@@ -572,6 +803,7 @@ class DictionaryImportPreviewService
         $duplicateRows = 0;
         $dbDuplicates = 0;
         $errorBreakdown = [];
+        $invalidCount = 0;
 
         foreach ($rows as $row) {
             $data = $this->cleanRow($row['data']);
@@ -621,6 +853,10 @@ class DictionaryImportPreviewService
 
             $fatalRowErrors = array_filter($rowErrors, fn ($error) => $error['is_error']);
 
+            if ($fatalRowErrors !== []) {
+                $invalidCount++;
+            }
+
             foreach ($fatalRowErrors as $fatalError) {
                 $errorBreakdown[$fatalError['code']] = ($errorBreakdown[$fatalError['code']] ?? 0) + 1;
             }
@@ -654,7 +890,7 @@ class DictionaryImportPreviewService
             'summary' => [
                 'total_rows' => count($rows),
                 'valid_rows' => count($validRows),
-                'invalid_rows' => count($rows) - count($validRows),
+                'invalid_rows' => $invalidCount,
                 'new_rows' => count(array_filter($validRows, fn ($row) => $row['existing_id'] === null)),
                 'duplicate_rows' => $duplicateRows + $dbDuplicates,
                 'audio_referenced' => 0,
@@ -668,6 +904,25 @@ class DictionaryImportPreviewService
         ];
     }
 
+    private function resolveCategory(string $value, $categories): array
+    {
+        $key = $this->normalizer->normalize($value);
+        $category = $categories[$key] ?? null;
+        if ($category || $key === '') {
+            return [$category, null];
+        }
+
+        $aliases = [
+            'frasa kata benda' => 'frase kata benda',
+            'keta benda' => 'kata benda',
+            'kata beda' => 'kata benda',
+            'kata penghubung' => 'kata penghubung/sambung',
+        ];
+        $alias = $aliases[$key] ?? null;
+
+        return [$alias !== null ? ($categories[$alias] ?? null) : null, $alias !== null && isset($categories[$alias]) ? $categories[$alias]->name : null];
+    }
+
     private function existingEntriesByTriple(): array
     {
         return DictionaryEntry::query()
@@ -677,7 +932,18 @@ class DictionaryImportPreviewService
             ->all();
     }
 
-    private function resolveAudio(string $explicit, string $mekongga, array $zipFiles, int $rowNumber, array $data, ?string $sheet = null): array
+    private function existingEntriesByIndonesia(): array
+    {
+        return DictionaryEntry::query()
+            ->select(['id', 'indonesia_normalized'])
+            ->where('status', 'active')
+            ->get()
+            ->groupBy('indonesia_normalized')
+            ->map(fn ($entries): array => $entries->pluck('id')->values()->all())
+            ->all();
+    }
+
+    private function resolveAudio(string $explicit, array $priorityValues, array $zipFiles, int $rowNumber, array $data, ?string $sheet = null): array
     {
         if ($explicit !== '') {
             if (basename($explicit) !== $explicit) {
@@ -689,23 +955,27 @@ class DictionaryImportPreviewService
                 : [null, $this->error($rowNumber, 'audio_filename', 'AUDIO_FILE_NOT_FOUND', "Audio \"{$explicit}\" tidak ditemukan karena ZIP audio tidak diunggah atau file tidak ada di ZIP. Kata tetap bisa diimpor tanpa audio.", $data, false, $sheet)];
         }
 
-        if ($zipFiles === [] || $mekongga === '') {
+        $candidates = array_values(array_filter($priorityValues, fn ($value) => $value !== ''));
+
+        if ($zipFiles === [] || $candidates === []) {
             return [null, null];
         }
 
-        $key = $this->audioKey($mekongga);
-        $matches = array_values(array_filter(array_keys($zipFiles), fn ($filename) => $this->audioKey(pathinfo($filename, PATHINFO_FILENAME)) === $key));
-        sort($matches, SORT_STRING);
+        foreach ($candidates as $value) {
+            $key = $this->audioKey($value);
+            $matches = array_values(array_filter(array_keys($zipFiles), fn ($filename) => $this->audioKey(pathinfo($filename, PATHINFO_FILENAME)) === $key));
+            sort($matches, SORT_STRING);
 
-        if (count($matches) === 1) {
-            return [$matches[0], null];
+            if (count($matches) === 1) {
+                return [$matches[0], null];
+            }
+
+            if (count($matches) > 1) {
+                return [null, $this->error($rowNumber, 'audio_filename', 'AUDIO_AUTO_AMBIGUOUS', "Audio untuk kata \"{$value}\" ambigu.", $data, false, $sheet)];
+            }
         }
 
-        if ($matches === []) {
-            return [null, $this->error($rowNumber, 'audio_filename', 'AUDIO_AUTO_NOT_FOUND', "Audio untuk kata Mekongga \"{$mekongga}\" tidak ditemukan.", $data, false, $sheet)];
-        }
-
-        return [null, $this->error($rowNumber, 'audio_filename', 'AUDIO_AUTO_AMBIGUOUS', "Audio untuk kata Mekongga \"{$mekongga}\" ambigu.", $data, false, $sheet)];
+        return [null, $this->error($rowNumber, 'audio_filename', 'AUDIO_AUTO_NOT_FOUND', "Audio untuk kata \"{$candidates[0]}\" tidak ditemukan.", $data, false, $sheet)];
     }
 
     private function audioKey(string $value): string
