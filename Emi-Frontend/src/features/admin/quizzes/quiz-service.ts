@@ -199,6 +199,10 @@ export const quizQuestionService = {
     );
   },
 
+  async deleteMedia(token: string, mediaId: string) {
+    await apiClient.delete<[]>(`/media/${mediaId}`, { token });
+  },
+
   async uploadQuestionImage(token: string, file: File) {
     const formData = new FormData();
     formData.append("file", file, file.name);

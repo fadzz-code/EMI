@@ -36,6 +36,7 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
   const [deleteQuestionTarget, setDeleteQuestionTarget] =
     useState<QuizTemplateQuestion | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [questionFormBusy, setQuestionFormBusy] = useState(false);
 
   const quizQuery = useQuery({
     queryKey: ["admin", "quiz-templates", quizId],
@@ -83,7 +84,6 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
       quizQuestionService.create(token ?? "", quizId, payload),
     onSuccess: async (question) => {
       setSuccessMessage(`Soal #${question.order_number} berhasil dibuat.`);
-      setCreateQuestionOpen(false);
       await invalidateQuiz();
     },
   });
@@ -98,7 +98,6 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
     }) => quizQuestionService.update(token ?? "", questionId, payload),
     onSuccess: async (question) => {
       setSuccessMessage(`Soal #${question.order_number} berhasil diperbarui.`);
-      setEditingQuestion(null);
       await invalidateQuiz();
     },
   });
@@ -329,6 +328,8 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
       </Modal>
 
       <Modal
+        closeDisabled={questionFormBusy}
+        size="editor"
         onClose={() => setCreateQuestionOpen(false)}
         open={createQuestionOpen}
         title="Tambah Soal Kuis"
@@ -336,13 +337,20 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
         <QuestionForm
           defaultOrder={questions.length + 1}
           isSubmitting={createQuestionMutation.isPending}
+          onBusyChange={setQuestionFormBusy}
           onCancel={() => setCreateQuestionOpen(false)}
-          onSubmit={(payload) => createQuestionMutation.mutate(payload)}
+          onSubmit={async (payload, beforeClose) => {
+            await createQuestionMutation.mutateAsync(payload);
+            beforeClose();
+            setCreateQuestionOpen(false);
+          }}
           token={token ?? ""}
         />
       </Modal>
 
       <Modal
+        closeDisabled={questionFormBusy}
+        size="editor"
         onClose={() => setEditingQuestion(null)}
         open={Boolean(editingQuestion)}
         title="Edit Soal Kuis"
@@ -350,10 +358,13 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
         {editingQuestion ? (
           <QuestionForm
             isSubmitting={updateQuestionMutation.isPending}
+            onBusyChange={setQuestionFormBusy}
             onCancel={() => setEditingQuestion(null)}
-            onSubmit={(payload) =>
-              updateQuestionMutation.mutate({ payload, questionId: editingQuestion.id })
-            }
+            onSubmit={async (payload, beforeClose) => {
+              await updateQuestionMutation.mutateAsync({ payload, questionId: editingQuestion.id });
+              beforeClose();
+              setEditingQuestion(null);
+            }}
             question={editingQuestion}
             token={token ?? ""}
           />
