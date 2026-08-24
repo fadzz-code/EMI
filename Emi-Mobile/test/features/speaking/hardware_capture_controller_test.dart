@@ -88,9 +88,45 @@ void main() {
     Uint8List.fromList(pcmBytes),
   );
 
-  test('permission selection follows Android SDK without requesting scan', () {
+  test('permission selection follows Android SDK', () {
     expect(hardwareBluetoothPermissionForSdk(30), Permission.location);
     expect(hardwareBluetoothPermissionForSdk(31), Permission.bluetoothConnect);
+  });
+
+  test('Android 12 requests connect, scan, and location permissions', () async {
+    final requested = <Permission>[];
+
+    final granted = await requestHardwareBluetoothPermissions(
+      isAndroid: true,
+      sdkReader: () async => 31,
+      request: (permission) async {
+        requested.add(permission);
+        return true;
+      },
+    );
+
+    expect(granted, isTrue);
+    expect(requested, [
+      Permission.bluetoothConnect,
+      Permission.bluetoothScan,
+      Permission.location,
+    ]);
+  });
+
+  test('permission errors become a short actionable message', () async {
+    final service = HardwareBluetoothService(
+      connector: (_) async => throw PlatformException(
+        code: 'connect_error',
+        message: 'Need android.permission.BLUETOOTH_SCAN permission',
+      ),
+      permissionRequester: () async => true,
+    );
+
+    final result = await service.connect();
+
+    expect(result.status, HardwareLinkStatus.permissionDenied);
+    expect(result.message, contains('Perangkat di sekitar'));
+    expect(result.message, isNot(contains('PlatformException')));
   });
 
   test('disconnect invalidates a pending connect', () async {

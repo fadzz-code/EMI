@@ -24,8 +24,14 @@ Future<String> resolveSpeakingAudioSource({
   required String Function(String) resolveUrl,
   required Future<String> Function(String) temporaryUrl,
 }) async {
-  if (url != null && url.trim().isNotEmpty) return resolveUrl(url);
-  if (mediaId != null && mediaId.isNotEmpty) return temporaryUrl(mediaId);
+  final value = url?.trim() ?? '';
+  final privateMediaUrl = value.contains('/api/v1/media/');
+  if (mediaId != null &&
+      mediaId.isNotEmpty &&
+      (value.isEmpty || privateMediaUrl)) {
+    return temporaryUrl(mediaId);
+  }
+  if (value.isNotEmpty) return resolveUrl(value);
   throw const AppError(
     type: AppErrorType.unknown,
     message: 'Audio tidak tersedia.',

@@ -42,11 +42,23 @@ Permission hardwareBluetoothPermissionForSdk(int sdk) =>
 Future<bool> requestHardwareBluetoothPermissions({
   AndroidSdkReader sdkReader = readAndroidSdk,
   PermissionRequest? request,
+  bool? isAndroid,
 }) async {
-  if (!Platform.isAndroid) return true;
-  final permission = hardwareBluetoothPermissionForSdk(await sdkReader());
-  return (request ??
-      (permission) async => (await permission.request()).isGranted)(permission);
+  if (!(isAndroid ?? Platform.isAndroid)) return true;
+  final sdk = await sdkReader();
+  final requestPermission =
+      request ?? (permission) async => (await permission.request()).isGranted;
+  final permissions = sdk >= 31
+      ? [
+          Permission.bluetoothConnect,
+          Permission.bluetoothScan,
+          Permission.location,
+        ]
+      : [Permission.location];
+  for (final permission in permissions) {
+    if (!await requestPermission(permission)) return false;
+  }
+  return true;
 }
 
 /// Owns the SPP connection lifecycle to the ESP32 and exposes decoded
@@ -133,10 +145,28 @@ class HardwareBluetoothService {
         status: HardwareLinkStatus.notPaired,
         message: error.toString(),
       );
-    } catch (error) {
-      return HardwareConnectResult(
+    } on PlatformException catch (error) {
+      final details = '${error.message ?? ''} ${error.details ?? ''}'
+          .toLowerCase();
+      if (details.contains('bluetooth_scan') ||
+          details.contains('bluetooth_connect') ||
+          details.contains('permission')) {
+        return const HardwareConnectResult(
+          status: HardwareLinkStatus.permissionDenied,
+          message:
+              'Izin perangkat sekitar belum aktif. Buka Pengaturan HP > Aplikasi > EMI Mobile > Izin, lalu aktifkan Perangkat di sekitar.',
+        );
+      }
+      return const HardwareConnectResult(
         status: HardwareLinkStatus.error,
-        message: 'Gagal terhubung ke alat: $error',
+        message:
+            'Alat belum siap. Pastikan Bluetooth aktif dan alat sudah dipasangkan.',
+      );
+    } catch (_) {
+      return const HardwareConnectResult(
+        status: HardwareLinkStatus.error,
+        message:
+            'Alat belum siap. Pastikan Bluetooth aktif dan alat sudah dipasangkan.',
       );
     }
   }

@@ -87,13 +87,10 @@ class HardwareWavWriter {
       channels: channels,
       bitsPerSample: bitsPerSample,
     );
-    final raf = await File(filePath).open(mode: FileMode.append);
-    try {
-      await raf.setPosition(0);
-      await raf.writeFrom(header);
-    } finally {
-      await raf.close();
-    }
+    final fileBytes = await File(filePath).readAsBytes();
+    await File(
+      filePath,
+    ).writeAsBytes(<int>[...header, ...fileBytes.skip(44)], flush: true);
     return filePath;
   }
 
