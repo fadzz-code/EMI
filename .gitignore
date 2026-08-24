@@ -11,3 +11,11 @@ Emi-Speaking-AI/.env
 *.log
 Emi-Frontend/dev_stdout.log
 Emi-Frontend/dev_stderr.log
+
+# Local sensitive diagnostics
+/Emi-Backend/.env.before-production-db
+/Emi-Mobile/emi-audio-full-log.txt
+
+# Generated knowledge graphs
+/graphify-out/
+/Emi-Mobile/graphify-out/
