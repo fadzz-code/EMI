@@ -567,6 +567,27 @@ class AdminRepository {
     }
   }
 
+  Future<List<AdminClass>> allActiveClasses() async {
+    final byId = <String, AdminClass>{};
+    var page = 1;
+    while (true) {
+      final result = await classes(
+        AdminListQuery(status: 'active', page: page),
+      );
+      for (final item in result.items) {
+        if (item.id.isNotEmpty) byId[item.id] = item;
+      }
+      if (!result.hasMore) return byId.values.toList();
+      if (result.currentPage < page || result.lastPage < page + 1) {
+        throw const AppError(
+          type: AppErrorType.server,
+          message: 'Pagination kelas dari server tidak valid.',
+        );
+      }
+      page++;
+    }
+  }
+
   Future<AdminClass> classDetail(String id) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>('/classes/$id');

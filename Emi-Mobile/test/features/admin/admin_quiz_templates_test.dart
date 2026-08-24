@@ -4,6 +4,7 @@ import 'package:emi_mobile/core/errors/app_error.dart';
 import 'package:emi_mobile/app/theme/emi_theme.dart';
 import 'package:emi_mobile/features/admin/data/admin_crud_providers.dart';
 import 'package:emi_mobile/features/admin/data/admin_crud_repository.dart';
+import 'package:emi_mobile/features/admin/data/admin_repository.dart';
 import 'package:emi_mobile/features/admin/presentation/admin_quiz_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -67,6 +68,75 @@ void main() {
       router.routeInformationProvider.value.uri.path,
       isNot(contains('/new')),
     );
+  });
+
+  test('correct option source and removal index semantics', () {
+    final question = QuizQuestionAdmin.fromJson({
+      ..._question('qq1'),
+      'image_media_id': 'stale',
+      'image_media': {
+        'id': 'authoritative',
+        'url': 'https://example.test/image.png',
+        'original_name': 'image.png',
+        'size_bytes': 2048,
+        'mime_type': 'image/png',
+      },
+    });
+
+    expect(question.options.indexWhere((option) => option.isCorrect), 0);
+    expect(question.imageMediaId, 'authoritative');
+    expect(question.imageName, 'image.png');
+    expect(question.imageSize, 2048);
+    final quiz = QuizTemplateAdmin.fromJson(
+      _quiz('q1', questions: [_question('qq1')]),
+    );
+    expect(quiz.questions.single.options.first.isCorrect, true);
+    expect(quiz.totalPoints, 10);
+    expect(correctOptionAfterRemoval(2, 0), 1);
+    expect(correctOptionAfterRemoval(1, 1), isNull);
+    expect(correctOptionAfterRemoval(null, 0), isNull);
+  });
+
+  test('loads every active class page and dedupes for Select All', () async {
+    final requestedPages = <int>[];
+    final repository = AdminRepository(
+      Dio(BaseOptions(baseUrl: 'https://example.test'))
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              final page = options.queryParameters['page'] as int;
+              requestedPages.add(page);
+              handler.resolve(
+                Response(
+                  requestOptions: options,
+                  data: {
+                    'data': [
+                      {
+                        'id': page == 1 ? 'class-1' : 'class-2',
+                        'name': 'Kelas $page',
+                        'status': 'active',
+                      },
+                      if (page == 2)
+                        {
+                          'id': 'class-1',
+                          'name': 'Duplikat',
+                          'status': 'active',
+                        },
+                    ],
+                    'meta': {'current_page': page, 'last_page': 2, 'total': 3},
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      const DioErrorMapper(),
+    );
+
+    final classes = await repository.allActiveClasses();
+
+    expect(requestedPages, [1, 2]);
+    expect(classes.map((item) => item.id), ['class-1', 'class-2']);
   });
 
   test('admin quiz templates duplicate order handled', () async {
@@ -189,11 +259,17 @@ void main() {
         data: _questionPayload(),
       );
       await repository.reorderQuestions('q1', const ['qq2', 'qq1']);
-      await repository.applyQuiz('q1', const ['class1']);
+      final summary = await repository.applyQuiz('q1', const [
+        'class1',
+      ], syncExisting: true);
+      expect(summary.applied, isEmpty);
       expect(
-        await repository.uploadQuestionImage('pubspec.yaml', 'soal.png'),
+        await repository
+            .uploadQuestionImage('pubspec.yaml', 'soal.png')
+            .then((media) => media.id),
         'media1',
       );
+      await repository.deleteMedia('media1');
       await repository.deleteQuestion('qq1');
       await repository.deleteQuiz('q1');
 
@@ -203,7 +279,13 @@ void main() {
         contains('PATCH /admin/quiz-templates/q1/questions/reorder'),
       );
       expect(requests, contains('POST /admin/quiz-templates/q1/apply'));
+      expect(
+        (bodies.firstWhere((body) => body is Map && body['class_ids'] != null)
+            as Map)['sync_existing'],
+        true,
+      );
       expect(requests, contains('POST /media'));
+      expect(requests, contains('DELETE /media/media1'));
       expect(
         (bodies.firstWhere(
               (body) => body is Map && body['question_ids'] != null,

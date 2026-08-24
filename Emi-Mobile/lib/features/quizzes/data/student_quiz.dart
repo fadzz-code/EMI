@@ -25,6 +25,8 @@ class StudentQuiz {
     this.activeAttempt,
     this.bestResult,
     this.latestResult,
+    this.backendStatus,
+    this.cannotStartReason,
     this.questions = const [],
   });
 
@@ -53,6 +55,8 @@ class StudentQuiz {
   final QuizAttemptSummary? activeAttempt;
   final QuizResultSummary? bestResult;
   final QuizResultSummary? latestResult;
+  final String? backendStatus;
+  final String? cannotStartReason;
   final List<QuizQuestion> questions;
 
   QuizAvailability get availability {
@@ -68,6 +72,7 @@ class StudentQuiz {
   }
 
   String get statusLabel {
+    if (backendStatus?.trim().isNotEmpty == true) return backendStatus!;
     switch (availability) {
       case QuizAvailability.open:
         return canStart ? 'Tersedia' : 'Terkunci';
@@ -113,6 +118,11 @@ class StudentQuiz {
       latestResult: json['latest_result'] is Map<String, dynamic>
           ? QuizResultSummary.fromJson(json['latest_result'])
           : null,
+      backendStatus: _nonEmptyString(json['status']),
+      cannotStartReason:
+          _nonEmptyString(json['can_start_reason']) ??
+          _nonEmptyString(json['cannot_start_reason']) ??
+          _nonEmptyString(json['reason']),
       questions: _list(json['questions']).map(QuizQuestion.fromJson).toList(),
     );
   }
@@ -174,6 +184,7 @@ class QuizQuestion {
     required this.orderNumber,
     required this.options,
     this.explanation,
+    this.imageUrl,
   });
 
   final String id;
@@ -183,6 +194,7 @@ class QuizQuestion {
   final int orderNumber;
   final List<QuizOption> options;
   final String? explanation;
+  final String? imageUrl;
 
   bool get isMultipleChoice => questionType == 'multiple_choice';
   bool get isShortAnswer => questionType == 'short_answer';
@@ -196,6 +208,7 @@ class QuizQuestion {
       orderNumber: _int(json['order_number']),
       options: _list(json['options']).map(QuizOption.fromJson).toList(),
       explanation: json['explanation'] as String?,
+      imageUrl: _nonEmptyString(_map(json['image_media'])['url']),
     );
   }
 }
@@ -387,6 +400,14 @@ enum QuizAvailability { open, locked, closed, finished }
 
 List<Map<String, dynamic>> _list(Object? value) =>
     value is List ? value.whereType<Map<String, dynamic>>().toList() : const [];
+
+Map<String, dynamic> _map(Object? value) =>
+    value is Map<String, dynamic> ? value : const {};
+
+String? _nonEmptyString(Object? value) {
+  final text = value is String ? value.trim() : '';
+  return text.isEmpty ? null : text;
+}
 
 DateTime? _date(Object? value) => DateTime.tryParse(value?.toString() ?? '');
 

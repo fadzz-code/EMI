@@ -863,11 +863,15 @@ class _AdminDictionaryImportScreenState
     extends ConsumerState<AdminDictionaryImportScreen> {
   File? _file;
   File? _zip;
-  var _duplicateStrategy = 'skip';
   var _page = 1;
   var _errorPage = 1;
   var _busy = false;
   var _polling = false;
+  String? _historyStatus;
+  String? _historyStrategy;
+  String? _historyDateFrom;
+  String? _historyDateTo;
+  final _historyUploader = TextEditingController();
   DictionaryImportJobAdmin? _job;
   AdminCrudPage<DictionaryImportJobAdmin>? _history;
   AdminCrudPage<DictionaryImportErrorAdmin>? _errors;
@@ -886,6 +890,7 @@ class _AdminDictionaryImportScreenState
   @override
   void dispose() {
     _poll?.cancel();
+    _historyUploader.dispose();
     super.dispose();
   }
 
@@ -915,18 +920,6 @@ class _AdminDictionaryImportScreenState
               onPressed: _busy ? null : _shareTemplate,
               icon: const Icon(Icons.download_outlined),
               label: const Text('Download Template Excel'),
-            ),
-            DropdownButtonFormField<String>(
-              initialValue: _duplicateStrategy,
-              decoration: const InputDecoration(labelText: 'Data yang Sama'),
-              items: const [
-                DropdownMenuItem(value: 'skip', child: Text('Lewati')),
-                DropdownMenuItem(value: 'update', child: Text('Perbarui')),
-                DropdownMenuItem(value: 'reject', child: Text('Tolak')),
-              ],
-              onChanged: _busy
-                  ? null
-                  : (v) => setState(() => _duplicateStrategy = v ?? 'skip'),
             ),
             const SizedBox(height: EmiSpacing.sm),
             Wrap(
@@ -986,6 +979,76 @@ class _AdminDictionaryImportScreenState
           title: 'Riwayat Import',
           icon: Icons.history,
           children: [
+            ExpansionTile(
+              key: const Key('dictionaryImport-history-filters'),
+              title: const Text('Filter'),
+              children: [
+                DropdownButtonFormField<String?>(
+                  initialValue: _historyStatus,
+                  decoration: const InputDecoration(labelText: 'Status'),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Semua')),
+                    for (final value in const [
+                      'previewing',
+                      'preview_ready',
+                      'queued',
+                      'processing',
+                      'completed',
+                      'completed_with_errors',
+                      'failed',
+                    ])
+                      DropdownMenuItem(value: value, child: Text(value)),
+                  ],
+                  onChanged: (value) => setState(() => _historyStatus = value),
+                ),
+                DropdownButtonFormField<String?>(
+                  initialValue: _historyStrategy,
+                  decoration: const InputDecoration(
+                    labelText: 'Strategi duplikat',
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: null, child: Text('Semua')),
+                    DropdownMenuItem(value: 'skip', child: Text('skip')),
+                    DropdownMenuItem(value: 'update', child: Text('update')),
+                    DropdownMenuItem(value: 'reject', child: Text('reject')),
+                  ],
+                  onChanged: (value) =>
+                      setState(() => _historyStrategy = value),
+                ),
+                TextField(
+                  controller: _historyUploader,
+                  decoration: const InputDecoration(labelText: 'ID pengunggah'),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _DateFilterField(
+                        label: 'Dari tanggal',
+                        value: _historyDateFrom,
+                        onChanged: (value) =>
+                            setState(() => _historyDateFrom = value),
+                      ),
+                    ),
+                    const SizedBox(width: EmiSpacing.sm),
+                    Expanded(
+                      child: _DateFilterField(
+                        label: 'Sampai tanggal',
+                        value: _historyDateTo,
+                        onChanged: (value) =>
+                            setState(() => _historyDateTo = value),
+                      ),
+                    ),
+                  ],
+                ),
+                FilledButton(
+                  onPressed: () {
+                    _page = 1;
+                    _loadHistory();
+                  },
+                  child: const Text('Terapkan Filter'),
+                ),
+              ],
+            ),
             if (_history == null && _historyError == null)
               const LinearProgressIndicator(),
             if (_historyError != null)
@@ -1063,7 +1126,6 @@ class _AdminDictionaryImportScreenState
             csvFile: file,
             audioZip: _zip,
             importType: xlsx ? 'combined' : 'vocabulary',
-            duplicateStrategy: _duplicateStrategy,
           );
       await _refreshErrors();
       await _loadHistory();
@@ -1080,7 +1142,12 @@ class _AdminDictionaryImportScreenState
       _job = await ref
           .read(adminCrudRepositoryProvider)
           .confirmDictionaryImport(job.id);
-      _startPolling();
+      if (_job!.isTerminal) {
+        await _refreshErrors();
+        ref.invalidate(adminDictionaryProvider);
+      } else {
+        _startPolling();
+      }
       await _loadHistory();
     });
   }
@@ -1104,7 +1171,7 @@ class _AdminDictionaryImportScreenState
         _job = latest;
         _pollError = null;
       });
-      if (const {'completed', 'failed', 'cancelled'}.contains(latest.status)) {
+      if (latest.isTerminal) {
         _poll?.cancel();
         await _refreshErrors(id: id);
         await _loadHistory();
@@ -1123,7 +1190,14 @@ class _AdminDictionaryImportScreenState
     try {
       final history = await ref
           .read(adminCrudRepositoryProvider)
-          .dictionaryImports(page: _page);
+          .dictionaryImports(
+            page: _page,
+            status: _historyStatus,
+            duplicateStrategy: _historyStrategy,
+            uploadedBy: _historyUploader.text,
+            dateFrom: _historyDateFrom,
+            dateTo: _historyDateTo,
+          );
       if (mounted) {
         setState(() {
           _history = history;
@@ -1144,7 +1218,7 @@ class _AdminDictionaryImportScreenState
       _pollError = null;
     });
     await _refreshErrors(id: job.id);
-    if (job.status == 'queued' || job.status == 'processing') _startPolling();
+    if (!job.isTerminal && job.status != 'preview_ready') _startPolling();
   }
 
   Future<void> _refreshErrors({String? id}) async {
@@ -1189,6 +1263,7 @@ class _AdminDictionaryImportScreenState
   }
 
   Future<void> _deleteError(String errorId) async {
+    if (await _confirmDialog('Hapus error import ini?') != true) return;
     try {
       await ref
           .read(adminCrudRepositoryProvider)
@@ -1278,6 +1353,42 @@ class _AdminDictionaryImportScreenState
   }
 }
 
+class _DateFilterField extends StatelessWidget {
+  const _DateFilterField({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String? value;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    title: Text(label),
+    subtitle: Text(value ?? 'Semua'),
+    trailing: value == null
+        ? const Icon(Icons.calendar_today_outlined)
+        : IconButton(
+            onPressed: () => onChanged(null),
+            icon: const Icon(Icons.clear),
+          ),
+    onTap: () async {
+      final selected = await showDatePicker(
+        context: context,
+        firstDate: DateTime(2020),
+        lastDate: DateTime.now(),
+        initialDate: DateTime.tryParse(value ?? '') ?? DateTime.now(),
+      );
+      if (selected != null) {
+        onChanged(selected.toIso8601String().split('T').first);
+      }
+    },
+  );
+}
+
 class _ImportResult extends StatelessWidget {
   const _ImportResult({
     required this.job,
@@ -1313,9 +1424,28 @@ class _ImportResult extends StatelessWidget {
           ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         Text('Status: ${job.status}'),
+        if (!job.isTerminal && job.status != 'preview_ready')
+          const LinearProgressIndicator(),
         Text(
           'Total: ${job.totalRows} · Valid: ${job.validRows} · Tidak valid: ${job.invalidRows}',
         ),
+        if (job.warningCount > 0) Text('Peringatan: ${job.warningCount}'),
+        Text(
+          'Kosakata baru: ${job.vocabInserted} · Kosakata diperbarui: ${job.vocabUpdated}',
+        ),
+        Text(
+          'Contoh kalimat baru: ${job.sentenceInserted} · Contoh kalimat diperbarui: ${job.sentenceUpdated}',
+        ),
+        for (final sheet in job.sheets.entries)
+          Text('${sheet.key}: ${_sheetSummaryText(sheet.value)}'),
+        if (job.audioAttached != null)
+          Text('Audio terpasang: ${job.audioAttached}'),
+        if (job.audioNotFound != null)
+          Text('Audio tidak ditemukan: ${job.audioNotFound}'),
+        if (job.audioAmbiguous != null)
+          Text('Audio ambigu: ${job.audioAmbiguous}'),
+        if (job.audioUnused != null)
+          Text('Audio tidak terpakai: ${job.audioUnused}'),
         Text(
           'Ditambahkan: ${job.insertedRows} · Diperbarui: ${job.updatedRows} · Dilewati: ${job.skippedRows}',
         ),
@@ -1332,6 +1462,9 @@ class _ImportResult extends StatelessWidget {
         if (loadingError != null)
           Text(loadingError!, style: const TextStyle(color: EmiColors.error)),
         if (errors.isNotEmpty) ...[
+          const Text('Ringkasan error halaman ini'),
+          for (final breakdown in _errorBreakdown(errors).entries)
+            Text('${breakdown.key}: ${breakdown.value}'),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1345,7 +1478,14 @@ class _ImportResult extends StatelessWidget {
           for (final error in errors)
             ListTile(
               title: Text(
-                'Baris ${error.rowNumber ?? '-'}: ${_importErrorText(error)}',
+                '${error.sheet == null ? '' : '${error.sheet} · '}Baris ${error.rowNumber ?? '-'}: ${_importErrorText(error)}',
+              ),
+              subtitle: Text(
+                [
+                  if (error.createdAt != null) error.createdAt!,
+                  if (error.rawData?.isNotEmpty == true)
+                    error.rawData.toString(),
+                ].join(' · '),
               ),
               trailing: IconButton(
                 onPressed: () => onDeleteError(error.id),
@@ -2070,6 +2210,26 @@ String _importError(Object error) {
     return 'Import belum berhasil. Periksa koneksi internet, lalu coba lagi.';
   }
   return 'Data belum dapat diproses. Silakan periksa file dan coba kembali.';
+}
+
+String _sheetSummaryText(DictionaryImportSheetSummary sheet) => [
+  if (sheet.total != null) 'Total ${sheet.total}',
+  if (sheet.valid != null) 'Valid ${sheet.valid}',
+  if (sheet.invalid != null) 'Tidak valid ${sheet.invalid}',
+  if (sheet.duplicate != null) 'Duplikat ${sheet.duplicate}',
+  if (sheet.skipped != null) 'Dilewati ${sheet.skipped}',
+].join(' · ');
+
+Map<String, int> _errorBreakdown(List<DictionaryImportErrorAdmin> errors) {
+  final result = <String, int>{};
+  for (final error in errors) {
+    final key = [
+      if (error.code?.isNotEmpty == true) error.code!,
+      _importErrorText(error),
+    ].join(' · ');
+    result[key] = (result[key] ?? 0) + 1;
+  }
+  return result;
 }
 
 String _importErrorText(DictionaryImportErrorAdmin error) {

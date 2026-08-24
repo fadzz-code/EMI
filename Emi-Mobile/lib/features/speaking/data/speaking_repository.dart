@@ -110,10 +110,16 @@ class SpeakingRepository {
     }
   }
 
-  Future<void> deleteExerciseAttempts(String exerciseId) async {
+  Future<SpeakingBulkDeleteResult> deleteExerciseAttempts(
+    String exerciseId,
+  ) async {
     try {
-      await _dio.delete<void>(
+      final response = await _dio.delete<Map<String, dynamic>>(
         '/student/speaking/exercises/$exerciseId/attempts/history',
+      );
+      final data = response.data?['data'];
+      return SpeakingBulkDeleteResult.fromJson(
+        data is Map<String, dynamic> ? data : response.data ?? const {},
       );
     } catch (error) {
       throw _map(error);

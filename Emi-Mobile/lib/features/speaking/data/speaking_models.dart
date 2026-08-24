@@ -199,6 +199,34 @@ class SpeakingAttempt {
   }
 }
 
+class SpeakingBulkDeleteResult {
+  const SpeakingBulkDeleteResult({
+    required this.deletedCount,
+    required this.preservedProcessingCount,
+    required this.preservedSubmittedCount,
+  });
+
+  final int deletedCount;
+  final int preservedProcessingCount;
+  final int preservedSubmittedCount;
+
+  factory SpeakingBulkDeleteResult.fromJson(Map<String, dynamic> json) {
+    int count(String key) {
+      final value = json[key];
+      return value is num ? value.toInt() : int.tryParse('$value') ?? 0;
+    }
+
+    return SpeakingBulkDeleteResult(
+      deletedCount: count('deleted_count'),
+      preservedProcessingCount: count('preserved_processing_count'),
+      preservedSubmittedCount: count('preserved_submitted_count'),
+    );
+  }
+
+  String get message =>
+      '$deletedCount riwayat dihapus. $preservedProcessingCount sedang diproses dan $preservedSubmittedCount sudah dikirim tetap disimpan.';
+}
+
 class SpeakingAttemptPage {
   const SpeakingAttemptPage({
     required this.items,

@@ -476,6 +476,10 @@ class _AttemptView extends StatelessWidget {
                         context,
                       ).textTheme.titleLarge?.copyWith(color: StudentStyle.ink),
                     ),
+                    if (question!.imageUrl != null) ...[
+                      const SizedBox(height: EmiSpacing.md),
+                      _QuestionImage(url: question!.imageUrl!),
+                    ],
                     const SizedBox(height: EmiSpacing.sm),
                     StudentStatusChip(label: '${question!.points.g} poin'),
                   ],
@@ -551,6 +555,35 @@ class _AttemptView extends StatelessWidget {
       ],
     );
   }
+}
+
+class _QuestionImage extends StatelessWidget {
+  const _QuestionImage({required this.url});
+
+  final String url;
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(StudentStyle.cardRadius),
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 360),
+      child: Image.network(
+        url,
+        width: double.infinity,
+        fit: BoxFit.contain,
+        loadingBuilder: (context, child, progress) => progress == null
+            ? child
+            : const SizedBox(
+                height: 180,
+                child: Center(child: CircularProgressIndicator()),
+              ),
+        errorBuilder: (_, _, _) => const SizedBox(
+          height: 120,
+          child: Center(child: Text('Gambar soal belum bisa dimuat.')),
+        ),
+      ),
+    ),
+  );
 }
 
 class _OptionTile extends StatelessWidget {

@@ -191,6 +191,13 @@ class _StudentQuizDetailScreenState
                 ),
               ),
               const SizedBox(height: EmiSpacing.lg),
+              if (!item.canStart && item.cannotStartReason != null) ...[
+                Text(
+                  item.cannotStartReason!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+                const SizedBox(height: EmiSpacing.sm),
+              ],
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(

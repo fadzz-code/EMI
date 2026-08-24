@@ -679,7 +679,8 @@ class TeacherSpeakingAttempt {
   final double? aiScore, teacherScore;
   final DateTime? submittedAt, createdAt;
   bool get isReviewed => reviewStatus == 'reviewed' || teacherScore != null;
-  bool get canDelete => !isReviewed;
+  bool get isSubmitted => submittedAt != null;
+  bool get canDelete => isSubmitted && !isReviewed;
   factory TeacherSpeakingAttempt.fromJson(Map<String, dynamic> json) {
     final student = _map(json['student']);
     final exercise = _map(json['exercise']);

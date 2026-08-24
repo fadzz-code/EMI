@@ -136,10 +136,15 @@ class _StudentSpeakingListScreenState
     );
     if (confirmed != true) return;
     try {
-      await ref
+      final result = await ref
           .read(speakingRepositoryProvider)
           .deleteExerciseAttempts(attempt.exerciseId);
       ref.invalidate(speakingAttemptsProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(result.message)));
+      }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -392,9 +397,18 @@ class _AttemptList extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Status: ${item.status}',
+                        item.isReviewed
+                            ? 'Dinilai'
+                            : item.isSubmitted
+                            ? 'Menunggu Penilaian'
+                            : 'Latihan',
                         style: const TextStyle(color: StudentStyle.inkMuted),
                       ),
+                      if (item.submittedAt != null)
+                        Text(
+                          'Dikirim ke Guru ${_studentDate(item.submittedAt!)}',
+                          style: const TextStyle(color: StudentStyle.inkMuted),
+                        ),
                     ],
                   ),
                 ),
@@ -485,6 +499,12 @@ class _AttemptDetailState extends ConsumerState<_AttemptDetail> {
                       'Latihan speaking',
                 ),
                 _row(context, 'Status', attempt.friendlyStatus),
+                if (attempt.submittedAt != null)
+                  _row(
+                    context,
+                    'Dikirim ke Guru',
+                    _studentDate(attempt.submittedAt!),
+                  ),
                 if (attempt.aiScore != null || attempt.teacherScore != null)
                   _row(
                     context,
@@ -611,7 +631,7 @@ class _AttemptDetailState extends ConsumerState<_AttemptDetail> {
   Future<void> _submit() async {
     if (!await _confirm(
       'Kumpulkan Rekaman?',
-      'Rekaman yang dikumpulkan akan dilindungi dan dapat dinilai guru.',
+      'Rekaman lama yang sudah dikirim tetap privat. Rekaman ini menjadi kiriman aktif untuk dinilai guru.',
       'Kumpulkan',
     )) {
       return;
@@ -741,6 +761,12 @@ class _AttemptDetailState extends ConsumerState<_AttemptDetail> {
       ),
     );
   }
+}
+
+String _studentDate(DateTime value) {
+  final local = value.toLocal();
+  String two(int number) => number.toString().padLeft(2, '0');
+  return '${two(local.day)}/${two(local.month)}/${local.year} ${two(local.hour)}:${two(local.minute)}';
 }
 
 String _mutationError(Object error, String fallback) =>

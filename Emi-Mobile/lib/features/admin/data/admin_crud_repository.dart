@@ -146,6 +146,15 @@ class DictionaryImportJobAdmin {
     this.failureMessage,
     this.originalName,
     this.createdAt,
+    this.vocabInserted = 0,
+    this.vocabUpdated = 0,
+    this.sentenceInserted = 0,
+    this.sentenceUpdated = 0,
+    this.audioAttached,
+    this.audioNotFound,
+    this.audioAmbiguous,
+    this.audioUnused,
+    this.sheets = const {},
   });
   final String id;
   final String status;
@@ -162,23 +171,102 @@ class DictionaryImportJobAdmin {
   final String? failureMessage;
   final String? originalName;
   final String? createdAt;
-  factory DictionaryImportJobAdmin.fromJson(Map<String, dynamic> json) =>
-      DictionaryImportJobAdmin(
-        id: json['id'] as String? ?? '',
-        status: json['status'] as String? ?? '',
-        importType: json['import_type'] as String?,
-        duplicateStrategy: json['duplicate_strategy'] as String?,
-        totalRows: _int(json['total_rows']) ?? 0,
-        validRows: _int(json['valid_rows']) ?? 0,
-        invalidRows: _int(json['invalid_rows']) ?? 0,
-        insertedRows: _int(json['inserted_rows']) ?? 0,
-        updatedRows: _int(json['updated_rows']) ?? 0,
-        skippedRows: _int(json['skipped_rows']) ?? 0,
-        warningCount: _int(json['warning_count']) ?? 0,
-        failureCode: json['failure_code'] as String?,
-        failureMessage: json['failure_message'] as String?,
-        originalName: json['csv_original_name'] as String?,
-        createdAt: json['created_at'] as String?,
+  final int vocabInserted;
+  final int vocabUpdated;
+  final int sentenceInserted;
+  final int sentenceUpdated;
+  final int? audioAttached;
+  final int? audioNotFound;
+  final int? audioAmbiguous;
+  final int? audioUnused;
+  final Map<String, DictionaryImportSheetSummary> sheets;
+
+  bool get isTerminal => const {
+    'completed',
+    'completed_with_errors',
+    'failed',
+    'cancelled',
+  }.contains(status);
+
+  factory DictionaryImportJobAdmin.fromJson(Map<String, dynamic> json) {
+    final summary = json['summary'] is Map<String, dynamic>
+        ? json['summary'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+    final vocabulary = summary['vocabulary'] is Map<String, dynamic>
+        ? summary['vocabulary'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+    final sentences = summary['sentence_examples'] is Map<String, dynamic>
+        ? summary['sentence_examples'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+    final vocabResult = summary['vocabulary_result'] is Map<String, dynamic>
+        ? summary['vocabulary_result'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+    final sentenceResult =
+        summary['sentence_examples_result'] is Map<String, dynamic>
+        ? summary['sentence_examples_result'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+    final audio = summary['audio'] is Map<String, dynamic>
+        ? summary['audio'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+
+    return DictionaryImportJobAdmin(
+      id: json['id'] as String? ?? '',
+      status: json['status'] as String? ?? '',
+      importType: json['import_type'] as String?,
+      duplicateStrategy: json['duplicate_strategy'] as String?,
+      totalRows: _int(json['total_rows']) ?? 0,
+      validRows: _int(json['valid_rows']) ?? 0,
+      invalidRows: _int(json['invalid_rows']) ?? 0,
+      insertedRows: _int(json['inserted_rows']) ?? 0,
+      updatedRows: _int(json['updated_rows']) ?? 0,
+      skippedRows: _int(json['skipped_rows']) ?? 0,
+      warningCount: _int(json['warning_count']) ?? 0,
+      failureCode: json['failure_code'] as String?,
+      failureMessage: json['failure_message'] as String?,
+      originalName: json['csv_original_name'] as String?,
+      createdAt: json['created_at'] as String?,
+      vocabInserted:
+          _int(vocabResult['inserted']) ?? _int(vocabulary['new_rows']) ?? 0,
+      vocabUpdated: _int(vocabResult['updated']) ?? 0,
+      sentenceInserted:
+          _int(sentenceResult['inserted']) ?? _int(sentences['new_rows']) ?? 0,
+      sentenceUpdated: _int(sentenceResult['updated']) ?? 0,
+      audioAttached: _int(audio['installed']) ?? _int(audio['matched']),
+      audioNotFound: _int(audio['missing']),
+      audioAmbiguous: _int(audio['ambiguous']),
+      audioUnused: _int(audio['unused']),
+      sheets: {
+        if (vocabulary.isNotEmpty)
+          'Kosakata': DictionaryImportSheetSummary.fromJson(vocabulary),
+        if (sentences.isNotEmpty)
+          'Contoh Kalimat': DictionaryImportSheetSummary.fromJson(sentences),
+      },
+    );
+  }
+}
+
+class DictionaryImportSheetSummary {
+  const DictionaryImportSheetSummary({
+    this.total,
+    this.valid,
+    this.invalid,
+    this.duplicate,
+    this.skipped,
+  });
+
+  final int? total;
+  final int? valid;
+  final int? invalid;
+  final int? duplicate;
+  final int? skipped;
+
+  factory DictionaryImportSheetSummary.fromJson(Map<String, dynamic> json) =>
+      DictionaryImportSheetSummary(
+        total: _int(json['total_rows']),
+        valid: _int(json['valid_rows']),
+        invalid: _int(json['invalid_rows']),
+        duplicate: _int(json['duplicate_rows']),
+        skipped: _int(json['skipped_rows']),
       );
 }
 
@@ -189,12 +277,18 @@ class DictionaryImportErrorAdmin {
     this.field,
     this.code,
     this.message,
+    this.sheet,
+    this.rawData,
+    this.createdAt,
   });
   final String id;
   final int? rowNumber;
   final String? field;
   final String? code;
   final String? message;
+  final String? sheet;
+  final Map<String, dynamic>? rawData;
+  final String? createdAt;
   factory DictionaryImportErrorAdmin.fromJson(Map<String, dynamic> json) =>
       DictionaryImportErrorAdmin(
         id: json['id'] as String? ?? '',
@@ -202,6 +296,11 @@ class DictionaryImportErrorAdmin {
         field: json['field'] as String?,
         code: json['code'] as String?,
         message: json['message'] as String?,
+        sheet: json['sheet'] as String?,
+        rawData: json['raw_data'] is Map
+            ? Map<String, dynamic>.from(json['raw_data'] as Map)
+            : null,
+        createdAt: json['created_at'] as String?,
       );
 }
 
@@ -218,6 +317,7 @@ class QuizTemplateAdmin {
     this.questionsCount = 0,
     this.createdAt,
     this.updatedAt,
+    this.questions = const [],
   });
   final String id;
   final String title;
@@ -230,6 +330,9 @@ class QuizTemplateAdmin {
   final int questionsCount;
   final String? createdAt;
   final String? updatedAt;
+  final List<QuizQuestionAdmin> questions;
+  int get totalPoints =>
+      questions.fold(0, (total, item) => total + item.points);
   factory QuizTemplateAdmin.fromJson(Map<String, dynamic> json) =>
       QuizTemplateAdmin(
         id: json['id'] as String? ?? '',
@@ -245,6 +348,12 @@ class QuizTemplateAdmin {
             ((json['questions'] as List?)?.length ?? 0),
         createdAt: json['created_at'] as String?,
         updatedAt: json['updated_at'] as String?,
+        questions:
+            (json['questions'] as List? ?? const [])
+                .whereType<Map<String, dynamic>>()
+                .map(QuizQuestionAdmin.fromJson)
+                .toList()
+              ..sort((a, b) => a.orderNumber.compareTo(b.orderNumber)),
       );
 }
 
@@ -259,6 +368,10 @@ class QuizQuestionAdmin {
     this.correctAnswerText,
     this.explanation,
     this.imageMediaId,
+    this.imageUrl,
+    this.imageName,
+    this.imageSize,
+    this.imageMimeType,
     this.useFuzzyMatching = false,
     this.fuzzyThreshold,
   });
@@ -270,25 +383,81 @@ class QuizQuestionAdmin {
   final String? correctAnswerText;
   final String? explanation;
   final String? imageMediaId;
+  final String? imageUrl;
+  final String? imageName;
+  final int? imageSize;
+  final String? imageMimeType;
   final bool useFuzzyMatching;
   final int? fuzzyThreshold;
   final List<QuizOptionAdmin> options;
-  factory QuizQuestionAdmin.fromJson(Map<String, dynamic> json) =>
-      QuizQuestionAdmin(
-        id: json['id'] as String? ?? '',
-        type: json['question_type'] as String? ?? 'multiple_choice',
-        text: json['question_text'] as String? ?? '',
-        points: _int(json['points']) ?? 1,
-        orderNumber: _int(json['order_number']) ?? 1,
-        correctAnswerText: json['correct_answer_text'] as String?,
-        explanation: json['explanation'] as String?,
-        imageMediaId: json['image_media_id'] as String?,
-        useFuzzyMatching: json['use_fuzzy_matching'] == true,
-        fuzzyThreshold: _int(json['fuzzy_threshold']),
-        options: (json['options'] as List? ?? const [])
-            .whereType<Map<String, dynamic>>()
-            .map(QuizOptionAdmin.fromJson)
-            .toList(),
+  factory QuizQuestionAdmin.fromJson(Map<String, dynamic> json) {
+    final image = json['image_media'] is Map<String, dynamic>
+        ? json['image_media'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+    return QuizQuestionAdmin(
+      id: json['id'] as String? ?? '',
+      type: json['question_type'] as String? ?? 'multiple_choice',
+      text: json['question_text'] as String? ?? '',
+      points: _int(json['points']) ?? 1,
+      orderNumber: _int(json['order_number']) ?? 1,
+      correctAnswerText: json['correct_answer_text'] as String?,
+      explanation: json['explanation'] as String?,
+      imageMediaId: image['id'] as String? ?? json['image_media_id'] as String?,
+      imageUrl: image['url'] as String?,
+      imageName: image['original_name'] as String?,
+      imageSize: _int(image['size_bytes']),
+      imageMimeType: image['mime_type'] as String?,
+      useFuzzyMatching: json['use_fuzzy_matching'] == true,
+      fuzzyThreshold: _int(json['fuzzy_threshold']),
+      options: (json['options'] as List? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(QuizOptionAdmin.fromJson)
+          .toList(),
+    );
+  }
+}
+
+class QuizApplySummary {
+  const QuizApplySummary({
+    required this.applied,
+    required this.synced,
+    required this.skipped,
+    required this.failed,
+  });
+  final List<Map<String, dynamic>> applied;
+  final List<Map<String, dynamic>> synced;
+  final List<Map<String, dynamic>> skipped;
+  final List<Map<String, dynamic>> failed;
+  bool get hasPartialFailures => skipped.isNotEmpty || failed.isNotEmpty;
+  factory QuizApplySummary.fromJson(Map<String, dynamic> json) =>
+      QuizApplySummary(
+        applied: _maps(json['applied']),
+        synced: _maps(json['synced']),
+        skipped: _maps(json['skipped']),
+        failed: _maps(json['failed']),
+      );
+}
+
+class QuizImageMediaAdmin {
+  const QuizImageMediaAdmin({
+    required this.id,
+    this.url,
+    this.name,
+    this.size,
+    this.mimeType,
+  });
+  final String id;
+  final String? url;
+  final String? name;
+  final int? size;
+  final String? mimeType;
+  factory QuizImageMediaAdmin.fromJson(Map<String, dynamic> json) =>
+      QuizImageMediaAdmin(
+        id: _string(json['id']),
+        url: json['url'] as String?,
+        name: json['original_name'] as String?,
+        size: _int(json['size_bytes']),
+        mimeType: json['mime_type'] as String?,
       );
 }
 
@@ -463,7 +632,7 @@ class AdminCrudRepository {
     required File csvFile,
     File? audioZip,
     String importType = 'vocabulary',
-    String duplicateStrategy = 'skip',
+    String? duplicateStrategy,
     void Function(int sent, int total)? onSendProgress,
   }) async {
     try {
@@ -472,7 +641,7 @@ class AdminCrudRepository {
         if (audioZip != null)
           'audio_zip': await MultipartFile.fromFile(audioZip.path),
         'import_type': importType,
-        'duplicate_strategy': duplicateStrategy,
+        'duplicate_strategy': ?duplicateStrategy,
       });
       final res = await _dio.post<Map<String, dynamic>>(
         '/admin/dictionary/imports/preview',
@@ -498,11 +667,26 @@ class AdminCrudRepository {
 
   Future<AdminCrudPage<DictionaryImportJobAdmin>> dictionaryImports({
     int page = 1,
+    String? status,
+    String? duplicateStrategy,
+    String? uploadedBy,
+    String? dateFrom,
+    String? dateTo,
   }) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>(
         '/admin/dictionary/imports',
-        queryParameters: {'page': page, 'per_page': 10},
+        queryParameters: {
+          'page': page,
+          'per_page': 10,
+          if (status?.isNotEmpty == true) 'status': status,
+          if (duplicateStrategy?.isNotEmpty == true)
+            'duplicate_strategy': duplicateStrategy,
+          if (uploadedBy?.trim().isNotEmpty == true)
+            'uploaded_by': uploadedBy!.trim(),
+          if (dateFrom?.isNotEmpty == true) 'date_from': dateFrom,
+          if (dateTo?.isNotEmpty == true) 'date_to': dateTo,
+        },
       );
       return _page(res.data, DictionaryImportJobAdmin.fromJson);
     } catch (e) {
@@ -628,22 +812,26 @@ class AdminCrudRepository {
     }
   }
 
-  Future<Map<String, dynamic>> applyQuiz(
+  Future<QuizApplySummary> applyQuiz(
     String quizId,
-    List<String> classIds,
-  ) async {
+    List<String> classIds, {
+    bool syncExisting = false,
+  }) async {
     try {
       final res = await _dio.post<Map<String, dynamic>>(
         '/admin/quiz-templates/$quizId/apply',
-        data: {'class_ids': classIds},
+        data: {'class_ids': classIds, 'sync_existing': syncExisting},
       );
-      return _dataObject(res.data);
+      return QuizApplySummary.fromJson(_dataObject(res.data));
     } catch (e) {
       throw _map(e);
     }
   }
 
-  Future<String> uploadQuestionImage(String path, String name) async {
+  Future<QuizImageMediaAdmin> uploadQuestionImage(
+    String path,
+    String name,
+  ) async {
     try {
       final form = FormData.fromMap({
         'file': await MultipartFile.fromFile(path, filename: name),
@@ -651,11 +839,13 @@ class AdminCrudRepository {
         'visibility': 'public',
       });
       final res = await _dio.post<Map<String, dynamic>>('/media', data: form);
-      return _string(_dataObject(res.data)['id']);
+      return QuizImageMediaAdmin.fromJson(_dataObject(res.data));
     } catch (e) {
       throw _map(e);
     }
   }
+
+  Future<void> deleteMedia(String id) => _delete('/media/$id');
 
   Future<AdminCrudPage<RegistrationApprovalAdmin>> approvals({
     String? search,
@@ -773,6 +963,9 @@ class AdminCrudRepository {
 
   Object _map(Object e) => e is AppError ? e : _mapper.map(e);
 }
+
+List<Map<String, dynamic>> _maps(Object? value) =>
+    value is List ? value.whereType<Map<String, dynamic>>().toList() : const [];
 
 String _string(Object? value) {
   if (value is String && value.trim().isNotEmpty) return value.trim();

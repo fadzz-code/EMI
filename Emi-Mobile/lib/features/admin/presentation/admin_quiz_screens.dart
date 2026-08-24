@@ -29,6 +29,12 @@ class _AdminQuizScreenState extends ConsumerState<AdminQuizScreen> {
   String? _search;
   String? _status;
   int _page = 1;
+  final Map<String, QuizTemplateAdmin> _items = {};
+
+  void _reset() {
+    _items.clear();
+    _page = 1;
+  }
 
   @override
   void dispose() {
@@ -44,7 +50,15 @@ class _AdminQuizScreenState extends ConsumerState<AdminQuizScreen> {
     return AdminShell(
       title: 'Template Kuis',
       child: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(adminQuizProvider(q)),
+        onRefresh: () async {
+          setState(_reset);
+          ref.invalidate(adminQuizProvider);
+          await ref.read(
+            adminQuizProvider(
+              AdminSearchQuery(search: _search, status: _status),
+            ).future,
+          );
+        },
         child: ListView(
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
@@ -79,7 +93,7 @@ class _AdminQuizScreenState extends ConsumerState<AdminQuizScreen> {
                 _debounce = Timer(const Duration(milliseconds: 400), () {
                   setState(() {
                     _search = value;
-                    _page = 1;
+                    _reset();
                   });
                 });
               },
@@ -100,7 +114,11 @@ class _AdminQuizScreenState extends ConsumerState<AdminQuizScreen> {
                 onRetry: () => ref.invalidate(adminQuizProvider(q)),
               ),
               data: (page) {
-                if (page.items.isEmpty) {
+                for (final item in page.items) {
+                  _items[item.id] = item;
+                }
+                final items = _items.values.toList();
+                if (items.isEmpty) {
                   final searching =
                       (_search?.trim().isNotEmpty ?? false) || _status != null;
                   return KeyedSubtree(
@@ -117,7 +135,7 @@ class _AdminQuizScreenState extends ConsumerState<AdminQuizScreen> {
                 }
                 return Column(
                   children: [
-                    for (final item in page.items) ...[
+                    for (final item in items) ...[
                       _QuizTile(item: item),
                       const SizedBox(height: 12),
                     ],
@@ -166,7 +184,7 @@ class _AdminQuizScreenState extends ConsumerState<AdminQuizScreen> {
                 onPressed: () {
                   setState(() {
                     _status = status;
-                    _page = 1;
+                    _reset();
                   });
                   Navigator.pop(context);
                 },
@@ -176,7 +194,7 @@ class _AdminQuizScreenState extends ConsumerState<AdminQuizScreen> {
                 onPressed: () {
                   setState(() {
                     _status = null;
-                    _page = 1;
+                    _reset();
                   });
                   Navigator.pop(context);
                 },
@@ -197,7 +215,7 @@ class _QuizTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AdminCard(
-    onTap: () => context.push('/admin/quizzes/${item.id}'),
+    onTap: () => context.push('/admin/quizzes/${item.id}/preview'),
     child: Row(
       children: [
         Expanded(
@@ -239,7 +257,9 @@ class _QuizTile extends StatelessWidget {
         ),
         PopupMenuButton<String>(
           onSelected: (value) {
-            if (value == 'view') context.push('/admin/quizzes/${item.id}');
+            if (value == 'view') {
+              context.push('/admin/quizzes/${item.id}/preview');
+            }
             if (value == 'edit') context.push('/admin/quizzes/${item.id}');
             if (value == 'questions') {
               context.push('/admin/quizzes/${item.id}/questions');
@@ -254,6 +274,84 @@ class _QuizTile extends StatelessWidget {
       ],
     ),
   );
+}
+
+class AdminQuizPreviewScreen extends ConsumerWidget {
+  const AdminQuizPreviewScreen({super.key, required this.id});
+  final String id;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final detail = ref.watch(adminQuizDetailProvider(id));
+    return AdminShell(
+      title: 'Preview Kuis',
+      fallbackRoute: '/admin/quizzes',
+      child: detail.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, _) => _Error(
+          message: 'Preview kuis belum bisa dimuat.',
+          onRetry: () => ref.invalidate(adminQuizDetailProvider(id)),
+        ),
+        data: (quiz) => ListView(
+          padding: const EdgeInsets.all(EmiSpacing.md),
+          children: [
+            Text(quiz.title, style: Theme.of(context).textTheme.headlineSmall),
+            if (quiz.description?.trim().isNotEmpty == true) ...[
+              const SizedBox(height: EmiSpacing.sm),
+              Text(quiz.description!),
+            ],
+            if (quiz.instructions?.trim().isNotEmpty == true) ...[
+              const SizedBox(height: EmiSpacing.md),
+              Text('Instruksi', style: Theme.of(context).textTheme.titleMedium),
+              Text(quiz.instructions!),
+            ],
+            const SizedBox(height: EmiSpacing.md),
+            Text(
+              '${quiz.questions.length} pertanyaan · ${quiz.totalPoints} poin',
+            ),
+            const SizedBox(height: EmiSpacing.md),
+            for (final question in quiz.questions) ...[
+              EmiCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${question.orderNumber}. ${question.text}',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    Text('${question.points} poin'),
+                    if (question.imageUrl != null) ...[
+                      const SizedBox(height: EmiSpacing.sm),
+                      Image.network(
+                        question.imageUrl!,
+                        errorBuilder: (_, _, _) =>
+                            const Text('Gambar tidak dapat dimuat.'),
+                      ),
+                    ],
+                    for (final option in question.options)
+                      ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          option.isCorrect
+                              ? Icons.check_circle
+                              : Icons.radio_button_unchecked,
+                          color: option.isCorrect ? Colors.green : null,
+                        ),
+                        title: Text(option.text),
+                      ),
+                    if (question.correctAnswerText != null)
+                      Text('Jawaban benar: ${question.correctAnswerText}'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: EmiSpacing.md),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class AdminQuizFormScreen extends ConsumerStatefulWidget {
@@ -545,11 +643,31 @@ class _AdminQuizFormScreenState extends ConsumerState<AdminQuizFormScreen> {
   }
 
   Future<void> _showApply() async {
-    final classes = await ref
-        .read(adminRepositoryProvider)
-        .classes(const AdminListQuery(status: 'active'));
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    List<AdminClass> classes;
+    try {
+      classes = await ref.read(adminRepositoryProvider).allActiveClasses();
+    } catch (error) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      setState(
+        () => _error = error is AppError
+            ? error
+            : const AppError(
+                type: AppErrorType.unknown,
+                message: 'Kelas aktif belum bisa dimuat. Silakan coba lagi.',
+              ),
+      );
+      return;
+    }
     if (!mounted) return;
+    Navigator.pop(context);
     final selected = <String>{};
+    var syncExisting = false;
     final ok = await showModalBottomSheet<bool>(
       context: context,
       showDragHandle: true,
@@ -569,7 +687,20 @@ class _AdminQuizFormScreenState extends ConsumerState<AdminQuizFormScreen> {
                 child: ListView(
                   shrinkWrap: true,
                   children: [
-                    for (final item in classes.items)
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Pilih Semua'),
+                      value:
+                          classes.isNotEmpty &&
+                          selected.length == classes.length,
+                      onChanged: (value) => setSheetState(() {
+                        selected.clear();
+                        if (value == true) {
+                          selected.addAll(classes.map((item) => item.id));
+                        }
+                      }),
+                    ),
+                    for (final item in classes)
                       CheckboxListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text(item.name),
@@ -585,6 +716,15 @@ class _AdminQuizFormScreenState extends ConsumerState<AdminQuizFormScreen> {
                       ),
                   ],
                 ),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Sinkronkan kuis yang sudah diterapkan'),
+                subtitle: const Text(
+                  'Perbarui kuis kelas dari template terbaru.',
+                ),
+                value: syncExisting,
+                onChanged: (value) => setSheetState(() => syncExisting = value),
               ),
               FilledButton(
                 onPressed: selected.isEmpty
@@ -603,12 +743,20 @@ class _AdminQuizFormScreenState extends ConsumerState<AdminQuizFormScreen> {
     );
     if (ok != true || selected.isEmpty) return;
     try {
-      await ref
+      final summary = await ref
           .read(adminCrudRepositoryProvider)
-          .applyQuiz(widget.id!, selected.toList());
+          .applyQuiz(widget.id!, selected.toList(), syncExisting: syncExisting);
       if (mounted) {
+        final message =
+            'Diterapkan: ${summary.applied.length}, disinkronkan: ${summary.synced.length}, dilewati: ${summary.skipped.length}, gagal: ${summary.failed.length}.';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Template Kuis diterapkan ke kelas.')),
+          SnackBar(
+            content: Text(
+              summary.hasPartialFailures
+                  ? '$message Sebagian kelas tidak berhasil diproses.'
+                  : message,
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -639,6 +787,9 @@ class AdminQuestionListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final data = ref.watch(adminQuizQuestionsProvider(quizId));
+    final locked =
+        ref.watch(adminQuizDetailProvider(quizId)).valueOrNull?.status ==
+        'published';
     return AdminShell(
       title: 'Pertanyaan Kuis',
       fallbackRoute: '/admin/quizzes/$quizId',
@@ -652,18 +803,32 @@ class AdminQuestionListScreen extends ConsumerWidget {
               alignment: WrapAlignment.end,
               children: [
                 OutlinedButton(
-                  onPressed: () => _showQuestionReorder(context, ref, quizId),
+                  onPressed: locked
+                      ? null
+                      : () => _showQuestionReorder(context, ref, quizId),
                   child: const Text('Atur Urutan Pertanyaan'),
                 ),
                 FilledButton.icon(
-                  onPressed: () =>
-                      context.push('/admin/quizzes/$quizId/questions/create'),
+                  onPressed: locked
+                      ? null
+                      : () => context.push(
+                          '/admin/quizzes/$quizId/questions/create',
+                        ),
                   icon: const Icon(Icons.add),
                   label: const Text('Tambah Pertanyaan'),
                 ),
               ],
             ),
           ),
+          if (locked)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: EmiSpacing.md),
+              child: EmiCard(
+                child: Text(
+                  'Template Kuis sudah terbit. Arsipkan terlebih dahulu untuk mengubah pertanyaan.',
+                ),
+              ),
+            ),
           Expanded(
             child: data.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -733,9 +898,16 @@ class _AdminQuestionFormScreenState
   bool _useFuzzy = false;
   String? _imageMediaId;
   String? _imagePath;
+  String? _imageUrl;
   String? _imageName;
+  int? _imageSize;
+  String? _imageMimeType;
+  String? _originalImageMediaId;
+  final _ownedMediaIds = <String>{};
+  int _uploadGeneration = 0;
   final _options = [TextEditingController(), TextEditingController()];
-  int _correctOption = 0;
+  int? _correctOption;
+  bool _uploading = false;
   bool _saving = false;
   bool _hydrated = false;
   AppError? _error;
@@ -750,11 +922,14 @@ class _AdminQuestionFormScreenState
     for (final c in _options) {
       c.dispose();
     }
+    _cleanupOwned();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final quiz = ref.watch(adminQuizDetailProvider(widget.quizId));
+    final locked = quiz.valueOrNull?.status == 'published';
     final detail = _editing
         ? ref.watch(adminQuestionDetailProvider(widget.id!))
         : null;
@@ -767,12 +942,18 @@ class _AdminQuestionFormScreenState
       _fuzzyThreshold.text = '${q.fuzzyThreshold ?? 80}';
       _useFuzzy = q.useFuzzyMatching;
       _imageMediaId = q.imageMediaId;
+      _originalImageMediaId = q.imageMediaId;
+      _imageUrl = q.imageUrl;
+      _imageName = q.imageName;
+      _imageSize = q.imageSize;
+      _imageMimeType = q.imageMimeType;
       _type = q.type;
       if (q.options.isNotEmpty) {
         _options.clear();
-        for (final o in q.options) {
+        for (var i = 0; i < q.options.length; i++) {
+          final o = q.options[i];
           _options.add(TextEditingController(text: o.text));
-          if (o.isCorrect) _correctOption = q.options.indexOf(o);
+          if (o.isCorrect) _correctOption = i;
         }
       }
       _hydrated = true;
@@ -792,6 +973,14 @@ class _AdminQuestionFormScreenState
                         ? 'Perbarui isi pertanyaan dan jawaban yang benar.'
                         : 'Buat pertanyaan yang jelas dan mudah dipahami siswa.',
                   ),
+                  if (locked) ...[
+                    const SizedBox(height: EmiSpacing.md),
+                    const EmiCard(
+                      child: Text(
+                        'Template Kuis sudah terbit. Arsipkan terlebih dahulu untuk mengubah pertanyaan.',
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: EmiSpacing.xl),
                   if (_error != null)
                     Padding(
@@ -875,7 +1064,7 @@ class _AdminQuestionFormScreenState
                               'Angka 1-100. Semakin kecil semakin mentoleransi typo.',
                         ),
                         keyboardType: TextInputType.number,
-                        validator: _num,
+                        validator: _fuzzy,
                       ),
                     ],
                   ] else ...[
@@ -917,11 +1106,11 @@ class _AdminQuestionFormScreenState
                                       : () => setState(() {
                                           final removed = _options.removeAt(i);
                                           removed.dispose();
-                                          if (_correctOption >=
-                                                  _options.length ||
-                                              _correctOption == i) {
-                                            _correctOption = 0;
-                                          }
+                                          _correctOption =
+                                              correctOptionAfterRemoval(
+                                                _correctOption,
+                                                i,
+                                              );
                                         }),
                                   icon: const Icon(Icons.delete_outline),
                                 ),
@@ -978,14 +1167,13 @@ class _AdminQuestionFormScreenState
                   const SizedBox(height: EmiSpacing.md),
                   _QuestionImagePicker(
                     imagePath: _imagePath,
+                    imageUrl: _imageUrl,
                     imageName: _imageName,
-                    hasExisting: _imagePath == null && _imageMediaId != null,
-                    onPick: _pickImage,
-                    onClear: () => setState(() {
-                      _imagePath = null;
-                      _imageName = null;
-                      _imageMediaId = null;
-                    }),
+                    imageSize: _imageSize,
+                    imageMimeType: _imageMimeType,
+                    uploading: _uploading,
+                    onPick: locked ? null : _pickImage,
+                    onClear: locked ? null : _clearImage,
                   ),
 
                   const SizedBox(height: EmiSpacing.xl),
@@ -994,9 +1182,15 @@ class _AdminQuestionFormScreenState
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         FilledButton(
-                          onPressed: _saving ? null : _save,
+                          onPressed: _saving || _uploading || locked
+                              ? null
+                              : _save,
                           child: Text(
-                            _saving ? 'Menyimpan...' : 'Simpan Pertanyaan',
+                            _uploading
+                                ? 'Mengunggah gambar...'
+                                : _saving
+                                ? 'Menyimpan...'
+                                : 'Simpan Pertanyaan',
                           ),
                         ),
                         const SizedBox(height: EmiSpacing.sm),
@@ -1007,7 +1201,9 @@ class _AdminQuestionFormScreenState
                         if (_editing) ...[
                           const SizedBox(height: EmiSpacing.sm),
                           TextButton(
-                            onPressed: _saving ? null : _delete,
+                            onPressed: _saving || _uploading || locked
+                                ? null
+                                : _delete,
                             child: const Text(
                               'Hapus soal',
                               style: TextStyle(color: EmiColors.error),
@@ -1027,6 +1223,13 @@ class _AdminQuestionFormScreenState
       v == null || v.trim().isEmpty ? 'Wajib diisi.' : null;
   String? _num(String? v) =>
       (int.tryParse(v ?? '') ?? 0) < 1 ? 'Minimal 1.' : null;
+  String? _fuzzy(String? value) {
+    final threshold = int.tryParse(value ?? '');
+    return threshold == null || threshold < 1 || threshold > 100
+        ? 'Tingkat kemiripan harus antara 1 dan 100.'
+        : null;
+  }
+
   Future<void> _pickImage() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
@@ -1034,19 +1237,92 @@ class _AdminQuestionFormScreenState
     );
     if (!mounted || result == null || result.files.single.path == null) return;
     final file = result.files.single;
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size == 0 || file.size > 5 * 1024 * 1024) {
       setState(
         () => _error = const AppError(
           type: AppErrorType.validation,
-          message: 'Ukuran file terlalu besar.',
+          message: 'Ukuran gambar harus antara 1 byte dan 5 MB.',
         ),
       );
       return;
     }
+    final generation = ++_uploadGeneration;
     setState(() {
+      _uploading = true;
+      _error = null;
       _imagePath = file.path;
+      _imageUrl = null;
       _imageName = file.name;
+      _imageSize = file.size;
+      _imageMimeType = _imageMime(file.extension);
     });
+    try {
+      final uploaded = await ref
+          .read(adminCrudRepositoryProvider)
+          .uploadQuestionImage(file.path!, file.name);
+      if (!mounted || generation != _uploadGeneration) {
+        await _deleteMediaQuietly(uploaded.id);
+        return;
+      }
+      final replaced = _imageMediaId;
+      _ownedMediaIds.add(uploaded.id);
+      setState(() {
+        _imageMediaId = uploaded.id;
+        _imageUrl = uploaded.url;
+        _imageName = uploaded.name ?? file.name;
+        _imageSize = uploaded.size ?? file.size;
+        _imageMimeType = uploaded.mimeType ?? _imageMime(file.extension);
+      });
+      if (replaced != null && _ownedMediaIds.remove(replaced)) {
+        await _deleteMediaQuietly(replaced);
+      }
+    } catch (e) {
+      if (mounted && generation == _uploadGeneration) {
+        setState(() {
+          _imagePath = null;
+          _error = e is AppError
+              ? e
+              : const AppError(
+                  type: AppErrorType.unknown,
+                  message: 'Gambar gagal diunggah. Silakan coba lagi.',
+                );
+        });
+      }
+    } finally {
+      if (mounted && generation == _uploadGeneration) {
+        setState(() => _uploading = false);
+      }
+    }
+  }
+
+  Future<void> _clearImage() async {
+    _uploadGeneration++;
+    final removed = _imageMediaId;
+    setState(() {
+      _uploading = false;
+      _imageMediaId = null;
+      _imagePath = null;
+      _imageUrl = null;
+      _imageName = null;
+      _imageSize = null;
+      _imageMimeType = null;
+    });
+    if (removed != null && _ownedMediaIds.remove(removed)) {
+      await _deleteMediaQuietly(removed);
+    }
+  }
+
+  Future<void> _deleteMediaQuietly(String id) async {
+    try {
+      await ref.read(adminCrudRepositoryProvider).deleteMedia(id);
+    } catch (_) {}
+  }
+
+  void _cleanupOwned() {
+    for (final id in _ownedMediaIds.toList()) {
+      unawaited(_deleteMediaQuietly(id));
+    }
+    _ownedMediaIds.clear();
   }
 
   Map<String, dynamic> _payload() => {
@@ -1075,17 +1351,21 @@ class _AdminQuestionFormScreenState
       ],
   };
   Future<void> _save() async {
-    if (_saving || !_form.currentState!.validate()) return;
+    if (_saving || _uploading || !_form.currentState!.validate()) return;
+    if (_type == 'multiple_choice' && _correctOption == null) {
+      setState(
+        () => _error = const AppError(
+          type: AppErrorType.validation,
+          message: 'Pilih satu jawaban yang benar.',
+        ),
+      );
+      return;
+    }
     setState(() {
       _saving = true;
       _error = null;
     });
     try {
-      if (_imagePath != null) {
-        _imageMediaId = await ref
-            .read(adminCrudRepositoryProvider)
-            .uploadQuestionImage(_imagePath!, _imageName ?? 'question.png');
-      }
       await ref
           .read(adminCrudRepositoryProvider)
           .saveQuestion(
@@ -1093,6 +1373,16 @@ class _AdminQuestionFormScreenState
             id: _editing ? widget.id : null,
             data: _payload(),
           );
+      final obsoleteOriginal =
+          _originalImageMediaId != null &&
+              _originalImageMediaId != _imageMediaId
+          ? _originalImageMediaId
+          : null;
+      _ownedMediaIds.remove(_imageMediaId);
+      _originalImageMediaId = _imageMediaId;
+      if (obsoleteOriginal != null) {
+        await _deleteMediaQuietly(obsoleteOriginal);
+      }
       ref.invalidate(adminQuizQuestionsProvider(widget.quizId));
       if (mounted) context.go('/admin/quizzes/${widget.quizId}/questions');
     } catch (e) {
@@ -1253,17 +1543,23 @@ Future<void> _showQuestionReorder(
 class _QuestionImagePicker extends StatelessWidget {
   const _QuestionImagePicker({
     required this.imagePath,
+    required this.imageUrl,
     required this.imageName,
-    required this.hasExisting,
+    required this.imageSize,
+    required this.imageMimeType,
+    required this.uploading,
     required this.onPick,
     required this.onClear,
   });
 
   final String? imagePath;
+  final String? imageUrl;
   final String? imageName;
-  final bool hasExisting;
-  final VoidCallback onPick;
-  final VoidCallback onClear;
+  final int? imageSize;
+  final String? imageMimeType;
+  final bool uploading;
+  final VoidCallback? onPick;
+  final VoidCallback? onClear;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -1276,27 +1572,58 @@ class _QuestionImagePicker extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(hasExisting ? 'Gambar Saat Ini' : 'Gambar Pertanyaan'),
+        Text(
+          imagePath != null || imageUrl != null
+              ? 'Gambar Saat Ini'
+              : 'Gambar Pertanyaan',
+        ),
         if (imageName != null) Text(imageName!),
-        if (hasExisting)
-          const Text('Gambar lama dipertahankan jika tidak diganti.'),
-        if (imagePath != null) ...[
+        if (imageSize != null || imageMimeType != null)
+          Text(
+            [
+              if (imageSize != null) _fileSize(imageSize!),
+              ?imageMimeType,
+            ].join(' · '),
+          ),
+        if (imagePath != null || imageUrl != null) ...[
           const SizedBox(height: EmiSpacing.sm),
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.file(File(imagePath!), height: 140, fit: BoxFit.cover),
+            child: imagePath != null
+                ? Image.file(File(imagePath!), height: 140, fit: BoxFit.cover)
+                : Image.network(
+                    imageUrl!,
+                    height: 140,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => const SizedBox(
+                      height: 140,
+                      child: Center(child: Text('Pratinjau tidak tersedia.')),
+                    ),
+                  ),
           ),
         ],
         const SizedBox(height: EmiSpacing.sm),
         OutlinedButton.icon(
-          onPressed: onPick,
-          icon: const Icon(Icons.image_outlined),
+          onPressed: uploading ? null : onPick,
+          icon: uploading
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.image_outlined),
           label: Text(
-            imagePath == null && !hasExisting ? 'Pilih Gambar' : 'Ganti',
+            uploading
+                ? 'Mengunggah...'
+                : imagePath == null && imageUrl == null
+                ? 'Pilih Gambar'
+                : 'Ganti',
           ),
         ),
-        if (imagePath != null)
-          TextButton(onPressed: onClear, child: const Text('Hapus Pilihan')),
+        if (imagePath != null || imageUrl != null)
+          TextButton(
+            onPressed: uploading ? null : onClear,
+            child: const Text('Hapus Gambar'),
+          ),
       ],
     ),
   );
@@ -1386,6 +1713,25 @@ String _statusLabel(String? status) => switch (status) {
   'archived' => 'Arsip',
   _ => 'Draft',
 };
+
+int? correctOptionAfterRemoval(int? correct, int removed) {
+  if (correct == null || correct == removed) return null;
+  return correct > removed ? correct - 1 : correct;
+}
+
+String _imageMime(String? extension) => switch (extension?.toLowerCase()) {
+  'jpg' || 'jpeg' => 'image/jpeg',
+  'png' => 'image/png',
+  'gif' => 'image/gif',
+  'webp' => 'image/webp',
+  _ => 'image/*',
+};
+
+String _fileSize(int bytes) => bytes < 1024
+    ? '$bytes B'
+    : bytes < 1024 * 1024
+    ? '${(bytes / 1024).toStringAsFixed(1)} KB'
+    : '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
 
 String _questionTypeLabel(String type) => switch (type) {
   'short_answer' => 'Jawaban Singkat',

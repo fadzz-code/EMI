@@ -591,6 +591,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const AdminQuizFormScreen(),
       ),
       GoRoute(
+        path: '/admin/quizzes/:id/preview',
+        builder: (_, state) =>
+            AdminQuizPreviewScreen(id: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
         path: '/admin/quizzes/:id',
         builder: (_, state) =>
             AdminQuizFormScreen(id: state.pathParameters['id']),

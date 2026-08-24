@@ -113,6 +113,7 @@ TeacherSpeakingAttempt _attempt({double? teacherScore}) =>
       'teacher_feedback': teacherScore == null ? null : 'Bagus sekali',
       'status': 'completed',
       'capture_source': 'mobile_microphone',
+      'submitted_at': '2026-07-19T10:00:00Z',
       'created_at': '2026-07-18T09:00:00Z',
     });
 
@@ -319,6 +320,12 @@ void main() {
     expect(attempt.aiAlignment, {'0_Tabe': 91});
     expect(attempt.aiError, 'Model sementara gagal');
     expect(attempt.canDelete, isTrue);
+    expect(attempt.submittedAt, DateTime.utc(2026, 7, 19, 10));
+    final unsubmitted = TeacherSpeakingAttempt.fromJson({
+      'id': 'draft',
+      'status': 'completed',
+    });
+    expect(unsubmitted.canDelete, isFalse);
     final reviewed = _attempt(teacherScore: 90);
     expect(reviewed.isReviewed, isTrue);
     expect(reviewed.canDelete, isFalse);
@@ -990,14 +997,16 @@ void main() {
   testWidgets(
     'feedback validates score sends payload and updates immediately',
     (tester) async {
+      var detailCalls = 0;
       await _pump(
         tester,
         location: '/teacher/speaking/attempts/attempt-1',
         overrides: [
           teacherRepositoryProvider.overrideWith((_) => repository),
-          teacherSpeakingAttemptProvider.overrideWith(
-            (_, _) async => _attempt(),
-          ),
+          teacherSpeakingAttemptProvider.overrideWith((_, _) async {
+            detailCalls++;
+            return detailCalls == 1 ? _attempt() : _attempt(teacherScore: 90);
+          }),
           teacherSpeakingAttemptsProvider.overrideWith(
             (_, _) async => _attemptPage([_attempt(teacherScore: 90)]),
           ),
@@ -1029,10 +1038,61 @@ void main() {
         'teacher_score': 90,
         'teacher_feedback': 'Bagus sekali',
       });
-      expect(find.text('Sudah dinilai'), findsOneWidget);
-      expect(find.text('Bagus sekali'), findsOneWidget);
+      expect(find.text('Perbarui Penilaian'), findsOneWidget);
+      expect(
+        find.widgetWithText(TextFormField, 'Bagus sekali'),
+        findsOneWidget,
+      );
+      expect(detailCalls, greaterThan(1));
     },
   );
+
+  testWidgets('reviewed feedback stays editable and nondeletable', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      location: '/teacher/speaking/attempts/attempt-1',
+      overrides: [
+        teacherSpeakingAttemptProvider.overrideWith(
+          (_, _) async => _attempt(teacherScore: 90),
+        ),
+      ],
+    );
+    await _bounded(tester);
+    await tester.scrollUntilVisible(find.text('Penilaian Guru'), 200);
+    await tester.pump();
+    final fields = tester
+        .widgetList<TextFormField>(
+          find.byType(TextFormField, skipOffstage: false),
+        )
+        .toList();
+    final scoreField = fields.singleWhere(
+      (field) => field.controller?.text == '90',
+    );
+    final feedbackField = fields.singleWhere(
+      (field) => field.controller?.text == 'Bagus sekali',
+    );
+    expect(scoreField.controller?.text, '90');
+    expect(feedbackField.controller?.text, 'Bagus sekali');
+    for (final field in tester.widgetList<TextField>(find.byType(TextField))) {
+      expect(field.readOnly, isFalse);
+    }
+    expect(find.text('Perbarui Penilaian'), findsOneWidget);
+
+    await _pump(
+      tester,
+      location: '/teacher/speaking/attempts',
+      overrides: [
+        teacherSpeakingAttemptsProvider.overrideWith(
+          (_, _) async => _attemptPage([_attempt(teacherScore: 90)]),
+        ),
+      ],
+    );
+    await _bounded(tester);
+    expect(find.byTooltip('Hapus hasil'), findsNothing);
+    expect(find.text('Sudah dinilai'), findsWidgets);
+  });
 
   testWidgets('dirty AppBar system back direct fallback and responsive save', (
     tester,

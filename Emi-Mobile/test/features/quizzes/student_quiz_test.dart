@@ -36,6 +36,7 @@ void main() {
     expect(page.items.single.durationMinutes, 20);
     expect(page.items.single.bestScorePercent, 90);
     expect(page.items.single.hasActiveAttempt, true);
+    expect(page.items.single.canStart, true);
     expect(page.hasNextPage, true);
   });
 
@@ -61,6 +62,10 @@ void main() {
             'question_text': 'Apa arti mombesara?',
             'points': 10,
             'order_number': 1,
+            'image_media': {
+              'id': 'media-1',
+              'url': 'https://cdn.example.test/questions/sapaan.webp',
+            },
             'options': [
               {'id': 'option-1', 'option_text': 'Menyapa', 'order_number': 1},
             ],
@@ -81,6 +86,10 @@ void main() {
     expect(attempt.isFinished, true);
     expect(attempt.scorePercent, 100);
     expect(attempt.quiz?.questions.single.isMultipleChoice, true);
+    expect(
+      attempt.quiz?.questions.single.imageUrl,
+      'https://cdn.example.test/questions/sapaan.webp',
+    );
     expect(attempt.quiz?.questions.single.options.single.optionText, 'Menyapa');
     expect(attempt.answers.single.isCorrect, true);
   });
@@ -233,6 +242,18 @@ void main() {
     expect(finished.statusLabel, 'Selesai');
     expect(locked.availability, QuizAvailability.locked);
     expect(locked.statusLabel, 'Terkunci');
+    final authoritative = StudentQuiz.fromJson({
+      'id': 'quiz-3',
+      'title': 'Kuis',
+      'can_start': false,
+      'status': 'Menunggu guru',
+      'can_start_reason': 'Kuis dibuka setelah materi selesai.',
+    });
+    expect(authoritative.statusLabel, 'Menunggu guru');
+    expect(
+      authoritative.cannotStartReason,
+      'Kuis dibuka setelah materi selesai.',
+    );
   });
 }
 

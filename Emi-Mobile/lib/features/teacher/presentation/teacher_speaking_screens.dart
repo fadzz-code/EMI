@@ -827,6 +827,21 @@ class _AttemptsState extends ConsumerState<_Attempts> {
               }
               return Column(
                 children: [
+                  Wrap(
+                    spacing: EmiSpacing.sm,
+                    runSpacing: EmiSpacing.sm,
+                    children: [
+                      TeacherStatusChip(label: 'Total ${result.total}'),
+                      TeacherStatusChip(
+                        label: 'Menunggu ${result.pendingCount}',
+                      ),
+                      TeacherStatusChip(
+                        label: 'Dinilai ${result.reviewedCount}',
+                      ),
+                      TeacherStatusChip(label: 'Gagal ${result.failedCount}'),
+                    ],
+                  ),
+                  const SizedBox(height: EmiSpacing.md),
                   if (items.isEmpty)
                     const SizedBox(
                       height: 240,
@@ -858,7 +873,7 @@ class _AttemptsState extends ConsumerState<_Attempts> {
                               a.teacherScore == null
                                   ? 'Belum dinilai'
                                   : 'Sudah dinilai',
-                              _date(a.createdAt),
+                              _date(a.submittedAt ?? a.createdAt),
                             ].join(' · '),
                             style: const TextStyle(
                               color: TeacherStyle.inkMuted,
@@ -1029,7 +1044,6 @@ class _AttemptDetailState
                       ),
                       TextFormField(
                         controller: score,
-                        readOnly: a.isReviewed,
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
                           labelText: 'Nilai (0–100)',
@@ -1038,7 +1052,6 @@ class _AttemptDetailState
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: feedback,
-                        readOnly: a.isReviewed,
                         maxLength: 5000,
                         minLines: 3,
                         maxLines: 6,
@@ -1054,12 +1067,12 @@ class _AttemptDetailState
                   child: SizedBox(
                     width: double.infinity,
                     child: FilledButton(
-                      onPressed: a.isReviewed || saving ? null : _save,
+                      onPressed: saving ? null : _save,
                       child: Text(
-                        a.isReviewed
-                            ? 'Penilaian Terkunci'
-                            : saving
+                        saving
                             ? 'Menyimpan...'
+                            : a.isReviewed
+                            ? 'Perbarui Penilaian'
                             : 'Simpan Penilaian',
                       ),
                     ),
@@ -1115,8 +1128,14 @@ class _AttemptDetailState
       savedAttempt = saved;
       loaded = true;
       ref.invalidate(teacherSpeakingAttemptsProvider);
+      ref.invalidate(teacherSpeakingAttemptProvider(widget.id));
       if (saved.id.isEmpty) return;
-      if (mounted) _snack(context, 'Penilaian berhasil disimpan.');
+      final refreshed = await ref.refresh(
+        teacherSpeakingAttemptProvider(widget.id).future,
+      );
+      if (!mounted) return;
+      setState(() => savedAttempt = refreshed);
+      _snack(context, 'Penilaian berhasil disimpan.');
     } catch (e) {
       if (mounted) {
         _snack(

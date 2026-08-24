@@ -368,6 +368,19 @@ void main() {
     expect(reviewed.isSubmitted, isTrue);
     expect(reviewed.isReviewed, isTrue);
     expect(reviewed.canDelete, isFalse);
+    expect(reviewed.submittedAt, DateTime.utc(2026, 8, 24, 10));
+    final bulkResult = SpeakingBulkDeleteResult.fromJson({
+      'deleted_count': 4,
+      'preserved_processing_count': '2',
+      'preserved_submitted_count': 3,
+    });
+    expect(bulkResult.deletedCount, 4);
+    expect(bulkResult.preservedProcessingCount, 2);
+    expect(bulkResult.preservedSubmittedCount, 3);
+    expect(
+      bulkResult.message,
+      '4 riwayat dihapus. 2 sedang diproses dan 3 sudah dikirim tetap disimpan.',
+    );
     final legacyStatusOnly = SpeakingAttempt.fromJson({
       'id': 'attempt-legacy',
       'exercise_id': 'exercise-1',
