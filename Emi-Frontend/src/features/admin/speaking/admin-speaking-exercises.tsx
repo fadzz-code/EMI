@@ -1,10 +1,12 @@
 "use client";
 
 import { type ChangeEvent, type FormEvent, useEffect, useState } from "react";
-import { Headphones, Pencil, Plus, Trash2 } from "lucide-react";
+import { Headphones, Pencil, Plus, Trash2, Users } from "lucide-react";
 
 import { Alert, Badge, Button, Card, CardContent, EmptyState, ErrorState, FormField, Input, LoadingState, Modal, Select, Textarea } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
+import { classService } from "@/features/admin/management/management-service";
+import type { SchoolClass } from "@/features/admin/management/types";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { adminSpeakingService } from "./speaking-service";
@@ -84,6 +86,13 @@ export function AdminSpeakingExercises() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [applyTarget, setApplyTarget] = useState<AdminSpeakingExercise | null>(null);
+  const [classes, setClasses] = useState<SchoolClass[]>([]);
+  const [applyClassIds, setApplyClassIds] = useState<string[]>([]);
+  const [applySync, setApplySync] = useState(false);
+  const [applyLoading, setApplyLoading] = useState(false);
+  const [applySubmitting, setApplySubmitting] = useState(false);
+  const [applyError, setApplyError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -201,6 +210,52 @@ export function AdminSpeakingExercises() {
     await loadExercises(status);
   }
 
+  async function openApply(exercise: AdminSpeakingExercise) {
+    if (!token) return;
+    setApplyTarget(exercise);
+    setApplyClassIds([]);
+    setApplySync(false);
+    setApplyError(null);
+    setApplyLoading(true);
+    try {
+      const result = await classService.list(token, { per_page: 100, status: "active" });
+      setClasses(result.items);
+    } catch (err) {
+      setApplyError(getFirstApiError(err));
+      setClasses([]);
+    } finally {
+      setApplyLoading(false);
+    }
+  }
+
+  function toggleClass(classId: string) {
+    setApplyClassIds((current) =>
+      current.includes(classId) ? current.filter((id) => id !== classId) : [...current, classId],
+    );
+  }
+
+  async function submitApply(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!token || !applyTarget) return;
+    if (applyClassIds.length === 0) {
+      setApplyError("Pilih minimal satu kelas.");
+      return;
+    }
+    setApplySubmitting(true);
+    setApplyError(null);
+    try {
+      const result = await adminSpeakingService.applyTemplate(token, applyTarget.id, applyClassIds, applySync);
+      const appliedCount = (result?.applied ?? []).length + (result?.synced ?? []).length;
+      const skippedCount = (result?.skipped ?? []).length;
+      setMessage(`Template berhasil diterapkan ke ${appliedCount} kelas${skippedCount > 0 ? ` (${skippedCount} dilewati)` : ""}.`);
+      setApplyTarget(null);
+    } catch (err) {
+      setApplyError(getFirstApiError(err));
+    } finally {
+      setApplySubmitting(false);
+    }
+  }
+
   return (
     <div className="grid gap-6">
       <section className="flex flex-col gap-2">
@@ -268,6 +323,11 @@ export function AdminSpeakingExercises() {
                 <Button onClick={() => openEdit(exercise)} type="button" variant="secondary">
                   <Pencil className="mr-2 size-4" /> Edit
                 </Button>
+                {exercise.status === "published" ? (
+                  <Button onClick={() => void openApply(exercise)} type="button" variant="secondary">
+                    <Users className="mr-2 size-4" /> Terapkan
+                  </Button>
+                ) : null}
                 {exercise.status !== "archived" ? (
                   <Button onClick={() => void archiveExercise(exercise)} type="button" variant="ghost">
                     <Trash2 className="mr-2 size-4" /> Hapus
@@ -325,6 +385,36 @@ export function AdminSpeakingExercises() {
           <div className="sticky bottom-0 mt-2 flex gap-2 border-t-2 border-border bg-surface pt-3">
             <Button className="flex-1" disabled={isSubmitting || isUploading} type="submit">{isSubmitting ? "Menyimpan..." : editingExercise ? "Simpan Perubahan" : "Buat Template"}</Button>
             <Button disabled={isSubmitting} onClick={() => setModalOpen(false)} type="button" variant="ghost">Batal</Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal className="max-w-xl" onClose={() => setApplyTarget(null)} open={Boolean(applyTarget)} title={applyTarget ? `Terapkan "${applyTarget.title}" ke Kelas` : "Terapkan ke Kelas"}>
+        <form className="flex min-h-0 flex-col gap-4" onSubmit={submitApply}>
+          {applyError ? <Alert tone="error">{applyError}</Alert> : null}
+          <Alert tone="info">Target kelas akan dibuat sebagai draft. Guru kelas dapat mengedit sebelum dipublikasikan ke siswa.</Alert>
+          {applyLoading ? <LoadingState title="Memuat daftar kelas" /> : null}
+          {!applyLoading && classes.length === 0 ? <EmptyState description="Tidak ada kelas aktif yang dapat menerima template." title="Kelas aktif kosong" /> : null}
+          {!applyLoading && classes.length > 0 ? (
+            <div className="flex max-h-80 flex-col gap-2 overflow-auto rounded-xl border-2 border-border bg-surface-muted p-3">
+              {classes.map((schoolClass) => (
+                <label className="flex cursor-pointer items-center gap-3 rounded-lg bg-surface p-3" key={schoolClass.id}>
+                  <input checked={applyClassIds.includes(schoolClass.id)} onChange={() => toggleClass(schoolClass.id)} type="checkbox" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-black text-ink">{schoolClass.name}</p>
+                    <p className="text-xs font-semibold text-muted">{schoolClass.school?.name ?? ""} · {schoolClass.academic_year}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          ) : null}
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-ink">
+            <input checked={applySync} onChange={(event) => setApplySync(event.target.checked)} type="checkbox" />
+            Sync ulang kelas yang sudah pernah diterapkan
+          </label>
+          <div className="sticky bottom-0 mt-2 flex gap-2 border-t-2 border-border bg-surface pt-3">
+            <Button className="flex-1" disabled={applySubmitting || applyClassIds.length === 0} type="submit">{applySubmitting ? "Menerapkan..." : "Terapkan Template"}</Button>
+            <Button disabled={applySubmitting} onClick={() => setApplyTarget(null)} type="button" variant="ghost">Batal</Button>
           </div>
         </form>
       </Modal>

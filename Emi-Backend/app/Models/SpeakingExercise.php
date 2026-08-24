@@ -24,6 +24,7 @@ class SpeakingExercise extends Model
         'lesson_id',
         'module_id',
         'classroom_id',
+        'source_speaking_exercise_id',
         'created_by_id',
         'status',
         'metadata',
@@ -50,6 +51,11 @@ class SpeakingExercise extends Model
     public function classroom(): BelongsTo
     {
         return $this->belongsTo(SchoolClass::class, 'classroom_id');
+    }
+
+    public function sourceExercise(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'source_speaking_exercise_id');
     }
 
     public function creator(): BelongsTo

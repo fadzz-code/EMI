@@ -7,6 +7,11 @@ use App\Models\User;
 
 class SpeakingExercisePolicy
 {
+    public function apply(User $user, SpeakingExercise $exercise): bool
+    {
+        return $user->role === 'admin' && $exercise->classroom_id === null;
+    }
+
     public function delete(User $user, SpeakingExercise $exercise): bool
     {
         $exercise->loadMissing('classroom.school');

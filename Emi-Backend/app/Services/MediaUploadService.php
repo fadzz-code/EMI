@@ -106,6 +106,7 @@ class MediaUploadService
     {
         return match ($purpose) {
             'avatar' => 'public',
+            'speaking_reference_audio' => 'public',
             'speaking_recording' => 'private',
             default => $visibility,
         };

@@ -241,6 +241,22 @@ class AdminSpeakingRepository {
     }
   }
 
+  Future<Map<String, dynamic>> applyTemplate(
+    String id, {
+    required List<String> classIds,
+    bool syncExisting = false,
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/admin/speaking/exercises/$id/apply',
+        data: {'class_ids': classIds, 'sync_existing': syncExisting},
+      );
+      return _map(response.data?['data']);
+    } catch (error) {
+      throw _safeError(error);
+    }
+  }
+
   AppError _safeError(Object error) {
     final mapped = _errorMapper.map(error);
     return AppError(

@@ -49,6 +49,11 @@ void main() {
       await repository.save(request: _request('draft'));
       await repository.save(id: 's1', request: _request('published'));
       await repository.archive('s1');
+      await repository.applyTemplate(
+        's1',
+        classIds: ['c1', 'c2'],
+        syncExisting: true,
+      );
       expect(
         requests.map((e) => '${e.method} ${e.path}'),
         containsAll([
@@ -57,9 +62,13 @@ void main() {
           'POST /admin/speaking/exercises',
           'PATCH /admin/speaking/exercises/s1',
           'PATCH /admin/speaking/exercises/s1/archive',
+          'POST /admin/speaking/exercises/s1/apply',
         ]),
       );
       expect((requests[3].data as Map)['status'], 'published');
+      final applyData = requests.last.data as Map;
+      expect(applyData['class_ids'], ['c1', 'c2']);
+      expect(applyData['sync_existing'], isTrue);
     },
   );
 

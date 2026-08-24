@@ -57,6 +57,11 @@ export const adminSpeakingService = {
     return response.data;
   },
 
+  async applyTemplate(token: string, exerciseId: string, classIds: string[], syncExisting = false) {
+    const response = await apiClient.post<{ applied: { class_id: string; speaking_exercise_id: string }[]; synced: unknown[]; skipped: unknown[]; failed: unknown[] }>(`/admin/speaking/exercises/${exerciseId}/apply`, { class_ids: classIds, sync_existing: syncExisting }, { token });
+    return response.data;
+  },
+
   async uploadReferenceAudio(token: string, file: File) {
     const formData = new FormData();
     formData.append("file", file, file.name);

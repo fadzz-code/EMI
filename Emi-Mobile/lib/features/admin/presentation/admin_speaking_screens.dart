@@ -9,6 +9,8 @@ import 'package:just_audio/just_audio.dart';
 import '../../../app/theme/emi_theme.dart';
 import '../../../shared/widgets/role_dashboard_widgets.dart';
 import '../../../shared/widgets/status_badge.dart';
+import '../data/admin_providers.dart';
+import '../data/admin_repository.dart';
 import '../data/admin_speaking_providers.dart';
 import '../data/admin_speaking_repository.dart';
 import 'admin_shell.dart';
@@ -26,6 +28,23 @@ final adminSpeakingAudioPickerProvider = Provider<AdminSpeakingAudioPicker>(
     return result?.files.single;
   },
 );
+
+final _activeSpeakingClassesProvider = FutureProvider<List<AdminClass>>((
+  ref,
+) async {
+  final repo = ref.watch(adminRepositoryProvider);
+  final items = <AdminClass>[];
+  var page = 1;
+  while (true) {
+    final result = await repo.classes(
+      AdminListQuery(status: 'active', page: page),
+    );
+    items.addAll(result.items);
+    if (!result.hasMore) break;
+    page++;
+  }
+  return items;
+});
 
 class AdminSpeakingScreen extends ConsumerStatefulWidget {
   const AdminSpeakingScreen({super.key});
@@ -254,12 +273,15 @@ class _SpeakingTile extends StatelessWidget {
             if (value == 'edit') {
               context.push('/admin/speaking/${item.id}/edit');
             }
+            if (value == 'apply') _showApplyDialog(context, item);
             if (value == 'publish') _publish(context, item);
             if (value == 'archive') _archive(context, item);
           },
           itemBuilder: (_) => [
             const PopupMenuItem(value: 'view', child: Text('Lihat')),
             const PopupMenuItem(value: 'edit', child: Text('Edit')),
+            if (item.status == 'published')
+              const PopupMenuItem(value: 'apply', child: Text('Terapkan')),
             if (item.status != 'published' && item.status != 'archived')
               const PopupMenuItem(value: 'publish', child: Text('Terbitkan')),
             if (item.status != 'archived')
@@ -356,6 +378,13 @@ class AdminSpeakingDetailScreen extends ConsumerWidget {
               onPressed: () => context.push('/admin/speaking/${item.id}/edit'),
               child: const Text('Edit Template'),
             ),
+            if (item.status == 'published') ...[
+              const SizedBox(height: EmiSpacing.sm),
+              OutlinedButton(
+                onPressed: () => _showApplyDialog(context, item),
+                child: const Text('Terapkan'),
+              ),
+            ],
             if (item.status != 'archived') ...[
               const SizedBox(height: EmiSpacing.sm),
               OutlinedButton(
@@ -729,6 +758,171 @@ class _SpeakingAudioControlsState extends State<SpeakingAudioControls> {
       OutlinedButton(onPressed: _player.stop, child: const Text('Berhenti')),
     ],
   );
+}
+
+Future<void> _showApplyDialog(
+  BuildContext context,
+  AdminSpeakingTemplate item,
+) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (context) => _ApplySpeakingDialog(item: item),
+  );
+}
+
+class _ApplySpeakingDialog extends ConsumerStatefulWidget {
+  const _ApplySpeakingDialog({required this.item});
+  final AdminSpeakingTemplate item;
+
+  @override
+  ConsumerState<_ApplySpeakingDialog> createState() =>
+      _ApplySpeakingDialogState();
+}
+
+class _ApplySpeakingDialogState extends ConsumerState<_ApplySpeakingDialog> {
+  final Set<String> _selected = {};
+  bool _syncExisting = false;
+  bool _submitting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final classesAsync = ref.watch(_activeSpeakingClassesProvider);
+    final theme = Theme.of(context);
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.65,
+      minChildSize: 0.4,
+      maxChildSize: 0.9,
+      builder: (_, scrollController) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(EmiSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Terapkan "${widget.item.title}"',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: EmiSpacing.xs),
+              Text(
+                'Pilih kelas aktif. Target kelas akan dibuat sebagai draft.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: AdminStyle.inkMuted,
+                ),
+              ),
+              const SizedBox(height: EmiSpacing.md),
+              Expanded(
+                child: classesAsync.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (_, _) => FriendlyState(
+                    icon: Icons.wifi_off_outlined,
+                    title: 'Kelas Belum Bisa Dimuat',
+                    message: 'Periksa koneksi internet, lalu coba lagi.',
+                    onRetry: () =>
+                        ref.invalidate(_activeSpeakingClassesProvider),
+                  ),
+                  data: (classes) => classes.isEmpty
+                      ? const FriendlyState(
+                          icon: Icons.school_outlined,
+                          title: 'Tidak Ada Kelas Aktif',
+                          message: 'Buat atau aktifkan kelas terlebih dahulu.',
+                        )
+                      : ListView.builder(
+                          controller: scrollController,
+                          itemCount: classes.length,
+                          itemBuilder: (context, index) {
+                            final klass = classes[index];
+                            final selected = _selected.contains(klass.id);
+                            return CheckboxListTile(
+                              value: selected,
+                              onChanged: (_) => _toggle(klass.id),
+                              title: Text(
+                                klass.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: Text(
+                                '${klass.schoolName ?? '-'} · ${klass.academicYear ?? '-'}',
+                                style: TextStyle(color: AdminStyle.inkMuted),
+                              ),
+                              controlAffinity: ListTileControlAffinity.leading,
+                            );
+                          },
+                        ),
+                ),
+              ),
+              CheckboxListTile(
+                value: _syncExisting,
+                onChanged: (value) =>
+                    setState(() => _syncExisting = value ?? false),
+                title: const Text('Sync ulang kelas yang sudah diterapkan'),
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+              ),
+              FilledButton(
+                onPressed: _submitting || _selected.isEmpty ? null : _submit,
+                child: Text(
+                  _submitting
+                      ? 'Menerapkan...'
+                      : 'Terapkan (${_selected.length})',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _toggle(String id) {
+    setState(() {
+      if (_selected.contains(id)) {
+        _selected.remove(id);
+      } else {
+        _selected.add(id);
+      }
+    });
+  }
+
+  Future<void> _submit() async {
+    setState(() => _submitting = true);
+    try {
+      final result = await ref
+          .read(adminSpeakingRepositoryProvider)
+          .applyTemplate(
+            widget.item.id,
+            classIds: _selected.toList(),
+            syncExisting: _syncExisting,
+          );
+      final applied = ((result['applied'] ?? []) as List).length;
+      final synced = ((result['synced'] ?? []) as List).length;
+      final skipped = ((result['skipped'] ?? []) as List).length;
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Berhasil diterapkan ke ${applied + synced} kelas${skipped > 0 ? ' ($skipped dilewati)' : ''}.',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
 }
 
 Future<void> _publish(BuildContext context, AdminSpeakingTemplate item) async {

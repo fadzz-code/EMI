@@ -51,7 +51,7 @@ export function TeacherSpeakingExercisePreview({ exerciseId }: { exerciseId: str
           <ArrowLeft className="size-5" strokeWidth={2.5} /> Kembali ke Daftar Target Speaking
         </Link>
       </div>
-      <PageHeader badge="Guru" description="Lihat target bacaan dan audio contoh persis seperti tampilan yang akan dilihat siswa." title="Lihat Target Speaking (Preview)" />
+      <PageHeader badge="Guru" description="Kelola target bacaan dan audio contoh untuk siswa." title="Target Speaking" />
 
       {exerciseQuery.isLoading ? <LoadingState title="Memuat target speaking" /> : null}
       {exerciseQuery.isError ? (

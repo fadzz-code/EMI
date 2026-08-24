@@ -75,6 +75,7 @@ class TeacherSpeakingExerciseController extends Controller
                 'language_code' => $template->language_code,
                 'difficulty' => $template->difficulty,
                 'status' => 'draft',
+                'source_speaking_exercise_id' => $template->id,
                 'metadata' => $template->metadata,
             ], $data);
         }
@@ -102,6 +103,7 @@ class TeacherSpeakingExerciseController extends Controller
         $data = $request->validated();
         unset($data['created_by_id']);
         unset($data['template_exercise_id']);
+        unset($data['source_speaking_exercise_id']);
 
         $exercise->update($data);
 

@@ -42,8 +42,11 @@ class StoreTeacherSpeakingExerciseRequest extends FormRequest
                 'uuid',
                 Rule::exists('media_files', 'id')
                     ->where('purpose', 'speaking_reference_audio')
-                    ->where('uploaded_by', $this->user()?->id)
-                    ->whereNull('deleted_at'),
+                    ->whereNull('deleted_at')
+                    ->where(function ($query): void {
+                        $query->where('uploaded_by', $this->user()?->id)
+                            ->orWhere('visibility', 'public');
+                    }),
             ],
             'language_code' => ['nullable', 'string', 'max:20'],
             'difficulty' => ['nullable', 'string', 'max:50'],

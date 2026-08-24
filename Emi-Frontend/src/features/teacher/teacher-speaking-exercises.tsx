@@ -1,13 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
-import { Archive, Eye, ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
+import { Archive, ListChecks, Pencil, Plus, Send, Trash2 } from "lucide-react";
 
 import { Alert, AudioPlayer, Badge, Button, Card, CardContent, ConfirmDialog, EmptyState, ErrorState, FormField, Input, LoadingState, Modal, Select, Textarea } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
-import { teacherRoutes } from "@/lib/routes";
 
 import { teacherService } from "./teacher-service";
 import { speakingExerciseLifecycle } from "./teacher-workflow";
@@ -101,6 +99,7 @@ export function TeacherSpeakingExercises() {
   const [message, setMessage] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TeacherSpeakingExercise | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<TeacherSpeakingExercise | null>(null);
+  const [publishTarget, setPublishTarget] = useState<TeacherSpeakingExercise | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -267,6 +266,26 @@ export function TeacherSpeakingExercises() {
     }
   }
 
+  async function confirmPublishExercise() {
+    if (!token || !publishTarget) return;
+    setIsSubmitting(true);
+    try {
+      await teacherService.updateSpeakingExercise(token, publishTarget.id, {
+        classroom_id: publishTarget.classroom_id ?? "",
+        title: publishTarget.title,
+        target_text: publishTarget.target_text,
+        status: "published",
+      });
+      setMessage("Target speaking berhasil diterbitkan.");
+      setPublishTarget(null);
+      await reloadExercises({ classroom_id: selectedClassId || undefined, status: statusFilter || undefined });
+    } catch (err) {
+      setError(getFirstApiError(err));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   async function confirmArchiveExercise() {
     if (!token || !archiveTarget) return;
     setIsArchiving(true);
@@ -377,12 +396,9 @@ export function TeacherSpeakingExercises() {
               </div>
               {exercise.prompt_text ? <p className="mt-3 text-sm font-semibold leading-6 text-muted">{exercise.prompt_text}</p> : null}
               <div className="mt-auto flex flex-wrap gap-2 pt-5">
-                <Link
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-border bg-surface px-4 py-2 text-sm font-black text-ink transition hover:-translate-y-0.5 hover:bg-surface-muted"
-                  href={teacherRoutes.speakingExercisePreview(exercise.id)}
-                >
-                  <Eye className="size-4" strokeWidth={2.5} /> Preview
-                </Link>
+                {exercise.status !== "published" ? <Button onClick={() => setPublishTarget(exercise)} type="button" variant="secondary">
+                  <Send className="mr-2 size-4" /> Terbitkan
+                </Button> : null}
                 <Button onClick={() => openEdit(exercise)} type="button" variant="secondary">
                   <Pencil className="mr-2 size-4" /> Edit
                 </Button>
@@ -509,6 +525,16 @@ export function TeacherSpeakingExercises() {
         onConfirm={() => void confirmArchiveExercise()}
         open={Boolean(archiveTarget)}
         title="Arsipkan target speaking?"
+      />
+
+      <ConfirmDialog
+        confirmLabel={isSubmitting ? "Menerbitkan..." : "Terbitkan Target"}
+        description={publishTarget ? `Terbitkan target speaking "${publishTarget.title}"? Target akan terlihat oleh siswa.` : ""}
+        isConfirming={isSubmitting}
+        onCancel={() => setPublishTarget(null)}
+        onConfirm={() => void confirmPublishExercise()}
+        open={Boolean(publishTarget)}
+        title="Terbitkan target speaking?"
       />
 
       <ConfirmDialog
