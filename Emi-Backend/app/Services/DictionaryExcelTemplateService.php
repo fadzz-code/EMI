@@ -113,9 +113,9 @@ class DictionaryExcelTemplateService
         $this->writeHeaderRow($sheet, $headers);
 
         $samples = [
-            ['Saya sedang makan nasi', 'Inoi monga kade', 'Monga'],
-            ['Air di rumah', 'Aiwoi i laika', 'Aiwoi'],
-            ['Selamat pagi', 'Ari nggiro', 'Ari nggiro'],
+            ['Makan', '', 'Saya sedang makan nasi', 'Inoi monga kade', ''],
+            ['Air', '', 'Air di rumah', 'Aiwoi i laika', ''],
+            ['Selamat pagi', '', 'Selamat pagi', 'Ari nggiro', ''],
         ];
 
         foreach ($samples as $index => $sample) {
@@ -127,7 +127,7 @@ class DictionaryExcelTemplateService
 
         $this->styleDataRows($sheet, (int) config('dictionary.max_rows') + 1, count($headers));
 
-        foreach (['A' => 32, 'B' => 32, 'C' => 26] as $column => $width) {
+        foreach (['A' => 24, 'B' => 32, 'C' => 32, 'D' => 32, 'E' => 26] as $column => $width) {
             $sheet->getColumnDimension($column)->setWidth($width);
         }
 

@@ -18,7 +18,6 @@ import {
   FormField,
   LoadingState,
   Pagination,
-  Select,
   Table,
   TableCell,
   TableHeader,
@@ -29,13 +28,12 @@ import { getFirstApiError } from "@/lib/api-client";
 
 import { dictionaryService } from "./dictionary-service";
 import {
-  duplicateStrategyLabel,
   formatBytes,
   formatDateTime,
   importStatusLabel,
   statusTone,
 } from "./dictionary-utils";
-import type { DictionaryImportJob, DictionaryImportSheetSummary, DictionaryImportSummary, DuplicateStrategy } from "./types";
+import type { DictionaryImportJob, DictionaryImportSheetSummary, DictionaryImportSummary } from "./types";
 
 function numberValue(value?: number | null) {
   return String(value ?? 0);
@@ -101,7 +99,7 @@ const ERROR_CODE_INFO: Record<string, { label: string; hint: string; steps: stri
     hint: "Baris ini sama persis dengan kata lain (di file atau di kamus).",
     steps: [
       "Kalau duplikat di dalam file: hapus salah satu baris yang kembar.",
-      "Kalau kata memang sudah ada di kamus: ubah pilihan Strategi duplikat jadi \"Lewati duplikat\" (biarkan yang lama) atau \"Perbarui duplikat\" (timpa yang lama).",
+      "Kalau kata memang sudah ada di kamus: sistem otomatis memperbarui entri yang ada dengan data baris ini.",
     ],
   },
   SENTENCE_DUPLICATE: {
@@ -109,7 +107,7 @@ const ERROR_CODE_INFO: Record<string, { label: string; hint: string; steps: stri
     hint: "Contoh kalimat ini sama persis dengan kalimat lain (di file atau di kamus).",
     steps: [
       "Kalau duplikat di dalam file: hapus salah satu baris kalimat yang kembar.",
-      "Kalau kalimat memang sudah ada di kamus: ubah Strategi duplikat jadi \"Lewati duplikat\" atau \"Perbarui duplikat\".",
+      "Kalau kalimat memang sudah ada di kamus: sistem otomatis memperbarui kalimat yang ada dengan data baris ini.",
     ],
   },
   CODE_NOT_FOUND: {
@@ -120,22 +118,31 @@ const ERROR_CODE_INFO: Record<string, { label: string; hint: string; steps: stri
       "Cek ejaan kode di kolom kode — harus sama persis dengan kode kata yang dituju.",
     ],
   },
-  RELATED_MEKONGGA_NOT_FOUND: {
-    label: "Kata Mekongga terkait tidak ada",
-    hint: "Contoh kalimat menunjuk ke kata Mekongga yang belum ada di sheet Kosakata maupun di kamus.",
+  RELATED_INDONESIA_NOT_FOUND: {
+    label: "Kata Indonesia terkait tidak ada",
+    hint: "Contoh kalimat menunjuk ke kata Indonesia yang belum ada di sheet Kosakata maupun di kamus.",
     steps: [
-      "Buka sheet Contoh Kalimat, lihat isi kolom \"Kata Mekongga Terkait\" pada baris yang error.",
+      "Buka sheet Contoh Kalimat, lihat isi kolom \"Kata Indonesia Terkait\" pada baris yang error.",
       "Pastikan kata itu sudah ada di sheet Kosakata (impor dulu Kosakata sebelum Contoh Kalimat).",
-      "Samakan ejaannya persis dengan kolom Mekongga di sheet Kosakata (huruf, spasi, tanda hubung).",
+      "Samakan ejaannya persis dengan kolom Bahasa Indonesia di sheet Kosakata (huruf, spasi, tanda hubung).",
     ],
   },
-  AMBIGUOUS_RELATED_MEKONGGA: {
-    label: "Kata Mekongga terkait ganda",
-    hint: "Kata Mekongga terkait cocok dengan lebih dari satu entri kamus, jadi sistem tidak tahu harus menaut ke yang mana. Ini biasanya karena ada kata Mekongga yang sama tercatat dua kali di kamus.",
+  AMBIGUOUS_RELATED_INDONESIA: {
+    label: "Kata Indonesia terkait ganda",
+    hint: "Kata Indonesia terkait cocok dengan lebih dari satu entri kamus, jadi sistem tidak tahu harus menaut ke yang mana. Ini biasanya karena ada kata Indonesia yang sama tercatat dua kali di kamus.",
     steps: [
-      "Buka menu Kamus, cari kata Mekongga yang disebut (misalnya \"iwoi\").",
-      "Kalau ada dua entri atau lebih dengan kata Mekongga yang sama, hapus/gabungkan yang duplikat sehingga tersisa satu entri.",
-      "Setelah kamus rapi, impor ulang file Contoh Kalimat.",
+      "Buka menu Kamus, cari kata Indonesia yang disebut (misalnya \"makan\").",
+      "Kalau ada dua entri atau lebih dengan kata Indonesia yang sama, hapus/gabungkan yang duplikat sehingga tersisa satu entri.",
+      "Setelah kamus rapi, impor ulang file Excel.",
+    ],
+  },
+  AMBIGUOUS_INDONESIA: {
+    label: "Kata Indonesia ganda di kamus",
+    hint: "Kata Indonesia ini cocok dengan lebih dari satu entri kamus, jadi sistem tidak tahu harus memperbarui yang mana.",
+    steps: [
+      "Buka menu Kamus, cari kata Indonesia tersebut.",
+      "Hapus/gabungkan entri duplikat sehingga tersisa satu entri per kata Indonesia.",
+      "Setelah kamus rapi, impor ulang file Excel.",
     ],
   },
   UNSAFE_ZIP_ENTRY: {
@@ -229,7 +236,6 @@ export function DictionaryImport() {
   const queryClient = useQueryClient();
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [audioZip, setAudioZip] = useState<File | null>(null);
-  const [duplicateStrategy, setDuplicateStrategy] = useState<DuplicateStrategy>("skip");
   const [page, setPage] = useState(1);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [previewJob, setPreviewJob] = useState<DictionaryImportJob | null>(null);
@@ -269,7 +275,6 @@ export function DictionaryImport() {
       return dictionaryService.previewImport(token ?? "", {
         csvFile: excelFile,
         audioZip,
-        duplicateStrategy,
       });
     },
     onSuccess: async (job) => {
@@ -403,17 +408,6 @@ export function DictionaryImport() {
               </FormField>
               {audioZip ? <FilePreview name={audioZip.name} size={formatBytes(audioZip.size)} type="ZIP" /> : null}
 
-              <FormField label="Strategi duplikat">
-                <Select
-                  onChange={(event) => setDuplicateStrategy(event.target.value as DuplicateStrategy)}
-                  value={duplicateStrategy}
-                >
-                  <option value="skip">Lewati duplikat</option>
-                  <option value="update">Perbarui duplikat</option>
-                  <option value="reject">Tolak jika duplikat</option>
-                </Select>
-              </FormField>
-
               <Button disabled={!excelFile || previewMutation.isPending} type="submit">
                 Lihat Preview
               </Button>
@@ -458,7 +452,6 @@ export function DictionaryImport() {
                   <p className="min-w-0 break-words">ZIP audio: {selectedJob.audio_zip_original_name ?? "Tidak diunggah"} ({formatBytes(selectedJob.audio_zip_size_bytes)})</p>
                   <p>Format: {selectedJob.source_format?.toUpperCase() ?? "-"}</p>
                   <p>Jenis: {selectedJob.import_type === "combined" ? "Gabungan" : selectedJob.import_type === "sentence_examples" ? "Contoh Kalimat" : "Kosakata"}</p>
-                  <p>Strategi: {duplicateStrategyLabel(selectedJob.duplicate_strategy)}</p>
                   <p>Dibuat: {formatDateTime(selectedJob.created_at)}</p>
                   <p>Ditambahkan: {numberValue(selectedJob.inserted_rows)}</p>
                   <p>Diperbarui: {numberValue(selectedJob.updated_rows)}</p>
@@ -550,7 +543,6 @@ export function DictionaryImport() {
                     <tr>
                       <th className="px-4 py-3">File</th>
                       <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Strategi</th>
                       <th className="px-4 py-3">Valid/Invalid</th>
                       <th className="px-4 py-3">Dibuat</th>
                       <th className="px-4 py-3">Aksi</th>
@@ -566,7 +558,6 @@ export function DictionaryImport() {
                             {importStatusLabel(job.status)}
                           </Badge>
                         </TableCell>
-                        <TableCell className="border-0 p-0 lg:border-t lg:px-4 lg:py-3"><span className="font-bold lg:hidden">Strategi: </span>{duplicateStrategyLabel(job.duplicate_strategy)}</TableCell>
                         <TableCell className="border-0 p-0 lg:border-t lg:px-4 lg:py-3">
                           <span className="font-bold lg:hidden">Valid/Tidak valid: </span>{numberValue(job.valid_rows)} / {numberValue(job.invalid_rows)}
                         </TableCell>

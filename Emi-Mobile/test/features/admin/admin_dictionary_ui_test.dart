@@ -316,6 +316,86 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('import error breakdown explicitly covers current page only', (
+    tester,
+  ) async {
+    final repository = AdminCrudRepository(
+      Dio(BaseOptions(baseUrl: 'https://example.test'))
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              final data = options.path.endsWith('/errors')
+                  ? {
+                      'data': [
+                        {
+                          'id': 'error-1',
+                          'code': 'REQUIRED',
+                          'message': 'Wajib',
+                        },
+                        {
+                          'id': 'error-2',
+                          'code': 'REQUIRED',
+                          'message': 'Wajib',
+                        },
+                      ],
+                      'meta': {'current_page': 1, 'last_page': 5, 'total': 99},
+                    }
+                  : {
+                      'data': [
+                        {
+                          'id': 'job-1',
+                          'status': 'completed_with_errors',
+                          'csv_original_name': 'kamus.xlsx',
+                        },
+                      ],
+                      'meta': {'current_page': 1, 'last_page': 1, 'total': 1},
+                    };
+              handler.resolve(Response(requestOptions: options, data: data));
+            },
+          ),
+        ),
+      const DioErrorMapper(),
+    );
+    final router = GoRouter(
+      initialLocation: '/admin/dictionary/import',
+      routes: [
+        GoRoute(
+          path: '/admin/dictionary/import',
+          builder: (_, _) => const AdminDictionaryImportScreen(),
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [adminCrudRepositoryProvider.overrideWithValue(repository)],
+        child: MaterialApp.router(
+          theme: EmiTheme.light(),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text('kamus.xlsx'),
+      100,
+      scrollable: scrollable,
+    );
+    await tester.drag(scrollable, const Offset(0, -150));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('kamus.xlsx').hitTestable());
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Ringkasan error halaman ini'),
+      300,
+      scrollable: scrollable,
+    );
+
+    expect(find.text('Ringkasan error halaman ini'), findsOneWidget);
+    expect(find.text('REQUIRED · Field wajib belum diisi.: 2'), findsOneWidget);
+    expect(find.textContaining('Ringkasan error total'), findsNothing);
+  });
+
   testWidgets('knowledge form marker and save are present', (tester) async {
     final router = GoRouter(
       initialLocation: '/admin/knowledge/create',

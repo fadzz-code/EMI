@@ -26,6 +26,11 @@ class DictionaryEntryResource extends JsonResource
                 'kode' => $example->code,
                 'contoh_mekongga' => $example->example_mekongga,
                 'contoh_indonesia' => $example->example_indonesia,
+                'audio' => $example->relationLoaded('audioMedia') && $example->audioMedia ? [
+                    'id' => $example->audioMedia->id,
+                    'url' => app(MediaAccessService::class)->publicUrl($example->audioMedia),
+                    'mime_type' => $example->audioMedia->mime_type,
+                ] : null,
             ])->values()),
             'audio' => $audio ? [
                 'id' => $audio->id,

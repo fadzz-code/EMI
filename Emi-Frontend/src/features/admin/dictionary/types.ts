@@ -34,6 +34,7 @@ export type DictionarySentenceExample = {
   kode?: string | null;
   contoh_mekongga: string;
   contoh_indonesia: string;
+  audio?: DictionaryAudio | null;
 };
 
 export type DictionaryEntry = {

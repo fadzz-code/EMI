@@ -19,6 +19,7 @@ class DictionarySentenceExample extends Model
         'example_mekongga_normalized',
         'example_indonesia_normalized',
         'status',
+        'audio_media_id',
         'created_by',
         'updated_by',
         'source_import_job_id',
@@ -49,5 +50,10 @@ class DictionarySentenceExample extends Model
     public function sourceImportJob(): BelongsTo
     {
         return $this->belongsTo(DictionaryImportJob::class, 'source_import_job_id');
+    }
+
+    public function audioMedia(): BelongsTo
+    {
+        return $this->belongsTo(MediaFile::class, 'audio_media_id');
     }
 }

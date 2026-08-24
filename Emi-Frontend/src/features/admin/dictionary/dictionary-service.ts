@@ -11,7 +11,6 @@ import type {
   DictionaryImportError,
   DictionaryImportFilters,
   DictionaryImportJob,
-  DuplicateStrategy,
   MediaFile,
   PaginatedResult,
 } from "./types";
@@ -207,7 +206,6 @@ export const dictionaryService = {
     params: {
       csvFile: File;
       audioZip?: File | null;
-      duplicateStrategy: DuplicateStrategy;
     },
   ) {
     const formData = new FormData();
@@ -215,7 +213,6 @@ export const dictionaryService = {
     if (params.audioZip) {
       formData.append("audio_zip", params.audioZip);
     }
-    formData.append("duplicate_strategy", params.duplicateStrategy);
     formData.append("import_type", "combined");
 
     const response = await apiRequest<DictionaryImportJob>(

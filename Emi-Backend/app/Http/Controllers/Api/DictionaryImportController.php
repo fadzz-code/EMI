@@ -83,7 +83,7 @@ class DictionaryImportController extends Controller
             $request->user(),
             $csvFile,
             $request->file('audio_zip'),
-            $request->validated('duplicate_strategy') ?? 'skip',
+            $request->validated('duplicate_strategy') ?? 'update',
             $request->validated('import_type') ?? $defaultImportType,
             $request,
         );
