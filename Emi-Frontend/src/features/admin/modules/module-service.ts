@@ -2,7 +2,6 @@ import { apiClient, apiRequest } from "@/lib/api-client";
 
 import { mediaPurposeForContentType } from "./module-utils";
 import type {
-  ClassModule,
   LessonContentType,
   LessonTemplate,
   LessonTemplatePayload,
@@ -12,6 +11,9 @@ import type {
   ModuleTemplateFilters,
   ModuleTemplatePayload,
   PaginatedResult,
+  PublishModuleTemplateOptions,
+  PublishModuleTemplateResult,
+  TemplateApplyOptions,
   TemplateApplyResult,
 } from "./types";
 
@@ -84,10 +86,13 @@ export const moduleTemplateService = {
     await apiClient.delete<[]>(`/admin/module-templates/${moduleId}`, { token });
   },
 
-  async publish(token: string, moduleId: string) {
-    const response = await apiClient.post<ModuleTemplate>(
+  async publish(token: string, moduleId: string, options: PublishModuleTemplateOptions = {}) {
+    const response = await apiClient.post<PublishModuleTemplateResult>(
       `/admin/module-templates/${moduleId}/publish`,
-      {},
+      {
+        apply_to_all_active_classes: options.applyToAllActiveClasses ?? false,
+        publish_class_modules: options.publishClassModules ?? false,
+      },
       { token },
     );
 
@@ -112,10 +117,14 @@ export const moduleTemplateService = {
     return response.data;
   },
 
-  async applyToClasses(token: string, moduleId: string, classIds: string[], syncExisting = false) {
+  async applyToClasses(token: string, moduleId: string, classIds: string[], options: TemplateApplyOptions = {}) {
     const response = await apiClient.post<TemplateApplyResult>(
       `/admin/module-templates/${moduleId}/apply`,
-      { class_ids: classIds, sync_existing: syncExisting },
+      {
+        class_ids: classIds,
+        sync_existing: options.syncExisting ?? false,
+        publish_class_modules: options.publishClassModules ?? false,
+      },
       { token },
     );
 
@@ -126,30 +135,6 @@ export const moduleTemplateService = {
     return response.data;
   },
 
-  async listClassModules(token: string, classId: string) {
-    const response = await apiClient.get<ClassModule[]>(`/classes/${classId}/modules`, {
-      token,
-      query: {
-        per_page: 100,
-      },
-    });
-
-    return response.data ?? [];
-  },
-
-  async publishClassModule(token: string, classModuleId: string) {
-    const response = await apiClient.post<ClassModule>(
-      `/class-modules/${classModuleId}/publish`,
-      {},
-      { token },
-    );
-
-    if (!response.data) {
-      throw new Error("Response publish modul kelas tidak tersedia.");
-    }
-
-    return response.data;
-  },
 };
 
 export const lessonTemplateService = {

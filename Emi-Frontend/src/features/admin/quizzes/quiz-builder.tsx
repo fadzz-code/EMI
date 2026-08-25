@@ -32,6 +32,8 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
   const queryClient = useQueryClient();
   const [createQuestionOpen, setCreateQuestionOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [sendAllActiveClasses, setSendAllActiveClasses] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<QuizTemplateQuestion | null>(null);
   const [deleteQuestionTarget, setDeleteQuestionTarget] =
     useState<QuizTemplateQuestion | null>(null);
@@ -64,9 +66,15 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
   });
 
   const publishQuizMutation = useMutation({
-    mutationFn: () => quizTemplateService.publish(token ?? "", quizId),
+    mutationFn: (applyToAllActiveClasses: boolean) =>
+      quizTemplateService.publish(token ?? "", quizId, { applyToAllActiveClasses }),
     onSuccess: async (quiz) => {
-      setSuccessMessage(`Kuis ${quiz.title} berhasil diterbitkan.`);
+      const result = quiz.distribution;
+      setSuccessMessage(result
+        ? `Template ${quiz.title} diterbitkan dan dikirim ke ${result.applied.length} kelas aktif sebagai draft untuk guru. Siswa belum dapat melihatnya sampai guru menerbitkan kuis kelas.`
+        : `Template ${quiz.title} berhasil diterbitkan tanpa dikirim ke kelas.`);
+      setPublishOpen(false);
+      setSendAllActiveClasses(false);
       await invalidateQuiz();
     },
   });
@@ -215,7 +223,7 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
               <div className="mt-5 flex flex-col gap-2 border-t-2 border-border pt-4 sm:flex-row">
                 <Button
                   disabled={publishQuizMutation.isPending || quiz.status === "published"}
-                  onClick={() => publishQuizMutation.mutate()}
+                   onClick={() => { setPublishOpen(true); setSendAllActiveClasses(false); }}
                   variant="secondary"
                 >
                   Terbitkan Kuis
@@ -288,6 +296,36 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
           </div>
         </div>
       ) : null}
+
+      <Modal
+        onClose={() => setPublishOpen(false)}
+        open={publishOpen}
+        title="Terbitkan Template Kuis"
+      >
+        <div className="grid gap-4">
+          <Alert tone="info">
+            Template akan diterbitkan untuk admin. Distribusi ke kelas bersifat opsional.
+          </Alert>
+          <label className="flex items-start gap-3 rounded-xl border-2 border-border bg-surface p-3 text-sm font-bold text-ink">
+            <input
+              checked={sendAllActiveClasses}
+              className="mt-1"
+              onChange={(event) => setSendAllActiveClasses(event.target.checked)}
+              type="checkbox"
+            />
+            <span>Kirim salinan ke semua kelas aktif</span>
+          </label>
+          {sendAllActiveClasses ? (
+            <Alert tone="info">Salinan masuk sebagai draft untuk guru. Siswa belum dapat melihatnya sampai guru menerbitkan kuis kelas.</Alert>
+          ) : null}
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button onClick={() => setPublishOpen(false)} type="button" variant="ghost">Batal</Button>
+            <Button disabled={publishQuizMutation.isPending} onClick={() => publishQuizMutation.mutate(sendAllActiveClasses)} type="button">
+              {publishQuizMutation.isPending ? "Menerbitkan..." : "Terbitkan Template"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         className="max-w-4xl"

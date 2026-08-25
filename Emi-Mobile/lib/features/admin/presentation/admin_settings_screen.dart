@@ -35,27 +35,18 @@ class AdminSettingsScreen extends ConsumerStatefulWidget {
       _AdminSettingsScreenState();
 }
 
-enum _SettingsSection { application, profile, banner, security, password }
+enum _SettingsSection { profile, banner, password }
 
 class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
-  final _applicationFormKey = GlobalKey<FormState>();
   final _profileFormKey = GlobalKey<FormState>();
-  final _name = TextEditingController();
-  final _subtitle = TextEditingController();
-  final _year = TextEditingController();
   final _fullName = TextEditingController();
   final _phone = TextEditingController();
   final _currentPassword = TextEditingController();
   final _password = TextEditingController();
   final _passwordConfirmation = TextEditingController();
-  ApplicationSettings? _applicationBaseline;
   SessionUser? _profileBaseline;
-  bool _newLoginAlert = false;
-  bool _weeklyReportEmail = false;
   bool _bannerEnabled = false;
-  SecuritySettings? _securityBaseline;
   BannerSettings? _bannerBaseline;
-  String _timezone = 'Asia/Jakarta';
   PlatformFile? _bannerFile;
   bool _hydrated = false;
   final Set<_SettingsSection> _saving = {};
@@ -66,16 +57,6 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
       _currentPassword.text.isNotEmpty ||
       _password.text.isNotEmpty ||
       _passwordConfirmation.text.isNotEmpty;
-
-  bool get _applicationDirty {
-    final baseline = _applicationBaseline;
-    return _hydrated &&
-        baseline != null &&
-        (_name.text.trim() != baseline.name ||
-            _subtitle.text.trim() != baseline.subtitle ||
-            _year.text.trim() != baseline.activeAcademicYear ||
-            _timezone != baseline.timezone);
-  }
 
   bool get _profileDirty {
     final baseline = _profileBaseline;
@@ -90,20 +71,7 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
       _bannerBaseline != null &&
       (_bannerEnabled != _bannerBaseline!.enabled || _bannerFile != null);
 
-  bool get _securityDirty {
-    final baseline = _securityBaseline;
-    return _hydrated &&
-        baseline != null &&
-        (_newLoginAlert != baseline.newLoginAlert ||
-            _weeklyReportEmail != baseline.weeklyReportEmail);
-  }
-
-  bool get _dirty =>
-      _applicationDirty ||
-      _profileDirty ||
-      _bannerDirty ||
-      _securityDirty ||
-      _passwordDirty;
+  bool get _dirty => _profileDirty || _bannerDirty || _passwordDirty;
 
   bool _isSaving(_SettingsSection section) => _saving.contains(section);
 
@@ -111,9 +79,6 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
   void initState() {
     super.initState();
     for (final controller in [
-      _name,
-      _subtitle,
-      _year,
       _fullName,
       _phone,
       _currentPassword,
@@ -131,9 +96,6 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
   @override
   void dispose() {
     for (final controller in [
-      _name,
-      _subtitle,
-      _year,
       _fullName,
       _phone,
       _currentPassword,
@@ -200,51 +162,6 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _section('Pengaturan Aplikasi', [
-          Form(
-            key: _applicationFormKey,
-            child: Column(
-              children: [
-                _field(_name, 'Nama Aplikasi', required: true),
-                const SizedBox(height: EmiSpacing.md),
-                _field(_subtitle, 'Subtitle / Slogan'),
-                const SizedBox(height: EmiSpacing.md),
-                _field(_year, 'Tahun Ajaran Aktif', required: true),
-                const SizedBox(height: EmiSpacing.md),
-                DropdownButtonFormField<String>(
-                  initialValue: _timezone,
-                  decoration: const InputDecoration(labelText: 'Zona Waktu'),
-                  items:
-                      {
-                            _timezone,
-                            'Asia/Jakarta',
-                            'Asia/Makassar',
-                            'Asia/Jayapura',
-                          }
-                          .map(
-                            (value) => DropdownMenuItem(
-                              value: value,
-                              child: Text(value),
-                            ),
-                          )
-                          .toList(),
-                  onChanged: _isSaving(_SettingsSection.application)
-                      ? null
-                      : (value) =>
-                            setState(() => _timezone = value ?? _timezone),
-                ),
-              ],
-            ),
-          ),
-          _sectionStatus(_SettingsSection.application),
-          _saveButton(
-            key: const Key('saveApplicationSettings'),
-            section: _SettingsSection.application,
-            dirty: _applicationDirty,
-            label: 'Simpan Pengaturan Aplikasi',
-            onPressed: _saveApplication,
-          ),
-        ]),
         _section('Profil Admin', [
           Form(
             key: _profileFormKey,
@@ -281,7 +198,10 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
             onPressed: _saveProfile,
           ),
         ]),
-        _section('Pengaturan Banner Login', [
+        _section('Banner Login', [
+          const Text(
+            'Banner tampil pada halaman login desktop. Gunakan gambar JPG, JPEG, atau PNG maksimal 5 MB.',
+          ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             value: _bannerEnabled,
@@ -310,32 +230,6 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
             onPressed: _saveBanner,
           ),
         ]),
-        _section('Keamanan', [
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            value: _newLoginAlert,
-            onChanged: _isSaving(_SettingsSection.security)
-                ? null
-                : (value) => setState(() => _newLoginAlert = value),
-            title: const Text('Peringatan Login Baru'),
-          ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            value: _weeklyReportEmail,
-            onChanged: _isSaving(_SettingsSection.security)
-                ? null
-                : (value) => setState(() => _weeklyReportEmail = value),
-            title: const Text('Email Laporan Mingguan'),
-          ),
-          _sectionStatus(_SettingsSection.security),
-          _saveButton(
-            key: const Key('saveSecuritySettings'),
-            section: _SettingsSection.security,
-            dirty: _securityDirty,
-            label: 'Simpan Keamanan',
-            onPressed: _saveSecurity,
-          ),
-        ]),
         _section('Ubah Password', [
           const Text('Kosongkan jika tidak ingin mengubah password.'),
           _secret(_currentPassword, 'Password Lama'),
@@ -350,7 +244,7 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
             onPressed: _savePassword,
           ),
         ]),
-        _section('Aktivitas', [
+        _section('Aktivitas terbaru', [
           if (data.activityLogs.isEmpty)
             const Text('Aktivitas belum tersedia.'),
           for (final log in data.activityLogs) ...[
@@ -450,18 +344,10 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
   );
 
   void _hydrate(AdminSettings settings, SessionUser user) {
-    _applicationBaseline = settings.application;
-    _securityBaseline = settings.security;
     _bannerBaseline = settings.banner;
     _profileBaseline = user;
-    _name.text = settings.application.name;
-    _subtitle.text = settings.application.subtitle;
-    _year.text = settings.application.activeAcademicYear;
-    _timezone = settings.application.timezone;
     _fullName.text = user.fullName;
     _phone.text = user.phone ?? '';
-    _newLoginAlert = settings.security.newLoginAlert;
-    _weeklyReportEmail = settings.security.weeklyReportEmail;
     _bannerEnabled = settings.banner.enabled;
     _hydrated = true;
   }
@@ -526,29 +412,6 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
     }
   }
 
-  Future<void> _saveApplication() async {
-    if (!_applicationDirty || !_applicationFormKey.currentState!.validate()) {
-      return;
-    }
-    await _runSave(
-      _SettingsSection.application,
-      'Pengaturan aplikasi berhasil disimpan.',
-      () async {
-        _applicationBaseline = await ref
-            .read(adminSettingsRepositoryProvider)
-            .updateApplication(
-              ApplicationSettings(
-                name: _name.text.trim(),
-                subtitle: _subtitle.text.trim(),
-                activeAcademicYear: _year.text.trim(),
-                timezone: _timezone,
-              ),
-            );
-        ref.invalidate(adminSettingsProvider);
-      },
-    );
-  }
-
   Future<void> _saveProfile() async {
     if (!_profileDirty || !_profileFormKey.currentState!.validate()) return;
     await _runSave(
@@ -579,25 +442,6 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
               fileName: _bannerFile?.name,
             );
         _bannerFile = null;
-        ref.invalidate(adminSettingsProvider);
-      },
-    );
-  }
-
-  Future<void> _saveSecurity() async {
-    if (!_securityDirty) return;
-    await _runSave(
-      _SettingsSection.security,
-      'Preferensi keamanan berhasil disimpan.',
-      () async {
-        _securityBaseline = await ref
-            .read(adminSettingsRepositoryProvider)
-            .updateSecurity(
-              SecuritySettings(
-                newLoginAlert: _newLoginAlert,
-                weeklyReportEmail: _weeklyReportEmail,
-              ),
-            );
         ref.invalidate(adminSettingsProvider);
       },
     );

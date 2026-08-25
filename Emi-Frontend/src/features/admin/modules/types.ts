@@ -81,19 +81,23 @@ export type LessonTemplatePayload = {
   status?: ModuleTemplateStatus;
 };
 
+export type TemplateApplyOptions = {
+  syncExisting?: boolean;
+  publishClassModules?: boolean;
+};
+
+export type PublishModuleTemplateOptions = {
+  applyToAllActiveClasses?: boolean;
+  publishClassModules?: boolean;
+};
+
 export type TemplateApplyResult = {
-  applied: Array<{ class_id: string; class_module_id?: string }>;
+  applied: Array<{ class_id: string; class_module_id?: string; status?: string }>;
   synced: Array<{ class_id: string; class_module_id?: string }>;
   skipped: Array<{ class_id: string; reason: string }>;
   failed: Array<{ class_id: string; reason: string }>;
 };
 
-export type ClassModule = {
-  id: string;
-  class_id: string;
-  source_module_template_id?: string | null;
-  title: string;
-  description?: string | null;
-  status: ModuleTemplateStatus;
-  published_at?: string | null;
+export type PublishModuleTemplateResult = ModuleTemplate & {
+  distribution: TemplateApplyResult | null;
 };

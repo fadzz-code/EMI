@@ -11,7 +11,6 @@ import '../../../core/errors/app_error.dart';
 import '../../../shared/widgets/emi_card.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../data/admin_crud_providers.dart';
-import '../data/admin_providers.dart';
 import '../data/admin_repository.dart';
 import '../data/admin_crud_repository.dart';
 import 'admin_shell.dart';
@@ -618,14 +617,55 @@ class _AdminQuizFormScreenState extends ConsumerState<AdminQuizFormScreen> {
   }
 
   Future<void> _statusAction(String action) async {
-    final title = action == 'publish'
-        ? 'Terbitkan Template Kuis ini?'
-        : 'Arsipkan Template Kuis ini?';
-    if (await _confirm(context, title) != true) return;
+    var applyToAllActiveClasses = false;
+    final confirmed = action == 'publish'
+        ? await showDialog<bool>(
+            context: context,
+            builder: (context) => StatefulBuilder(
+              builder: (context, setDialogState) => AlertDialog(
+                title: const Text('Terbitkan Template Kuis ini?'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Template kuis siap digunakan oleh guru.'),
+                    CheckboxListTile(
+                      key: const Key('adminPublishAllActiveClasses-quizzes'),
+                      contentPadding: EdgeInsets.zero,
+                      value: applyToAllActiveClasses,
+                      title: const Text('Kirim ke semua kelas aktif'),
+                      subtitle: const Text(
+                        'Salinan dibuat sebagai draft untuk guru. Siswa belum dapat melihatnya sampai guru menerbitkan kuis kelas.',
+                      ),
+                      onChanged: (value) => setDialogState(
+                        () => applyToAllActiveClasses = value ?? false,
+                      ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Batal'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Terbitkan'),
+                  ),
+                ],
+              ),
+            ),
+          )
+        : await _confirm(context, 'Arsipkan Template Kuis ini?');
+    if (confirmed != true) return;
     try {
       await ref
           .read(adminCrudRepositoryProvider)
-          .quizStatus(widget.id!, action);
+          .quizStatus(
+            widget.id!,
+            action,
+            applyToAllActiveClasses: applyToAllActiveClasses,
+          );
       ref.invalidate(adminQuizDetailProvider(widget.id!));
       ref.invalidate(adminQuizProvider);
     } catch (e) {
@@ -650,7 +690,7 @@ class _AdminQuizFormScreenState extends ConsumerState<AdminQuizFormScreen> {
     );
     List<AdminClass> classes;
     try {
-      classes = await ref.read(adminRepositoryProvider).allActiveClasses();
+      classes = await ref.read(adminQuizActiveClassesProvider.future);
     } catch (error) {
       if (!mounted) return;
       Navigator.pop(context);
@@ -681,6 +721,10 @@ class _AdminQuizFormScreenState extends ConsumerState<AdminQuizFormScreen> {
               Text(
                 'Terapkan ke Kelas',
                 style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: EmiSpacing.sm),
+              const Text(
+                'Salinan masuk sebagai draft untuk guru. Siswa belum dapat melihatnya sampai guru menerbitkan kuis kelas.',
               ),
               const SizedBox(height: EmiSpacing.md),
               Flexible(

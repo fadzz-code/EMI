@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Api;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Quiz\ListQuizTemplatesRequest;
+use App\Http\Requests\Quiz\PublishQuizTemplateRequest;
 use App\Http\Requests\Quiz\StoreQuizTemplateRequest;
 use App\Http\Requests\Quiz\UpdateQuizTemplateRequest;
 use App\Http\Resources\QuizTemplateResource;
 use App\Models\QuizTemplate;
+use App\Models\SchoolClass;
+use App\Services\QuizTemplateApplyService;
 use App\Services\QuizTemplateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,7 +19,10 @@ use Illuminate\Support\Facades\Gate;
 
 class AdminQuizTemplateController extends Controller
 {
-    public function __construct(private readonly QuizTemplateService $service) {}
+    public function __construct(
+        private readonly QuizTemplateService $service,
+        private readonly QuizTemplateApplyService $applyService,
+    ) {}
 
     public function index(ListQuizTemplatesRequest $request): JsonResponse
     {
@@ -69,12 +75,26 @@ class AdminQuizTemplateController extends Controller
         return ApiResponse::success('Template kuis berhasil dihapus.', []);
     }
 
-    public function publish(Request $request, string $id): JsonResponse
+    public function publish(PublishQuizTemplateRequest $request, string $id): JsonResponse
     {
         $template = QuizTemplate::query()->findOrFail($id);
         Gate::authorize('update', $template);
+        $template = $this->service->publish($template, $request->user(), $request);
+        $distribution = null;
 
-        return ApiResponse::success('Template kuis berhasil dipublish.', new QuizTemplateResource($this->service->publish($template, $request->user(), $request)));
+        if ($request->validated('apply_to_all_active_classes', false)) {
+            $classIds = SchoolClass::query()
+                ->where('status', 'active')
+                ->whereHas('school', fn ($query) => $query->where('status', 'active'))
+                ->pluck('id')
+                ->all();
+            $distribution = $this->applyService->apply($template, $classIds, $request->user(), $request);
+        }
+
+        $data = (new QuizTemplateResource($template))->resolve();
+        $data['distribution'] = $distribution;
+
+        return ApiResponse::success('Template kuis berhasil dipublish.', $data);
     }
 
     public function archive(Request $request, string $id): JsonResponse

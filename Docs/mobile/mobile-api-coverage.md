@@ -141,7 +141,7 @@ Rekomendasi umum: Admin penuh tetap web-first untuk MVP mobile. Hampir semua end
 | Admin | Culture templates | Template budaya | `/api/v1/admin/culture-templates`, `/{id}`, publish/apply/items | GET/POST/PUT/DELETE | Admin | Media/link | Pagination | Ready with adjustment | Apply template butuh UX | Web-first. |
 | Admin | Progress reports | Reports | `/api/v1/admin/reports/progress/schools`, `/classes`, `/students`, `/reports/quiz-results` | GET | Admin | Tidak | Pagination/filter | Ready | Tidak ada | Mobile read-only P2. |
 | Admin | Export reports | CSV export | `/api/v1/admin/reports/*/export` | GET | Admin | Download CSV | Filter | Web-only | CSV export kurang cocok mobile | Tetap web. |
-| Admin | Settings | App/security/banner | `/api/v1/admin/settings`, `/settings/application`, `/settings/banner`, `/settings/security` | GET/PUT/POST | Admin | Banner upload multipart | Tidak | Ready with adjustment | Risiko setting production dari HP | Tetap web kecuali read-only. |
+| Admin | Settings | Banner dan aktivitas terbaru | `/api/v1/admin/settings`, `/api/v1/admin/settings/banner` | GET/POST | Admin | GET mengembalikan `banner` dan `activity_logs`; banner upload multipart | Tidak | Ready with adjustment | Risiko setting production dari HP | UI: Profil Admin, Banner Login, Ubah Password, Aktivitas terbaru. |
 | Admin | Profile/password | Profil admin | `/api/v1/auth/me`, `/api/v1/auth/password` | GET/PATCH/PUT | Auth | Avatar opsional | Tidak | Ready | Tidak ada | Jika admin mobile ada, hanya profile dasar. |
 
 ## Verifikasi Admin Mobile Core

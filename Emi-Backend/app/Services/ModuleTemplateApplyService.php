@@ -12,9 +12,12 @@ use Illuminate\Support\Facades\DB;
 
 class ModuleTemplateApplyService
 {
-    public function __construct(private readonly AuditLogService $auditLogService) {}
+    public function __construct(
+        private readonly AuditLogService $auditLogService,
+        private readonly LessonContentValidationService $contentValidationService,
+    ) {}
 
-    public function apply(ModuleTemplate $template, array $classIds, User $actor, Request $request, bool $syncExisting = false): array
+    public function apply(ModuleTemplate $template, array $classIds, User $actor, Request $request, bool $syncExisting = false, bool $publishClassModules = false): array
     {
         $template->load('lessons');
 
@@ -22,11 +25,17 @@ class ModuleTemplateApplyService
             throw new ApiException('Template modul belum published.', 'MODULE_TEMPLATE_NOT_PUBLISHED', 409);
         }
 
+        if ($publishClassModules) {
+            foreach ($template->lessons->where('status', 'published') as $lesson) {
+                $this->contentValidationService->assertValidModel($lesson);
+            }
+        }
+
         $summary = ['applied' => [], 'synced' => [], 'skipped' => [], 'failed' => []];
 
         foreach (array_values(array_unique($classIds)) as $classId) {
             try {
-                DB::transaction(function () use ($template, $classId, $actor, $request, $syncExisting, &$summary) {
+                DB::transaction(function () use ($template, $classId, $actor, $request, $syncExisting, $publishClassModules, &$summary) {
                     $class = SchoolClass::query()->with('school')->lockForUpdate()->findOrFail($classId);
 
                     if ($class->status !== 'active') {
@@ -65,9 +74,10 @@ class ModuleTemplateApplyService
                         'source_module_template_id' => $template->id,
                         'title' => $template->title,
                         'description' => $template->description,
-                        'status' => 'draft',
+                        'status' => $publishClassModules ? 'published' : 'draft',
                         'sort_order' => $sortOrder,
                         'created_by' => $actor->id,
+                        'published_at' => $publishClassModules ? now() : null,
                     ]);
 
                     foreach ($template->lessons->where('status', 'published') as $lesson) {
@@ -86,11 +96,15 @@ class ModuleTemplateApplyService
                         ]);
                     }
 
-                    $summary['applied'][] = ['class_id' => $class->id, 'class_module_id' => $module->id];
+                    $summary['applied'][] = ['class_id' => $class->id, 'class_module_id' => $module->id, 'status' => $module->status];
                     $this->auditLogService->record('module_template.applied', $module, $actor, null, [
                         'source_module_template_id' => $template->id,
                         'class_id' => $class->id,
+                        'status' => $module->status,
                     ], [], $request);
+                    if ($publishClassModules) {
+                        $this->auditLogService->record('class_module.published', $module, $actor, null, ['status' => 'published'], [], $request);
+                    }
                 });
             } catch (ApiException $e) {
                 $summary['failed'][] = ['class_id' => $classId, 'reason' => $e->errorCode];

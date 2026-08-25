@@ -46,10 +46,8 @@ Auth notation:
 | POST/PUT/DELETE | `/schools*`, `/classes*`, `/users*` | Same controllers | Auth + scoped | Manage schools/classes/users | Low | Mobile admin not v1 priority. |
 | POST | `/classes/{id}/assign-teacher` | `ClassAssignmentController@assignTeacher` | Auth + scoped | Assign teacher | Low | Admin management. |
 | POST | `/classes/{id}/assign-student` | `ClassAssignmentController@assignStudent` | Auth + scoped | Assign student | Low | Admin management. |
-| GET | `/admin/settings` | `AdminSettingsController@index` | Admin | Read application, banner, security, and recent activity settings | High | Typed mobile settings source. |
-| PUT | `/admin/settings/application` | `AdminSettingsController@updateApplication` | Admin | Update name, subtitle, academic year, and timezone | High | Full validated application payload. |
+| GET | `/admin/settings` | `AdminSettingsController@index` | Admin | Read banner and recent activity logs | High | Returns `banner` and `activity_logs`. |
 | POST | `/admin/settings/banner` | `AdminSettingsController@updateBanner` | Admin | Enable/disable and optionally replace login banner | High | Multipart image; omitted file retains current banner. |
-| PUT | `/admin/settings/security` | `AdminSettingsController@updateSecurity` | Admin | Update login-alert and weekly-report preferences | High | Preferences are persisted booleans. |
 
 ## Teacher
 

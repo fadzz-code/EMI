@@ -45,9 +45,10 @@ export function QuizList() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<QuizTemplateStatus | "">("");
   const [editingQuiz, setEditingQuiz] = useState<QuizTemplate | null>(null);
+  const [publishTarget, setPublishTarget] = useState<QuizTemplate | null>(null);
+  const [sendAllActiveClasses, setSendAllActiveClasses] = useState(false);
   const [applyTarget, setApplyTarget] = useState<QuizTemplate | null>(null);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
-  const [publishAfterApply, setPublishAfterApply] = useState(true);
   const [syncExisting, setSyncExisting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<QuizTemplate | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -97,9 +98,15 @@ export function QuizList() {
   });
 
   const publishMutation = useMutation({
-    mutationFn: (quizId: string) => quizTemplateService.publish(token ?? "", quizId),
+    mutationFn: ({ quizId, applyToAllActiveClasses }: { quizId: string; applyToAllActiveClasses: boolean }) =>
+      quizTemplateService.publish(token ?? "", quizId, { applyToAllActiveClasses }),
     onSuccess: async (quiz) => {
-      setSuccessMessage(`Kuis ${quiz.title} berhasil diterbitkan.`);
+      const result = quiz.distribution;
+      setSuccessMessage(result
+        ? `Template ${quiz.title} diterbitkan dan dikirim ke ${result.applied.length} kelas aktif sebagai draft untuk guru. Siswa belum dapat melihatnya sampai guru menerbitkan kuis kelas.`
+        : `Template ${quiz.title} berhasil diterbitkan tanpa dikirim ke kelas.`);
+      setPublishTarget(null);
+      setSendAllActiveClasses(false);
       await queryClient.invalidateQueries({ queryKey: ["admin", "quiz-templates"] });
     },
   });
@@ -113,55 +120,17 @@ export function QuizList() {
   });
 
   const applyMutation = useMutation({
-    mutationFn: async ({
-      quizId,
-      classIds,
-      publishClassContent,
-      syncExistingClasses,
-    }: {
-      quizId: string;
-      classIds: string[];
-      publishClassContent: boolean;
-      syncExistingClasses: boolean;
-    }) => {
-      const result = await quizTemplateService.applyToClasses(token ?? "", quizId, classIds, syncExistingClasses);
-      let publishedCount = 0;
-
-      if (publishClassContent) {
-        const classQuizzes = await Promise.all(
-          classIds.map((classId) => quizTemplateService.listClassQuizzes(token ?? "", classId)),
-        );
-        const classQuizIds = new Set([
-          ...result.applied
-            .map((item) => item.class_quiz_id)
-            .filter((id): id is string => Boolean(id)),
-          ...result.synced
-            .map((item) => item.class_quiz_id)
-            .filter((id): id is string => Boolean(id)),
-          ...classQuizzes
-            .flat()
-            .filter((classQuiz) => classQuiz.source_quiz_template_id === quizId && classQuiz.status !== "published")
-            .map((classQuiz) => classQuiz.id),
-        ]);
-
-        for (const classQuizId of classQuizIds) {
-          await quizTemplateService.publishClassQuiz(token ?? "", classQuizId);
-          publishedCount += 1;
-        }
-      }
-
-      return { result, publishedCount };
-    },
-    onSuccess: ({ result, publishedCount }) => {
+    mutationFn: ({ quizId, classIds, syncExistingClasses }: { quizId: string; classIds: string[]; syncExistingClasses: boolean }) =>
+      quizTemplateService.applyToClasses(token ?? "", quizId, classIds, syncExistingClasses),
+    onSuccess: (result) => {
       const totalAffected = result.applied.length + result.synced.length;
       setSuccessMessage(
         totalAffected > 0
-          ? `Template kuis diterapkan ke ${result.applied.length} kelas baru, disinkronkan ke ${result.synced.length} kelas existing${publishedCount > 0 ? `, dan ${publishedCount} kuis kelas langsung diterbitkan` : ""}. Kuis terlihat untuk siswa yang terdaftar pada kelas tersebut.`
-          : `Tidak ada kelas baru yang diterapkan. Dilewati: ${result.skipped.length} (sudah memiliki template), gagal: ${result.failed.length}. Centang "Sinkronkan" untuk memperbarui kuis yang sudah ada.`,
+          ? `Template kuis masuk ke ${result.applied.length} kelas baru sebagai draft untuk guru dan disinkronkan ke ${result.synced.length} kelas. Siswa belum dapat melihat kuis draft sampai guru menerbitkannya.`
+          : `Tidak ada kelas baru yang diterapkan. Dilewati: ${result.skipped.length} (sudah memiliki template), gagal: ${result.failed.length}. Gunakan opsi sinkronisasi lanjutan untuk memperbarui kelas yang sudah ada.`,
       );
       setApplyTarget(null);
       setSelectedClassIds([]);
-      setPublishAfterApply(true);
       setSyncExisting(false);
     },
   });
@@ -338,7 +307,7 @@ export function QuizList() {
                               {quiz.status === "published" ? (
                                 <DropdownMenuItem
                                   icon={<Share2 />}
-                                  onClick={() => { setApplyTarget(quiz); setSelectedClassIds([]); setPublishAfterApply(true); setSyncExisting(false); }}
+                                   onClick={() => { setApplyTarget(quiz); setSelectedClassIds([]); setSyncExisting(false); }}
                                 >
                                   Terapkan ke Kelas
                                 </DropdownMenuItem>
@@ -346,7 +315,7 @@ export function QuizList() {
                                 <DropdownMenuItem
                                   disabled={publishMutation.isPending}
                                   icon={<Send />}
-                                  onClick={() => publishMutation.mutate(quiz.id)}
+                                   onClick={() => { setPublishTarget(quiz); setSendAllActiveClasses(false); }}
                                 >
                                   Terbitkan
                                 </DropdownMenuItem>
@@ -404,13 +373,49 @@ export function QuizList() {
       </Modal>
 
       <Modal
+        onClose={() => setPublishTarget(null)}
+        open={Boolean(publishTarget)}
+        title="Terbitkan Template Kuis"
+      >
+        <div className="grid gap-4">
+          <Alert tone="info">
+            Template akan diterbitkan untuk admin. Distribusi ke kelas bersifat opsional.
+          </Alert>
+          <label className="flex items-start gap-3 rounded-xl border-2 border-border bg-surface p-3 text-sm font-bold text-ink">
+            <input
+              checked={sendAllActiveClasses}
+              className="mt-1"
+              onChange={(event) => setSendAllActiveClasses(event.target.checked)}
+              type="checkbox"
+            />
+            <span>Kirim salinan ke semua kelas aktif</span>
+          </label>
+          {sendAllActiveClasses ? (
+            <Alert tone="info">Salinan masuk sebagai draft untuk guru. Siswa belum dapat melihatnya sampai guru menerbitkan kuis kelas.</Alert>
+          ) : null}
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button onClick={() => setPublishTarget(null)} type="button" variant="ghost">Batal</Button>
+            <Button
+              disabled={!publishTarget || publishMutation.isPending}
+              onClick={() => {
+                if (publishTarget) publishMutation.mutate({ quizId: publishTarget.id, applyToAllActiveClasses: sendAllActiveClasses });
+              }}
+              type="button"
+            >
+              {publishMutation.isPending ? "Menerbitkan..." : "Terbitkan Template"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
         onClose={() => setApplyTarget(null)}
         open={Boolean(applyTarget)}
         title="Terapkan Kuis ke Kelas"
       >
         <div className="grid gap-4">
           <Alert tone="info">
-            Menerapkan template akan membuat kuis kelas. Aktifkan opsi terbitkan di bawah agar kuis langsung terlihat oleh guru dan siswa yang terhubung ke kelas.
+            Kuis masuk sebagai draft untuk guru. Siswa belum dapat melihatnya sampai guru menerbitkan kuis kelas.
           </Alert>
           {classesQuery.isLoading ? <LoadingState title="Memuat kelas" /> : null}
           {classesQuery.isError ? <ErrorState description={getFirstApiError(classesQuery.error)} title="Gagal memuat kelas" /> : null}
@@ -445,15 +450,9 @@ export function QuizList() {
               </>
             )
           ) : null}
-          <label className="flex items-start gap-3 rounded-xl border-2 border-border bg-[var(--color-primary-muted)] p-3 text-sm font-bold text-ink">
-            <input
-              checked={publishAfterApply}
-              className="mt-1"
-              onChange={(event) => setPublishAfterApply(event.target.checked)}
-              type="checkbox"
-            />
-            <span>Setelah diterapkan, langsung terbitkan kuis kelas agar terlihat oleh guru dan siswa.</span>
-          </label>
+          <Alert tone="warning">
+            Opsi lanjutan: sinkronisasi dapat menimpa perubahan guru pada kuis kelas yang sudah ada.
+          </Alert>
           <label className="flex items-start gap-3 rounded-xl border-2 border-border bg-surface p-3 text-sm font-bold text-ink">
             <input
               checked={syncExisting}
@@ -476,7 +475,7 @@ export function QuizList() {
               disabled={!applyTarget || selectedClassIds.length === 0 || applyMutation.isPending}
               onClick={() => {
                 if (applyTarget) {
-                  applyMutation.mutate({ quizId: applyTarget.id, classIds: selectedClassIds, publishClassContent: publishAfterApply, syncExistingClasses: syncExisting });
+                   applyMutation.mutate({ quizId: applyTarget.id, classIds: selectedClassIds, syncExistingClasses: syncExisting });
                 }
               }}
               type="button"

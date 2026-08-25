@@ -37,409 +37,86 @@ const _user = SessionUser(
 );
 
 void main() {
-  test('menu settings keeps actual label endpoint and route', () {
+  test('menu settings keeps endpoint and route', () {
     expect(AdminFeature.settings.label, 'Pengaturan');
     expect(AdminFeature.settings.endpoint, '/admin/settings');
     expect(AdminFeature.settings.route, '/admin/settings');
     expect(AdminFeature.settings.isMobileImplemented, isTrue);
   });
 
-  test('admin settings parses object response and nullable values', () async {
+  test('admin settings parses banner and activity logs only', () async {
     final requests = <String>[];
-    final repository = _repository(requests: requests);
+    final settings = await _repository(requests: requests).get();
 
-    final settings = await repository.get();
-
-    expect(settings.application.name, 'EMI');
-    expect(settings.application.subtitle, 'Belajar bersama');
-    expect(settings.application.activeAcademicYear, '2026/2027');
-    expect(settings.application.timezone, 'Asia/Makassar');
     expect(settings.banner.enabled, isTrue);
-    expect(settings.security.weeklyReportEmail, isTrue);
-    expect(settings.activityLogs.single.title, 'Update pengaturan');
+    expect(settings.activityLogs.single.title, 'Banner login diperbarui');
     expect(requests, ['GET /admin/settings']);
   });
 
-  test('admin settings update uses backend contracts', () async {
-    final requests = <String>[];
-    final repository = _repository(requests: requests);
-
-    await repository.updateApplication(
-      const ApplicationSettings(
-        name: 'EMI',
-        subtitle: 'Belajar',
-        activeAcademicYear: '2026/2027',
-        timezone: 'Asia/Makassar',
-      ),
-    );
-    await repository.updateSecurity(
-      const SecuritySettings(newLoginAlert: true, weeklyReportEmail: false),
-    );
-
-    expect(requests, [
-      'PUT /admin/settings/application',
-      'PUT /admin/settings/security',
-    ]);
+  test('admin settings invalid object maps to app error', () {
+    expect(_repository(invalid: true).get(), throwsA(isA<AppError>()));
   });
 
-  test('admin settings invalid object maps to app error', () async {
-    final repository = _repository(invalid: true);
-    expect(repository.get(), throwsA(isA<AppError>()));
-  });
-
-  testWidgets(
-    'shows loading then all typed sections fields and pristine save',
-    (tester) async {
-      final completer = Completer<void>();
-      await _pump(tester, repository: _repository(wait: completer.future));
-
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
-      completer.complete();
-      await tester.pumpAndSettle();
-
-      for (final text in [
-        'Pengaturan Aplikasi',
-        'Profil Admin',
-        'Nama Aplikasi',
-        'Subtitle / Slogan',
-        'Tahun Ajaran Aktif',
-        'Zona Waktu',
-        'Nama Lengkap',
-        'Telepon Admin',
-        'Email Kantor',
-        'Status Akun',
-      ]) {
-        await _findByScrolling(tester, text);
-      }
-      for (final text in [
-        'Pengaturan Banner Login',
-        'Keamanan',
-        'Ubah Password',
-        'Aktivitas',
-        'Peringatan Login Baru',
-        'Email Laporan Mingguan',
-        'Update pengaturan',
-        'Simpan Pengaturan Aplikasi',
-        'Simpan Profil',
-        'Simpan Banner',
-        'Simpan Keamanan',
-      ]) {
-        await _findByScrolling(tester, text);
-      }
-      expect(find.text('application.name'), findsNothing);
-      expect(find.text('new_login_alert'), findsNothing);
-      expect(
-        tester
-            .widget<FilledButton>(
-              find.byKey(const Key('saveApplicationSettings')),
-            )
-            .onPressed,
-        isNull,
-      );
-      expect(tester.takeException(), isNull);
-    },
-  );
-
-  testWidgets('error maps friendly and retry reloads settings', (tester) async {
-    final requests = <String>[];
-    await _pump(
-      tester,
-      repository: _repository(requests: requests, failures: 1),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('Coba lagi'), findsOneWidget);
-    await tester.tap(find.text('Coba lagi'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Pengaturan Aplikasi'), findsOneWidget);
-    expect(
-      requests.where((request) => request == 'GET /admin/settings'),
-      hasLength(2),
-    );
-  });
-
-  testWidgets('switches and timezone selection create dirty state', (
+  testWidgets('shows professional final sections and no removed settings', (
     tester,
   ) async {
-    await _pump(tester);
+    final completer = Completer<void>();
+    await _pump(tester, repository: _repository(wait: completer.future));
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    completer.complete();
     await tester.pumpAndSettle();
 
-    await _findByScrolling(tester, 'Zona Waktu');
-    await tester.tap(find.byType(DropdownButtonFormField<String>));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Asia/Jayapura').last);
-    await _findByScrolling(tester, 'Aktifkan Banner');
-    await tester.tap(find.text('Aktifkan Banner'));
-    await _findByScrolling(tester, 'Peringatan Login Baru');
-    await tester.tap(find.text('Peringatan Login Baru'));
-    await tester.pumpAndSettle();
-
-    expect(
-      tester
-          .widget<SwitchListTile>(
-            find.widgetWithText(SwitchListTile, 'Aktifkan Banner'),
-          )
-          .value,
-      isFalse,
-    );
-    expect(
-      tester
-          .widget<SwitchListTile>(
-            find.widgetWithText(SwitchListTile, 'Peringatan Login Baru'),
-          )
-          .value,
-      isTrue,
-    );
-    expect(find.text('Asia/Jayapura'), findsOneWidget);
-    expect(
-      tester
-          .widget<FilledButton>(
-            find.byKey(const Key('saveApplicationSettings')),
-          )
-          .onPressed,
-      isNotNull,
-    );
-  });
-
-  testWidgets(
-    'validates required and password fields without exposing secret',
-    (tester) async {
-      await _pump(tester);
-      await tester.pumpAndSettle();
-
-      final name = find.widgetWithText(TextFormField, 'Nama Aplikasi');
-      await tester.enterText(name, '');
-      await _findByScrolling(tester, 'Password Lama');
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'Password Lama'),
-        'old-secret',
-      );
-      tester
-          .widget<FilledButton>(
-            find.byKey(const Key('saveApplicationSettings')),
-          )
-          .onPressed!();
-      await tester.pump();
-
-      expect(find.text('Wajib diisi.'), findsOneWidget);
-      expect(find.widgetWithText(Text, 'old-secret'), findsNothing);
-      expect(find.text('Lengkapi semua kolom password.'), findsNothing);
-      for (final label in [
-        'Password Lama',
-        'Password Baru',
-        'Konfirmasi Password Baru',
-      ]) {
-        final field = find.widgetWithText(TextFormField, label);
-        expect(
-          tester
-              .widget<EditableText>(
-                find.descendant(of: field, matching: find.byType(EditableText)),
-              )
-              .obscureText,
-          isTrue,
-        );
-      }
-    },
-  );
-
-  testWidgets('save success persists subtitle and sends no blank password', (
-    tester,
-  ) async {
-    final requests = <String>[];
-    final payloads = <Map<String, dynamic>>[];
-    final auth = _MockAuthRepository();
-    await _pump(
-      tester,
-      repository: _repository(requests: requests, payloads: payloads),
-      auth: auth,
-    );
-    await tester.pumpAndSettle();
-
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Subtitle / Slogan'),
-      'Subtitle Baru',
-    );
-    tester.testTextInput.hide();
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(
-      find.byKey(const Key('saveApplicationSettings')),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('saveApplicationSettings')));
-    await tester.pumpAndSettle();
-
-    await tester.drag(
-      find.byType(SingleChildScrollView),
-      const Offset(0, 3000),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Pengaturan aplikasi berhasil disimpan.'), findsOneWidget);
-    expect(requests, contains('PUT /admin/settings/application'));
-    expect(payloads.single['subtitle'], 'Subtitle Baru');
-    verifyNever(
-      () => auth.updatePassword(
-        currentPassword: any(named: 'currentPassword'),
-        password: any(named: 'password'),
-        passwordConfirmation: any(named: 'passwordConfirmation'),
-      ),
-    );
-    expect(
-      tester
-          .widget<FilledButton>(
-            find.byKey(const Key('saveApplicationSettings')),
-          )
-          .onPressed,
-      isNull,
-    );
-  });
-
-  testWidgets('section failure does not block another section save', (
-    tester,
-  ) async {
-    final requests = <String>[];
-    await _pump(
-      tester,
-      repository: _repository(
-        requests: requests,
-        failPath: '/admin/settings/application',
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Nama Aplikasi'),
-      'Gagal Disimpan',
-    );
-    tester.testTextInput.hide();
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(
-      find.byKey(const Key('saveApplicationSettings')),
-    );
-    await tester.tap(find.byKey(const Key('saveApplicationSettings')));
-    await tester.pumpAndSettle();
-    expect(find.text('Permintaan API gagal.'), findsOneWidget);
-
-    await _findByScrolling(tester, 'Peringatan Login Baru');
-    await tester.tap(find.text('Peringatan Login Baru'));
-    await tester.pump();
-    await tester.ensureVisible(find.byKey(const Key('saveSecuritySettings')));
-    await tester.tap(find.byKey(const Key('saveSecuritySettings')));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Preferensi keamanan berhasil disimpan.'), findsOneWidget);
-    expect(find.text('Permintaan API gagal.'), findsOneWidget);
-    expect(requests, contains('PUT /admin/settings/application'));
-    expect(requests, contains('PUT /admin/settings/security'));
-  });
-
-  testWidgets('save failure retains input and stays dirty', (tester) async {
-    await _pump(tester, repository: _repository(failUpdates: true));
-    await tester.pumpAndSettle();
-
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Nama Aplikasi'),
-      'Tetap Ada',
-    );
-    tester.testTextInput.hide();
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(
-      find.byKey(const Key('saveApplicationSettings')),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('saveApplicationSettings')));
-    await tester.pumpAndSettle();
-
-    expect(
-      tester
-          .widget<TextFormField>(
-            find.widgetWithText(TextFormField, 'Nama Aplikasi'),
-          )
-          .controller!
-          .text,
-      'Tetap Ada',
-    );
-    await tester.drag(
-      find.byType(SingleChildScrollView),
-      const Offset(0, 3000),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Permintaan API gagal.'), findsOneWidget);
-    expect(
-      tester
-          .widget<FilledButton>(
-            find.byKey(const Key('saveApplicationSettings')),
-          )
-          .onPressed,
-      isNotNull,
-    );
-  });
-
-  testWidgets('system and app bar back show exact dirty confirmation', (
-    tester,
-  ) async {
-    await _pump(tester);
-    await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Nama Aplikasi'),
-      'Kotor',
-    );
-    tester.testTextInput.hide();
-    await tester.pumpAndSettle();
-
-    await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
-    _expectConfirmation();
-    await tester.tap(find.text('Tetap di Halaman'));
-    await tester.pumpAndSettle();
-    expect(find.text('Pengaturan').last, findsOneWidget);
-
-    await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
-    _expectConfirmation();
-    await tester.tap(find.text('Keluar'));
-    await tester.pumpAndSettle();
-    expect(find.text('Beranda'), findsOneWidget);
-  });
-
-  testWidgets('keyboard scroll reaches save and text scale has no overflow', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(390, 700);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await _pump(tester, textScale: 1.2);
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.widgetWithText(TextFormField, 'Nama Aplikasi'));
-    await tester.showKeyboard(
-      find.widgetWithText(TextFormField, 'Nama Aplikasi'),
-    );
-    await _findByScrolling(tester, 'Simpan Pengaturan Aplikasi');
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key('saveApplicationSettings')), findsOneWidget);
+    for (final text in [
+      'Profil Admin',
+      'Banner Login',
+      'Banner tampil pada halaman login desktop. Gunakan gambar JPG, JPEG, atau PNG maksimal 5 MB.',
+      'Ubah Password',
+      'Aktivitas terbaru',
+      'Banner login diperbarui',
+    ]) {
+      await _findByScrolling(tester, text);
+    }
+    expect(find.text('Pengaturan Aplikasi'), findsNothing);
+    expect(find.text('Keamanan'), findsNothing);
+    expect(find.byKey(const Key('saveApplicationSettings')), findsNothing);
+    expect(find.byKey(const Key('saveSecuritySettings')), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('dirty protection tracks profile banner and password only', (
+    tester,
+  ) async {
+    await _pump(tester);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nama Lengkap'),
+      'Admin Baru',
+    );
+    await tester.pump();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Batalkan perubahan?'), findsOneWidget);
+    await tester.tap(find.text('Tetap di Halaman'));
+    await tester.pumpAndSettle();
+
+    await _findByScrolling(tester, 'Aktifkan Banner');
+    await tester.tap(find.text('Aktifkan Banner'));
+    await tester.pump();
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const Key('saveBannerSettings')))
+          .onPressed,
+      isNotNull,
+    );
+  });
 }
 
-void _expectConfirmation() {
-  expect(find.text('Batalkan perubahan?'), findsOneWidget);
-  expect(
-    find.text('Perubahan yang belum disimpan akan hilang.'),
-    findsOneWidget,
-  );
-  expect(find.text('Tetap di Halaman'), findsOneWidget);
-  expect(find.text('Keluar'), findsOneWidget);
-}
-
-Future<GoRouter> _pump(
+Future<void> _pump(
   WidgetTester tester, {
   AdminSettingsRepository? repository,
-  AuthRepository? auth,
-  double textScale = 1,
 }) async {
+  final auth = _MockAuthRepository();
   final router = GoRouter(
     initialLocation: '/admin/settings',
     routes: [
@@ -461,21 +138,12 @@ Future<GoRouter> _pump(
         adminSettingsRepositoryProvider.overrideWithValue(
           repository ?? _repository(),
         ),
-        authRepositoryProvider.overrideWithValue(auth ?? _MockAuthRepository()),
-        authControllerProvider.overrideWith(
-          (_) => _AuthNotifier(auth ?? _MockAuthRepository()),
-        ),
+        authRepositoryProvider.overrideWithValue(auth),
+        authControllerProvider.overrideWith((_) => _AuthNotifier(auth)),
       ],
-      child: MediaQuery(
-        data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
-        child: MaterialApp.router(
-          theme: EmiTheme.light(),
-          routerConfig: router,
-        ),
-      ),
+      child: MaterialApp.router(theme: EmiTheme.light(), routerConfig: router),
     ),
   );
-  return router;
 }
 
 Future<void> _findByScrolling(WidgetTester tester, String text) async {
@@ -491,46 +159,26 @@ Future<void> _findByScrolling(WidgetTester tester, String text) async {
 
 AdminSettingsRepository _repository({
   List<String>? requests,
-  List<Map<String, dynamic>>? payloads,
   Future<void>? wait,
-  int failures = 0,
-  bool failUpdates = false,
-  String? failPath,
   bool invalid = false,
-}) {
-  var remainingFailures = failures;
-  return AdminSettingsRepository(
-    Dio(BaseOptions(baseUrl: 'https://example.test'))
-      ..interceptors.add(
-        InterceptorsWrapper(
-          onRequest: (options, handler) async {
-            requests?.add('${options.method} ${options.path}');
-            if (options.method != 'GET' && options.data is Map) {
-              payloads?.add(Map<String, dynamic>.from(options.data as Map));
-            }
-            if (wait != null) await wait;
-            if (remainingFailures > 0 ||
-                (failUpdates && options.method != 'GET') ||
-                options.path == failPath) {
-              if (remainingFailures > 0) remainingFailures--;
-              handler.reject(DioException(requestOptions: options));
-              return;
-            }
-            if (invalid) {
-              handler.resolve(
-                Response(requestOptions: options, data: {'data': []}),
-              );
-              return;
-            }
-            handler.resolve(
-              Response(requestOptions: options, data: _response(options)),
-            );
-          },
-        ),
+}) => AdminSettingsRepository(
+  Dio(BaseOptions(baseUrl: 'https://example.test'))
+    ..interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          requests?.add('${options.method} ${options.path}');
+          if (wait != null) await wait;
+          handler.resolve(
+            Response(
+              requestOptions: options,
+              data: invalid ? const {'data': []} : _response(options),
+            ),
+          );
+        },
       ),
-    const DioErrorMapper(),
-  );
-}
+    ),
+  const DioErrorMapper(),
+);
 
 Map<String, dynamic> _response(RequestOptions options) {
   if (options.method != 'GET') {
@@ -538,19 +186,14 @@ Map<String, dynamic> _response(RequestOptions options) {
   }
   return {
     'data': {
-      'application': {
-        'name': 'EMI',
-        'subtitle': 'Belajar bersama',
-        'active_academic_year': '2026/2027',
-        'timezone': 'Asia/Makassar',
-      },
+      'application': {'name': 'diabaikan'},
       'banner': {'enabled': true, 'image_url': null},
-      'security': {'new_login_alert': false, 'weekly_report_email': true},
+      'security': {'new_login_alert': true},
       'activity_logs': [
         {
           'id': 'log-1',
           'admin': 'Admin EMI',
-          'title': 'Update pengaturan',
+          'title': 'Banner login diperbarui',
           'status': true,
           'created_at': '2026-07-16T10:00:00Z',
         },

@@ -85,7 +85,7 @@ export function DictionaryList() {
       status,
       has_audio: hasAudio,
       page,
-      per_page: 15,
+      per_page: 8,
     }),
     [categoryId, hasAudio, page, search, status],
   );

@@ -766,8 +766,17 @@ class AdminCrudRepository {
     QuizTemplateAdmin.fromJson,
   );
   Future<void> deleteQuiz(String id) => _delete('/admin/quiz-templates/$id');
-  Future<void> quizStatus(String id, String action) async {
-    await _dio.post<Map<String, dynamic>>('/admin/quiz-templates/$id/$action');
+  Future<void> quizStatus(
+    String id,
+    String action, {
+    bool applyToAllActiveClasses = false,
+  }) async {
+    await _dio.post<Map<String, dynamic>>(
+      '/admin/quiz-templates/$id/$action',
+      data: action == 'publish'
+          ? {'apply_to_all_active_classes': applyToAllActiveClasses}
+          : null,
+    );
   }
 
   Future<List<QuizQuestionAdmin>> questions(String quizId) async {

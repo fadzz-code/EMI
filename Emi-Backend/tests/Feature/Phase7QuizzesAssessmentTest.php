@@ -146,6 +146,93 @@ class Phase7QuizzesAssessmentTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'quiz_template.applied']);
     }
 
+    public function test_quiz_template_publish_distribution_workflow(): void
+    {
+        $admin = User::factory()->admin()->create();
+        [$existingClass, $activeClass] = $this->classes($admin, 2);
+        $inactiveClass = SchoolClass::factory()->inactive()->create(['school_id' => $activeClass->school_id, 'created_by' => $admin->id]);
+        $inactiveSchool = School::factory()->inactive()->create(['created_by' => $admin->id]);
+        $inactiveSchoolClass = SchoolClass::factory()->create(['school_id' => $inactiveSchool->id, 'created_by' => $admin->id]);
+        $teacher = $this->teacherFor($activeClass, $admin);
+        $student = $this->studentFor($activeClass, $admin);
+
+        $withoutDistribution = QuizTemplate::factory()->create(['created_by' => $admin->id]);
+        QuizTemplateQuestion::factory()->create(['quiz_template_id' => $withoutDistribution->id, 'created_by' => $admin->id]);
+        $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/quiz-templates/{$withoutDistribution->id}/publish")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published')
+            ->assertJsonPath('data.distribution', null);
+        $this->assertDatabaseMissing('class_quizzes', ['source_quiz_template_id' => $withoutDistribution->id]);
+
+        $template = QuizTemplate::factory()->create(['created_by' => $admin->id]);
+        QuizTemplateQuestion::factory()->create(['quiz_template_id' => $template->id, 'created_by' => $admin->id]);
+        ClassQuiz::factory()->create([
+            'class_id' => $existingClass->id,
+            'source_quiz_template_id' => $template->id,
+            'title' => 'Salinan lama',
+            'created_by' => $admin->id,
+        ]);
+
+        $publish = $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/quiz-templates/{$template->id}/publish", [
+            'apply_to_all_active_classes' => true,
+        ])->assertOk()
+            ->assertJsonPath('data.status', 'published')
+            ->assertJsonPath('data.distribution.skipped.0.reason', 'QUIZ_TEMPLATE_ALREADY_APPLIED');
+
+        $this->assertCount(1, $publish->json('data.distribution.applied'));
+        $this->assertCount(1, $publish->json('data.distribution.skipped'));
+        $this->assertDatabaseCount('class_quizzes', 2);
+        $this->assertDatabaseHas('class_quizzes', ['class_id' => $existingClass->id, 'source_quiz_template_id' => $template->id, 'title' => 'Salinan lama']);
+        $this->assertDatabaseMissing('class_quizzes', ['class_id' => $inactiveClass->id, 'source_quiz_template_id' => $template->id]);
+        $this->assertDatabaseMissing('class_quizzes', ['class_id' => $inactiveSchoolClass->id, 'source_quiz_template_id' => $template->id]);
+
+        $quiz = ClassQuiz::query()->where('class_id', $activeClass->id)->where('source_quiz_template_id', $template->id)->firstOrFail();
+        $this->assertSame('draft', $quiz->status);
+        $this->withToken($this->tokenFor($student))->getJson("/api/v1/student/quizzes/{$quiz->id}")->assertNotFound();
+        $this->withToken($this->tokenFor($student))->getJson('/api/v1/student/quizzes')->assertOk()->assertJsonCount(0, 'data');
+
+        $this->withToken($this->tokenFor($teacher))->putJson("/api/v1/class-quizzes/{$quiz->id}", ['title' => 'Kuis pilihan guru'])
+            ->assertOk()
+            ->assertJsonPath('data.title', 'Kuis pilihan guru');
+        $this->withToken($this->tokenFor($teacher))->postJson("/api/v1/class-quizzes/{$quiz->id}/publish")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published');
+        $this->withToken($this->tokenFor($student))->getJson("/api/v1/student/quizzes/{$quiz->id}")
+            ->assertOk()
+            ->assertJsonPath('data.title', 'Kuis pilihan guru');
+
+        $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/quiz-templates/{$template->id}/publish", [
+            'apply_to_all_active_classes' => 'semua',
+        ])->assertUnprocessable()
+            ->assertJsonPath('errors.apply_to_all_active_classes.0', 'Pilihan distribusi ke semua kelas aktif harus bernilai benar atau salah.');
+    }
+
+    public function test_class_quiz_create_and_update_use_indonesian_close_at_message(): void
+    {
+        $admin = User::factory()->admin()->create();
+        [$class] = $this->classes($admin, 1);
+        $teacher = $this->teacherFor($class, $admin);
+        $payload = $this->classQuizPayload([
+            'class_id' => $class->id,
+            'open_at' => '2026-06-17 09:00:00',
+            'close_at' => '2026-06-17 08:00:00',
+        ]);
+
+        $this->withToken($this->tokenFor($teacher))->postJson('/api/v1/class-quizzes', $payload)
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.close_at.0', 'Waktu penutupan harus setelah waktu pembukaan.');
+
+        $quizId = $this->withToken($this->tokenFor($teacher))->postJson('/api/v1/class-quizzes', $this->classQuizPayload([
+            'class_id' => $class->id,
+        ]))->assertCreated()->json('data.id');
+
+        $this->withToken($this->tokenFor($teacher))->putJson("/api/v1/class-quizzes/{$quizId}", [
+            'open_at' => '2026-06-17 09:00:00',
+            'close_at' => '2026-06-17 08:00:00',
+        ])->assertUnprocessable()
+            ->assertJsonPath('errors.close_at.0', 'Waktu penutupan harus setelah waktu pembukaan.');
+    }
+
     public function test_class_quiz_student_attempt_grading_idempotency_report_and_visibility(): void
     {
         $admin = User::factory()->admin()->create();

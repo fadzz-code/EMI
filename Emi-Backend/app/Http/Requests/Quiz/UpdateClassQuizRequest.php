@@ -6,6 +6,13 @@ use App\Http\Requests\ApiFormRequest;
 
 class UpdateClassQuizRequest extends ApiFormRequest
 {
+    public function messages(): array
+    {
+        return [
+            'close_at.after' => 'Waktu penutupan harus setelah waktu pembukaan.',
+        ];
+    }
+
     public function rules(): array
     {
         return [

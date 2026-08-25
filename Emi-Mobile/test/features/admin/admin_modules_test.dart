@@ -69,9 +69,13 @@ void main() {
           status: 'archived',
         ),
       );
-      await repository.publish('m1');
+      await repository.publish(
+        'm1',
+        applyToAllActiveClasses: true,
+        publishClassModules: true,
+      );
       await repository.archive('m1');
-      await repository.apply('m1', const ['c1']);
+      await repository.apply('m1', const ['c1'], publishClassModules: true);
       await repository.delete('m1');
 
       expect(requests, contains('GET /admin/module-templates'));
@@ -84,7 +88,17 @@ void main() {
       expect(
         bodies.whereType<Map>().any(
           (body) =>
-              body['class_ids'] is List && body['class_ids'].first == 'c1',
+              body['apply_to_all_active_classes'] == true &&
+              body['publish_class_modules'] == true,
+        ),
+        isTrue,
+      );
+      expect(
+        bodies.whereType<Map>().any(
+          (body) =>
+              body['class_ids'] is List &&
+              body['class_ids'].first == 'c1' &&
+              body['publish_class_modules'] == true,
         ),
         isTrue,
       );

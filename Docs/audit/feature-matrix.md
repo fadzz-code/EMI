@@ -35,7 +35,7 @@ Matrix ini bersumber dari `docs/audit/role-url-action-audit.md`. Item bertanda "
 | Progress Admin | `/admin/progress` | Laporan progress | Tabel sekolah/kelas/siswa, summary | Filter, export, detail | `/admin/reports/progress/*`, export endpoints | Progress module/lesson/quiz siswa | P0 | Test CSV export formula sanitization |
 | Detail Progress Kelas | `/admin/progress/classes/[classId]` | Detail progress kelas | Siswa dan progress kelas | Print/export/detail siswa jika ada | Progress endpoint dengan `class_id` | Kelas dengan beberapa siswa/progress | P1 | Perlu verifikasi manual data kosong |
 | Detail Progress Siswa | `/admin/progress/students/[studentId]` | Detail progress siswa | Profil, modul, kuis, skor | Print report jika ada | Progress endpoint dengan student filter | Siswa dengan progress dan attempts | P1 | Test best score |
-| Pengaturan Admin | `/admin/settings` | Settings sistem aktif | App settings, profil, banner, security, activity log | Simpan app/profil/banner/security, ubah password | `/admin/settings`, `/auth/me`, `/auth/password` | Admin, banner image, activity logs | P0 | Toggle weekly email hanya tersimpan |
+| Pengaturan Admin | `/admin/settings` | Kelola settings aktif | Profil Admin, Banner Login, Aktivitas terbaru | Simpan profil/banner, Ubah Password | `GET /admin/settings` (`banner`, `activity_logs`), `POST /admin/settings/banner`, `GET/PATCH /auth/me`, `PUT /auth/password` | Admin, banner image, activity logs | P0 | Email/status profil read-only |
 
 ## Matrix Guru
 

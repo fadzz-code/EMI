@@ -22,6 +22,9 @@ import 'package:emi_mobile/features/teacher/data/teacher_repository.dart';
 
 class _MockAuthRepository extends Mock implements AuthRepository {}
 
+class _MockTeacherQuizRepository extends Mock
+    implements TeacherQuizRepository {}
+
 class _Auth extends AuthController {
   _Auth() : super(_MockAuthRepository()) {
     state = const AuthState(status: AuthStatus.authenticatedTeacher);
@@ -608,6 +611,61 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('draft question menu deletes with confirmation and feedback', (
+    tester,
+  ) async {
+    final quizRepository = _MockTeacherQuizRepository();
+    when(
+      () => quizRepository.deleteQuestion('question-1'),
+    ).thenAnswer((_) async {});
+    await _pump(
+      tester,
+      location: '/teacher/quizzes/quiz-1',
+      overrides: [
+        teacherQuizRepositoryProvider.overrideWithValue(quizRepository),
+        teacherQuizDetailProvider.overrideWith((_, _) async => _quiz()),
+      ],
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Arti halo?'), 200);
+    await tester.tap(find.byIcon(Icons.more_vert).last);
+    await tester.pumpAndSettle();
+    expect(find.text('Edit Pertanyaan'), findsOneWidget);
+    expect(find.text('Hapus Pertanyaan'), findsOneWidget);
+    await tester.tap(find.text('Hapus Pertanyaan'));
+    await tester.pumpAndSettle();
+    expect(find.text('Hapus pertanyaan ini?'), findsOneWidget);
+    await tester.tap(find.text('Lanjut'));
+    await tester.pumpAndSettle();
+    verify(() => quizRepository.deleteQuestion('question-1')).called(1);
+    expect(find.text('Pertanyaan berhasil dihapus.'), findsOneWidget);
+  });
+
+  testWidgets('published question has no action menu', (tester) async {
+    await _pump(
+      tester,
+      location: '/teacher/quizzes/quiz-1',
+      overrides: [
+        teacherQuizDetailProvider.overrideWith(
+          (_, _) async => _quiz(status: 'published'),
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Arti halo?'), 200);
+    final questionCard = find.ancestor(
+      of: find.text('Arti halo?'),
+      matching: find.byType(TeacherListCard),
+    );
+    expect(
+      find.descendant(
+        of: questionCard,
+        matching: find.byType(PopupMenuButton<String>),
+      ),
+      findsNothing,
+    );
+  });
 
   testWidgets(
     'quiz create edit and question create edit show friendly validation',

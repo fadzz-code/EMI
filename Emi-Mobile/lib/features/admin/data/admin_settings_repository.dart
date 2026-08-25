@@ -4,56 +4,18 @@ import '../../../core/errors/app_error.dart';
 import '../../../core/errors/dio_error_mapper.dart';
 
 class AdminSettings {
-  const AdminSettings({
-    required this.application,
-    required this.banner,
-    required this.security,
-    required this.activityLogs,
-  });
+  const AdminSettings({required this.banner, required this.activityLogs});
 
-  final ApplicationSettings application;
   final BannerSettings banner;
-  final SecuritySettings security;
   final List<SettingsActivityLog> activityLogs;
 
   factory AdminSettings.fromJson(Map<String, dynamic> json) => AdminSettings(
-    application: ApplicationSettings.fromJson(_map(json['application'])),
     banner: BannerSettings.fromJson(_map(json['banner'])),
-    security: SecuritySettings.fromJson(_map(json['security'])),
     activityLogs: (json['activity_logs'] as List? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(SettingsActivityLog.fromJson)
         .toList(),
   );
-}
-
-class ApplicationSettings {
-  const ApplicationSettings({
-    required this.name,
-    required this.subtitle,
-    required this.activeAcademicYear,
-    required this.timezone,
-  });
-
-  final String name;
-  final String subtitle;
-  final String activeAcademicYear;
-  final String timezone;
-
-  factory ApplicationSettings.fromJson(Map<String, dynamic> json) =>
-      ApplicationSettings(
-        name: json['name'] as String? ?? 'EMI',
-        subtitle: json['subtitle'] as String? ?? '',
-        activeAcademicYear: json['active_academic_year'] as String? ?? '',
-        timezone: json['timezone'] as String? ?? '',
-      );
-
-  Map<String, dynamic> toJson() => {
-    'name': name,
-    'subtitle': subtitle,
-    'active_academic_year': activeAcademicYear,
-    'timezone': timezone,
-  };
 }
 
 class BannerSettings {
@@ -78,27 +40,6 @@ class BannerSettings {
     imageMediaId: json['image_media_id'] as String?,
     imageUrl: json['image_url'] as String?,
   );
-}
-
-class SecuritySettings {
-  const SecuritySettings({
-    required this.newLoginAlert,
-    required this.weeklyReportEmail,
-  });
-
-  final bool newLoginAlert;
-  final bool weeklyReportEmail;
-
-  factory SecuritySettings.fromJson(Map<String, dynamic> json) =>
-      SecuritySettings(
-        newLoginAlert: _bool(json['new_login_alert']),
-        weeklyReportEmail: _bool(json['weekly_report_email']),
-      );
-
-  Map<String, dynamic> toJson() => {
-    'new_login_alert': newLoginAlert,
-    'weekly_report_email': weeklyReportEmail,
-  };
 }
 
 class SettingsActivityLog {
@@ -141,20 +82,6 @@ class AdminSettingsRepository {
     }
   }
 
-  Future<ApplicationSettings> updateApplication(
-    ApplicationSettings settings,
-  ) async {
-    try {
-      final res = await _dio.put<Map<String, dynamic>>(
-        '/admin/settings/application',
-        data: settings.toJson(),
-      );
-      return ApplicationSettings.fromJson(_data(res.data));
-    } catch (e) {
-      throw _map(e);
-    }
-  }
-
   Future<BannerSettings> updateBanner({
     required bool enabled,
     String? path,
@@ -170,18 +97,6 @@ class AdminSettingsRepository {
         data: FormData.fromMap(data),
       );
       return BannerSettings.fromJson(_data(res.data));
-    } catch (e) {
-      throw _map(e);
-    }
-  }
-
-  Future<SecuritySettings> updateSecurity(SecuritySettings settings) async {
-    try {
-      final res = await _dio.put<Map<String, dynamic>>(
-        '/admin/settings/security',
-        data: settings.toJson(),
-      );
-      return SecuritySettings.fromJson(_data(res.data));
     } catch (e) {
       throw _map(e);
     }

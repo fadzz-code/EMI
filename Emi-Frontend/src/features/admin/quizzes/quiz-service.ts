@@ -1,9 +1,10 @@
 import { apiClient, apiRequest } from "@/lib/api-client";
 
 import type {
-  ClassQuiz,
   MediaFile,
   PaginatedResult,
+  PublishQuizTemplateOptions,
+  PublishQuizTemplateResult,
   QuizQuestionPayload,
   QuizTemplate,
   QuizTemplateApplyResult,
@@ -80,10 +81,10 @@ export const quizTemplateService = {
     await apiClient.delete<[]>(`/admin/quiz-templates/${quizId}`, { token });
   },
 
-  async publish(token: string, quizId: string) {
-    const response = await apiClient.post<QuizTemplate>(
+  async publish(token: string, quizId: string, options: PublishQuizTemplateOptions = {}) {
+    const response = await apiClient.post<PublishQuizTemplateResult>(
       `/admin/quiz-templates/${quizId}/publish`,
-      {},
+      { apply_to_all_active_classes: options.applyToAllActiveClasses ?? false },
       { token },
     );
 
@@ -122,31 +123,6 @@ export const quizTemplateService = {
     return response.data;
   },
 
-  async listClassQuizzes(token: string, classId: string) {
-    const response = await apiClient.get<ClassQuiz[]>("/class-quizzes", {
-      token,
-      query: {
-        class_id: classId,
-        per_page: 100,
-      },
-    });
-
-    return response.data ?? [];
-  },
-
-  async publishClassQuiz(token: string, classQuizId: string) {
-    const response = await apiClient.post<ClassQuiz>(
-      `/class-quizzes/${classQuizId}/publish`,
-      {},
-      { token },
-    );
-
-    if (!response.data) {
-      throw new Error("Response publish kuis kelas tidak tersedia.");
-    }
-
-    return response.data;
-  },
 };
 
 export const quizQuestionService = {

@@ -5,7 +5,7 @@ import { type FormEvent, useState } from "react";
 import { Button, FormField, Input, Select, Textarea } from "@/components/ui";
 
 import { normalizeNullable } from "./quiz-utils";
-import type { QuizTemplate, QuizTemplatePayload, QuizTemplateStatus } from "./types";
+import type { QuizTemplate, QuizTemplatePayload } from "./types";
 
 type QuizFormState = {
   title: string;
@@ -14,7 +14,6 @@ type QuizFormState = {
   duration_minutes: string;
   max_attempts: string;
   show_result: "true" | "false";
-  status: QuizTemplateStatus;
 };
 
 function toForm(quiz?: QuizTemplate | null): QuizFormState {
@@ -25,7 +24,6 @@ function toForm(quiz?: QuizTemplate | null): QuizFormState {
     duration_minutes: quiz?.duration_minutes ? String(quiz.duration_minutes) : "30",
     max_attempts: quiz?.max_attempts ? String(quiz.max_attempts) : "1",
     show_result: quiz?.show_result === false ? "false" : "true",
-    status: quiz?.status ?? "draft",
   };
 }
 
@@ -37,7 +35,6 @@ function toPayload(form: QuizFormState): QuizTemplatePayload {
     duration_minutes: Number.parseInt(form.duration_minutes, 10),
     max_attempts: Number.parseInt(form.max_attempts, 10),
     show_result: form.show_result === "true",
-    status: form.status,
   };
 }
 
@@ -111,37 +108,20 @@ export function QuizTemplateForm({
           />
         </FormField>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <FormField label="Tampilkan hasil ke siswa">
-          <Select
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                show_result: event.target.value as "true" | "false",
-              }))
-            }
-            value={form.show_result}
-          >
-            <option value="true">Ya</option>
-            <option value="false">Tidak</option>
-          </Select>
-        </FormField>
-        <FormField label="Status">
-          <Select
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                status: event.target.value as QuizTemplateStatus,
-              }))
-            }
-            value={form.status}
-          >
-            <option value="draft">Draft</option>
-            <option value="published">Terbit</option>
-            <option value="archived">Diarsipkan</option>
-          </Select>
-        </FormField>
-      </div>
+      <FormField label="Tampilkan hasil ke siswa">
+        <Select
+          onChange={(event) =>
+            setForm((current) => ({
+              ...current,
+              show_result: event.target.value as "true" | "false",
+            }))
+          }
+          value={form.show_result}
+        >
+          <option value="true">Ya</option>
+          <option value="false">Tidak</option>
+        </Select>
+      </FormField>
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
         <Button onClick={onCancel} type="button" variant="ghost">
           Batal

@@ -219,6 +219,28 @@ class AdminModuleClassTarget {
       );
 }
 
+class AdminModuleApplySummary {
+  const AdminModuleApplySummary({
+    required this.applied,
+    required this.synced,
+    required this.skipped,
+    required this.failed,
+  });
+
+  final int applied;
+  final int synced;
+  final int skipped;
+  final int failed;
+
+  factory AdminModuleApplySummary.fromJson(Map<String, dynamic>? json) =>
+      AdminModuleApplySummary(
+        applied: (json?['applied'] as List?)?.length ?? 0,
+        synced: (json?['synced'] as List?)?.length ?? 0,
+        skipped: (json?['skipped'] as List?)?.length ?? 0,
+        failed: (json?['failed'] as List?)?.length ?? 0,
+      );
+}
+
 class AdminModuleTemporaryUrl {
   const AdminModuleTemporaryUrl({required this.url, required this.expiresAt});
 
@@ -368,7 +390,18 @@ class AdminModuleRepository {
     }
   }
 
-  Future<AdminModuleItem> publish(String id) => _moduleAction(id, 'publish');
+  Future<AdminModuleItem> publish(
+    String id, {
+    bool applyToAllActiveClasses = false,
+    bool publishClassModules = false,
+  }) => _moduleAction(
+    id,
+    'publish',
+    body: {
+      'apply_to_all_active_classes': applyToAllActiveClasses,
+      'publish_class_modules': publishClassModules,
+    },
+  );
 
   Future<AdminModuleItem> archive(String id) => _moduleAction(id, 'archive');
 
@@ -387,12 +420,20 @@ class AdminModuleRepository {
     }
   }
 
-  Future<void> apply(String id, List<String> classIds) async {
+  Future<AdminModuleApplySummary> apply(
+    String id,
+    List<String> classIds, {
+    bool publishClassModules = false,
+  }) async {
     try {
-      await _dio.post<Map<String, dynamic>>(
+      final response = await _dio.post<Map<String, dynamic>>(
         '/admin/module-templates/$id/apply',
-        data: {'class_ids': classIds},
+        data: {
+          'class_ids': classIds,
+          'publish_class_modules': publishClassModules,
+        },
       );
+      return AdminModuleApplySummary.fromJson(_map(response.data?['data']));
     } catch (error) {
       throw _mapError(error);
     }
@@ -507,10 +548,15 @@ class AdminModuleRepository {
     }
   }
 
-  Future<AdminModuleItem> _moduleAction(String id, String action) async {
+  Future<AdminModuleItem> _moduleAction(
+    String id,
+    String action, {
+    Map<String, dynamic>? body,
+  }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         '/admin/module-templates/$id/$action',
+        data: body,
       );
       final data = response.data?['data'];
       if (data is Map<String, dynamic>) return AdminModuleItem.fromJson(data);

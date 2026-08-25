@@ -34,7 +34,6 @@ void main() {
     _verifyValidation,
     _verifyChildPersistence,
     _exerciseRegistrations,
-    _exerciseSettings,
     _transition,
     _verifyInvalidIds,
   ];
@@ -243,69 +242,27 @@ void main() {
 
   testWidgets('Pengaturan menjalankan alur utama admin', (tester) async {
     final fixture = E2eFixtureHelper();
-    Map<String, Object?>? application;
     try {
       await fixture.loginAdmin();
-      final admin = await _launchAdmin(tester, binding);
       final settings = (await fixture.get('/admin/settings')).requireDataMap();
-      application = Map<String, Object?>.from(
-        settings['application']! as Map<String, dynamic>,
-      );
-      final changedSubtitle =
-          '${application['subtitle'] ?? ''} ${fixture.runId}';
+      expect(settings.keys.toSet(), {'banner', 'activity_logs'});
+      expect(settings['banner'], isA<Map<String, dynamic>>());
+      expect(settings['activity_logs'], isA<List<dynamic>>());
+
+      final admin = await _launchAdmin(tester, binding);
       await admin.go(AdminRoutes.settings);
-      await admin.app.enterTextSafely(
-        find.widgetWithText(TextFormField, 'Subtitle / Slogan'),
-        changedSubtitle,
-      );
       expect(
         admin.app.router().routeInformationProvider.value.uri.path,
         '/admin/settings',
       );
-      final settingsRoot = find.byType(AdminSettingsScreen).hitTestable();
-      expect(settingsRoot, findsOneWidget);
-      final save = find.descendant(
-        of: settingsRoot,
-        matching: find.byKey(const Key('saveAdminSettings')),
-      );
-      final saveElement = save.evaluate().single;
-      await Scrollable.ensureVisible(
-        saveElement,
-        alignment: 0.8,
-        duration: const Duration(milliseconds: 300),
-      );
-      await tester.pumpAndSettle();
-      expect(save.hitTestable(), findsOneWidget);
-      await tester.tap(save.hitTestable());
-      await tester.pump();
-      await admin.app.pumpUntilFound(
-        find.text('Pengaturan berhasil disimpan.'),
-      );
-      expect(
-        (await fixture.get('/admin/settings')).requireDataMap()['application'],
-        containsPair('subtitle', changedSubtitle),
-      );
-      await admin.go(AdminRoutes.dashboard);
-      await admin.go(AdminRoutes.settings);
-      expect(
-        tester
-            .widget<TextFormField>(
-              find.widgetWithText(TextFormField, 'Subtitle / Slogan'),
-            )
-            .controller
-            ?.text,
-        changedSubtitle,
-      );
-      await fixture.put('/admin/settings/application', body: application);
-      application = null;
+      expect(find.byType(AdminSettingsScreen).hitTestable(), findsOneWidget);
+      await admin.app.pumpUntilFound(find.text('Banner Login'));
+      await admin.app.pumpUntilFound(find.text('Aktivitas terbaru'));
       await admin.app.tapAndWait(
         find.text('Keluar').last,
         expected: find.byKey(const Key('emailField')),
       );
     } finally {
-      if (application != null) {
-        await fixture.put('/admin/settings/application', body: application);
-      }
       await fixture.close();
     }
   });
@@ -926,29 +883,6 @@ Future<String> _registrationRequestId(
     }
   }
   throw StateError('Request registrasi ${registration.email} tidak ditemukan');
-}
-
-Future<void> _exerciseSettings(E2eFixtureHelper fixture) async {
-  final settings = (await fixture.get('/admin/settings')).requireDataMap();
-  final application = settings['application'];
-  if (application is! Map<String, dynamic>) {
-    throw StateError('/admin/settings data.application harus object');
-  }
-  final saved = Map<String, Object?>.from(application);
-  final subtitle = saved['subtitle']?.toString() ?? '';
-  final changed = {...saved, 'subtitle': '$subtitle ${fixture.runId}'};
-  try {
-    await fixture.put('/admin/settings/application', body: changed);
-    final persisted = (await fixture.get('/admin/settings')).requireDataMap();
-    expect(
-      persisted['application'],
-      containsPair('subtitle', changed['subtitle']),
-    );
-  } finally {
-    await fixture.put('/admin/settings/application', body: saved);
-    final restored = (await fixture.get('/admin/settings')).requireDataMap();
-    expect(restored['application'], saved);
-  }
 }
 
 List<dynamic> _responseItems(Object? raw) => raw is List<dynamic>

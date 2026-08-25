@@ -450,13 +450,23 @@ class _TeacherQuizDetailScreenState
                         ),
                         if (quiz.status == 'draft' || quiz.status == 'archived')
                           PopupMenuButton<String>(
-                            onSelected: (_) => context.push(
-                              '/teacher/quizzes/${widget.id}/questions/${quiz.questions[index].id}/edit',
-                            ),
+                            enabled: !mutating,
+                            onSelected: (value) => value == 'edit'
+                                ? context.push(
+                                    '/teacher/quizzes/${widget.id}/questions/${quiz.questions[index].id}/edit',
+                                  )
+                                : _deleteQuestion(
+                                    context,
+                                    quiz.questions[index].id,
+                                  ),
                             itemBuilder: (_) => const [
                               PopupMenuItem(
                                 value: 'edit',
                                 child: Text('Edit Pertanyaan'),
+                              ),
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Text('Hapus Pertanyaan'),
                               ),
                             ],
                           ),
@@ -469,6 +479,22 @@ class _TeacherQuizDetailScreenState
           ),
         ),
   );
+
+  Future<void> _deleteQuestion(BuildContext context, String questionId) async {
+    if (mutating || await _confirm(context, 'Hapus pertanyaan ini?') != true) {
+      return;
+    }
+    setState(() => mutating = true);
+    try {
+      await ref.read(teacherQuizRepositoryProvider).deleteQuestion(questionId);
+      ref.invalidate(teacherQuizDetailProvider(widget.id));
+      if (context.mounted) _notice(context, 'Pertanyaan berhasil dihapus.');
+    } catch (error) {
+      if (context.mounted) _notice(context, _error(error));
+    } finally {
+      if (mounted) setState(() => mutating = false);
+    }
+  }
 
   Future<void> _action(
     BuildContext context,

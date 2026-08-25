@@ -155,6 +155,14 @@ export function DictionaryDetail({ entryId }: { entryId: string }) {
                     <p className="text-xs font-black uppercase text-muted">Contoh Tambahan {index + 1}</p>
                     <p className="mt-2 text-sm font-bold text-ink">Mekongga: {example.contoh_mekongga}</p>
                     <p className="mt-1 text-sm font-bold text-muted">Indonesia: {example.contoh_indonesia}</p>
+                    {example.audio ? (
+                      <div className="mt-3">
+                        <AudioPlayer
+                          src={example.audio.url}
+                          title={`Audio contoh kalimat ${index + 1}: ${example.contoh_mekongga}`}
+                        />
+                      </div>
+                    ) : null}
                   </div>
                 ))}
                 {!entry.example_mekongga && !entry.example_indonesia && (entry.sentence_examples ?? []).length === 0 ? (

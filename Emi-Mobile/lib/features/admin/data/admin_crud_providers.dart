@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/errors/dio_error_mapper.dart';
 import '../../../core/network/dio_provider.dart';
 import 'admin_crud_repository.dart';
+import 'admin_providers.dart';
+import 'admin_repository.dart';
 
 final adminCrudRepositoryProvider = Provider<AdminCrudRepository>(
   (ref) => AdminCrudRepository(ref.watch(dioProvider), const DioErrorMapper()),
@@ -52,6 +54,10 @@ final adminQuizQuestionsProvider =
     FutureProvider.family<List<QuizQuestionAdmin>, String>(
       (ref, quizId) => ref.watch(adminCrudRepositoryProvider).questions(quizId),
     );
+
+final adminQuizActiveClassesProvider = FutureProvider<List<AdminClass>>(
+  (ref) => ref.watch(adminRepositoryProvider).allActiveClasses(),
+);
 
 final adminQuestionDetailProvider =
     FutureProvider.family<QuizQuestionAdmin, String>(

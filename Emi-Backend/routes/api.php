@@ -90,9 +90,7 @@ Route::prefix('v1')->group(function () {
 
     Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
         Route::get('settings', [AdminSettingsController::class, 'show']);
-        Route::put('settings/application', [AdminSettingsController::class, 'updateApplication']);
         Route::post('settings/banner', [AdminSettingsController::class, 'updateBanner']);
-        Route::put('settings/security', [AdminSettingsController::class, 'updateSecurity']);
         Route::get('registration-requests', [AdminRegistrationRequestController::class, 'index']);
         Route::get('registration-requests/{id}', [AdminRegistrationRequestController::class, 'show']);
         Route::post('registration-requests/{id}/approve', [AdminRegistrationRequestController::class, 'approve']);

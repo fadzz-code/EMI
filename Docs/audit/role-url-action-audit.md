@@ -235,13 +235,12 @@ Siswa mengakses dashboard belajar, modul/lesson, kamus, latihan speaking, kuis, 
 
 ### Pengaturan Admin
 - URL: `/admin/settings`
-- Tujuan halaman: Mengelola settings aplikasi, profil admin, banner login, keamanan.
-- Data yang tampil: Settings aplikasi, profil admin, preview banner, activity log, toggle keamanan.
-- Aksi/tombol: Simpan Pengaturan Aplikasi, Simpan Profil, upload banner, Aktifkan Banner, Simpan Banner, Ubah Password, Simpan Keamanan.
-- Form/input: Nama aplikasi, subtitle/slogan, tahun ajaran, timezone, full name, phone, banner file, enabled banner, password lama/baru/konfirmasi, toggle login alert/weekly email.
-- Endpoint API terkait: `GET /api/v1/admin/settings`, `PUT /api/v1/admin/settings/application`, `POST /api/v1/admin/settings/banner`, `PUT /api/v1/admin/settings/security`, `PATCH /api/v1/auth/me`, `PUT /api/v1/auth/password`, public `GET /api/v1/public/login-branding`.
+- Tujuan halaman: Mengelola Profil Admin, Banner Login, Ubah Password, dan Aktivitas terbaru.
+- Data yang tampil: Profil Admin, preview Banner Login, dan Aktivitas terbaru.
+- Aksi/tombol: Simpan Profil, upload banner, Aktifkan Banner, Simpan Banner, Ubah Password.
+- Form/input: Full name, phone, banner file, enabled banner, password lama/baru/konfirmasi.
+- Endpoint API terkait: `GET /api/v1/admin/settings` untuk `banner` dan `activity_logs`, `POST /api/v1/admin/settings/banner`, `GET/PATCH /api/v1/auth/me`, `PUT /api/v1/auth/password`, public `GET /api/v1/public/login-branding`.
 - Kondisi khusus: Email/status read-only; banner public tidak expose setting internal.
-- Catatan: Toggle email hanya tersimpan, tidak kirim email sungguhan.
 
 ## Audit Guru
 

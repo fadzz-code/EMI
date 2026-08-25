@@ -7,6 +7,13 @@ use Illuminate\Validation\Rule;
 
 class StoreClassQuizRequest extends ApiFormRequest
 {
+    public function messages(): array
+    {
+        return [
+            'close_at.after' => 'Waktu penutupan harus setelah waktu pembukaan.',
+        ];
+    }
+
     public function rules(): array
     {
         return [

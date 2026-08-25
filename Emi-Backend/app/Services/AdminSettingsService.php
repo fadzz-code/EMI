@@ -19,16 +19,14 @@ class AdminSettingsService
         $settings = SystemSetting::query()->pluck('value', 'key');
 
         return [
-            'application' => $settings->get('application', $this->defaults()['application']),
-            'banner' => $this->bannerData($settings->get('banner', $this->defaults()['banner'])),
-            'security' => $settings->get('security', $this->defaults()['security']),
+            'banner' => $this->bannerData($settings->get('banner', $this->defaults())),
             'activity_logs' => $this->logs(),
         ];
     }
 
     public function publicBranding(): array
     {
-        $banner = $this->bannerData(SystemSetting::query()->find('banner')?->value ?? $this->defaults()['banner']);
+        $banner = $this->bannerData(SystemSetting::query()->find('banner')?->value ?? $this->defaults());
 
         return [
             'enabled' => (bool) ($banner['enabled'] ?? false),
@@ -36,22 +34,12 @@ class AdminSettingsService
         ];
     }
 
-    public function updateApplication(User $admin, array $data): array
-    {
-        return $this->save('application', $data, $admin, 'settings.application.updated', 'Pengaturan aplikasi diperbarui');
-    }
-
-    public function updateSecurity(User $admin, array $data): array
-    {
-        return $this->save('security', $data, $admin, 'settings.security.updated', 'Preferensi keamanan diperbarui');
-    }
-
     public function updateBanner(User $admin, array $data, ?UploadedFile $file, Request $request): array
     {
         unset($data['file']);
 
         return DB::transaction(function () use ($admin, $data, $file, $request) {
-            $current = SystemSetting::query()->find('banner')?->value ?? $this->defaults()['banner'];
+            $current = SystemSetting::query()->find('banner')?->value ?? $this->defaults();
 
             if ($file) {
                 $media = $this->mediaUploadService->upload($admin, $file, 'login_banner', 'public', [], $request);
@@ -68,22 +56,15 @@ class AdminSettingsService
         });
     }
 
-    private function save(string $key, array $data, User $admin, string $action, string $title): array
-    {
-        return DB::transaction(function () use ($key, $data, $admin, $action, $title) {
-            SystemSetting::query()->updateOrCreate(['key' => $key], ['value' => $data]);
-            $this->log($admin, $action, $title, $data);
-
-            return $data;
-        });
-    }
-
     private function bannerData(array $banner): array
     {
         $media = isset($banner['image_media_id']) ? MediaFile::query()->active()->find($banner['image_media_id']) : null;
-        $banner['image_url'] = $media ? url("/api/v1/public/media/{$media->id}/content") : null;
 
-        return $banner;
+        return [
+            'enabled' => (bool) ($banner['enabled'] ?? false),
+            'image_media_id' => $banner['image_media_id'] ?? null,
+            'image_url' => $media ? url("/api/v1/public/media/{$media->id}/content") : null,
+        ];
     }
 
     private function logs(): array
@@ -111,22 +92,8 @@ class AdminSettingsService
     private function defaults(): array
     {
         return [
-            'application' => [
-                'name' => 'EMI',
-                'subtitle' => 'Belajar Bahasa Mekongga',
-                'active_academic_year' => now()->year.'/'.now()->addYear()->year,
-                'timezone' => config('app.timezone'),
-            ],
-            'banner' => [
-                'enabled' => false,
-                'title' => '',
-                'subtitle' => '',
-                'image_media_id' => null,
-            ],
-            'security' => [
-                'new_login_alert' => false,
-                'weekly_report_email' => false,
-            ],
+            'enabled' => false,
+            'image_media_id' => null,
         ];
     }
 }

@@ -42,9 +42,11 @@ export function ModuleList() {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ModuleTemplateStatus | "">("");
+  const [publishTarget, setPublishTarget] = useState<ModuleTemplate | null>(null);
+  const [sendAllActiveClasses, setSendAllActiveClasses] = useState(false);
+  const [publishAfterApply, setPublishAfterApply] = useState(false);
   const [applyTarget, setApplyTarget] = useState<ModuleTemplate | null>(null);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
-  const [publishAfterApply, setPublishAfterApply] = useState(true);
   const [syncExisting, setSyncExisting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ModuleTemplate | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -77,9 +79,16 @@ export function ModuleList() {
   });
 
   const publishMutation = useMutation({
-    mutationFn: (moduleId: string) => moduleTemplateService.publish(token ?? "", moduleId),
-    onSuccess: async (module) => {
-      setSuccessMessage(`Modul ${module.title} berhasil diterbitkan.`);
+    mutationFn: ({ moduleId, applyToAllActiveClasses, publishClassModules }: { moduleId: string; applyToAllActiveClasses: boolean; publishClassModules: boolean }) =>
+      moduleTemplateService.publish(token ?? "", moduleId, { applyToAllActiveClasses, publishClassModules }),
+    onSuccess: async (publishedModule) => {
+      const result = publishedModule.distribution;
+      setSuccessMessage(result
+        ? `Template ${publishedModule.title} diterbitkan dan dikirim ke ${result.applied.length} kelas aktif sebagai ${result.applied.some((item) => item.status === "published") ? "modul terbit yang langsung terlihat siswa" : "draft untuk guru. Siswa belum dapat melihatnya sampai guru menerbitkan"}.`
+        : `Template ${publishedModule.title} berhasil diterbitkan tanpa dikirim ke kelas.`);
+      setPublishTarget(null);
+      setSendAllActiveClasses(false);
+      setPublishAfterApply(false);
       await queryClient.invalidateQueries({ queryKey: ["admin", "module-templates"] });
     },
   });
@@ -93,55 +102,17 @@ export function ModuleList() {
   });
 
   const applyMutation = useMutation({
-    mutationFn: async ({
-      moduleId,
-      classIds,
-      publishClassContent,
-      syncExistingClasses,
-    }: {
-      moduleId: string;
-      classIds: string[];
-      publishClassContent: boolean;
-      syncExistingClasses: boolean;
-    }) => {
-      const result = await moduleTemplateService.applyToClasses(token ?? "", moduleId, classIds, syncExistingClasses);
-      let publishedCount = 0;
-
-      if (publishClassContent) {
-        const classModules = await Promise.all(
-          classIds.map((classId) => moduleTemplateService.listClassModules(token ?? "", classId)),
-        );
-        const classModuleIds = new Set([
-          ...result.applied
-            .map((item) => item.class_module_id)
-            .filter((id): id is string => Boolean(id)),
-          ...result.synced
-            .map((item) => item.class_module_id)
-            .filter((id): id is string => Boolean(id)),
-          ...classModules
-            .flat()
-            .filter((classModule) => classModule.source_module_template_id === moduleId && classModule.status !== "published")
-            .map((classModule) => classModule.id),
-        ]);
-
-        for (const classModuleId of classModuleIds) {
-          await moduleTemplateService.publishClassModule(token ?? "", classModuleId);
-          publishedCount += 1;
-        }
-      }
-
-      return { result, publishedCount };
-    },
-    onSuccess: ({ result, publishedCount }) => {
+    mutationFn: ({ moduleId, classIds, syncExistingClasses }: { moduleId: string; classIds: string[]; syncExistingClasses: boolean }) =>
+      moduleTemplateService.applyToClasses(token ?? "", moduleId, classIds, { syncExisting: syncExistingClasses }),
+    onSuccess: (result) => {
       const totalAffected = result.applied.length + result.synced.length;
       setSuccessMessage(
         totalAffected > 0
-          ? `Template modul diterapkan ke ${result.applied.length} kelas baru, disinkronkan ke ${result.synced.length} kelas existing${publishedCount > 0 ? `, dan ${publishedCount} modul kelas langsung diterbitkan` : ""}. Modul terlihat untuk siswa yang terdaftar pada kelas tersebut.`
-          : `Tidak ada kelas baru yang diterapkan. Dilewati: ${result.skipped.length} (sudah memiliki template), gagal: ${result.failed.length}. Centang "Sinkronkan" untuk memperbarui kelas yang sudah ada.`,
+          ? `Template modul masuk ke ${result.applied.length} kelas baru sebagai draft untuk guru dan disinkronkan ke ${result.synced.length} kelas. Siswa belum dapat melihat modul draft sampai guru menerbitkannya.`
+          : `Tidak ada kelas baru yang diterapkan. Dilewati: ${result.skipped.length} (sudah memiliki template), gagal: ${result.failed.length}. Gunakan opsi sinkronisasi lanjutan untuk memperbarui kelas yang sudah ada.`,
       );
       setApplyTarget(null);
       setSelectedClassIds([]);
-      setPublishAfterApply(true);
       setSyncExisting(false);
     },
   });
@@ -293,13 +264,13 @@ export function ModuleList() {
                               Builder
                             </Link>
                             {module.status !== "published" ? (
-                              <button className="inline-flex h-9 w-28 items-center justify-center gap-1.5 rounded-lg border-2 border-border text-xs font-bold text-ink hover:border-primary hover:text-primary disabled:opacity-50" disabled={publishMutation.isPending} onClick={() => publishMutation.mutate(module.id)} type="button">
+                              <button className="inline-flex h-9 w-28 items-center justify-center gap-1.5 rounded-lg border-2 border-border text-xs font-bold text-ink hover:border-primary hover:text-primary disabled:opacity-50" disabled={publishMutation.isPending} onClick={() => { setPublishTarget(module); setSendAllActiveClasses(false); setPublishAfterApply(false); }} type="button">
                                 <Send aria-hidden="true" className="size-4 shrink-0" />
                                 Terbitkan
                               </button>
                             ) : null}
                             {module.status === "published" ? (
-                              <button className="inline-flex h-9 w-28 items-center justify-center gap-1.5 rounded-lg border-2 border-border text-xs font-bold text-ink hover:border-primary hover:text-primary disabled:opacity-50" disabled={applyMutation.isPending} onClick={() => { setApplyTarget(module); setSelectedClassIds([]); setPublishAfterApply(true); setSyncExisting(false); }} type="button">
+                              <button className="inline-flex h-9 w-28 items-center justify-center gap-1.5 rounded-lg border-2 border-border text-xs font-bold text-ink hover:border-primary hover:text-primary disabled:opacity-50" disabled={applyMutation.isPending} onClick={() => { setApplyTarget(module); setSelectedClassIds([]); setSyncExisting(false); }} type="button">
                                 <Share2 aria-hidden="true" className="size-4 shrink-0" />
                                 Terapkan
                               </button>
@@ -332,13 +303,62 @@ export function ModuleList() {
       </Card>
 
       <Modal
+        onClose={() => setPublishTarget(null)}
+        open={Boolean(publishTarget)}
+        title="Terbitkan Template Modul"
+      >
+        <div className="grid gap-4">
+          <Alert tone="info">
+            Template akan diterbitkan untuk admin. Distribusi ke kelas bersifat opsional.
+          </Alert>
+          <label className="flex items-start gap-3 rounded-xl border-2 border-border bg-surface p-3 text-sm font-bold text-ink">
+            <input
+              checked={sendAllActiveClasses}
+              className="mt-1"
+              onChange={(event) => {
+                setSendAllActiveClasses(event.target.checked);
+                if (!event.target.checked) setPublishAfterApply(false);
+              }}
+              type="checkbox"
+            />
+            <span>Kirim salinan ke semua kelas aktif</span>
+          </label>
+          <label className="flex items-start gap-3 rounded-xl border-2 border-border bg-[var(--color-primary-muted)] p-3 text-sm font-bold text-ink">
+            <input
+              checked={publishAfterApply}
+              className="mt-1"
+              disabled={!sendAllActiveClasses}
+              onChange={(event) => setPublishAfterApply(event.target.checked)}
+              type="checkbox"
+            />
+            <span>Langsung tampilkan ke siswa</span>
+          </label>
+          {sendAllActiveClasses && !publishAfterApply ? (
+            <Alert tone="info">Salinan masuk sebagai draft untuk guru. Siswa belum dapat melihatnya sampai guru menerbitkan modul kelas.</Alert>
+          ) : null}
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button onClick={() => setPublishTarget(null)} type="button" variant="ghost">Batal</Button>
+            <Button
+              disabled={!publishTarget || publishMutation.isPending}
+              onClick={() => {
+                if (publishTarget) publishMutation.mutate({ moduleId: publishTarget.id, applyToAllActiveClasses: sendAllActiveClasses, publishClassModules: publishAfterApply });
+              }}
+              type="button"
+            >
+              {publishMutation.isPending ? "Menerbitkan..." : "Terbitkan Template"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
         onClose={() => setApplyTarget(null)}
         open={Boolean(applyTarget)}
         title="Terapkan Modul ke Kelas"
       >
         <div className="grid gap-4">
           <Alert tone="info">
-            Menerapkan template akan membuat modul kelas. Aktifkan opsi terbitkan di bawah agar modul langsung terlihat oleh guru dan siswa yang terhubung ke kelas.
+            Modul masuk sebagai draft untuk guru. Siswa belum dapat melihatnya sampai guru menerbitkan modul kelas.
           </Alert>
           {classesQuery.isLoading ? <LoadingState title="Memuat kelas" /> : null}
           {classesQuery.isError ? <ErrorState description={getFirstApiError(classesQuery.error)} title="Gagal memuat kelas" /> : null}
@@ -373,15 +393,9 @@ export function ModuleList() {
               </>
             )
           ) : null}
-          <label className="flex items-start gap-3 rounded-xl border-2 border-border bg-[var(--color-primary-muted)] p-3 text-sm font-bold text-ink">
-            <input
-              checked={publishAfterApply}
-              className="mt-1"
-              onChange={(event) => setPublishAfterApply(event.target.checked)}
-              type="checkbox"
-            />
-            <span>Setelah diterapkan, langsung terbitkan modul kelas agar terlihat oleh guru dan siswa.</span>
-          </label>
+          <Alert tone="warning">
+            Opsi lanjutan: sinkronisasi dapat menimpa perubahan guru pada modul kelas yang sudah ada.
+          </Alert>
           <label className="flex items-start gap-3 rounded-xl border-2 border-border bg-surface p-3 text-sm font-bold text-ink">
             <input
               checked={syncExisting}
@@ -404,7 +418,7 @@ export function ModuleList() {
               disabled={!applyTarget || selectedClassIds.length === 0 || applyMutation.isPending}
               onClick={() => {
                 if (applyTarget) {
-                  applyMutation.mutate({ moduleId: applyTarget.id, classIds: selectedClassIds, publishClassContent: publishAfterApply, syncExistingClasses: syncExisting });
+                  applyMutation.mutate({ moduleId: applyTarget.id, classIds: selectedClassIds, syncExistingClasses: syncExisting });
                 }
               }}
               type="button"

@@ -138,9 +138,7 @@ Privacy technical decision: current mobile feature must be named as deactivation
 | Link knowledge | extract source | knowledge form | `/admin/ai/knowledge/extract-source` | POST | admin | PARTIAL | mobile tests pending | Mobile supports link save per backend `source_type=link`; extraction preview not exposed. |
 | Manual knowledge | create/update | knowledge form | `/admin/ai/knowledge` | POST/PUT | admin | PARTIAL | mobile tests pending | Mobile manual create/update present. |
 | Status processing | knowledge/import job status | knowledge/import screens | import/knowledge resources | GET | admin | PARTIAL | mobile tests pending | Mobile maps PDF status copy simply; backend has no separate mobile polling endpoint audited. |
-| Settings application | read/update | `/admin/settings` | `/admin/settings`, `/admin/settings/application` | GET/PUT | admin | `/admin/settings` | PARTIAL | backend + Flutter tests | Mobile typed form menampilkan dan mengubah nama, subtitle, tahun ajaran, dan zona waktu; smoke HP `NOT_TESTED`. |
-| Settings banner | read/update/upload | settings | `/admin/settings/banner`, `/public/login-branding` | POST/GET | admin/public | `/admin/settings` | PARTIAL | backend + Flutter tests | Mobile dapat mengaktifkan dan mengganti gambar banner; file kosong mempertahankan banner lama; smoke HP `NOT_TESTED`. |
-| Settings security | read/update | settings | `/admin/settings/security` | PUT | admin | `/admin/settings` | PARTIAL | backend + Flutter tests | Dua preferensi boolean memakai state lokal dan disimpan lewat tombol utama; smoke HP `NOT_TESTED`. |
+| Settings banner | read/update/upload | settings | `/admin/settings`, `/admin/settings/banner`, `/public/login-branding` | GET/POST | admin/public | `/admin/settings` | PARTIAL | backend + Flutter tests | GET settings mengembalikan `banner` dan `activity_logs`; Mobile dapat mengaktifkan dan mengganti gambar banner; file kosong mempertahankan banner lama; smoke HP `NOT_TESTED`. |
 | Activity logs | recent logs | settings | `/admin/settings` response `activity_logs` | GET | admin | `/admin/settings` | READ_ONLY | backend + Flutter tests | Mobile menampilkan 20 aktivitas terbaru tanpa generic map/raw key. |
 | Profile Admin | profile/password/avatar | settings | `/auth/me`, `/auth/password`, avatar | GET/PATCH/PUT/POST/DELETE | auth | PARTIAL | auth + Flutter tests | Settings mobile mendukung nama/telepon dan perubahan password; email/status read-only, avatar tetap di flow profil. |
 
@@ -391,17 +389,10 @@ Web dashboard is source of widgets in `features/admin/dashboard/admin-dashboard.
 `GET /admin/settings` returns:
 
 ```text
-application.name
-application.subtitle
-application.active_academic_year
-application.timezone
 banner.enabled
 banner.title
-banner.subtitle
 banner.image_media_id
 banner.image_url
-security.new_login_alert
-security.weekly_report_email
 activity_logs[].id
 activity_logs[].created_at
 activity_logs[].admin
@@ -410,7 +401,7 @@ activity_logs[].title
 activity_logs[].status
 ```
 
-Mobile settings status: `PARTIAL`; implementasi typed mencakup application, profil Admin, banner login, security, password, dan activity logs. Form memakai baseline lokal, tombol simpan hanya aktif saat berubah, validasi Bahasa Indonesia, proteksi submit ganda, serta konfirmasi Back HP/AppBar saat dirty. Password lama/baru tidak pernah dibaca dari response, tidak ditampilkan kembali, dan tidak masuk activity log; backend Settings tidak memiliki API key/token/provider secret. Endpoint settings dilindungi `auth:sanctum` + `role:admin`; public branding hanya mengembalikan status banner dan URL gambar publik. Backend `AdminSettingsTest` 12 pass / 74 assertions; Flutter `admin_settings_test.dart` 12 pass; smoke HP `NOT_TESTED`.
+Mobile settings status: `PARTIAL`; UI mencakup Profil Admin, Banner Login, Ubah Password, dan Aktivitas terbaru. Profil memakai `/auth/me`, password memakai `/auth/password`, sedangkan settings hanya memuat banner dan activity logs. Form memakai baseline lokal, tombol simpan hanya aktif saat berubah, validasi Bahasa Indonesia, proteksi submit ganda, serta konfirmasi Back HP/AppBar saat dirty. Password lama/baru tidak pernah dibaca dari response, tidak ditampilkan kembali, dan tidak masuk activity log; backend Settings tidak memiliki API key/token/provider secret. Endpoint settings dilindungi `auth:sanctum` + `role:admin`; public branding hanya mengembalikan status banner dan URL gambar publik. Backend `AdminSettingsTest` 12 pass / 74 assertions; Flutter `admin_settings_test.dart` 12 pass; smoke HP `NOT_TESTED`.
 
 ---
 
@@ -637,7 +628,7 @@ Nullable: class may be absent
 
 ```text
 Endpoint: GET /admin/settings
-Response: application, banner, security, activity_logs[]
+Response: banner, activity_logs[]
 Nullable: banner image_media_id/image_url
 Secret fields: none returned in audited response
 ```

@@ -19,6 +19,13 @@ class ModuleTemplateApplyController extends Controller
         $template = ModuleTemplate::query()->findOrFail($id);
         Gate::authorize('apply', $template);
 
-        return ApiResponse::success('Template modul berhasil diterapkan.', $this->service->apply($template, $request->validated('class_ids'), $request->user(), $request, (bool) $request->validated('sync_existing', false)));
+        return ApiResponse::success('Template modul berhasil diterapkan.', $this->service->apply(
+            $template,
+            $request->validated('class_ids'),
+            $request->user(),
+            $request,
+            (bool) $request->validated('sync_existing', false),
+            (bool) $request->validated('publish_class_modules', false),
+        ));
     }
 }

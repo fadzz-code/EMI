@@ -441,9 +441,9 @@ Login → Dashboard → Kelola akun/sekolah/kelas → Kelola kamus/basis AI/modu
 ![Screenshot: Pengaturan Admin](assets/screenshots/admin/admin-22-pengaturan-admin.png)
 
 - URL: `/admin/settings`
-- Tujuan: Mengatur informasi aplikasi, profil admin, banner login, password, dan keamanan.
-- Yang dapat dilihat: Nama aplikasi, slogan, tahun ajaran, profil, banner, activity log jika tersedia, dan pengaturan keamanan.
-- Yang dapat dilakukan: Menyimpan pengaturan aplikasi, profil, banner, password, dan keamanan.
+- Tujuan: Mengelola Profil Admin, Banner Login, Ubah Password, dan Aktivitas terbaru.
+- Yang dapat dilihat: Profil Admin, preview Banner Login, dan Aktivitas terbaru.
+- Yang dapat dilakukan: Menyimpan Profil Admin, Banner Login, dan Ubah Password.
 - Langkah penggunaan:
   1. Buka Pengaturan Admin.
   2. Pilih bagian yang ingin diubah.

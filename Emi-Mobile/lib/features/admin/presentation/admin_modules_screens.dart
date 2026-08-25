@@ -1202,13 +1202,63 @@ class _StatText extends StatelessWidget {
 }
 
 Future<void> _confirmPublish(BuildContext context, AdminModuleItem item) async {
-  final ok = await _confirm(
-    context,
-    'Terbitkan Modul?',
-    'Modul dapat digunakan sesuai aturan kelas dan pengguna.',
+  var applyToAllActiveClasses = false;
+  var publishClassModules = false;
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setDialogState) => AlertDialog(
+        title: const Text('Terbitkan Modul?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Modul dapat digunakan sesuai aturan kelas dan pengguna.',
+            ),
+            CheckboxListTile(
+              value: applyToAllActiveClasses,
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Kirim ke semua kelas aktif'),
+              onChanged: (value) => setDialogState(() {
+                applyToAllActiveClasses = value ?? false;
+                if (!applyToAllActiveClasses) publishClassModules = false;
+              }),
+            ),
+            CheckboxListTile(
+              value: publishClassModules,
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Langsung tampil ke siswa'),
+              onChanged: applyToAllActiveClasses
+                  ? (value) => setDialogState(
+                      () => publishClassModules = value ?? false,
+                    )
+                  : null,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Terbitkan'),
+          ),
+        ],
+      ),
+    ),
   );
   if (ok != true || !context.mounted) return;
-  await _moduleAction(context, item.id, (repo) => repo.publish(item.id));
+  await _moduleAction(
+    context,
+    item.id,
+    (repo) => repo.publish(
+      item.id,
+      applyToAllActiveClasses: applyToAllActiveClasses,
+      publishClassModules: publishClassModules,
+    ),
+  );
 }
 
 Future<void> _applyModule(BuildContext context, AdminModuleItem item) async {
@@ -1227,6 +1277,7 @@ Future<void> _applyModule(BuildContext context, AdminModuleItem item) async {
     return;
   }
   final selected = <String>{};
+  var publishClassModules = false;
   final apply = await showDialog<bool>(
     context: context,
     builder: (context) => StatefulBuilder(
@@ -1237,6 +1288,12 @@ Future<void> _applyModule(BuildContext context, AdminModuleItem item) async {
           child: ListView(
             shrinkWrap: true,
             children: [
+              CheckboxListTile(
+                value: publishClassModules,
+                title: const Text('Langsung tampil ke siswa'),
+                onChanged: (value) =>
+                    setDialogState(() => publishClassModules = value ?? false),
+              ),
               for (final target in classes)
                 CheckboxListTile(
                   value: selected.contains(target.id),
@@ -1267,8 +1324,18 @@ Future<void> _applyModule(BuildContext context, AdminModuleItem item) async {
   );
   if (apply != true || !context.mounted) return;
   try {
-    await repository.apply(item.id, selected.toList());
-    if (context.mounted) _message(context, 'Modul berhasil diterapkan.');
+    final summary = await repository.apply(
+      item.id,
+      selected.toList(),
+      publishClassModules: publishClassModules,
+    );
+    if (context.mounted) {
+      _message(
+        context,
+        'Diterapkan ${summary.applied}, disinkronkan ${summary.synced}, dilewati ${summary.skipped}, gagal ${summary.failed}.',
+        error: summary.failed > 0,
+      );
+    }
   } on AppError catch (error) {
     if (context.mounted) _message(context, error.message, error: true);
   }

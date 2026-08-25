@@ -139,6 +139,67 @@ void main() {
     expect(classes.map((item) => item.id), ['class-1', 'class-2']);
   });
 
+  testWidgets('publish dialog defaults distribution off and explains draft', (
+    tester,
+  ) async {
+    Object? publishBody;
+    await tester.binding.setSurfaceSize(const Size(800, 1600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repository = AdminCrudRepository(
+      Dio(BaseOptions(baseUrl: 'https://example.test'))
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              if (options.path.endsWith('/publish')) publishBody = options.data;
+              handler.resolve(
+                Response(requestOptions: options, data: {'data': _quiz('q1')}),
+              );
+            },
+          ),
+        ),
+      const DioErrorMapper(),
+    );
+
+    final router = GoRouter(
+      initialLocation: '/admin/quizzes/q1',
+      routes: [
+        GoRoute(
+          path: '/admin/quizzes/:id',
+          builder: (_, state) =>
+              AdminQuizFormScreen(id: state.pathParameters['id']),
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          adminCrudRepositoryProvider.overrideWithValue(repository),
+          adminQuizDetailProvider(
+            'q1',
+          ).overrideWith((_) async => QuizTemplateAdmin.fromJson(_quiz('q1'))),
+        ],
+        child: MaterialApp.router(
+          theme: EmiTheme.light(),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('adminPublish-quizzes')));
+    await tester.pumpAndSettle();
+
+    final checkbox = tester.widget<CheckboxListTile>(
+      find.byKey(const Key('adminPublishAllActiveClasses-quizzes')),
+    );
+    expect(checkbox.value, false);
+    expect(find.text('Kirim ke semua kelas aktif'), findsOneWidget);
+    expect(find.textContaining('Siswa belum dapat melihatnya'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Terbitkan'));
+    await tester.pumpAndSettle();
+    expect(publishBody, {'apply_to_all_active_classes': false});
+  });
+
   test('admin quiz templates duplicate order handled', () async {
     final repository = AdminCrudRepository(
       Dio(BaseOptions(baseUrl: 'https://example.test'))
@@ -248,7 +309,11 @@ void main() {
           'status': 'published',
         },
       );
-      await repository.quizStatus('q1', 'publish');
+      await repository.quizStatus(
+        'q1',
+        'publish',
+        applyToAllActiveClasses: true,
+      );
       await repository.quizStatus('q1', 'archive');
       final questions = await repository.questions('q1');
       expect(questions.length, 2);
@@ -279,6 +344,12 @@ void main() {
         contains('PATCH /admin/quiz-templates/q1/questions/reorder'),
       );
       expect(requests, contains('POST /admin/quiz-templates/q1/apply'));
+      expect(
+        bodies.whereType<Map>().any(
+          (body) => body['apply_to_all_active_classes'] == true,
+        ),
+        isTrue,
+      );
       expect(
         (bodies.firstWhere((body) => body is Map && body['class_ids'] != null)
             as Map)['sync_existing'],

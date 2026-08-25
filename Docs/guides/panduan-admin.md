@@ -574,31 +574,24 @@ Alur sederhana penggunaan admin:
 ### Pengaturan Admin
 
 - URL: `/admin/settings`
-- Tujuan: Mengatur informasi aplikasi, profil admin, banner login, password, dan keamanan.
+- Tujuan: Mengelola profil admin, banner login, password, dan aktivitas terbaru.
 - Yang dapat dilihat:
-  - Nama aplikasi.
-  - Subtitle atau slogan.
-  - Tahun ajaran.
-  - Timezone.
-  - Profil admin.
-  - Preview banner login.
-  - Activity log jika tersedia.
-  - Pengaturan keamanan.
+  - Profil Admin.
+  - Preview Banner Login.
+  - Aktivitas terbaru.
 - Yang dapat dilakukan:
-  - Menyimpan pengaturan aplikasi.
-  - Mengubah profil admin.
-  - Mengunggah banner login.
+  - Mengubah Profil Admin.
+  - Mengunggah Banner Login.
   - Mengaktifkan atau menonaktifkan banner.
-  - Mengubah password.
-  - Menyimpan pengaturan keamanan.
+  - Ubah Password.
 - Langkah penggunaan:
   1. Buka menu Pengaturan Admin.
   2. Pilih bagian yang ingin diubah.
   3. Isi data baru atau unggah banner.
   4. Klik Simpan pada bagian terkait.
   5. Cek hasilnya, terutama banner di halaman login.
-- Hasil yang diharapkan: Pengaturan sistem tersimpan dan tampilan login sesuai kebutuhan sekolah.
-- Catatan penting: Email dan status admin mungkin hanya bisa dilihat, bukan diubah. Toggle email mingguan mungkin hanya menyimpan pilihan, bukan mengirim email sungguhan.
+- Hasil yang diharapkan: Profil, password, dan banner tersimpan serta aktivitas terbaru tampil.
+- Catatan penting: Email dan status admin mungkin hanya bisa dilihat, bukan diubah.
 - Placeholder screenshot:
   ![Screenshot: Pengaturan Admin](assets/screenshots/admin/admin-22-pengaturan-admin.png)
 

@@ -98,19 +98,17 @@ export type QuizQuestionPayload = {
   }>;
 };
 
+export type PublishQuizTemplateOptions = {
+  applyToAllActiveClasses?: boolean;
+};
+
 export type QuizTemplateApplyResult = {
-  applied: Array<{ class_id: string; class_quiz_id?: string }>;
+  applied: Array<{ class_id: string; class_quiz_id?: string; status?: string }>;
   synced: Array<{ class_id: string; class_quiz_id?: string }>;
   skipped: Array<{ class_id: string; reason: string }>;
   failed: Array<{ class_id: string; reason: string }>;
 };
 
-export type ClassQuiz = {
-  id: string;
-  class_id: string;
-  source_quiz_template_id?: string | null;
-  title: string;
-  description?: string | null;
-  status: QuizTemplateStatus;
-  published_at?: string | null;
+export type PublishQuizTemplateResult = QuizTemplate & {
+  distribution: QuizTemplateApplyResult | null;
 };

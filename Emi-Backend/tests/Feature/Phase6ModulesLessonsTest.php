@@ -236,6 +236,81 @@ class Phase6ModulesLessonsTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'module_template.applied']);
     }
 
+    public function test_publish_template_distribution_defaults_drafts_can_publish_and_excludes_inactive_targets(): void
+    {
+        $admin = User::factory()->admin()->create();
+        [$classA, $classB] = $this->classes($admin, 2);
+        $inactiveClass = SchoolClass::factory()->inactive()->create([
+            'school_id' => $classA->school_id,
+            'created_by' => $admin->id,
+        ]);
+        $inactiveSchool = School::factory()->inactive()->create(['created_by' => $admin->id]);
+        $inactiveSchoolClass = SchoolClass::factory()->create([
+            'school_id' => $inactiveSchool->id,
+            'created_by' => $admin->id,
+        ]);
+        $student = $this->studentFor($classA, $admin);
+        $template = ModuleTemplate::factory()->create(['created_by' => $admin->id]);
+        LessonTemplate::factory()->published()->create([
+            'module_template_id' => $template->id,
+            'created_by' => $admin->id,
+            'content_type' => 'text',
+            'content_body' => 'Materi distribusi',
+        ]);
+
+        $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/module-templates/{$template->id}/publish")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published')
+            ->assertJsonPath('data.distribution', null);
+        $this->assertSame(0, ClassModule::query()->where('source_module_template_id', $template->id)->count());
+
+        $draftResponse = $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/module-templates/{$template->id}/publish", [
+            'apply_to_all_active_classes' => true,
+        ])->assertOk();
+        $this->assertCount(2, $draftResponse->json('data.distribution.applied'));
+        $this->assertSame(2, ClassModule::query()->where('source_module_template_id', $template->id)->where('status', 'draft')->count());
+        $this->assertDatabaseMissing('class_modules', ['class_id' => $inactiveClass->id, 'source_module_template_id' => $template->id]);
+        $this->assertDatabaseMissing('class_modules', ['class_id' => $inactiveSchoolClass->id, 'source_module_template_id' => $template->id]);
+        $this->withToken($this->tokenFor($student))->getJson('/api/v1/student/modules')->assertOk()->assertJsonPath('meta.total', 0);
+
+        $publishedTemplate = ModuleTemplate::factory()->create(['created_by' => $admin->id]);
+        LessonTemplate::factory()->published()->create([
+            'module_template_id' => $publishedTemplate->id,
+            'created_by' => $admin->id,
+            'content_type' => 'text',
+            'content_body' => 'Materi langsung',
+        ]);
+        $publishedResponse = $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/module-templates/{$publishedTemplate->id}/publish", [
+            'apply_to_all_active_classes' => true,
+            'publish_class_modules' => true,
+        ])->assertOk();
+        $this->assertCount(2, $publishedResponse->json('data.distribution.applied'));
+        $this->assertSame(2, ClassModule::query()->where('source_module_template_id', $publishedTemplate->id)->where('status', 'published')->count());
+        $this->withToken($this->tokenFor($student))->getJson('/api/v1/student/modules')->assertOk()->assertJsonPath('meta.total', 1);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'class_module.published']);
+    }
+
+    public function test_publish_template_distribution_validates_boolean_dependency(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $template = ModuleTemplate::factory()->create(['created_by' => $admin->id]);
+        LessonTemplate::factory()->published()->create(['module_template_id' => $template->id, 'created_by' => $admin->id]);
+
+        $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/module-templates/{$template->id}/publish", [
+            'apply_to_all_active_classes' => 'invalid',
+        ])->assertUnprocessable()->assertJsonPath('code', 'VALIDATION_ERROR');
+        $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/module-templates/{$template->id}/publish", [
+            'publish_class_modules' => true,
+        ])->assertUnprocessable()
+            ->assertJsonPath('code', 'VALIDATION_ERROR')
+            ->assertJsonPath('errors.publish_class_modules.0', 'Opsi langsung tampil ke siswa hanya dapat dipilih jika salinan dikirim ke semua kelas aktif.');
+
+        $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/module-templates/{$template->id}/publish", [
+            'apply_to_all_active_classes' => false,
+            'publish_class_modules' => false,
+        ])->assertOk();
+    }
+
     public function test_class_module_lesson_student_access_content_url_delete_and_media_usage(): void
     {
         $admin = User::factory()->admin()->create();
