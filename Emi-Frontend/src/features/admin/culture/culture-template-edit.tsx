@@ -27,6 +27,7 @@ export function AdminCultureTemplateEdit({ templateId }: { templateId: string })
   const [editingItem, setEditingItem] = useState<AdminCultureTemplateItem | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [syncExisting, setSyncExisting] = useState(false);
 
   const query = useQuery({
     queryKey: ["admin", "culture-templates", templateId],
@@ -68,8 +69,8 @@ export function AdminCultureTemplateEdit({ templateId }: { templateId: string })
   });
 
   const applyMutation = useMutation({
-    mutationFn: (classIds: string[]) => adminCultureService.applyTemplate(token ?? "", templateId, classIds),
-    onSuccess: (res) => setSuccessMsg(`Berhasil diterapkan ke ${res.applied.length} kelas. Dilewati: ${res.skipped.length}, Gagal: ${res.failed.length}.`),
+    mutationFn: ({ classIds, sync }: { classIds: string[]; sync: boolean }) => adminCultureService.applyTemplate(token ?? "", templateId, classIds, sync),
+    onSuccess: (res) => setSuccessMsg(`Diterapkan ke ${res.applied.length} kelas, disinkronkan ke ${res.synced.length} kelas. Dilewati: ${res.skipped.length}, Gagal: ${res.failed.length}.`),
   });
 
   const deleteItemMutation = useMutation({
@@ -129,7 +130,7 @@ export function AdminCultureTemplateEdit({ templateId }: { templateId: string })
                   const formData = new FormData(e.currentTarget);
                   const classIds = formData.getAll("class_ids").map(String);
                   if (classIds.length === 0) return alert("Pilih minimal satu kelas.");
-                  applyMutation.mutate(classIds);
+                  applyMutation.mutate({ classIds, sync: syncExisting });
                 }}>
                   <div className="mb-4 max-h-48 overflow-y-auto rounded-lg border border-border bg-surface-muted p-2">
                     {classesQuery.isLoading ? <p className="text-sm p-2 text-muted">Memuat kelas...</p> : null}
@@ -137,6 +138,11 @@ export function AdminCultureTemplateEdit({ templateId }: { templateId: string })
                       <label className="flex items-center gap-2 p-2 text-sm font-bold text-ink hover:bg-surface" key={c.id}><input name="class_ids" type="checkbox" value={c.id} /> {c.name} {c.school ? `(${c.school.name})` : ""}</label>
                     ))}
                   </div>
+                  <label className="mb-4 flex items-start gap-3 rounded-xl border-2 border-border bg-surface p-3 text-sm font-bold text-ink">
+                    <input checked={syncExisting} className="mt-1" onChange={(event) => setSyncExisting(event.target.checked)} type="checkbox" />
+                    <span>Sinkronkan judul, deskripsi, media, URL, thumbnail, dan urutan item yang sudah berasal dari template ini.</span>
+                  </label>
+                  {syncExisting ? <Alert className="mb-4" tone="warning">Perubahan guru pada salinan template akan ditimpa. Item buatan guru tidak terpengaruh dan hasil sinkronisasi tetap dapat diedit.</Alert> : null}
                   <Button disabled={applyMutation.isPending || template.status !== "published" || classesQuery.isLoading} type="submit" variant="secondary">{applyMutation.isPending ? "Menerapkan..." : "Terapkan ke Kelas"}</Button>
                 </form>
               </CardContent>

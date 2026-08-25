@@ -35,6 +35,13 @@ export type AdminGlobalCultureItem = {
   } | null;
 };
 
+export type CultureTemplateApplyResult = {
+  applied: Array<{ class_id: string; items_count: number }>;
+  synced: Array<{ class_id: string; items_count: number }>;
+  skipped: Array<{ class_id: string; reason: string }>;
+  failed: Array<{ class_id: string; reason: string }>;
+};
+
 export type AdminCultureTemplateItem = {
   id: string;
   culture_template_id: string;

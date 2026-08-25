@@ -19,6 +19,12 @@ class CultureTemplateApplyController extends Controller
         $template = CultureTemplate::query()->findOrFail($id);
         Gate::authorize('apply', $template);
 
-        return ApiResponse::success('Template budaya berhasil diterapkan.', $this->service->apply($template, $request->validated('class_ids'), $request->user(), $request));
+        return ApiResponse::success('Template budaya berhasil diterapkan.', $this->service->apply(
+            $template,
+            $request->validated('class_ids'),
+            $request->user(),
+            $request,
+            (bool) $request->validated('sync_existing', false)
+        ));
     }
 }

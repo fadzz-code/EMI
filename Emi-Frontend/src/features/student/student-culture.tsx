@@ -47,12 +47,12 @@ function CultureCard({ item }: { item: StudentCultureItem }) {
             <Badge tone="neutral">{item.content_type}</Badge>
           </div>
         </div>
-        <h2 className="mt-3 text-xl font-black text-ink">{item.title}</h2>
-        <p className="mt-1 text-sm font-bold text-muted">Kelas: {item.school_class?.name ?? item.class_id}</p>
+        <h2 className="mt-3 line-clamp-2 text-xl font-black text-ink">{item.title}</h2>
+        <p className="mt-1 truncate text-sm font-bold text-muted">Kelas: {item.school_class?.name ?? item.class_id}</p>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col">
         <div className="flex flex-1 flex-col gap-4">
-          <p className="text-sm font-semibold leading-6 text-muted">{item.description ?? "Deskripsi budaya belum tersedia."}</p>
+          <p className="line-clamp-3 min-h-18 text-sm font-semibold leading-6 text-muted">{item.description ?? "Deskripsi budaya belum tersedia."}</p>
           <div className="mt-auto flex min-h-56 items-center rounded-2xl border-2 border-border bg-surface-muted p-3">
             <div className="w-full"><CultureMediaPreview item={item} /></div>
           </div>

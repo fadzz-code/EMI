@@ -156,7 +156,9 @@ class Phase2AuthApprovalTest extends TestCase
             'email' => 'duplikat@example.test',
             'school_id' => $school->id,
             'class_id' => $schoolClass->id,
-        ]))->assertUnprocessable();
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.email.0', 'Email sudah terdaftar.');
 
         $this->postJson('/api/v1/auth/register', $this->registerPayload([
             'school_id' => $inactiveSchool->id,

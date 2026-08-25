@@ -402,6 +402,46 @@ class Phase9CultureGlobalIsolationTest extends TestCase
         $this->assertDatabaseHas('culture_template_items', ['culture_template_id' => $template->id, 'status' => 'published', 'archived_at' => null]);
     }
 
+    public function test_admin_can_sync_template_changes_without_affecting_teacher_items(): void
+    {
+        $admin = User::factory()->admin()->create();
+        [$class] = $this->classes($admin, 1);
+        $teacher = $this->teacherFor($class, $admin);
+        $template = CultureTemplate::query()->create(['title' => 'Template', 'status' => 'draft', 'created_by' => $admin->id]);
+
+        $this->admin($admin)->postJson("/api/v1/admin/culture-templates/{$template->id}/items", $this->payload([
+            'title' => 'Judul Lama',
+            'description' => 'Deskripsi lama',
+        ]))->assertCreated();
+        $this->admin($admin)->postJson("/api/v1/admin/culture-templates/{$template->id}/publish")->assertOk();
+        $this->admin($admin)->postJson("/api/v1/admin/culture-templates/{$template->id}/apply", ['class_ids' => [$class->id]])
+            ->assertOk()
+            ->assertJsonPath('data.applied.0.class_id', $class->id);
+
+        $templateItem = $template->items()->firstOrFail();
+        $copy = ClassCultureItem::query()->where('source_culture_template_item_id', $templateItem->id)->firstOrFail();
+        $teacherItem = ClassCultureItem::query()->create(array_merge($this->payload(['title' => 'Item Guru']), [
+            'class_id' => $class->id,
+            'created_by' => $teacher->id,
+        ]));
+        $templateItem->update(['title' => 'Judul Baru', 'description' => 'Deskripsi baru']);
+
+        $this->admin($admin)->postJson("/api/v1/admin/culture-templates/{$template->id}/apply", [
+            'class_ids' => [$class->id],
+            'sync_existing' => true,
+        ])->assertOk()->assertJsonPath('data.synced.0.class_id', $class->id);
+
+        $this->assertDatabaseHas('class_culture_items', [
+            'id' => $copy->id,
+            'title' => 'Judul Baru',
+            'description' => 'Deskripsi baru',
+        ]);
+        $this->assertDatabaseHas('class_culture_items', ['id' => $teacherItem->id, 'title' => 'Item Guru']);
+        $this->admin($teacher)->putJson("/api/v1/class-culture-items/{$copy->id}", ['description' => 'Edit guru'])
+            ->assertOk()
+            ->assertJsonPath('data.description', 'Edit guru');
+    }
+
     public function test_template_uses_same_validator_and_publish_rejects_invalid_class_item(): void
     {
         Storage::fake('public');

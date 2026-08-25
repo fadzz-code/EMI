@@ -1,5 +1,5 @@
 import { apiClient, type ApiPaginationMeta } from "@/lib/api-client";
-import type { AdminCultureTemplate, AdminCultureTemplateItem, AdminGlobalCultureItem } from "./types";
+import type { AdminCultureTemplate, AdminCultureTemplateItem, AdminGlobalCultureItem, CultureTemplateApplyResult } from "./types";
 import type { MediaFile } from "@/features/admin/quizzes/types";
 
 export const adminCultureService = {
@@ -77,8 +77,8 @@ export const adminCultureService = {
     return response.data;
   },
 
-  async applyTemplate(token: string, templateId: string, classIds: string[]) {
-    const response = await apiClient.post<{ applied: unknown[]; skipped: unknown[]; failed: unknown[] }>(`/admin/culture-templates/${templateId}/apply`, { class_ids: classIds }, { token });
+  async applyTemplate(token: string, templateId: string, classIds: string[], syncExisting = false) {
+    const response = await apiClient.post<CultureTemplateApplyResult>(`/admin/culture-templates/${templateId}/apply`, { class_ids: classIds, sync_existing: syncExisting }, { token });
     if (!response.data) throw new Error("Gagal menerapkan template");
     return response.data;
   },

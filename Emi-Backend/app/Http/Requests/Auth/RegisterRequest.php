@@ -19,6 +19,13 @@ class RegisterRequest extends ApiFormRequest
         }
     }
 
+    public function messages(): array
+    {
+        return [
+            'email.unique' => 'Email sudah terdaftar.',
+        ];
+    }
+
     public function rules(): array
     {
         return [
