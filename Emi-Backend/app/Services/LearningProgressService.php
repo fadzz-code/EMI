@@ -9,6 +9,7 @@ use App\Models\LessonProgress;
 use App\Models\ModuleProgress;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class LearningProgressService
 {
@@ -50,10 +51,23 @@ class LearningProgressService
         [$status, $percent] = $this->normalizeProgress($status, $percent);
 
         return DB::transaction(function () use ($student, $lesson, $status, $percent) {
-            $progress = LessonProgress::query()->firstOrNew([
+            LessonProgress::query()->insertOrIgnore([
+                'id' => (string) Str::uuid(),
                 'student_id' => $student->id,
                 'class_lesson_id' => $lesson->id,
+                'status' => 'not_started',
+                'progress_percent' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
+
+            $progress = LessonProgress::query()
+                ->where('student_id', $student->id)
+                ->where('class_lesson_id', $lesson->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $percent = max($progress->progress_percent, $percent);
+            $status = $percent === 100 ? 'completed' : ($percent > 0 ? 'in_progress' : 'not_started');
 
             $progress->fill([
                 'status' => $status,
@@ -61,8 +75,7 @@ class LearningProgressService
                 'started_at' => $progress->started_at ?? ($status !== 'not_started' ? now() : null),
                 'completed_at' => $status === 'completed' ? ($progress->completed_at ?? now()) : null,
                 'last_accessed_at' => now(),
-            ]);
-            $progress->save();
+            ])->save();
             $this->recalculateModuleProgress($student, $lesson->classModule);
 
             return $progress->refresh();
@@ -89,20 +102,34 @@ class LearningProgressService
             default => 'in_progress',
         };
 
-        return ModuleProgress::query()->updateOrCreate([
+        ModuleProgress::query()->insertOrIgnore([
+            'id' => (string) Str::uuid(),
             'student_id' => $student->id,
             'class_module_id' => $module->id,
-        ], [
+            'status' => 'not_started',
+            'progress_percent' => 0,
+            'completed_lessons' => 0,
+            'total_lessons' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $progress = ModuleProgress::query()
+            ->where('student_id', $student->id)
+            ->where('class_module_id', $module->id)
+            ->lockForUpdate()
+            ->firstOrFail();
+        $progress->fill([
             'status' => $status,
             'progress_percent' => $percent,
             'completed_lessons' => $completed,
             'total_lessons' => $total,
-            'started_at' => $status !== 'not_started'
-                ? (ModuleProgress::query()->where('student_id', $student->id)->where('class_module_id', $module->id)->value('started_at') ?? now())
-                : null,
-            'completed_at' => $status === 'completed' ? now() : null,
+            'started_at' => $progress->started_at ?? ($status !== 'not_started' ? now() : null),
+            'completed_at' => $status === 'completed' ? ($progress->completed_at ?? now()) : null,
             'last_calculated_at' => now(),
-        ]);
+        ])->save();
+
+        return $progress;
     }
 
     public function recalculateModuleProgressForAllStudents(ClassModule $module): void

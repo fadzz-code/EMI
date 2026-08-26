@@ -20,6 +20,12 @@ class OfflineFileStore {
     return p.join(root.path, _encode(ownerStudentId), _encode(mediaId));
   }
 
+  String immutableRef(String mediaId, String checksum) {
+    _validate(mediaId, 'mediaId');
+    _validate(checksum, 'checksum');
+    return '$mediaId@$checksum';
+  }
+
   Future<File> write(
     String ownerStudentId,
     String mediaId,

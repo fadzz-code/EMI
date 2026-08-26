@@ -349,8 +349,14 @@ class Phase6ModulesLessonsTest extends TestCase
         $this->withToken($this->tokenFor($studentA))->getJson("/api/v1/class-lessons/{$lessonId}/content-url")
             ->assertOk()
             ->assertJsonMissingPath('data.media.path')
-            ->assertJsonMissingPath('data.media.checksum')
-            ->assertJsonPath('data.media.visibility', 'private');
+            ->assertJsonPath('data.media.visibility', 'private')
+            ->assertJsonPath('data.media.size_bytes', $privatePdf->size_bytes)
+            ->assertJsonPath('data.media.checksum_sha256', $privatePdf->checksum_sha256)
+            ->assertJsonPath('data.media.extension', $privatePdf->extension)
+            ->assertJsonPath('data.media.updated_at', $privatePdf->updated_at->toISOString());
+        $this->withToken($this->tokenFor($studentB))->getJson("/api/v1/class-lessons/{$lessonId}/content-url")
+            ->assertNotFound()
+            ->assertJsonMissingPath('data.media');
 
         $this->withToken($this->tokenFor($teacherA))->deleteJson("/api/v1/media/{$privatePdf->id}")
             ->assertConflict()
@@ -486,11 +492,22 @@ class Phase6ModulesLessonsTest extends TestCase
         $this->withToken($this->tokenFor($studentA))->patchJson("/api/v1/student/lessons/{$lessonOne->id}/progress", [
             'status' => 'completed',
         ])->assertOk()->assertJsonPath('data.progress_percent', 100);
+        $lessonCompletedAt = LessonProgress::query()->where('student_id', $studentA->id)->where('class_lesson_id', $lessonOne->id)->value('completed_at');
+        $this->withToken($this->tokenFor($studentA))->patchJson("/api/v1/student/lessons/{$lessonOne->id}/progress", [
+            'status' => 'in_progress',
+            'progress_percent' => 25,
+        ])->assertOk()->assertJsonPath('data.status', 'completed')->assertJsonPath('data.progress_percent', 100);
+        $this->assertEquals($lessonCompletedAt, LessonProgress::query()->where('student_id', $studentA->id)->where('class_lesson_id', $lessonOne->id)->value('completed_at'));
         $this->assertDatabaseHas('module_progress', ['student_id' => $studentA->id, 'class_module_id' => $module->id, 'progress_percent' => 50]);
 
         $this->withToken($this->tokenFor($studentA))->patchJson("/api/v1/student/lessons/{$lessonTwo->id}/progress", [
             'status' => 'completed',
         ])->assertOk();
+        $moduleCompletedAt = ModuleProgress::query()->where('student_id', $studentA->id)->where('class_module_id', $module->id)->value('completed_at');
+        $this->withToken($this->tokenFor($studentA))->patchJson("/api/v1/student/lessons/{$lessonTwo->id}/progress", [
+            'status' => 'completed',
+        ])->assertOk();
+        $this->assertEquals($moduleCompletedAt, ModuleProgress::query()->where('student_id', $studentA->id)->where('class_module_id', $module->id)->value('completed_at'));
         $this->assertDatabaseHas('module_progress', ['student_id' => $studentA->id, 'class_module_id' => $module->id, 'status' => 'completed', 'progress_percent' => 100]);
 
         $newLesson = $this->withToken($this->tokenFor($admin))->postJson("/api/v1/class-modules/{$module->id}/lessons", [

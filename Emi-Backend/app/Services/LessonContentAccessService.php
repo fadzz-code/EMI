@@ -52,6 +52,10 @@ class LessonContentAccessService
                 'id' => $lesson->media->id,
                 'mime_type' => $lesson->media->mime_type,
                 'visibility' => $lesson->media->visibility,
+                'size_bytes' => $lesson->media->size_bytes,
+                'checksum_sha256' => $lesson->media->checksum_sha256,
+                'extension' => $lesson->media->extension,
+                'updated_at' => $lesson->media->updated_at?->toISOString(),
             ],
         ];
     }

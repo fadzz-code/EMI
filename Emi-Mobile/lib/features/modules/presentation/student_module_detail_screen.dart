@@ -3,11 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
+import '../../../core/network/network_status_controller.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
 import '../../../shared/widgets/student_style.dart';
 import '../../../shared/widgets/student_widgets.dart';
 import '../data/student_module.dart';
 import '../data/student_module_providers.dart';
+import 'student_module_offline_providers.dart';
+import 'student_module_offline_widgets.dart';
+import 'student_module_ui_controller.dart';
 
 class StudentModuleDetailScreen extends ConsumerWidget {
   const StudentModuleDetailScreen({super.key, required this.moduleId});
@@ -16,7 +20,10 @@ class StudentModuleDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final detail = ref.watch(studentModuleDetailProvider(moduleId));
+    final detail = ref.watch(offlineStudentModuleDetailProvider(moduleId));
+    final networkMode = ref.watch(networkStatusControllerProvider).mode;
+    final offline = ref.watch(studentModuleOfflineStateProvider(moduleId));
+    final offlineController = ref.read(studentModuleOfflineControllerProvider);
 
     return EmiScaffold(
       title: 'Detail Modul',
@@ -34,7 +41,27 @@ class StudentModuleDetailScreen extends ConsumerWidget {
           data: (module) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
+              StudentConnectivityBanner(mode: networkMode),
+              if (networkMode != NetworkMode.online)
+                const SizedBox(height: EmiSpacing.md),
               _ModuleHeader(module: module),
+              const SizedBox(height: EmiSpacing.sm),
+              Align(
+                alignment: Alignment.centerRight,
+                child: offline.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, _) => ModuleOfflineAction(
+                    state: const ModuleOfflineState(ModuleOfflineStatus.retry),
+                    onDownload: () => offlineController.download(moduleId),
+                    onRemove: null,
+                  ),
+                  data: (state) => ModuleOfflineAction(
+                    state: state,
+                    onDownload: () => offlineController.download(moduleId),
+                    onRemove: () => offlineController.remove(moduleId),
+                  ),
+                ),
+              ),
               const SizedBox(height: EmiSpacing.md),
               _ProgressCard(progress: module.progress),
               const StudentSectionHeader(

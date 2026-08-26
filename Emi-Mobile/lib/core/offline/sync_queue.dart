@@ -38,7 +38,7 @@ class SyncQueue {
     required String entityId,
     required Map<String, Object?> payload,
     DateTime? now,
-  }) {
+  }) async {
     _validateOwner(ownerStudentId);
     if (operationType != 'lesson_completed') {
       throw ArgumentError.value(operationType, 'operationType');
@@ -47,13 +47,32 @@ class SyncQueue {
       throw ArgumentError.value(entityId, 'entityId');
     }
     final timestamp = (now ?? DateTime.now().toUtc()).toIso8601String();
-    return database.insert('sync_queue', {
-      'owner_student_id': ownerStudentId,
-      'operation_type': operationType,
-      'entity_id': entityId,
-      'payload_json': jsonEncode(payload),
-      'created_at': timestamp,
-      'updated_at': timestamp,
+    return database.transaction((txn) async {
+      final existing = await txn.query(
+        'sync_queue',
+        columns: ['id'],
+        where: 'owner_student_id = ? AND operation_type = ? AND entity_id = ?',
+        whereArgs: [ownerStudentId, operationType, entityId],
+        orderBy: 'id ASC',
+        limit: 1,
+      );
+      if (existing.isNotEmpty) return existing.single['id'] as int;
+      await txn.insert('sync_queue', {
+        'owner_student_id': ownerStudentId,
+        'operation_type': operationType,
+        'entity_id': entityId,
+        'payload_json': jsonEncode(payload),
+        'created_at': timestamp,
+        'updated_at': timestamp,
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      final inserted = await txn.query(
+        'sync_queue',
+        columns: ['id'],
+        where: 'owner_student_id = ? AND operation_type = ? AND entity_id = ?',
+        whereArgs: [ownerStudentId, operationType, entityId],
+        limit: 1,
+      );
+      return inserted.single['id'] as int;
     });
   }
 
@@ -125,6 +144,29 @@ WHERE owner_student_id = ? AND id = ? AND auth_blocked = 0''',
       'sync_queue',
       {
         'auth_blocked': 1,
+        'next_attempt_at': null,
+        'updated_at': (now ?? DateTime.now().toUtc()).toIso8601String(),
+      },
+      where: 'owner_student_id = ? AND id = ?',
+      whereArgs: [ownerStudentId, id],
+    );
+  }
+
+  Future<void> terminate(
+    String ownerStudentId,
+    int id, {
+    required String lastError,
+    DateTime? now,
+  }) {
+    _validateOwner(ownerStudentId);
+    final boundedError = lastError.length <= maxLastErrorLength
+        ? lastError
+        : lastError.substring(0, maxLastErrorLength);
+    return database.update(
+      'sync_queue',
+      {
+        'auth_blocked': 1,
+        'last_error': boundedError,
         'next_attempt_at': null,
         'updated_at': (now ?? DateTime.now().toUtc()).toIso8601String(),
       },

@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/theme/emi_theme.dart';
 import '../../../shared/media/media_opener.dart';
@@ -11,6 +14,9 @@ import '../../../shared/widgets/student_widgets.dart';
 import '../../dashboard/data/student_dashboard_providers.dart';
 import '../data/student_module.dart';
 import '../data/student_module_providers.dart';
+import 'student_module_offline_providers.dart';
+import 'student_module_offline_widgets.dart';
+import 'student_module_ui_controller.dart';
 
 class StudentLessonDetailScreen extends ConsumerStatefulWidget {
   const StudentLessonDetailScreen({
@@ -30,11 +36,19 @@ class StudentLessonDetailScreen extends ConsumerStatefulWidget {
 class _StudentLessonDetailScreenState
     extends ConsumerState<StudentLessonDetailScreen> {
   bool _submitting = false;
-
   @override
   Widget build(BuildContext context) {
-    final lesson = ref.watch(studentLessonDetailProvider(widget.lessonId));
-    final content = ref.watch(studentLessonContentProvider(widget.lessonId));
+    final lesson = ref.watch(
+      offlineStudentLessonDetailProvider(widget.lessonId),
+    );
+    final content = ref.watch(
+      offlineStudentLessonContentProvider(widget.lessonId),
+    );
+    final completion =
+        ref
+            .watch(studentLessonCompletionStateProvider(widget.lessonId))
+            .valueOrNull ??
+        LessonCompletionSyncStatus.idle;
 
     return EmiScaffold(
       title: 'Detail Lesson',
@@ -70,6 +84,28 @@ class _StudentLessonDetailScreenState
                 label: const Text('Tandai Selesai'),
               ),
             ),
+            if (completion != LessonCompletionSyncStatus.idle) ...[
+              const SizedBox(height: EmiSpacing.xs),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    completion == LessonCompletionSyncStatus.pending
+                        ? Icons.schedule
+                        : Icons.cloud_done_outlined,
+                    size: 16,
+                    color: StudentStyle.inkMuted,
+                  ),
+                  const SizedBox(width: EmiSpacing.xs),
+                  Text(
+                    completion == LessonCompletionSyncStatus.pending
+                        ? 'Selesai · Pending sync'
+                        : 'Selesai · Synced',
+                    style: const TextStyle(color: StudentStyle.inkMuted),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: EmiSpacing.sm),
             SizedBox(
               width: double.infinity,
@@ -89,7 +125,9 @@ class _StudentLessonDetailScreenState
   Future<void> _complete(StudentLesson lesson) async {
     setState(() => _submitting = true);
     try {
-      await ref.read(studentModuleRepositoryProvider).completeLesson(lesson.id);
+      await ref
+          .read(studentLessonCompletionControllerProvider)
+          .complete(lesson.id);
       ref.invalidate(studentLessonDetailProvider(lesson.id));
       ref.invalidate(studentLessonContentProvider(lesson.id));
       ref.invalidate(studentDashboardSummaryProvider);
@@ -236,17 +274,25 @@ class _MediaBlockState extends State<_MediaBlock> {
         final url = content?.url ?? widget.lesson.externalUrl;
         if (type == 'text') return const SizedBox.shrink();
         if (url == null || url.trim().isEmpty) {
-          return _notice('Konten belum tersedia.', retry: true);
+          return OfflineUnavailableMessage(onRetry: widget.onRetry);
         }
+        final local = _localPath(url);
         if (type == 'image' || media?.isImage == true) {
           return ClipRRect(
             borderRadius: BorderRadius.circular(EmiRadii.card),
-            child: Image.network(
-              url,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) =>
-                  _notice('Gambar gagal dimuat.', retry: true),
-            ),
+            child: local == null
+                ? Image.network(
+                    url,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) =>
+                        _notice('Gambar gagal dimuat.', retry: true),
+                  )
+                : Image.file(
+                    File(local),
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) =>
+                        _notice('Gambar offline tidak tersedia.', retry: true),
+                  ),
           );
         }
         if (type == 'audio' || media?.isAudio == true) {
@@ -306,7 +352,14 @@ class _MediaBlockState extends State<_MediaBlock> {
       if (playing) {
         await _player.pause();
       } else {
-        if (_player.audioSource == null) await _player.setUrl(url);
+        if (_player.audioSource == null) {
+          final local = _localPath(url);
+          if (local == null) {
+            await _player.setUrl(url);
+          } else {
+            await _player.setFilePath(local);
+          }
+        }
         if (_player.processingState == ProcessingState.completed) {
           await _player.seek(Duration.zero);
         }
@@ -325,7 +378,11 @@ class _MediaBlockState extends State<_MediaBlock> {
       _error = null;
     });
     try {
-      if (!await _opener.open(url)) throw const FormatException();
+      final local = _localPath(url);
+      final opened = local == null
+          ? await _opener.open(url)
+          : await launchUrl(Uri.file(local));
+      if (!opened) throw const FormatException();
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -335,6 +392,13 @@ class _MediaBlockState extends State<_MediaBlock> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  String? _localPath(String value) {
+    final uri = Uri.tryParse(value);
+    if (uri?.scheme == 'file') return uri!.toFilePath();
+    if (uri?.scheme.isEmpty ?? true) return value;
+    return null;
   }
 
   Widget _notice(String text, {bool retry = false}) {

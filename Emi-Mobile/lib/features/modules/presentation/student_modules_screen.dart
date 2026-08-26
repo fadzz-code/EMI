@@ -3,11 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
+import '../../../core/network/network_status_controller.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
 import '../../../shared/widgets/student_style.dart';
 import '../../../shared/widgets/student_widgets.dart';
 import '../data/student_module.dart';
 import '../data/student_module_providers.dart';
+import 'student_module_offline_widgets.dart';
+import 'student_module_ui_controller.dart';
 
 class StudentModulesScreen extends ConsumerStatefulWidget {
   const StudentModulesScreen({super.key});
@@ -24,6 +27,7 @@ class _StudentModulesScreenState extends ConsumerState<StudentModulesScreen> {
   Widget build(BuildContext context) {
     final query = StudentModuleQuery(status: _status);
     final modules = ref.watch(studentModuleListProvider(query));
+    final networkMode = ref.watch(networkStatusControllerProvider).mode;
 
     return EmiScaffold(
       title: 'Modul Belajar',
@@ -47,6 +51,9 @@ class _StudentModulesScreenState extends ConsumerState<StudentModulesScreen> {
           data: (page) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
+              StudentConnectivityBanner(mode: networkMode),
+              if (networkMode != NetworkMode.online)
+                const SizedBox(height: EmiSpacing.md),
               const StudentPageHeader(
                 icon: Icons.menu_book_outlined,
                 title: 'Modul Belajar',
@@ -171,13 +178,15 @@ class _Summary extends StatelessWidget {
   }
 }
 
-class _ModuleCard extends StatelessWidget {
+class _ModuleCard extends ConsumerWidget {
   const _ModuleCard({required this.module});
 
   final StudentModule module;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final offline = ref.watch(studentModuleOfflineStateProvider(module.id));
+    final controller = ref.read(studentModuleOfflineControllerProvider);
     return StudentCard(
       padding: EdgeInsets.zero,
       clip: true,
@@ -226,6 +235,24 @@ class _ModuleCard extends StatelessWidget {
                 StudentProgressBar(
                   value: module.progress.progressPercent / 100,
                   caption: '${module.progress.progressPercent}% selesai',
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: offline.when(
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, _) => ModuleOfflineAction(
+                      state: const ModuleOfflineState(
+                        ModuleOfflineStatus.retry,
+                      ),
+                      onDownload: () => controller.download(module.id),
+                      onRemove: null,
+                    ),
+                    data: (state) => ModuleOfflineAction(
+                      state: state,
+                      onDownload: () => controller.download(module.id),
+                      onRemove: () => controller.remove(module.id),
+                    ),
+                  ),
                 ),
               ],
             ),

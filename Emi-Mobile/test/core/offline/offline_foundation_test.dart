@@ -112,6 +112,29 @@ void main() {
     },
   );
 
+  test('v2 migration dedupes queue and adds logical unique index', () async {
+    final directory = await Directory.systemTemp.createTemp('emi-v2-test');
+    addTearDown(() => directory.delete(recursive: true));
+    final db = await databaseFactoryFfi.openDatabase(
+      '${directory.path}${Platform.pathSeparator}migration.db',
+    );
+    addTearDown(db.close);
+    await OfflineDatabase.migrate(db, 0, 1);
+    final row = {
+      'owner_student_id': 'student-a',
+      'operation_type': 'lesson_completed',
+      'entity_id': 'lesson-1',
+      'payload_json': '{}',
+      'created_at': DateTime.utc(2026).toIso8601String(),
+      'updated_at': DateTime.utc(2026).toIso8601String(),
+    };
+    await db.insert('sync_queue', row);
+    await db.insert('sync_queue', row);
+    await OfflineDatabase.migrate(db, 1, 2);
+    expect(await db.query('sync_queue'), hasLength(1));
+    expect(() => db.insert('sync_queue', row), throwsA(anything));
+  });
+
   test('v1 migration creates exact queue schema', () async {
     final directory = await Directory.systemTemp.createTemp(
       'emi-migration-test',

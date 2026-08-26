@@ -90,11 +90,19 @@ class LessonMedia {
     required this.id,
     required this.mimeType,
     required this.visibility,
+    this.sizeBytes,
+    this.checksumSha256,
+    this.extension,
+    this.updatedAt,
   });
 
   final String id;
   final String mimeType;
   final String visibility;
+  final int? sizeBytes;
+  final String? checksumSha256;
+  final String? extension;
+  final DateTime? updatedAt;
 
   bool get isImage => mimeType.startsWith('image/');
   bool get isAudio => mimeType.startsWith('audio/');
@@ -105,6 +113,10 @@ class LessonMedia {
       id: json['id'] as String? ?? '',
       mimeType: json['mime_type'] as String? ?? '',
       visibility: json['visibility'] as String? ?? '',
+      sizeBytes: json['size_bytes'] as int?,
+      checksumSha256: json['checksum_sha256'] as String?,
+      extension: json['extension'] as String?,
+      updatedAt: DateTime.tryParse(json['updated_at'] as String? ?? ''),
     );
   }
 }

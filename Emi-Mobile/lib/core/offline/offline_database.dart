@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
-const offlineDatabaseVersion = 1;
+const offlineDatabaseVersion = 2;
 
 class OfflineDatabase {
   OfflineDatabase(this.database);
@@ -38,9 +38,9 @@ class OfflineDatabase {
     int oldVersion,
     int newVersion,
   ) async {
-    if (oldVersion >= 1 || newVersion < 1) return;
-    for (final table in contentTables) {
-      await db.execute('''
+    if (oldVersion < 1 && newVersion >= 1) {
+      for (final table in contentTables) {
+        await db.execute('''
 CREATE TABLE $table (
   owner_student_id TEXT NOT NULL,
   id TEXT NOT NULL,
@@ -49,11 +49,11 @@ CREATE TABLE $table (
   updated_at TEXT NOT NULL,
   PRIMARY KEY (owner_student_id, id)
 )''');
-      await db.execute(
-        'CREATE INDEX ${table}_owner_updated_idx ON $table (owner_student_id, updated_at)',
-      );
-    }
-    await db.execute('''
+        await db.execute(
+          'CREATE INDEX ${table}_owner_updated_idx ON $table (owner_student_id, updated_at)',
+        );
+      }
+      await db.execute('''
 CREATE TABLE sync_queue (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   owner_student_id TEXT NOT NULL,
@@ -67,9 +67,18 @@ CREATE TABLE sync_queue (
   next_attempt_at TEXT,
   auth_blocked INTEGER NOT NULL DEFAULT 0 CHECK (auth_blocked IN (0, 1))
 )''');
-    await db.execute(
-      'CREATE INDEX sync_queue_owner_fifo_idx ON sync_queue (owner_student_id, auth_blocked, created_at, id)',
-    );
+      await db.execute(
+        'CREATE INDEX sync_queue_owner_fifo_idx ON sync_queue (owner_student_id, auth_blocked, created_at, id)',
+      );
+    }
+    if (oldVersion < 2 && newVersion >= 2) {
+      await db.execute('''DELETE FROM sync_queue WHERE id NOT IN (
+SELECT MIN(id) FROM sync_queue GROUP BY owner_student_id, operation_type, entity_id
+)''');
+      await db.execute(
+        'CREATE UNIQUE INDEX sync_queue_logical_unique_idx ON sync_queue (owner_student_id, operation_type, entity_id)',
+      );
+    }
   }
 
   Future<void> put({
