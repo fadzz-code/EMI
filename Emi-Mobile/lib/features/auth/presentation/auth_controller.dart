@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_error.dart';
 import '../../../core/network/session_invalidation_provider.dart';
+import '../../../core/offline/owner_offline_data_store.dart';
+import '../../../core/offline/providers.dart';
 import '../data/auth_providers.dart';
 import '../domain/auth_repository.dart';
 import '../domain/session_user.dart';
@@ -9,7 +11,10 @@ import 'auth_state.dart';
 
 final authControllerProvider = StateNotifierProvider<AuthController, AuthState>(
   (ref) {
-    final controller = AuthController(ref.watch(authRepositoryProvider));
+    final controller = AuthController(
+      ref.watch(authRepositoryProvider),
+      ownerOfflineDataCleaner: () => ref.read(ownerOfflineDataStoreProvider),
+    );
     ref.listen<int>(sessionInvalidationProvider, (_, _) {
       controller.invalidateSession();
     });
@@ -18,9 +23,14 @@ final authControllerProvider = StateNotifierProvider<AuthController, AuthState>(
 );
 
 class AuthController extends StateNotifier<AuthState> {
-  AuthController(this._repository) : super(const AuthState.unknown());
+  AuthController(
+    this._repository, {
+    Future<OwnerOfflineDataCleaner> Function()? ownerOfflineDataCleaner,
+  }) : _ownerOfflineDataCleaner = ownerOfflineDataCleaner,
+       super(const AuthState.unknown());
 
   final AuthRepository _repository;
+  final Future<OwnerOfflineDataCleaner> Function()? _ownerOfflineDataCleaner;
 
   Future<void> restoreSession() async {
     state = state.copyWith(isLoading: true, clearError: true);
@@ -125,13 +135,21 @@ class AuthController extends StateNotifier<AuthState> {
   }
 
   Future<void> deleteAccount({required String currentPassword}) async {
+    final ownerStudentId = state.user?.id;
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       await _repository.deleteAccount(currentPassword: currentPassword);
-      state = const AuthState.unauthenticated();
     } catch (error) {
       state = state.copyWith(isLoading: false, error: _asAppError(error));
+      return;
     }
+    state = const AuthState.unauthenticated();
+    if (ownerStudentId == null || ownerStudentId.isEmpty) return;
+    try {
+      await (await _ownerOfflineDataCleaner?.call())?.deleteOwner(
+        ownerStudentId,
+      );
+    } catch (_) {}
   }
 
   Future<void> logout() async {

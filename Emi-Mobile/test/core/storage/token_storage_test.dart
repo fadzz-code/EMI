@@ -1,4 +1,5 @@
 import 'package:emi_mobile/core/storage/token_storage.dart';
+import 'package:emi_mobile/features/auth/domain/session_user.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class MemoryTokenStorage implements TokenStorage {
@@ -10,11 +11,19 @@ class MemoryTokenStorage implements TokenStorage {
   @override
   Future<void> deleteAccessToken() async => token = null;
 
+  SessionUser? user;
+
   @override
   Future<String?> readAccessToken() async => token;
 
   @override
+  Future<SessionUser?> readSessionUser() async => user;
+
+  @override
   Future<void> saveAccessToken(String token) async => this.token = token;
+
+  @override
+  Future<void> saveSessionUser(SessionUser user) async => this.user = user;
 }
 
 void main() {

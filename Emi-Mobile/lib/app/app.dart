@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/network/network_status_controller.dart';
 import 'router/app_router.dart';
 import 'theme/emi_theme.dart';
 
@@ -10,6 +11,7 @@ class EmiMobileApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
+    ref.watch(networkStatusControllerProvider);
 
     return MaterialApp.router(
       title: 'EMI Mobile',

@@ -59,6 +59,7 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       _validateUser(result.user);
       await _tokenStorage.saveAccessToken(result.token);
+      await _tokenStorage.saveSessionUser(result.user);
       return result.user;
     } catch (error) {
       throw _map(error);
@@ -101,10 +102,22 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final user = await _remoteDataSource.currentUser();
       _validateUser(user);
+      await _tokenStorage.saveSessionUser(user);
       return user;
     } catch (error) {
-      await _tokenStorage.clearSession();
-      throw _map(error);
+      final mapped = _map(error);
+      if (mapped is AppError && mapped.type == AppErrorType.unauthorized) {
+        await _tokenStorage.clearSession();
+        throw mapped;
+      }
+      if (mapped is AppError &&
+          (mapped.type == AppErrorType.networkUnavailable ||
+              mapped.type == AppErrorType.timeout ||
+              mapped.type == AppErrorType.server)) {
+        final cached = await _tokenStorage.readSessionUser();
+        if (cached != null) return cached;
+      }
+      throw mapped;
     }
   }
 

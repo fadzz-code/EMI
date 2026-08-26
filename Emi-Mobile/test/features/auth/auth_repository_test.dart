@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:emi_mobile/core/errors/app_error.dart';
+import 'package:emi_mobile/core/offline/owner_offline_data_store.dart';
 import 'package:emi_mobile/core/storage/token_storage.dart';
 import 'package:emi_mobile/features/auth/data/auth_remote_data_source.dart';
 import 'package:emi_mobile/features/auth/data/auth_repository_impl.dart';
@@ -22,11 +23,19 @@ class _MemoryTokenStorage implements TokenStorage {
   @override
   Future<void> deleteAccessToken() async => token = null;
 
+  SessionUser? user;
+
   @override
   Future<String?> readAccessToken() async => token;
 
   @override
+  Future<SessionUser?> readSessionUser() async => user;
+
+  @override
   Future<void> saveAccessToken(String token) async => this.token = token;
+
+  @override
+  Future<void> saveSessionUser(SessionUser user) async => this.user = user;
 }
 
 void main() {
@@ -320,22 +329,68 @@ void main() {
     },
   );
 
-  test('delete account success clears controller session', () async {
-    final repository = _ControllerRepository();
-    final controller = AuthController(repository);
+  test(
+    'delete account success clears session and current owner data',
+    () async {
+      final repository = _ControllerRepository();
+      final cleaner = _Cleaner();
+      final controller = AuthController(
+        repository,
+        ownerOfflineDataCleaner: () => Future.value(cleaner),
+      );
+      await controller.login(email: 'user@test', password: 'rahasia');
+
+      await controller.deleteAccount(currentPassword: 'rahasia');
+
+      expect(controller.state.status, AuthStatus.unauthenticated);
+      expect(controller.state.user, isNull);
+      expect(cleaner.owners, ['1']);
+      expect(repository.deleteCalls, 1);
+    },
+  );
+
+  test(
+    'cleanup failure still clears session without repeating remote delete',
+    () async {
+      final repository = _ControllerRepository();
+      final cleaner = _Cleaner(fail: true);
+      final controller = AuthController(
+        repository,
+        ownerOfflineDataCleaner: () => Future.value(cleaner),
+      );
+      await controller.login(email: 'user@test', password: 'rahasia');
+
+      await controller.deleteAccount(currentPassword: 'rahasia');
+
+      expect(controller.state.status, AuthStatus.unauthenticated);
+      expect(cleaner.owners, ['1']);
+      expect(repository.deleteCalls, 1);
+    },
+  );
+
+  test('logout preserves owner offline data', () async {
+    final cleaner = _Cleaner();
+    final controller = AuthController(
+      _ControllerRepository(),
+      ownerOfflineDataCleaner: () => Future.value(cleaner),
+    );
     await controller.login(email: 'user@test', password: 'rahasia');
 
-    await controller.deleteAccount(currentPassword: 'rahasia');
+    await controller.logout();
 
     expect(controller.state.status, AuthStatus.unauthenticated);
-    expect(controller.state.user, isNull);
+    expect(cleaner.owners, isEmpty);
   });
 
   test(
     'delete account failure retains controller session and shows error',
     () async {
       final repository = _ControllerRepository(failDelete: true);
-      final controller = AuthController(repository);
+      final cleaner = _Cleaner();
+      final controller = AuthController(
+        repository,
+        ownerOfflineDataCleaner: () => Future.value(cleaner),
+      );
       await controller.login(email: 'user@test', password: 'rahasia');
 
       await controller.deleteAccount(currentPassword: 'salah');
@@ -344,6 +399,8 @@ void main() {
       expect(controller.state.user, isNotNull);
       expect(controller.state.error, isNotNull);
       expect(controller.state.isLoading, isFalse);
+      expect(cleaner.owners, isEmpty);
+      expect(repository.deleteCalls, 1);
     },
   );
 
@@ -354,10 +411,24 @@ void main() {
   });
 }
 
+class _Cleaner implements OwnerOfflineDataCleaner {
+  _Cleaner({this.fail = false});
+
+  final bool fail;
+  final owners = <String>[];
+
+  @override
+  Future<void> deleteOwner(String ownerStudentId) async {
+    owners.add(ownerStudentId);
+    if (fail) throw StateError('disk failure');
+  }
+}
+
 class _ControllerRepository implements AuthRepository {
   _ControllerRepository({this.failDelete = false});
 
   final bool failDelete;
+  var deleteCalls = 0;
 
   @override
   Future<SessionUser> login({
@@ -366,7 +437,11 @@ class _ControllerRepository implements AuthRepository {
   }) async => SessionUser.fromJson(_user());
 
   @override
+  Future<void> logout() async {}
+
+  @override
   Future<void> deleteAccount({required String currentPassword}) async {
+    deleteCalls++;
     if (failDelete) {
       throw const AppError(
         type: AppErrorType.validation,

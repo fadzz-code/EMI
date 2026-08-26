@@ -41,6 +41,20 @@ class SessionUser {
 
   bool get isApproved => status == 'approved';
 
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'full_name': fullName,
+    'email': email,
+    'phone': phone,
+    'role': role.value,
+    'status': status,
+    'active_class': activeClassName == null ? null : {'name': activeClassName},
+    'active_school': activeSchoolName == null
+        ? null
+        : {'name': activeSchoolName},
+    'avatar': avatarUrl == null ? null : {'url': avatarUrl},
+  };
+
   factory SessionUser.fromJson(Map<String, dynamic> json) {
     final activeClass = json['active_class'];
     final activeSchool = json['active_school'];

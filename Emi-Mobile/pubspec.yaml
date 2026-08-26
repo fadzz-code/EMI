@@ -50,6 +50,8 @@ dependencies:
   share_plus: ^12.0.2
   url_launcher: ^6.3.2
   flutter_bluetooth_serial: ^0.4.0
+  sqflite: ^2.4.3
+  path: ^1.9.1
 
 dev_dependencies:
   flutter_test:
@@ -71,6 +73,7 @@ dev_dependencies:
   # Used by tool/generate_app_icon.dart to programmatically draw the EMI
   # launcher icon (no external image editor required to (re)generate it).
   image: ^4.8.0
+  sqflite_common_ffi: ^2.4.2+1
 
 # Launcher icon generation. Drop the EMI logo at assets/icon/emi_icon.png
 # (min. 512x512, no transparency for the Play Store icon), then run:

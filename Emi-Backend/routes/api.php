@@ -44,6 +44,7 @@ use App\Http\Controllers\Api\StudentChatbotConversationController;
 use App\Http\Controllers\Api\StudentCultureItemController;
 use App\Http\Controllers\Api\StudentDashboardController;
 use App\Http\Controllers\Api\StudentModuleController;
+use App\Http\Controllers\Api\StudentOfflineManifestController;
 use App\Http\Controllers\Api\StudentProgressController;
 use App\Http\Controllers\Api\StudentProgressReportController;
 use App\Http\Controllers\Api\StudentQuizController;
@@ -286,6 +287,7 @@ Route::prefix('v1')->group(function () {
         Route::get('dashboard/summary', [StudentDashboardController::class, 'summary']);
         Route::get('reports/progress', [StudentProgressReportController::class, 'show']);
         Route::get('reports/quiz-results', [StudentQuizResultReportController::class, 'index']);
+        Route::get('offline/manifest', StudentOfflineManifestController::class);
         Route::get('modules', [StudentModuleController::class, 'index']);
         Route::get('modules/{id}', [StudentModuleController::class, 'show']);
         Route::post('modules/{id}/start', [StudentModuleController::class, 'start']);
