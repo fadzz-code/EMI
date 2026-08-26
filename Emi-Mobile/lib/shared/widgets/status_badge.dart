@@ -61,8 +61,8 @@ class EmiStatusBadge extends StatelessWidget {
 
   static _StatusColors _colorsFor(EmiStatusTone tone) => switch (tone) {
     EmiStatusTone.draft => const _StatusColors(
-      Color(0xFFF3EAE4),
-      Color(0xFF5F4B42),
+      Color(0xFFFFF3CC),
+      Color(0xFF8A6500),
     ),
     EmiStatusTone.published => const _StatusColors(
       Color(0xFFDDF5E8),

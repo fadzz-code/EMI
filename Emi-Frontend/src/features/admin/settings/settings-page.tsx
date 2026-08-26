@@ -3,7 +3,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { Alert, Badge, Button, ErrorState, FormField, Input, LoadingState } from "@/components/ui";
+import { Badge, Button, ErrorState, FormField, Input, LoadingState, MutationAlert } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { ProfileAvatarUpload } from "@/features/auth/profile-avatar-upload";
 import { getFirstApiError } from "@/lib/api-client";
@@ -91,8 +91,8 @@ export function SettingsPage() {
                 <FormField label="Email"><Input className={disabledFieldClass} disabled value={user.email} /></FormField>
                 <FormField label="Role dan status"><div className="flex min-h-11 items-center gap-2 rounded-xl border-2 border-border bg-surface-muted px-3"><Badge tone="blue">{roleLabel(user.role)}</Badge><Badge tone="neutral">{user.status}</Badge></div></FormField>
                 <div className="grid gap-3 md:col-span-2">
-                  {profileSuccess ? <Alert tone="success">{profileSuccess}</Alert> : null}
-                  {profileMutation.error ? <Alert tone="error">{getFirstApiError(profileMutation.error)}</Alert> : null}
+                  <MutationAlert eventKey={profileMutation.submittedAt} tone="success" visible={Boolean(profileSuccess)}>{profileSuccess}</MutationAlert>
+                  <MutationAlert eventKey={profileMutation.submittedAt} tone="error" visible={Boolean(profileMutation.error)}>{getFirstApiError(profileMutation.error)}</MutationAlert>
                   <Button disabled={profileMutation.isPending} type="submit">{profileMutation.isPending ? "Menyimpan..." : "Simpan profil"}</Button>
                 </div>
               </div>
@@ -131,8 +131,8 @@ export function SettingsPage() {
                     setBannerPreview(file ? URL.createObjectURL(file) : null);
                   }} type="file" />
                 </FormField>
-                {bannerSuccess ? <Alert tone="success">{bannerSuccess}</Alert> : null}
-                {bannerMutation.error ? <Alert tone="error">{getFirstApiError(bannerMutation.error)}</Alert> : null}
+                <MutationAlert eventKey={bannerMutation.submittedAt} tone="success" visible={Boolean(bannerSuccess)}>{bannerSuccess}</MutationAlert>
+                <MutationAlert eventKey={bannerMutation.submittedAt} tone="error" visible={Boolean(bannerMutation.error)}>{getFirstApiError(bannerMutation.error)}</MutationAlert>
                 <Button disabled={bannerMutation.isPending || Boolean(bannerFileError)} type="submit">{bannerMutation.isPending ? "Menyimpan..." : "Simpan tampilan"}</Button>
               </div>
             </form>
@@ -149,8 +149,8 @@ export function SettingsPage() {
               <FormField label="Password baru"><Input autoComplete="new-password" minLength={8} name="password" required type="password" /></FormField>
               <FormField label="Konfirmasi password baru"><Input autoComplete="new-password" minLength={8} name="password_confirmation" required type="password" /></FormField>
               <div className="grid gap-3 md:col-span-3">
-                {passwordSuccess ? <Alert tone="success">{passwordSuccess}</Alert> : null}
-                {passwordMutation.error ? <Alert tone="error">{getFirstApiError(passwordMutation.error)}</Alert> : null}
+                <MutationAlert eventKey={passwordMutation.submittedAt} tone="success" visible={Boolean(passwordSuccess)}>{passwordSuccess}</MutationAlert>
+                <MutationAlert eventKey={passwordMutation.submittedAt} tone="error" visible={Boolean(passwordMutation.error)}>{getFirstApiError(passwordMutation.error)}</MutationAlert>
                 <Button disabled={passwordMutation.isPending} type="submit">{passwordMutation.isPending ? "Memperbarui..." : "Ubah password"}</Button>
               </div>
             </form>

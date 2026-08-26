@@ -768,9 +768,11 @@ class _QuizCards extends StatelessWidget {
                   TeacherStatusChip(label: _status(item.status)),
                   if (!compact)
                     TeacherStatusChip(
-                      label: item.status != 'draft' || item.attemptsCount > 0
+                      label: item.status == 'published'
                           ? 'Terkunci'
-                          : 'Draft bisa diedit',
+                          : item.attemptsCount > 0
+                          ? 'Sudah ada pengerjaan'
+                          : 'Bisa diedit',
                       color: TeacherStyle.tint,
                     ),
                 ],
@@ -794,7 +796,7 @@ class _QuizCards extends StatelessWidget {
                       onPressed: () =>
                           context.push('/teacher/quizzes/${item.id}'),
                       child: Text(
-                        item.status != 'draft' || item.attemptsCount > 0
+                        item.status == 'published' || item.attemptsCount > 0
                             ? 'Lihat Detail'
                             : 'Buka Builder',
                       ),

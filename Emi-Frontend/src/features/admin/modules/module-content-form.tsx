@@ -5,6 +5,7 @@ import { type ChangeEvent, type FormEvent, useMemo, useRef, useState } from "rea
 import {
   Alert,
   Button,
+  MutationAlert,
   FilePreview,
   FormField,
   Input,
@@ -112,6 +113,7 @@ export function ModuleContentForm({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  const [uploadCounter, setUploadCounter] = useState(0);
   const uploadSequence = useRef(0);
 
   const mediaPurpose = useMemo(
@@ -124,6 +126,7 @@ export function ModuleContentForm({
     const contentType = form.content_type;
     const sequence = uploadSequence.current + 1;
     uploadSequence.current = sequence;
+    setUploadCounter((current) => current + 1);
     setMediaFile(file);
     setForm((current) => ({ ...current, media_id: "" }));
     setUploadError(null);
@@ -186,8 +189,8 @@ export function ModuleContentForm({
 
   return (
     <form className="grid gap-4" onSubmit={handleSubmit}>
-      {uploadError ? <Alert tone="error">{uploadError}</Alert> : null}
-      {uploadSuccess ? <Alert tone="success">{uploadSuccess}</Alert> : null}
+      <MutationAlert eventKey={uploadCounter} tone="error" visible={Boolean(uploadError)}>{uploadError}</MutationAlert>
+      <MutationAlert eventKey={uploadCounter} tone="success" visible={Boolean(uploadSuccess)}>{uploadSuccess}</MutationAlert>
 
       <FormField label="Judul materi">
         <Input

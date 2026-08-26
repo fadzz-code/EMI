@@ -3,7 +3,7 @@
 import { type ChangeEvent, type Dispatch, type FormEvent, type SetStateAction, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
-import { Alert, Button, Card, CardContent, CardHeader, FormField, InfoPopover, Input, Select, Textarea } from "@/components/ui";
+import { Button, Card, CardContent, CardHeader, FormField, InfoPopover, Input, MutationAlert, Select, Textarea } from "@/components/ui";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { teacherService } from "./teacher-service";
@@ -62,6 +62,7 @@ export function TeacherQuizQuestionForm({ classQuizId, defaultOrder, editingQues
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(() => existingImageUrl(editingQuestion));
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadAttempt, setUploadAttempt] = useState(0);
   const uploadSequence = useRef(0);
 
   const saveMutation = useMutation({
@@ -73,6 +74,7 @@ export function TeacherQuizQuestionForm({ classQuizId, defaultOrder, editingQues
     const file = event.target.files?.[0] ?? null;
     const sequence = uploadSequence.current + 1;
     uploadSequence.current = sequence;
+    setUploadAttempt(sequence);
     setUploadError(null);
 
     if (!file) {
@@ -137,8 +139,8 @@ export function TeacherQuizQuestionForm({ classQuizId, defaultOrder, editingQues
       <CardHeader><h2 className="text-xl font-black text-ink">{editingQuestion ? "Edit Soal" : "Tambah Soal"}</h2></CardHeader>
       <CardContent>
         <form className="grid gap-4" onSubmit={submit}>
-          {saveMutation.error ? <Alert tone="error">{getFirstApiError(saveMutation.error)}</Alert> : null}
-          {uploadError ? <Alert tone="error">{uploadError}</Alert> : null}
+          <MutationAlert eventKey={saveMutation.submittedAt} tone="error" visible={Boolean(saveMutation.error)}>{getFirstApiError(saveMutation.error)}</MutationAlert>
+          <MutationAlert eventKey={uploadAttempt} tone="error" visible={Boolean(uploadError)}>{uploadError}</MutationAlert>
 
           <div className="grid gap-4 md:grid-cols-[1fr_160px_140px]">
             <FormField label="Tipe soal">

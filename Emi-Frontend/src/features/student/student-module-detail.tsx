@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, BookOpen, Play } from "lucide-react";
 
-import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, StatsCard } from "@/components/ui";
+import { Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, MutationAlert, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
@@ -47,7 +47,7 @@ export function StudentModuleDetail({ moduleId }: { moduleId: string }) {
 
       {studentModule ? (
         <>
-          {startMutation.error ? <Alert tone="error">{getFirstApiError(startMutation.error)}</Alert> : null}
+          {startMutation.error ? <MutationAlert eventKey={startMutation.submittedAt} tone="error">{getFirstApiError(startMutation.error)}</MutationAlert> : null}
           <header className="grid gap-6 rounded-3xl border-2 border-border bg-[var(--color-primary-muted)] p-6 shadow-emi sm:p-8 lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
             <div className="grid gap-5">
               <Badge tone={badgeToneForProgress(studentModule.progress.status)}>{statusLabel(studentModule.progress.status)}</Badge>

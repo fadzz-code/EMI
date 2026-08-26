@@ -18,6 +18,7 @@ import {
   Input,
   LoadingState,
   Modal,
+  MutationAlert,
   Pagination,
   Select,
   Table,
@@ -134,6 +135,7 @@ export function ClassDetailScreen({ classId }: { classId: string }) {
     },
   });
 
+  const resultEventKey = Math.max(updateClassMutation.submittedAt, assignTeacherMutation.submittedAt, assignStudentMutation.submittedAt);
   const actionError =
     updateClassMutation.error ?? assignTeacherMutation.error ?? assignStudentMutation.error;
   const schoolClass = classQuery.data;
@@ -176,8 +178,8 @@ export function ClassDetailScreen({ classId }: { classId: string }) {
         Kembali ke Sekolah & Kelas
       </Link>
 
-      {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
-      {actionError ? <Alert tone="error">{getFirstApiError(actionError)}</Alert> : null}
+      <MutationAlert eventKey={resultEventKey} tone="success" visible={Boolean(successMessage)}>{successMessage}</MutationAlert>
+      <MutationAlert eventKey={resultEventKey} tone="error" visible={Boolean(actionError)}>{getFirstApiError(actionError)}</MutationAlert>
 
       {classQuery.isLoading ? <LoadingState title="Memuat detail kelas" /> : null}
       {classQuery.isError ? (

@@ -2,17 +2,19 @@
 
 import { type FormEvent, useState } from "react";
 
-import { Alert, Button, FormField, Input, Textarea } from "@/components/ui";
+import { Button, FormField, Input, MutationAlert, Textarea } from "@/components/ui";
 import { getFirstApiError } from "@/lib/api-client";
 
 export function TeacherModuleCreateForm({
   isSubmitting,
   error,
+  submittedAt,
   onCancel,
   onSubmit,
 }: {
   isSubmitting: boolean;
   error?: unknown;
+  submittedAt: number;
   onCancel: () => void;
   onSubmit: (payload: { title: string; description?: string | null; sort_order?: number }) => void;
 }) {
@@ -26,7 +28,7 @@ export function TeacherModuleCreateForm({
 
   return (
     <form className="grid gap-4" onSubmit={handleSubmit}>
-      {error ? <Alert tone="error">{getFirstApiError(error)}</Alert> : null}
+      <MutationAlert eventKey={submittedAt} tone="error" visible={Boolean(error)}>{getFirstApiError(error)}</MutationAlert>
       <FormField label="Judul Modul">
         <Input autoFocus maxLength={255} onChange={(event) => setTitle(event.target.value)} required value={title} />
       </FormField>

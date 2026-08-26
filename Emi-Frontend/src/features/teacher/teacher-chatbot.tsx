@@ -4,7 +4,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { History, MessageSquarePlus, RotateCcw, SendHorizontal, Sparkles, Trash2, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { Alert, Badge, Button, ConfirmDialog, Textarea } from "@/components/ui";
+import { Alert, Badge, Button, ConfirmDialog, MutationAlert, Textarea } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
@@ -45,6 +45,7 @@ export function TeacherChatbot() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const scrollAnchorRef = useRef<HTMLDivElement>(null);
+  const [localAttempt, setLocalAttempt] = useState(0);
 
   const conversationsQuery = useQuery({
     queryKey: ["teacher", "chatbot", "conversations"],
@@ -117,6 +118,7 @@ export function TeacherChatbot() {
   }
 
   function sendQuestion(question: string) {
+    setLocalAttempt((attempt) => attempt + 1);
     const trimmed = question.trim();
 
     if (!trimmed) {
@@ -197,9 +199,8 @@ export function TeacherChatbot() {
 
         <div className="min-h-0 flex-1 overflow-y-auto bg-surface-muted p-5 sm:p-8">
           <div className="grid gap-6">
-            {formError ? <Alert tone="error">{formError}</Alert> : null}
-            {apiError ? (
-              <Alert tone="error">
+            <MutationAlert eventKey={localAttempt} tone="error" visible={Boolean(formError)}>{formError}</MutationAlert>
+            <MutationAlert eventKey={sendMutation.submittedAt} tone="error" visible={Boolean(apiError)}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span>{apiError}</span>
                   <Button className="min-h-9 px-3 py-1 text-xs" onClick={retryPending} type="button" variant="secondary">
@@ -207,8 +208,7 @@ export function TeacherChatbot() {
                     Coba lagi
                   </Button>
                 </div>
-              </Alert>
-            ) : null}
+              </MutationAlert>
             {detailQuery.isError ? <Alert tone="error">Gagal memuat riwayat percakapan.</Alert> : null}
 
             {messages.length === 0 && !detailQuery.isLoading ? (

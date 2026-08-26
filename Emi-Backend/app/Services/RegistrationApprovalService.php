@@ -10,14 +10,17 @@ use App\Models\StudentClassMembership;
 use App\Models\TeacherClassAssignment;
 use App\Models\User;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class RegistrationApprovalService
 {
-    public function approve(RegistrationRequest $registrationRequest, User $admin, ?string $reviewNote = null): RegistrationRequest
+    public function __construct(private readonly ClassTemplateBackfillService $templateBackfillService) {}
+
+    public function approve(RegistrationRequest $registrationRequest, User $admin, ?string $reviewNote = null, ?Request $httpRequest = null): RegistrationRequest
     {
         try {
-            return DB::transaction(function () use ($registrationRequest, $admin, $reviewNote) {
+            return DB::transaction(function () use ($registrationRequest, $admin, $reviewNote, $httpRequest) {
                 $request = RegistrationRequest::query()
                     ->whereKey($registrationRequest->id)
                     ->lockForUpdate()
@@ -51,6 +54,10 @@ class RegistrationApprovalService
                     'review_note' => $reviewNote,
                     'reviewed_at' => $reviewedAt,
                 ])->save();
+
+                if ($request->requested_role === 'teacher') {
+                    $this->templateBackfillService->backfill($schoolClass, $user, $httpRequest ?? request());
+                }
 
                 return $request->load(['user', 'school', 'schoolClass', 'reviewedBy']);
             });

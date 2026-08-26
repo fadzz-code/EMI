@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ClipboardList } from "lucide-react";
 
-import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, Pagination, StatsCard } from "@/components/ui";
+import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState, MutationAlert, Pagination, StatsCard } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
@@ -64,7 +64,7 @@ export function StudentQuizDetail({ quizId }: { quizId: string }) {
 
       {quiz ? (
         <>
-          {startMutation.error ? <Alert tone="error">{getFirstApiError(startMutation.error)}</Alert> : null}
+          {startMutation.error ? <MutationAlert eventKey={startMutation.submittedAt} tone="error">{getFirstApiError(startMutation.error)}</MutationAlert> : null}
           {quiz.attempt_limit_reached ? <Alert tone="warning">Batas percobaan tercapai.</Alert> : null}
 
           <header className="grid gap-6 rounded-3xl border-2 border-border bg-[var(--color-primary-muted)] p-5 shadow-emi sm:p-8 lg:grid-cols-[1.3fr_0.7fr] lg:items-center">

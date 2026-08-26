@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { Alert, Button } from "@/components/ui";
+import { Button, MutationAlert } from "@/components/ui";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { useAuth } from "./auth-provider";
@@ -75,7 +75,7 @@ export function ProfileAvatarUpload({
 
   return (
     <div className="grid gap-3">
-      {error ? <Alert tone="error">{getFirstApiError(error)}</Alert> : null}
+      {error ? <MutationAlert eventKey={Math.max(uploadMutation.submittedAt, removeMutation.submittedAt)} tone="error">{getFirstApiError(error)}</MutationAlert> : null}
       <div className="flex items-center gap-4">
         <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-border bg-surface text-2xl font-black text-ink shadow-emi">
           {displayUrl ? (

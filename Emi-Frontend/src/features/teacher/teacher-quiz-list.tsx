@@ -6,21 +6,18 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Archive, BarChart3, Eye, LockKeyhole, Pencil, Plus, Send, Trash2 } from "lucide-react";
 
-import { Alert, Badge, Button, Card, CardContent, CardHeader, ConfirmDialog, EmptyState, ErrorState, Input, LoadingState, Modal, PageHeader, StatsCard, Textarea } from "@/components/ui";
+import { Alert, Badge, Button, Card, CardContent, CardHeader, ConfirmDialog, EmptyState, ErrorState, Input, LoadingState, Modal, MutationAlert, PageHeader, StatsCard, Textarea } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 import { teacherRoutes } from "@/lib/routes";
 
 import { teacherService } from "./teacher-service";
-import { quizLifecycle } from "./teacher-workflow";
+import { quizHasAttempts, quizLifecycle, quizPublished } from "./teacher-workflow";
 import type { TeacherClassQuiz } from "./types";
 import { formatCount, formatDate, formatOptional, statusLabel } from "./teacher-utils";
 
-const lockedMessage = "Konten kuis terkunci saat sedang diterbitkan atau sudah memiliki percobaan siswa. Arsipkan kuis sebelum mengubahnya.";
-
-function isQuizLocked(quiz: TeacherClassQuiz) {
-  return quiz.status === "published" || (quiz.attempts_count ?? 0) > 0;
-}
+const publishedMessage = "Kuis terbit terkunci. Arsipkan kuis sebelum mengubahnya.";
+const attemptsMessage = "Kuis sudah memiliki percobaan siswa. Soal tidak dapat diubah dan kuis tidak dapat dihapus.";
 
 export function TeacherQuizList() {
   const { token, user } = useAuth();
@@ -94,7 +91,7 @@ export function TeacherQuizList() {
         </Button>
       </div>
 
-      {actionError ? <Alert tone="error">{getFirstApiError(actionError)}</Alert> : null}
+      <MutationAlert eventKey={Math.max(archiveMutation.submittedAt, publishMutation.submittedAt, deleteMutation.submittedAt)} tone="error" visible={Boolean(actionError)}>{getFirstApiError(actionError)}</MutationAlert>
       {quizzesQuery.isLoading ? <LoadingState title="Memuat kuis" /> : null}
       {quizzesQuery.isError ? <ErrorState description={getFirstApiError(quizzesQuery.error)} onRetry={() => void quizzesQuery.refetch()} title="Gagal memuat kuis" /> : null}
 
@@ -110,13 +107,14 @@ export function TeacherQuizList() {
             </section>
             <div className="grid auto-rows-fr gap-4 md:grid-cols-2">
               {quizzes.map((quiz) => {
-                const locked = isQuizLocked(quiz);
+                const published = quizPublished(quiz);
+                const hasAttempts = quizHasAttempts(quiz);
                 return (
                   <Card className="flex h-full flex-col transition hover:-translate-y-1 hover:shadow-emi" key={quiz.id}>
                     <CardHeader>
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                          <div className="flex flex-wrap gap-2"><Badge tone={quiz.status === "published" ? "blue" : "neutral"}>{statusLabel(quiz.status)}</Badge>{locked ? <Badge tone="yellow"><LockKeyhole className="mr-1 size-3" />Terkunci</Badge> : <Badge tone="blue"><Pencil className="mr-1 size-3" />Bisa diedit</Badge>}</div>
+                          <div className="flex flex-wrap gap-2"><Badge tone={published ? "blue" : "neutral"}>{statusLabel(quiz.status)}</Badge>{published ? <Badge tone="yellow"><LockKeyhole className="mr-1 size-3" />Terkunci</Badge> : <Badge tone="blue"><Pencil className="mr-1 size-3" />Bisa diedit</Badge>}{hasAttempts ? <Badge tone="yellow">Sudah ada attempt</Badge> : null}</div>
                           <h2 className="mt-2 text-xl font-black text-ink">{quiz.title}</h2>
                           <p className="mt-1 text-sm font-bold text-muted">{quiz.class?.name ?? user?.active_class?.name ?? "Kelas aktif"}</p>
                         </div>
@@ -127,7 +125,8 @@ export function TeacherQuizList() {
                       </div>
                     </CardHeader>
                     <CardContent className="flex flex-1 flex-col">
-                      {locked ? <Alert tone="warning">{lockedMessage}</Alert> : null}
+                      {published ? <Alert tone="warning">{publishedMessage}</Alert> : null}
+                      {hasAttempts ? <Alert tone="warning">{attemptsMessage}</Alert> : null}
                       <p className="line-clamp-2 text-sm font-semibold leading-6 text-muted">{formatOptional(quiz.description)}</p>
                       <dl className="mt-auto grid gap-3 pt-4 text-sm sm:grid-cols-2">
                         <div className="rounded-xl border-2 border-border bg-surface-muted p-3"><dt className="font-black uppercase text-muted">Durasi</dt><dd className="mt-1 font-bold text-ink">{formatCount(quiz.duration_minutes)} menit</dd></div>
@@ -165,7 +164,7 @@ export function TeacherQuizList() {
                           className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[var(--radius-control)] border-2 border-danger/40 bg-surface px-3 text-xs font-black text-danger transition hover:-translate-y-0.5 hover:border-danger disabled:opacity-50"
                           disabled={deleteMutation.isPending || quizLifecycle(quiz) !== "delete"}
                           onClick={() => setDeleteTarget(quiz)}
-                          title={quizLifecycle(quiz) !== "delete" ? "Kuis yang masih published harus diarsipkan terlebih dahulu sebelum dihapus." : undefined}
+                           title={hasAttempts ? "Kuis yang sudah memiliki attempt tidak dapat dihapus." : published ? "Kuis yang masih published harus diarsipkan terlebih dahulu sebelum dihapus." : undefined}
                           type="button"
                         >
                           <Trash2 className="size-4" strokeWidth={2.5} /> Hapus
@@ -197,7 +196,7 @@ export function TeacherQuizList() {
             status: "draft",
           });
         }}>
-          {createMutation.error ? <Alert tone="error">{getFirstApiError(createMutation.error)}</Alert> : null}
+          <MutationAlert eventKey={createMutation.submittedAt} tone="error" visible={Boolean(createMutation.error)}>{getFirstApiError(createMutation.error)}</MutationAlert>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="grid gap-2 text-sm font-black text-ink">Kelas<select className="min-h-11 rounded-[var(--radius-control)] border-2 border-border bg-surface px-3 py-2 text-sm font-semibold text-ink" defaultValue={defaultClassId} name="class_id" required>{user?.active_class?.id ? <option value={user.active_class.id}>{user.active_class.name ?? "Kelas aktif"}</option> : null}{classesQuery.data?.items.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
             <label className="grid gap-2 text-sm font-black text-ink">Judul<Input autoFocus name="title" required /></label>

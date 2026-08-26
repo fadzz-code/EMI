@@ -4,8 +4,6 @@ import { useState, type ChangeEvent } from "react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { Check, Search } from "lucide-react";
-import { toast } from "sonner";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Modal } from "@/components/ui/modal";
+import { MutationAlert } from "@/components/ui/alert";
 import { Pagination } from "@/components/ui/pagination";
 import {
   Table,
@@ -49,25 +48,26 @@ export function TeacherApprovalList() {
   const [selectedRequest, setSelectedRequest] = useState<RegistrationRequest | null>(null);
 
   const [reviewNote, setReviewNote] = useState("");
+  const [approved, setApproved] = useState(false);
   const handleApprove = () => {
 
     approveMutation.mutate(
       { id: selectedRequest?.id as string, review_note: reviewNote },
       {
         onSuccess: () => {
-          toast.success("Akun siswa disetujui");
+          setApproved(true);
           setSelectedRequest(null);
           setReviewNote("");
         },
-        onError: (error: unknown) => {
-          toast.error(getFirstApiError(error));
-        },
+        onError: () => setApproved(false),
       }
     );
   };
 
   return (
     <div className="space-y-6">
+      <MutationAlert eventKey={approveMutation.submittedAt} tone="success" visible={approved}>Akun siswa disetujui</MutationAlert>
+      <MutationAlert eventKey={approveMutation.submittedAt} tone="error" visible={Boolean(approveMutation.error)}>{getFirstApiError(approveMutation.error)}</MutationAlert>
       <Card>
         <CardHeader>
           <h2 className="text-xl font-semibold">Daftar Pendaftaran</h2>

@@ -33,6 +33,16 @@ export function formatDate(value: string | null | undefined) {
   }).format(new Date(value));
 }
 
+import type { BadgeTone } from "@/components/ui/badge";
+
+export function teacherStatusTone(
+  status: string | null | undefined,
+): BadgeTone {
+  if (status === "published") return "green";
+  if (status === "draft") return "yellow";
+  return "neutral";
+}
+
 export function statusLabel(status: string | null | undefined) {
   if (status === "active") {
     return "Aktif";

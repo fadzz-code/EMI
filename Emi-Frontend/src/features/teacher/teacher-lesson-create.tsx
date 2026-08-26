@@ -2,7 +2,7 @@
 
 import { type ChangeEvent, type FormEvent, useState } from "react";
 
-import { Alert, Button, FilePreview, FormField, Input, Select, Textarea, UploadComponent } from "@/components/ui";
+import { Button, FilePreview, FormField, Input, MutationAlert, Select, Textarea, UploadComponent } from "@/components/ui";
 
 import { acceptForLesson, INVALID_LESSON_MEDIA_MESSAGE, isValidLessonMedia, lessonPayload, mediaPurposeForLesson, validateLessonForm } from "./teacher-lesson-workflow";
 import { teacherService } from "./teacher-service";
@@ -29,6 +29,7 @@ export function TeacherLessonCreateForm({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [localAttempt, setLocalAttempt] = useState(0);
 
   function changeType(type: TeacherLessonContentType) {
     setSelectedFile(null);
@@ -50,6 +51,7 @@ export function TeacherLessonCreateForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setLocalAttempt((attempt) => attempt + 1);
     let mediaId = form.media_id;
 
     if (selectedFile) {
@@ -80,7 +82,7 @@ export function TeacherLessonCreateForm({
 
   return (
     <form className="grid gap-4" onSubmit={(event) => void handleSubmit(event)}>
-      {localError ? <Alert tone="error">{localError}</Alert> : null}
+      <MutationAlert eventKey={localAttempt} tone="error" visible={Boolean(localError)}>{localError}</MutationAlert>
       <FormField label="Judul Materi">
         <Input disabled={busy} onChange={(event) => setForm({ ...form, title: event.target.value })} required value={form.title} />
       </FormField>

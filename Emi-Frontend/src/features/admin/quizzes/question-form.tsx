@@ -4,8 +4,8 @@ import Image from "next/image";
 import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from "react";
 
 import {
-  Alert,
   Button,
+  MutationAlert,
   FilePreview,
   FormField,
   InfoPopover,
@@ -136,7 +136,9 @@ export function QuestionForm({
   const [imageSize, setImageSize] = useState<number | null>(question?.image_media?.size_bytes ?? null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadCounter, setUploadCounter] = useState(0);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [resultCounter, setResultCounter] = useState(0);
   const uploadSequence = useRef(0);
   const ownedMedia = useRef(new Set<string>());
   const keptMedia = useRef<string | null>(null);
@@ -165,6 +167,7 @@ export function QuestionForm({
 
   async function uploadImage(file: File) {
     const sequence = ++uploadSequence.current;
+    setUploadCounter((current) => current + 1);
     const previousId = form.image_media_id;
     setImageFile(file);
     setImageUrl(URL.createObjectURL(file));
@@ -242,6 +245,7 @@ export function QuestionForm({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaveError(null);
+    setResultCounter((current) => current + 1);
     try {
       await onSubmit(toPayload(form), () => {
         keptMedia.current = form.image_media_id || null;
@@ -264,8 +268,8 @@ export function QuestionForm({
 
   return (
     <form className="grid min-w-0 max-w-full gap-5 [&>*]:min-w-0" onSubmit={handleSubmit}>
-      {uploadError ? <Alert tone="error">{uploadError}</Alert> : null}
-      {saveError ? <Alert tone="error">{saveError}</Alert> : null}
+      <MutationAlert eventKey={uploadCounter} tone="error" visible={Boolean(uploadError)}>{uploadError}</MutationAlert>
+      <MutationAlert eventKey={resultCounter} tone="error" visible={Boolean(saveError)}>{saveError}</MutationAlert>
 
       <section className="grid min-w-0 gap-4 rounded-xl border-2 border-border bg-surface-muted p-4">
         <h3 className="text-lg font-black text-ink">Pengaturan Soal</h3>

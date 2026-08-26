@@ -5,7 +5,7 @@ import { type FormEvent, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { BookOpen, ClipboardList, Upload } from "lucide-react";
 
-import { Alert, Badge, Button, Card, CardContent, CardHeader, FilePreview, FormField, Input, PageHeader, Select, UploadComponent } from "@/components/ui";
+import { Badge, Button, Card, CardContent, CardHeader, FilePreview, FormField, Input, MutationAlert, PageHeader, Select, UploadComponent } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 import { teacherRoutes } from "@/lib/routes";
@@ -70,8 +70,8 @@ export function TeacherMediaPage() {
         <CardHeader><div className="flex items-center gap-3"><span className="inline-flex size-12 items-center justify-center rounded-xl border-2 border-border bg-surface-muted text-primary"><Upload className="size-6" strokeWidth={2.5} /></span><h2 className="text-xl font-black text-primary">Upload Media</h2></div></CardHeader>
         <CardContent>
           <form className="grid gap-4" onSubmit={submit}>
-            {uploadMutation.error ? <Alert tone="error">{getFirstApiError(uploadMutation.error)}</Alert> : null}
-            {uploaded ? <Alert tone="success">Media berhasil diunggah. Simpan media ID jika ingin dipakai pada editor yang mendukung attachment.</Alert> : null}
+            <MutationAlert eventKey={uploadMutation.submittedAt} tone="error" visible={Boolean(uploadMutation.error)}>{getFirstApiError(uploadMutation.error)}</MutationAlert>
+            <MutationAlert eventKey={uploadMutation.submittedAt} tone="success" visible={Boolean(uploaded)}>Media berhasil diunggah. Simpan media ID jika ingin dipakai pada editor yang mendukung attachment.</MutationAlert>
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField label="Kegunaan media">
                 <Select name="purpose">

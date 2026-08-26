@@ -3,7 +3,7 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Bot, CheckCheck, ListChecks, Mic, TriangleAlert, Volume2 } from "lucide-react";
 
-import { Alert, Badge, Button, Card, CardContent, CardHeader, ConfirmDialog, EmptyState, FormField, Input, LoadingState, Pagination, Textarea } from "@/components/ui";
+import { Alert, Badge, Button, Card, CardContent, CardHeader, ConfirmDialog, EmptyState, FormField, Input, LoadingState, MutationAlert, Pagination, Textarea } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
@@ -47,6 +47,7 @@ export function TeacherSpeakingResults() {
   const [deleteTarget, setDeleteTarget] = useState<TeacherSpeakingAttempt | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [actionAttempt, setActionAttempt] = useState(0);
 
   useEffect(() => {
     if (!token) return;
@@ -115,6 +116,7 @@ export function TeacherSpeakingResults() {
     event.preventDefault();
     if (!token || !selectedAttempt) return;
     const attemptId = selectedAttempt.id;
+    setActionAttempt((attempt) => attempt + 1);
     setIsSubmitting(true);
     try {
       const updated = await teacherService.submitSpeakingFeedback(token, attemptId, {
@@ -134,6 +136,7 @@ export function TeacherSpeakingResults() {
 
   async function deleteAttempt() {
     if (!token || !deleteTarget) return;
+    setActionAttempt((attempt) => attempt + 1);
     setIsSubmitting(true);
     try {
       await teacherService.deleteSpeakingAttempt(token, deleteTarget.id);
@@ -167,7 +170,7 @@ export function TeacherSpeakingResults() {
         <p className="max-w-3xl text-base font-semibold leading-6 text-muted">Dengarkan audio siswa, baca skor awal AI, lalu simpan skor dan feedback guru sebagai tinjauan manual.</p>
       </section>
       {error ? <Alert tone="error">{error}</Alert> : null}
-      {message ? <Alert tone="success">{message}</Alert> : null}
+      <MutationAlert eventKey={actionAttempt} tone="success" visible={Boolean(message)}>{message}</MutationAlert>
       <Alert tone="info">
         Analisis AI merupakan penilaian awal. Guru tetap menentukan nilai akhir.
       </Alert>

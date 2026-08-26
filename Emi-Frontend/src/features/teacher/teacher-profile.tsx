@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { Alert, Button, Card, CardContent, CardHeader, ErrorState, Input, LoadingState, PageHeader } from "@/components/ui";
+import { Alert, Button, Card, CardContent, CardHeader, ErrorState, Input, LoadingState, MutationAlert, PageHeader } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { DeleteAccountForm } from "@/features/auth/delete-account-form";
 import { ProfileAvatarUpload } from "@/features/auth/profile-avatar-upload";
@@ -73,8 +73,8 @@ export function TeacherProfile() {
                   updateMutation.mutate({ full_name: fullName, phone: phone || null });
                 }}
               >
-                {success ? <Alert tone="success">Profil berhasil diperbarui.</Alert> : null}
-                {updateMutation.error ? <Alert tone="error">{getFirstApiError(updateMutation.error)}</Alert> : null}
+                <MutationAlert eventKey={updateMutation.submittedAt} tone="success" visible={success}>Profil berhasil diperbarui.</MutationAlert>
+                <MutationAlert eventKey={updateMutation.submittedAt} tone="error" visible={Boolean(updateMutation.error)}>{getFirstApiError(updateMutation.error)}</MutationAlert>
                 <label className="grid gap-2 text-sm font-black text-ink">
                   Nama lengkap
                   <Input defaultValue={profile.full_name} name="full_name" required />

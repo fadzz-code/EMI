@@ -3,8 +3,8 @@
 import { type FormEvent, useState } from "react";
 
 import {
-  Alert,
   Button,
+  MutationAlert,
   FormField,
   Input,
   Select,
@@ -79,6 +79,7 @@ export function DictionaryEntryForm({
   const [isUploadingAudio, setIsUploadingAudio] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
   const [audioSuccess, setAudioSuccess] = useState<string | null>(null);
+  const [resultCounter, setResultCounter] = useState(0);
 
   async function uploadAudio() {
     if (!audioFile) {
@@ -87,6 +88,7 @@ export function DictionaryEntryForm({
 
     setAudioError(null);
     setAudioSuccess(null);
+    setResultCounter((current) => current + 1);
     setIsUploadingAudio(true);
 
     try {
@@ -107,8 +109,8 @@ export function DictionaryEntryForm({
 
   return (
     <form className="grid max-h-[75vh] gap-4 overflow-y-auto pr-1" onSubmit={handleSubmit}>
-      {audioError ? <Alert tone="error">{audioError}</Alert> : null}
-      {audioSuccess ? <Alert tone="success">{audioSuccess}</Alert> : null}
+      <MutationAlert eventKey={resultCounter} tone="error" visible={Boolean(audioError)}>{audioError}</MutationAlert>
+      <MutationAlert eventKey={resultCounter} tone="success" visible={Boolean(audioSuccess)}>{audioSuccess}</MutationAlert>
 
       <FormField label="Kategori">
         <Select

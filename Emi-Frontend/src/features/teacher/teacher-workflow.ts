@@ -26,6 +26,14 @@ export function quizLifecycle(quiz: Pick<TeacherClassQuiz, "status" | "attempts_
   return quiz.status !== "published" && (quiz.attempts_count ?? 0) === 0 ? "delete" : "archive";
 }
 
+export function quizPublished(quiz: Pick<TeacherClassQuiz, "status">): boolean {
+  return quiz.status === "published";
+}
+
+export function quizHasAttempts(quiz: Pick<TeacherClassQuiz, "attempts_count">): boolean {
+  return (quiz.attempts_count ?? 0) > 0;
+}
+
 export function moduleLifecycle(module: { status: string }): "delete" | "archive" {
   return module.status === "draft" || module.status === "archived" ? "delete" : "archive";
 }

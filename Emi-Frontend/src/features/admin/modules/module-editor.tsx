@@ -6,7 +6,6 @@ import { Archive, ArrowDown, ArrowUp, Eye, Pencil, Send, Trash2 } from "lucide-r
 import { useState } from "react";
 
 import {
-  Alert,
   Badge,
   Button,
   Card,
@@ -17,6 +16,7 @@ import {
   ErrorState,
   LoadingState,
   Modal,
+  MutationAlert,
   Table,
   TableCell,
   TableHeader,
@@ -202,6 +202,8 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
   const moduleTemplate = moduleQuery.data;
   const lessons = lessonsQuery.data?.items ?? [];
   const hasPublishedLesson = canPublishModule(lessons);
+  const mutations = [updateModuleMutation, publishModuleMutation, archiveModuleMutation, createLessonMutation, updateLessonMutation, publishLessonMutation, archiveLessonMutation, deleteLessonMutation, reorderLessonMutation];
+  const resultEventKey = Math.max(...mutations.map((mutation) => mutation.submittedAt));
   const actionError =
     updateModuleMutation.error ??
     publishModuleMutation.error ??
@@ -253,8 +255,8 @@ export function ModuleEditor({ moduleId }: { moduleId: string }) {
         </div>
       </header>
 
-      {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
-      {actionError ? <Alert tone="error">{getFirstApiError(actionError)}</Alert> : null}
+      <MutationAlert eventKey={resultEventKey} tone="success" visible={Boolean(successMessage)}>{successMessage}</MutationAlert>
+      <MutationAlert eventKey={resultEventKey} tone="error" visible={Boolean(actionError)}>{getFirstApiError(actionError)}</MutationAlert>
 
       {moduleQuery.isLoading ? <LoadingState title="Memuat modul" /> : null}
       {moduleQuery.isError ? (

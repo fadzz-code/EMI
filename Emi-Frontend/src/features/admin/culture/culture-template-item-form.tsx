@@ -3,7 +3,7 @@
 import { type FormEvent, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
-import { Alert, Button, Card, CardContent, CardHeader, FilePreview, FormField, Input, Select, Textarea, UploadComponent } from "@/components/ui";
+import { Button, Card, CardContent, CardHeader, FilePreview, FormField, Input, MutationAlert, Select, Textarea, UploadComponent } from "@/components/ui";
 import { getFirstApiError } from "@/lib/api-client";
 import { cultureFileMatches, cultureFields, cultureMediaAccept, isCultureFileType } from "@/features/culture/culture-content";
 
@@ -17,6 +17,7 @@ export function CultureTemplateItemForm({ editingItem, onCancel, onSaved, templa
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  const [uploadCounter, setUploadCounter] = useState(0);
 
   const saveMutation = useMutation({
     mutationFn: (payload: Partial<AdminCultureTemplateItem>) => editingItem ? adminCultureService.updateItem(token, editingItem.id, payload) : adminCultureService.createItem(token, templateId, payload),
@@ -33,6 +34,7 @@ export function CultureTemplateItemForm({ editingItem, onCancel, onSaved, templa
       return;
     }
     setIsUploading(true);
+    setUploadCounter((current) => current + 1);
     setUploadError(null);
     setUploadSuccess(null);
     try {
@@ -64,7 +66,7 @@ export function CultureTemplateItemForm({ editingItem, onCancel, onSaved, templa
       <CardHeader><h2 className="text-xl font-black text-ink">{editingItem ? "Edit Konten Template" : "Tambah Konten Template"}</h2></CardHeader>
       <CardContent>
         <form className="grid gap-4" onSubmit={submit}>
-          {saveMutation.error ? <Alert tone="error">{getFirstApiError(saveMutation.error)}</Alert> : null}
+          <MutationAlert eventKey={saveMutation.submittedAt} tone="error" visible={Boolean(saveMutation.error)}>{getFirstApiError(saveMutation.error)}</MutationAlert>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label="Tipe Konten"><Select onChange={(e) => { setContentType(e.target.value); setFile(null); setMediaId(e.target.value === editingItem?.content_type ? editingItem?.media_id ?? "" : ""); setUploadError(null); setUploadSuccess(null); }} value={contentType}><option value="image">Gambar</option><option value="audio">Audio</option><option value="pdf">PDF</option><option value="video">Video Lokal</option><option value="youtube">YouTube</option><option value="article">Artikel Teks</option><option value="link">Tautan Eksternal</option></Select></FormField>
@@ -78,8 +80,8 @@ export function CultureTemplateItemForm({ editingItem, onCancel, onSaved, templa
           {isFileBased ? (
             <div className="grid gap-4 rounded-2xl border-2 border-border bg-surface-muted p-4">
               <h3 className="font-black text-ink">Upload Media</h3>
-              {uploadError ? <Alert tone="error">{uploadError}</Alert> : null}
-              {uploadSuccess ? <Alert tone="success">{uploadSuccess}</Alert> : null}
+              <MutationAlert eventKey={uploadCounter} tone="error" visible={Boolean(uploadError)}>{uploadError}</MutationAlert>
+              <MutationAlert eventKey={uploadCounter} tone="success" visible={Boolean(uploadSuccess)}>{uploadSuccess}</MutationAlert>
               <UploadComponent accept={cultureMediaAccept(contentType)} onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
               <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
                 <FormField label="Media"><Input onChange={(e) => setMediaId(e.target.value)} placeholder="Otomatis terisi setelah upload" required value={mediaId} /></FormField>

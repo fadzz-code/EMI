@@ -3,7 +3,7 @@
 import { type FormEvent, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
-import { Alert, Button, Input } from "@/components/ui";
+import { Button, Input, MutationAlert } from "@/components/ui";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { useAuth } from "./auth-provider";
@@ -38,8 +38,8 @@ export function ProfilePasswordForm() {
 
   return (
     <form className="grid gap-3" onSubmit={submit}>
-      {success ? <Alert tone="success">Password berhasil diperbarui.</Alert> : null}
-      {mutation.error ? <Alert tone="error">{getFirstApiError(mutation.error)}</Alert> : null}
+      {success ? <MutationAlert eventKey={mutation.submittedAt} tone="success">Password berhasil diperbarui.</MutationAlert> : null}
+      {mutation.error ? <MutationAlert eventKey={mutation.submittedAt} tone="error">{getFirstApiError(mutation.error)}</MutationAlert> : null}
       <Input name="current_password" placeholder="Password lama" required type="password" />
       <Input name="password" placeholder="Password baru" required type="password" />
       <Input name="password_confirmation" placeholder="Konfirmasi password baru" required type="password" />

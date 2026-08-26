@@ -3,7 +3,7 @@
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
 import { Archive, ListChecks, Pencil, Plus, Send, Trash2 } from "lucide-react";
 
-import { Alert, AudioPlayer, Badge, Button, Card, CardContent, ConfirmDialog, EmptyState, ErrorState, FormField, Input, LoadingState, Modal, Select, Textarea } from "@/components/ui";
+import { Alert, AudioPlayer, Badge, Button, Card, CardContent, ConfirmDialog, EmptyState, ErrorState, FormField, Input, LoadingState, Modal, MutationAlert, Select, Textarea } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
@@ -103,6 +103,7 @@ export function TeacherSpeakingExercises() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [actionAttempt, setActionAttempt] = useState(0);
 
   const classNameById = useMemo(() => new Map(classes.map((item) => [item.id, item.name])), [classes]);
   const selectedTemplate = useMemo(() => templates.find((item) => item.id === form.template_exercise_id) ?? null, [form.template_exercise_id, templates]);
@@ -231,6 +232,7 @@ export function TeacherSpeakingExercises() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setActionAttempt((attempt) => attempt + 1);
     if (!token) return;
     setIsSubmitting(true);
     setAudioError(null);
@@ -268,6 +270,7 @@ export function TeacherSpeakingExercises() {
 
   async function confirmPublishExercise() {
     if (!token || !publishTarget) return;
+    setActionAttempt((attempt) => attempt + 1);
     setIsSubmitting(true);
     try {
       await teacherService.updateSpeakingExercise(token, publishTarget.id, {
@@ -288,6 +291,7 @@ export function TeacherSpeakingExercises() {
 
   async function confirmArchiveExercise() {
     if (!token || !archiveTarget) return;
+    setActionAttempt((attempt) => attempt + 1);
     setIsArchiving(true);
     try {
       await teacherService.archiveSpeakingExercise(token, archiveTarget.id);
@@ -303,6 +307,7 @@ export function TeacherSpeakingExercises() {
 
   async function confirmDeleteExercise() {
     if (!token || !deleteTarget) return;
+    setActionAttempt((attempt) => attempt + 1);
     setIsDeleting(true);
     try {
       await teacherService.deleteSpeakingExercise(token, deleteTarget.id);
@@ -333,7 +338,7 @@ export function TeacherSpeakingExercises() {
       </section>
 
       {error ? <ErrorState description={error} onRetry={loadInitial} title="Gagal memuat target speaking" /> : null}
-      {message ? <Alert tone="success">{message}</Alert> : null}
+      <MutationAlert eventKey={actionAttempt} tone="success" visible={Boolean(message)}>{message}</MutationAlert>
 
       <Card>
         <CardContent>

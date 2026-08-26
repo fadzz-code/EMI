@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle2, ExternalLink } from "lucide-react";
 
-import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState } from "@/components/ui";
+import { MutationAlert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, LoadingState } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
@@ -91,8 +91,8 @@ export function StudentLessonDetail({ lessonId }: { lessonId: string }) {
 
       {lesson ? (
         <>
-          {completeMutation.isSuccess ? <Alert tone="success">Materi ditandai selesai.</Alert> : null}
-          {completeMutation.error ? <Alert tone="error">{getFirstApiError(completeMutation.error)}</Alert> : null}
+          {completeMutation.isSuccess ? <MutationAlert eventKey={completeMutation.submittedAt} tone="success">Materi ditandai selesai.</MutationAlert> : null}
+          {completeMutation.error ? <MutationAlert eventKey={completeMutation.submittedAt} tone="error">{getFirstApiError(completeMutation.error)}</MutationAlert> : null}
 
           <header className="grid gap-6 rounded-3xl border-2 border-border bg-[var(--color-primary-muted)] p-6 shadow-emi sm:p-8 lg:grid-cols-[1.2fr_auto] lg:items-center">
             <div className="grid gap-5">

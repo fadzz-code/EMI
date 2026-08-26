@@ -63,7 +63,7 @@ class TeacherRegistrationRequestController extends Controller
 
         Gate::authorize('approveTeacherScope', $registrationRequest);
 
-        $this->approvalService->approve($registrationRequest, $request->user(), $request->validated('review_note'));
+        $this->approvalService->approve($registrationRequest, $request->user(), $request->validated('review_note'), $request);
 
         return ApiResponse::success('Permintaan pendaftaran berhasil disetujui.', $registrationRequest->fresh(['reviewedBy']));
     }

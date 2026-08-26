@@ -16,6 +16,7 @@ import {
   ErrorState,
   LoadingState,
   Modal,
+  MutationAlert,
 } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
@@ -131,6 +132,8 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
   const quiz = quizQuery.data;
   const questions = questionsQuery.data ?? [];
   const isPublished = quiz?.status === "published";
+  const mutations = [updateQuizMutation, publishQuizMutation, archiveQuizMutation, createQuestionMutation, updateQuestionMutation, deleteQuestionMutation, reorderQuestionMutation];
+  const resultEventKey = Math.max(...mutations.map((mutation) => mutation.submittedAt));
   const actionError =
     updateQuizMutation.error ??
     publishQuizMutation.error ??
@@ -180,8 +183,8 @@ export function QuizBuilder({ quizId }: { quizId: string }) {
         </div>
       </header>
 
-      {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
-      {actionError ? <Alert tone="error">{getFirstApiError(actionError)}</Alert> : null}
+      <MutationAlert eventKey={resultEventKey} tone="success" visible={Boolean(successMessage)}>{successMessage}</MutationAlert>
+      <MutationAlert eventKey={resultEventKey} tone="error" visible={Boolean(actionError)}>{getFirstApiError(actionError)}</MutationAlert>
       {isPublished ? (
         <Alert tone="warning">
           Kuis yang sudah terbit dikunci agar konten soal tetap stabil. Arsipkan atau

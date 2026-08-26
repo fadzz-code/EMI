@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { progressStudentIdentity, quizLifecycle, teacherProgressKey, teacherProgressRequestQuery } from "./teacher-workflow";
+import { progressStudentIdentity, quizHasAttempts, quizLifecycle, quizPublished, teacherProgressKey, teacherProgressRequestQuery } from "./teacher-workflow";
 
 describe("teacher workflow", () => {
   it("isolates progress cache by class and server filters", () => {
@@ -19,11 +19,19 @@ describe("teacher workflow", () => {
     expect(progressStudentIdentity({ full_name: "Nama Sama" })).toBeNull();
   });
 
-  it("deletes draft or archived quizzes without attempts", () => {
-    expect(quizLifecycle({ status: "draft", attempts_count: 0 })).toBe("delete");
-    expect(quizLifecycle({ status: "draft", attempts_count: 1 })).toBe("archive");
-    expect(quizLifecycle({ status: "archived", attempts_count: 0 })).toBe("delete");
-    expect(quizLifecycle({ status: "archived", attempts_count: 1 })).toBe("archive");
-    expect(quizLifecycle({ status: "published", attempts_count: 0 })).toBe("archive");
+  it("keeps lifecycle, published lock, and attempts independent", () => {
+    const matrix = [
+      { status: "draft", attempts_count: 0, lifecycle: "delete", published: false, attempts: false },
+      { status: "draft", attempts_count: 1, lifecycle: "archive", published: false, attempts: true },
+      { status: "archived", attempts_count: 0, lifecycle: "delete", published: false, attempts: false },
+      { status: "archived", attempts_count: 1, lifecycle: "archive", published: false, attempts: true },
+      { status: "published", attempts_count: 0, lifecycle: "archive", published: true, attempts: false },
+      { status: "published", attempts_count: 1, lifecycle: "archive", published: true, attempts: true },
+    ] as const;
+    for (const row of matrix) {
+      expect(quizLifecycle(row)).toBe(row.lifecycle);
+      expect(quizPublished(row)).toBe(row.published);
+      expect(quizHasAttempts(row)).toBe(row.attempts);
+    }
   });
 });

@@ -2,7 +2,7 @@
 
 import { type FormEvent, useState } from "react";
 
-import { Alert, Button, FormField, Input, Select, Textarea } from "@/components/ui";
+import { Button, FormField, Input, MutationAlert, Select, Textarea } from "@/components/ui";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { knowledgeBaseService } from "./knowledge-base-service";
@@ -55,6 +55,7 @@ export function KnowledgeBaseForm({
   const [selectedDocumentFile, setSelectedDocumentFile] = useState<File | null>(null);
   const [extractMessage, setExtractMessage] = useState<string | null>(null);
   const [extractError, setExtractError] = useState<string | null>(null);
+  const [resultCounter, setResultCounter] = useState(0);
   const [isPdfSourceImported, setIsPdfSourceImported] = useState(false);
   const [isDocumentExtracted, setIsDocumentExtracted] = useState(false);
   const isPdfRagCreate = !item && form.source_type === "pdf";
@@ -68,6 +69,7 @@ export function KnowledgeBaseForm({
     setIsExtracting(true);
     setExtractMessage(null);
     setExtractError(null);
+    setResultCounter((current) => current + 1);
 
     try {
       const result = await knowledgeBaseService.extractDocumentUpload(token, selectedDocumentFile);
@@ -101,6 +103,7 @@ export function KnowledgeBaseForm({
     setIsExtracting(true);
     setExtractMessage(null);
     setExtractError(null);
+    setResultCounter((current) => current + 1);
 
     try {
       const result = await knowledgeBaseService.importPdfSource(token, {
@@ -260,8 +263,8 @@ export function KnowledgeBaseForm({
             }}
             type="file"
           />
-          {extractMessage ? <Alert tone="success">{extractMessage}</Alert> : null}
-          {extractError ? <Alert tone="error">{extractError}</Alert> : null}
+          <MutationAlert eventKey={resultCounter} tone="success" visible={Boolean(extractMessage)}>{extractMessage}</MutationAlert>
+          <MutationAlert eventKey={resultCounter} tone="error" visible={Boolean(extractError)}>{extractError}</MutationAlert>
         </div>
       ) : null}
       {form.source_type === "docx" || form.source_type === "txt" ? (
@@ -278,8 +281,8 @@ export function KnowledgeBaseForm({
             }}
             type="file"
           />
-          {extractMessage ? <Alert tone="success">{extractMessage}</Alert> : null}
-          {extractError ? <Alert tone="error">{extractError}</Alert> : null}
+          <MutationAlert eventKey={resultCounter} tone="success" visible={Boolean(extractMessage)}>{extractMessage}</MutationAlert>
+          <MutationAlert eventKey={resultCounter} tone="error" visible={Boolean(extractError)}>{extractError}</MutationAlert>
         </div>
       ) : null}
       <div className="rounded-lg border-2 border-dashed border-border bg-info p-4 text-sm leading-6 text-info-foreground">

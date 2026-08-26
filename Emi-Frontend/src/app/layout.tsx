@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Plus_Jakarta_Sans, Quicksand } from "next/font/google";
+import { Toaster } from "sonner";
 
 import { CopyrightFooter } from "@/components/layout/copyright-footer";
 import { AppProviders } from "@/components/providers/app-providers";
@@ -42,6 +43,7 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col" suppressHydrationWarning>
         <AppProviders>{children}</AppProviders>
         <CopyrightFooter />
+        <Toaster closeButton position="top-center" richColors />
       </body>
     </html>
   );

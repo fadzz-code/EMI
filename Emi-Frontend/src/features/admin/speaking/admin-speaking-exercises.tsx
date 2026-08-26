@@ -3,7 +3,7 @@
 import { type ChangeEvent, type FormEvent, useEffect, useState } from "react";
 import { Headphones, Pencil, Plus, Trash2, Users } from "lucide-react";
 
-import { Alert, Badge, Button, Card, CardContent, EmptyState, ErrorState, FormField, Input, LoadingState, Modal, Select, Textarea } from "@/components/ui";
+import { Alert, Badge, Button, Card, CardContent, EmptyState, ErrorState, FormField, Input, LoadingState, Modal, MutationAlert, Select, Textarea } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { classService } from "@/features/admin/management/management-service";
 import type { SchoolClass } from "@/features/admin/management/types";
@@ -93,6 +93,7 @@ export function AdminSpeakingExercises() {
   const [applyLoading, setApplyLoading] = useState(false);
   const [applySubmitting, setApplySubmitting] = useState(false);
   const [applyError, setApplyError] = useState<string | null>(null);
+  const [resultCounter, setResultCounter] = useState(0);
 
   useEffect(() => {
     if (!token) return;
@@ -158,6 +159,7 @@ export function AdminSpeakingExercises() {
     event.preventDefault();
     if (!token) return;
     setIsSubmitting(true);
+    setResultCounter((current) => current + 1);
     setModalError(null);
     setAudioError(null);
     try {
@@ -237,6 +239,7 @@ export function AdminSpeakingExercises() {
   async function submitApply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!token || !applyTarget) return;
+    setResultCounter((current) => current + 1);
     if (applyClassIds.length === 0) {
       setApplyError("Pilih minimal satu kelas.");
       return;
@@ -341,7 +344,7 @@ export function AdminSpeakingExercises() {
 
       <Modal className="max-w-2xl" onClose={() => setModalOpen(false)} open={modalOpen} title={editingExercise ? "Edit Template Speaking" : "Tambah Template Speaking"}>
         <form className="flex min-h-0 flex-col gap-4" onSubmit={submit}>
-          {modalError ? <Alert tone="error">{modalError}</Alert> : null}
+          <MutationAlert eventKey={resultCounter} tone="error" visible={Boolean(modalError)}>{modalError}</MutationAlert>
           <Alert tone="info">Audio ini akan digunakan sebagai contoh Suara Asli untuk siswa.</Alert>
           <FormField label="Judul latihan">
             <Input onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} required value={form.title} />
@@ -391,7 +394,7 @@ export function AdminSpeakingExercises() {
 
       <Modal className="max-w-xl" onClose={() => setApplyTarget(null)} open={Boolean(applyTarget)} title={applyTarget ? `Terapkan "${applyTarget.title}" ke Kelas` : "Terapkan ke Kelas"}>
         <form className="flex min-h-0 flex-col gap-4" onSubmit={submitApply}>
-          {applyError ? <Alert tone="error">{applyError}</Alert> : null}
+          <MutationAlert eventKey={resultCounter} tone="error" visible={Boolean(applyError)}>{applyError}</MutationAlert>
           <Alert tone="info">Target kelas akan dibuat sebagai draft. Guru kelas dapat mengedit sebelum dipublikasikan ke siswa.</Alert>
           {applyLoading ? <LoadingState title="Memuat daftar kelas" /> : null}
           {!applyLoading && classes.length === 0 ? <EmptyState description="Tidak ada kelas aktif yang dapat menerima template." title="Kelas aktif kosong" /> : null}

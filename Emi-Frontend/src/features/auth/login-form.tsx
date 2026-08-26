@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 import { ApiError } from "@/lib/api-client";
 import { getDashboardPath } from "@/lib/roles";
 import { loginSchema, type LoginFormValues } from "@/lib/validators";
-import { Alert, Button, FormField, Input } from "@/components/ui";
+import { Button, FormField, Input, MutationAlert } from "@/components/ui";
 
 import { useAuth } from "./auth-provider";
 
@@ -20,6 +20,7 @@ export function LoginForm({ returnTo }: { returnTo?: string }) {
   const router = useRouter();
   const { login } = useAuth();
   const [formError, setFormError] = useState<string | null>(null);
+  const [submitCount, setSubmitCount] = useState(0);
   const {
     formState: { errors, isSubmitting },
     handleSubmit,
@@ -34,6 +35,7 @@ export function LoginForm({ returnTo }: { returnTo?: string }) {
   });
 
   async function onSubmit(values: LoginFormValues) {
+    setSubmitCount((count) => count + 1);
     setFormError(null);
     const parsed = loginSchema.safeParse(values);
 
@@ -79,12 +81,13 @@ export function LoginForm({ returnTo }: { returnTo?: string }) {
 
         <form className="grid gap-5" onSubmit={handleSubmit(onSubmit)}>
           {formError ? (
-            <Alert
+            <MutationAlert
               className="border-4 font-bold shadow-[3px_3px_0_var(--color-ink)]"
+              eventKey={submitCount}
               tone="error"
             >
               {formError}
-            </Alert>
+            </MutationAlert>
           ) : null}
           <FormField error={errors.email?.message} label="Email">
             <Input

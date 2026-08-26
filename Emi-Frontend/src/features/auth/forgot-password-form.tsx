@@ -6,13 +6,14 @@ import { useForm } from "react-hook-form";
 
 import { ApiError } from "@/lib/api-client";
 import { forgotPasswordSchema, type ForgotPasswordFormValues } from "@/lib/validators";
-import { Alert, Button, FormField, Input } from "@/components/ui";
+import { Button, FormField, Input, MutationAlert } from "@/components/ui";
 
 import { authService } from "./auth-service";
 
 export function ForgotPasswordForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [submitCount, setSubmitCount] = useState(0);
   const {
     formState: { errors, isSubmitting },
     handleSubmit,
@@ -25,6 +26,7 @@ export function ForgotPasswordForm() {
   });
 
   async function onSubmit(values: ForgotPasswordFormValues) {
+    setSubmitCount((count) => count + 1);
     setFormError(null);
     setSuccessMessage(null);
     const parsed = forgotPasswordSchema.safeParse(values);
@@ -70,14 +72,14 @@ export function ForgotPasswordForm() {
 
         <form className="grid gap-5" onSubmit={handleSubmit(onSubmit)}>
           {formError ? (
-            <Alert className="border-4 font-bold shadow-[3px_3px_0_var(--color-ink)]" tone="error">
+            <MutationAlert className="border-4 font-bold shadow-[3px_3px_0_var(--color-ink)]" eventKey={submitCount} tone="error">
               {formError}
-            </Alert>
+            </MutationAlert>
           ) : null}
           {successMessage ? (
-            <Alert className="border-4 font-bold shadow-[3px_3px_0_var(--color-ink)]" tone="success">
+            <MutationAlert className="border-4 font-bold shadow-[3px_3px_0_var(--color-ink)]" eventKey={submitCount} tone="success">
               {successMessage}
-            </Alert>
+            </MutationAlert>
           ) : null}
           <FormField error={errors.email?.message} label="Email">
             <Input

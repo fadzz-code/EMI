@@ -13,7 +13,10 @@ use Illuminate\Support\Facades\DB;
 
 class ClassAssignmentService
 {
-    public function __construct(private readonly AuditLogService $auditLogService) {}
+    public function __construct(
+        private readonly AuditLogService $auditLogService,
+        private readonly ClassTemplateBackfillService $templateBackfillService,
+    ) {}
 
     public function assignTeacher(SchoolClass $schoolClass, string $teacherId, User $admin, Request $request): TeacherClassAssignment
     {
@@ -67,6 +70,7 @@ class ClassAssignmentService
                     [],
                     $request,
                 );
+                $this->templateBackfillService->backfill($class, $teacher, $request);
 
                 return $assignment->load('teacher');
             });

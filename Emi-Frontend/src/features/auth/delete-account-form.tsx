@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 
-import { Alert, Button, Input, Modal } from "@/components/ui";
+import { Button, Input, Modal, MutationAlert } from "@/components/ui";
 import { getFirstApiError } from "@/lib/api-client";
 
 import { useAuth } from "./auth-provider";
@@ -27,7 +27,7 @@ export function DeleteAccountForm() {
 
   return (
     <div className="grid gap-3">
-      {mutation.error ? <Alert tone="error">{getFirstApiError(mutation.error)}</Alert> : null}
+      {mutation.error ? <MutationAlert eventKey={mutation.submittedAt} tone="error">{getFirstApiError(mutation.error)}</MutationAlert> : null}
       <p className="text-sm text-muted">
         Akun dan data pribadi Anda akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.
       </p>

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { ApiError, apiClient, getFirstApiError } from "@/lib/api-client";
 import { getDashboardPath } from "@/lib/roles";
-import { Alert, Button, FormField, Input } from "@/components/ui";
+import { Button, FormField, Input, MutationAlert } from "@/components/ui";
 
 import { useAuth } from "./auth-provider";
 
@@ -16,6 +16,7 @@ export function ChangePasswordRequiredForm() {
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [submitCount, setSubmitCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -35,6 +36,7 @@ export function ChangePasswordRequiredForm() {
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSubmitCount((count) => count + 1);
     setFormError(null);
 
     if (password !== passwordConfirmation) {
@@ -78,7 +80,7 @@ export function ChangePasswordRequiredForm() {
         </p>
 
         <form className="mt-6 grid gap-4" onSubmit={onSubmit}>
-          {formError ? <Alert tone="error">{formError}</Alert> : null}
+          {formError ? <MutationAlert eventKey={submitCount} tone="error">{formError}</MutationAlert> : null}
           <FormField label="Kata sandi sementara (dari guru/admin)">
             <Input
               autoComplete="current-password"

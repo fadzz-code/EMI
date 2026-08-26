@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 
-import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState, PageHeader } from "@/components/ui";
+import { Alert, Badge, Button, Card, CardContent, CardHeader, EmptyState, ErrorState, Input, LoadingState, MutationAlert, PageHeader } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 import { classService } from "@/features/admin/management/management-service";
@@ -82,6 +82,7 @@ export function AdminCultureTemplateEdit({ templateId }: { templateId: string })
   });
 
   const template = query.data;
+  const resultEventKey = Math.max(updateMutation.submittedAt, publishMutation.submittedAt, archiveMutation.submittedAt, applyMutation.submittedAt, deleteItemMutation.submittedAt);
 
   return (
     <div className="grid gap-6">
@@ -103,10 +104,10 @@ export function AdminCultureTemplateEdit({ templateId }: { templateId: string })
                   const formData = new FormData(e.currentTarget);
                   updateMutation.mutate({ title: String(formData.get("title") ?? ""), description: String(formData.get("description") ?? "") });
                 }}>
-                  {successMsg ? <Alert tone="success">{successMsg}</Alert> : null}
-                  {updateMutation.error ? <Alert tone="error">{getFirstApiError(updateMutation.error)}</Alert> : null}
-                  {publishMutation.error ? <Alert tone="error">{getFirstApiError(publishMutation.error)}</Alert> : null}
-                  {archiveMutation.error ? <Alert tone="error">{getFirstApiError(archiveMutation.error)}</Alert> : null}
+                  <MutationAlert eventKey={resultEventKey} tone="success" visible={Boolean(successMsg)}>{successMsg}</MutationAlert>
+                  <MutationAlert eventKey={updateMutation.submittedAt} tone="error" visible={Boolean(updateMutation.error)}>{getFirstApiError(updateMutation.error)}</MutationAlert>
+                  <MutationAlert eventKey={publishMutation.submittedAt} tone="error" visible={Boolean(publishMutation.error)}>{getFirstApiError(publishMutation.error)}</MutationAlert>
+                  <MutationAlert eventKey={archiveMutation.submittedAt} tone="error" visible={Boolean(archiveMutation.error)}>{getFirstApiError(archiveMutation.error)}</MutationAlert>
                   <label className="grid gap-2 text-sm font-black text-ink">Judul<Input defaultValue={template.title} name="title" required /></label>
                   <label className="grid gap-2 text-sm font-black text-ink">Deskripsi<Input defaultValue={template.description ?? ""} name="description" /></label>
                   <div className="flex flex-wrap gap-2">

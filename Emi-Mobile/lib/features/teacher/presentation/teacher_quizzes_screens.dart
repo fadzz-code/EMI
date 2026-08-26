@@ -15,6 +15,12 @@ import 'teacher_shell.dart';
 import 'teacher_style.dart';
 import 'teacher_widgets.dart';
 
+bool teacherQuizCanDelete(TeacherQuiz quiz) =>
+    quiz.status != 'published' && quiz.attemptsCount == 0;
+
+bool teacherQuizCanEditQuestions(TeacherQuiz quiz) =>
+    quiz.status != 'published' && quiz.attemptsCount == 0;
+
 class TeacherQuizzesScreen extends ConsumerStatefulWidget {
   const TeacherQuizzesScreen({super.key});
   @override
@@ -337,7 +343,7 @@ class _TeacherQuizDetailScreenState
                         value: 'archive',
                         child: Text('Arsipkan Kuis'),
                       ),
-                    if (quiz.status == 'draft' && quiz.attemptsCount == 0)
+                    if (teacherQuizCanDelete(quiz))
                       const PopupMenuItem(
                         value: 'delete',
                         child: Text('Hapus Kuis'),
@@ -350,8 +356,19 @@ class _TeacherQuizDetailScreenState
                 alignment: Alignment.centerLeft,
                 child: _StatusBadge(status: quiz.status),
               ),
-              const SizedBox(height: EmiSpacing.lg),
-              FilledButton.icon(
+               const SizedBox(height: EmiSpacing.sm),
+               if (quiz.status == 'published')
+                 const TeacherStatusChip(label: 'Terkunci')
+               else if (quiz.attemptsCount > 0)
+                 const TeacherStatusChip(label: 'Sudah ada pengerjaan'),
+               if (quiz.attemptsCount > 0) ...[
+                 const SizedBox(height: EmiSpacing.sm),
+                 const Text(
+                   'Kuis sudah memiliki pengerjaan siswa. Kuis tidak dapat dihapus dan pertanyaan tidak dapat diubah.',
+                 ),
+               ],
+               const SizedBox(height: EmiSpacing.lg),
+               FilledButton.icon(
                 onPressed: quiz.status == 'published'
                     ? null
                     : () => context.push('/teacher/quizzes/${widget.id}/edit'),
@@ -377,8 +394,8 @@ class _TeacherQuizDetailScreenState
                 trailing: Wrap(
                   spacing: EmiSpacing.xs,
                   children: [
-                    if (quiz.questions.length > 1 &&
-                        (quiz.status == 'draft' || quiz.status == 'archived'))
+                     if (quiz.questions.length > 1 &&
+                         teacherQuizCanEditQuestions(quiz))
                       IconButton(
                         tooltip: 'Ubah Urutan Soal',
                         onPressed: () => _showReorderQuestionsDialog(
@@ -390,9 +407,8 @@ class _TeacherQuizDetailScreenState
                         icon: const Icon(Icons.swap_vert),
                       ),
                     FilledButton.icon(
-                      onPressed:
-                          quiz.status == 'draft' || quiz.status == 'archived'
-                          ? () => context.push(
+                       onPressed: teacherQuizCanEditQuestions(quiz)
+                           ? () => context.push(
                               '/teacher/quizzes/${widget.id}/questions/create',
                             )
                           : null,
@@ -448,7 +464,7 @@ class _TeacherQuizDetailScreenState
                             ],
                           ),
                         ),
-                        if (quiz.status == 'draft' || quiz.status == 'archived')
+                        if (teacherQuizCanEditQuestions(quiz))
                           PopupMenuButton<String>(
                             enabled: !mutating,
                             onSelected: (value) => value == 'edit'

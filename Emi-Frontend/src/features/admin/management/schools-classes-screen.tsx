@@ -6,7 +6,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { School as SchoolIcon, UsersRound } from "lucide-react";
 
 import {
-  Alert,
   Badge,
   Button,
   Card,
@@ -20,6 +19,7 @@ import {
   Input,
   LoadingState,
   Modal,
+  MutationAlert,
   Pagination,
   Select,
   Table,
@@ -237,6 +237,8 @@ export function SchoolsClassesScreen() {
     },
   });
 
+  const mutations = [createSchoolMutation, updateSchoolMutation, deactivateSchoolMutation, forceDeleteSchoolMutation, createClassMutation, updateClassMutation, deactivateClassMutation, forceDeleteClassMutation];
+  const resultEventKey = Math.max(...mutations.map((mutation) => mutation.submittedAt));
   const actionError =
     createSchoolMutation.error ??
     updateSchoolMutation.error ??
@@ -331,8 +333,8 @@ export function SchoolsClassesScreen() {
         </Button>
       </header>
 
-      {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
-      {actionError ? <Alert tone="error">{getFirstApiError(actionError)}</Alert> : null}
+      <MutationAlert eventKey={resultEventKey} tone="success" visible={Boolean(successMessage)}>{successMessage}</MutationAlert>
+      <MutationAlert eventKey={resultEventKey} tone="error" visible={Boolean(actionError)}>{getFirstApiError(actionError)}</MutationAlert>
 
       <div className="grid grid-cols-2 gap-2 rounded-xl border-2 border-ink bg-white p-2 sm:w-fit">
         <Button onClick={() => setActiveTable("schools")} variant={activeTable === "schools" ? "primary" : "ghost"}>

@@ -12,11 +12,7 @@ import { teacherRoutes } from "@/lib/routes";
 import { TeacherClassNav } from "./teacher-class-nav";
 import { teacherService } from "./teacher-service";
 import { formatCount, formatDate, formatOptional, statusLabel } from "./teacher-utils";
-import type { TeacherClassQuiz } from "./types";
-
-function isQuizLocked(quiz: TeacherClassQuiz) {
-  return quiz.status === "published" || (quiz.attempts_count ?? 0) > 0;
-}
+import { quizHasAttempts, quizPublished } from "./teacher-workflow";
 
 export function TeacherClassQuizzes({ classId }: { classId: string }) {
   const { token } = useAuth();
@@ -53,13 +49,14 @@ export function TeacherClassQuizzes({ classId }: { classId: string }) {
             </section>
             <div className="grid auto-rows-fr gap-4 md:grid-cols-2">
               {quizzes.map((quiz) => {
-                const locked = isQuizLocked(quiz);
+                const published = quizPublished(quiz);
+                const hasAttempts = quizHasAttempts(quiz);
                 return (
                   <Card className="flex h-full flex-col transition hover:-translate-y-1 hover:shadow-emi" key={quiz.id}>
                     <CardHeader>
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <div className="flex flex-wrap gap-2"><Badge tone={quiz.status === "published" ? "blue" : "neutral"}>{statusLabel(quiz.status)}</Badge>{locked ? <Badge tone="yellow"><LockKeyhole className="mr-1 size-3" />Terkunci</Badge> : <Badge tone="blue"><Pencil className="mr-1 size-3" />Bisa diedit</Badge>}</div>
+                          <div className="flex flex-wrap gap-2"><Badge tone={published ? "blue" : "neutral"}>{statusLabel(quiz.status)}</Badge>{published ? <Badge tone="yellow"><LockKeyhole className="mr-1 size-3" />Terkunci</Badge> : <Badge tone="blue"><Pencil className="mr-1 size-3" />Bisa diedit</Badge>}{hasAttempts ? <Badge tone="yellow">Sudah ada attempt</Badge> : null}</div>
                           <h2 className="mt-2 text-xl font-black text-ink">{quiz.title}</h2>
                         </div>
                         <span className="rounded-lg border-2 border-border bg-surface-muted px-2 py-1 text-xs font-black text-muted">{formatCount(quiz.duration_minutes)} menit</span>

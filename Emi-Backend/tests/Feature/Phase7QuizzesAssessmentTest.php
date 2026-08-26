@@ -557,6 +557,36 @@ class Phase7QuizzesAssessmentTest extends TestCase
         $this->assertSoftDeleted('class_quizzes', ['id' => $publishedWithoutAttempt->id]);
     }
 
+    public function test_teacher_can_delete_admin_template_copy_without_attempts_and_reapply_it(): void
+    {
+        $admin = User::factory()->admin()->create();
+        [$class] = $this->classes($admin, 1);
+        $teacher = $this->teacherFor($class, $admin);
+        $foreignTeacher = User::factory()->teacher()->approved()->create();
+        $template = QuizTemplate::factory()->published()->create(['created_by' => $admin->id]);
+        QuizTemplateQuestion::factory()->create(['quiz_template_id' => $template->id, 'created_by' => $admin->id]);
+
+        $apply = fn () => $this->withToken($this->tokenFor($admin))->postJson("/api/v1/admin/quiz-templates/{$template->id}/apply", [
+            'class_ids' => [$class->id],
+        ])->assertOk();
+
+        $draftId = $apply()->json('data.applied.0.class_quiz_id');
+        $this->withToken($this->tokenFor($foreignTeacher))->deleteJson("/api/v1/class-quizzes/{$draftId}")->assertForbidden();
+        $this->withToken($this->tokenFor($teacher))->deleteJson("/api/v1/class-quizzes/{$draftId}")->assertOk();
+        $this->assertSoftDeleted('class_quizzes', ['id' => $draftId]);
+        $this->assertDatabaseHas('quiz_templates', ['id' => $template->id, 'deleted_at' => null]);
+
+        $archivedId = $apply()->json('data.applied.0.class_quiz_id');
+        $this->withToken($this->tokenFor($teacher))->postJson("/api/v1/class-quizzes/{$archivedId}/archive")->assertOk();
+        $this->withToken($this->tokenFor($foreignTeacher))->deleteJson("/api/v1/class-quizzes/{$archivedId}")->assertForbidden();
+        $this->withToken($this->tokenFor($teacher))->deleteJson("/api/v1/class-quizzes/{$archivedId}")->assertOk();
+        $this->assertSoftDeleted('class_quizzes', ['id' => $archivedId]);
+        $this->assertDatabaseHas('quiz_templates', ['id' => $template->id, 'deleted_at' => null]);
+
+        $reappliedId = $apply()->json('data.applied.0.class_quiz_id');
+        $this->assertDatabaseHas('class_quizzes', ['id' => $reappliedId, 'source_quiz_template_id' => $template->id, 'status' => 'draft']);
+    }
+
     public function test_teacher_can_republish_archived_quiz(): void
     {
         $admin = User::factory()->admin()->create();

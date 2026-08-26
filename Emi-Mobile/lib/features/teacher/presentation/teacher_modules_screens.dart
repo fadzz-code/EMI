@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../app/theme/emi_theme.dart';
 import '../../../core/errors/app_error.dart';
 import '../../../shared/widgets/role_dashboard_widgets.dart';
+import '../../../shared/widgets/status_badge.dart';
 import '../data/teacher_providers.dart';
 import '../data/teacher_repository.dart';
 import 'teacher_shell.dart';
@@ -108,9 +109,18 @@ class TeacherModulesScreen extends ConsumerWidget {
                           style: const TextStyle(color: TeacherStyle.inkMuted),
                         ),
                         isThreeLine: true,
-                        trailing: const Icon(
-                          Icons.chevron_right,
-                          color: TeacherStyle.inkMuted,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            EmiStatusBadge(
+                              label: _status(item.status),
+                              tone: emiStatusToneFromKey(item.status),
+                            ),
+                            const Icon(
+                              Icons.chevron_right,
+                              color: TeacherStyle.inkMuted,
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -303,7 +313,10 @@ class _TeacherModuleEditScreenState
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: TeacherStatusChip(label: _status(item.status)),
+            child: EmiStatusBadge(
+              label: _status(item.status),
+              tone: emiStatusToneFromKey(item.status),
+            ),
           ),
           TeacherSectionHeader(
             'Identitas Modul',
@@ -599,7 +612,10 @@ class TeacherModulePreviewScreen extends ConsumerWidget {
               Wrap(
                 spacing: EmiSpacing.sm,
                 children: [
-                  TeacherStatusChip(label: _status(module.status)),
+                  EmiStatusBadge(
+                    label: _status(module.status),
+                    tone: emiStatusToneFromKey(module.status),
+                  ),
                   TeacherStatusChip(label: '${module.lessons.length} materi'),
                 ],
               ),
@@ -1033,7 +1049,10 @@ class _TeacherLessonEditScreenState
           Wrap(
             spacing: EmiSpacing.xs,
             children: [
-              TeacherStatusChip(label: _status(item.status)),
+              EmiStatusBadge(
+                label: _status(item.status),
+                tone: emiStatusToneFromKey(item.status),
+              ),
               TeacherStatusChip(
                 label: _contentLabel(_contentType ?? item.contentType),
                 color: TeacherStyle.tint,

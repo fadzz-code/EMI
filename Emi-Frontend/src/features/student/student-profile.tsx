@@ -4,7 +4,7 @@ import { type FormEvent, useState } from "react";
 import { GraduationCap, School } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { Alert, Button, Card, CardContent, CardHeader, EmptyState, Input, PageHeader } from "@/components/ui";
+import { Button, Card, CardContent, CardHeader, EmptyState, Input, MutationAlert, PageHeader } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { authService } from "@/features/auth/auth-service";
 import { DeleteAccountForm } from "@/features/auth/delete-account-form";
@@ -146,8 +146,8 @@ export function StudentProfile() {
           </CardHeader>
           <CardContent>
             <form className="grid gap-4" key={user?.id} onSubmit={submitProfile}>
-              {success ? <Alert tone="success">Profil berhasil diperbarui.</Alert> : null}
-              {updateMutation.error ? <Alert tone="error">{getFirstApiError(updateMutation.error)}</Alert> : null}
+              {success ? <MutationAlert eventKey={updateMutation.submittedAt} tone="success">Profil berhasil diperbarui.</MutationAlert> : null}
+              {updateMutation.error ? <MutationAlert eventKey={updateMutation.submittedAt} tone="error">{getFirstApiError(updateMutation.error)}</MutationAlert> : null}
               <label className="grid gap-2 text-sm font-black text-ink">
                 Nama lengkap
                 <Input defaultValue={user?.full_name} name="full_name" required />

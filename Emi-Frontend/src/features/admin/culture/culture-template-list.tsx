@@ -18,6 +18,7 @@ import {
   FormField,
   Input,
   LoadingState,
+  MutationAlert,
   PageHeader,
   Select,
   Textarea,
@@ -193,6 +194,7 @@ function AdminGlobalCultureForm({
   const [mediaId, setMediaId] = useState<string | null>(item?.media_id ?? null);
   const [externalUrl, setExternalUrl] = useState(item?.external_url ?? "");
   const [formError, setFormError] = useState<string | null>(null);
+  const [resultCounter, setResultCounter] = useState(0);
   const mutation = useMutation({
     mutationFn: (payload: Partial<AdminGlobalCultureItem>) => item ? adminCultureService.updateGlobalItem(token, item.id, payload) : adminCultureService.createGlobalItem(token, payload),
     onSuccess: onDone,
@@ -201,6 +203,7 @@ function AdminGlobalCultureForm({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setResultCounter((current) => current + 1);
     setFormError(null);
     const formData = new FormData(event.currentTarget);
     let nextMediaId = mediaId;
@@ -239,8 +242,8 @@ function AdminGlobalCultureForm({
       </CardHeader>
       <CardContent>
         <form className="grid gap-5" onSubmit={submit}>
-          {formError ? <Alert tone="error">{formError}</Alert> : null}
-          {mutation.error ? <Alert tone="error">{getFirstApiError(mutation.error)}</Alert> : null}
+           <MutationAlert eventKey={resultCounter} tone="error" visible={Boolean(formError)}>{formError}</MutationAlert>
+           <MutationAlert eventKey={mutation.submittedAt} tone="error" visible={Boolean(mutation.error)}>{getFirstApiError(mutation.error)}</MutationAlert>
 
           <section className="grid gap-4 rounded-2xl border-2 border-border bg-surface p-4">
             <div>

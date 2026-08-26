@@ -8,7 +8,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { ApiError, getFieldError, getFirstApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { registerSchema, type RegisterFormValues } from "@/lib/validators";
-import { Alert, Button, FormField, Input, Select } from "@/components/ui";
+import { Alert, Button, FormField, Input, MutationAlert, Select } from "@/components/ui";
 
 import { authService } from "./auth-service";
 import { useAuth } from "./auth-provider";
@@ -32,6 +32,7 @@ export function RegisterForm({ role }: { role: "teacher" | "student" }) {
   const router = useRouter();
   const { registerStudent, registerTeacher } = useAuth();
   const [formError, setFormError] = useState<string | null>(null);
+  const [submitCount, setSubmitCount] = useState(0);
   const [schools, setSchools] = useState<PublicSchool[]>([]);
   const [classes, setClasses] = useState<PublicSchoolClass[]>([]);
   const [isLoadingSchools, setIsLoadingSchools] = useState(true);
@@ -151,6 +152,7 @@ export function RegisterForm({ role }: { role: "teacher" | "student" }) {
   }
 
   async function onSubmit(values: RegisterFormValues) {
+    setSubmitCount((count) => count + 1);
     setFormError(null);
     const parsed = registerSchema.safeParse(values);
 
@@ -194,12 +196,13 @@ export function RegisterForm({ role }: { role: "teacher" | "student" }) {
   const formFields = (
     <>
       {formError ? (
-        <Alert
+        <MutationAlert
           className="border-4 font-bold shadow-[3px_3px_0_#1b1b1b]"
+          eventKey={submitCount}
           tone="error"
         >
           {formError}
-        </Alert>
+        </MutationAlert>
       ) : null}
       {lookupError ? (
         <Alert

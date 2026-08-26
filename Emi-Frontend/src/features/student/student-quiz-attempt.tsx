@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClipboardCheck } from "lucide-react";
 
-import { Alert, Badge, Button, Card, CardContent, CardHeader, ConfirmDialog, EmptyState, ErrorState, Input, LoadingState } from "@/components/ui";
+import { Badge, Button, Card, CardContent, CardHeader, ConfirmDialog, EmptyState, ErrorState, Input, LoadingState, MutationAlert } from "@/components/ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import { getFirstApiError } from "@/lib/api-client";
 
@@ -176,7 +176,7 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
                 <p className="text-sm font-semibold text-muted">Soal {currentQuestionIndex + 1} dari {questions.length}</p>
               </div>
             </div>
-            {finalizeError ? <Alert tone="error">Jawaban belum berhasil disimpan. Coba kumpulkan kembali.</Alert> : null}
+            {finalizeError ? <MutationAlert eventKey={submitMutation.submittedAt} tone="error">Jawaban belum berhasil disimpan. Coba kumpulkan kembali.</MutationAlert> : null}
             <Button
               className="w-full sm:w-auto"
               disabled={saveAnswerMutation.isPending || submitMutation.isPending || isFinalizing}
@@ -200,7 +200,7 @@ export function StudentQuizAttempt({ quizId }: { quizId: string }) {
               ) : null}
             </CardHeader>
             <CardContent>
-              {saveAnswerMutation.isError ? <Alert className="mb-4" tone="error">{getFirstApiError(saveAnswerMutation.error)}</Alert> : null}
+              {saveAnswerMutation.isError ? <MutationAlert className="mb-4" eventKey={saveAnswerMutation.submittedAt} tone="error">{getFirstApiError(saveAnswerMutation.error)}</MutationAlert> : null}
               {saveAnswerMutation.isPending ? <p className="mb-4 text-sm font-bold text-muted">Menyimpan jawaban...</p> : null}
               
               {currentQuestion.question_type === "multiple_choice" ? (

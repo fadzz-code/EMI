@@ -17,6 +17,7 @@ import {
   FilePreview,
   FormField,
   LoadingState,
+  MutationAlert,
   Pagination,
   Table,
   TableCell,
@@ -338,6 +339,8 @@ export function DictionaryImport() {
 
   const imports = importsQuery.data?.items ?? [];
   const meta = importsQuery.data?.meta;
+  const mutations = [previewMutation, confirmMutation, templateMutation, deleteJobMutation, deleteErrorMutation, clearErrorsMutation];
+  const resultEventKey = Math.max(...mutations.map((mutation) => mutation.submittedAt));
   const actionError =
     previewMutation.error ?? confirmMutation.error ?? templateMutation.error ?? deleteJobMutation.error ?? deleteErrorMutation.error ?? clearErrorsMutation.error;
 
@@ -361,8 +364,8 @@ export function DictionaryImport() {
 
       </header>
 
-      {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
-      {actionError ? <Alert tone="error">{getFirstApiError(actionError)}</Alert> : null}
+      <MutationAlert eventKey={resultEventKey} tone="success" visible={Boolean(successMessage)}>{successMessage}</MutationAlert>
+      <MutationAlert eventKey={resultEventKey} tone="error" visible={Boolean(actionError)}>{getFirstApiError(actionError)}</MutationAlert>
 
       <div className="grid min-w-0 gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
         <Card className="min-w-0">
