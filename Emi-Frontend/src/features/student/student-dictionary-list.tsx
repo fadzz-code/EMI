@@ -178,7 +178,9 @@ export function StudentDictionaryList() {
                         <p className="text-sm font-semibold text-muted">Indonesia: <span className="font-black text-ink">{entry.indonesia}</span></p>
                         <p className="text-sm font-semibold text-muted">Inggris: <span className="font-black text-ink">{entry.english}</span></p>
                       </div>
-                      <p className="mt-4 flex-1 text-sm font-semibold leading-6 text-muted">Contoh: {formatOptional(entry.example_mekongga)}</p>
+                      <p className="mt-4 flex-1 text-sm font-bold leading-6 text-ink">
+                        <span className="font-semibold text-muted">Contoh:</span> {formatOptional(entry.example_mekongga)}
+                      </p>
                       <div className="mt-4">
                         <AudioPlayer src={entry.audio?.url} title="Mekongga" />
                       </div>
