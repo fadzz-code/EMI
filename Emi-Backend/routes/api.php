@@ -236,6 +236,7 @@ Route::prefix('v1')->group(function () {
         Route::get('media/{id}', [MediaController::class, 'show']);
         Route::post('media/{id}/temporary-url', [MediaController::class, 'temporaryUrl']);
         Route::delete('media/{id}', [MediaController::class, 'destroy']);
+        Route::get('dictionary/categories', [DictionaryController::class, 'categories']);
         Route::get('dictionary', [DictionaryController::class, 'index']);
         Route::get('dictionary/{id}', [DictionaryController::class, 'show']);
         Route::get('classes/{class_id}/modules', [ClassModuleController::class, 'index']);

@@ -44,6 +44,28 @@ class DictionaryRepository {
     }
   }
 
+  Future<List<DictionaryCategory>> categories() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/dictionary/categories',
+      );
+      final data = response.data?['data'];
+      if (data is! List) {
+        throw const AppError(
+          type: AppErrorType.unknown,
+          message: 'Kategori kamus tidak valid.',
+        );
+      }
+      return data
+          .whereType<Map<String, dynamic>>()
+          .map(DictionaryCategory.fromJson)
+          .toList();
+    } catch (error) {
+      if (error is AppError) rethrow;
+      throw _errorMapper.map(error);
+    }
+  }
+
   Future<DictionaryEntry> detail(String id) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>('/dictionary/$id');

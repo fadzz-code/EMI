@@ -56,17 +56,24 @@ class DictionaryEntry {
 }
 
 class DictionaryCategory {
-  const DictionaryCategory({required this.id, required this.name, this.slug});
+  const DictionaryCategory({
+    required this.id,
+    required this.name,
+    this.slug,
+    this.entriesCount,
+  });
 
   final String id;
   final String name;
   final String? slug;
+  final int? entriesCount;
 
   factory DictionaryCategory.fromJson(Map<String, dynamic> json) {
     return DictionaryCategory(
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? '-',
       slug: json['slug'] as String?,
+      entriesCount: _nullableInt(json['entries_count']),
     );
   }
 }
@@ -77,35 +84,60 @@ class DictionaryExample {
     this.code,
     this.mekongga,
     this.indonesia,
+    this.status = 'active',
+    this.audio,
   });
 
   final String id;
   final String? code;
   final String? mekongga;
   final String? indonesia;
+  final String status;
+  final DictionaryAudio? audio;
 
   factory DictionaryExample.fromJson(Map<String, dynamic> json) {
     return DictionaryExample(
       id: json['id'] as String? ?? '',
-      code: json['kode'] as String?,
-      mekongga: json['contoh_mekongga'] as String?,
-      indonesia: json['contoh_indonesia'] as String?,
+      code: json['kode'] as String? ?? json['code'] as String?,
+      mekongga:
+          json['contoh_mekongga'] as String? ??
+          json['example_mekongga'] as String?,
+      indonesia:
+          json['contoh_indonesia'] as String? ??
+          json['example_indonesia'] as String?,
+      status: json['status'] as String? ?? 'active',
+      audio: json['audio'] is Map<String, dynamic>
+          ? DictionaryAudio.fromJson(json['audio'] as Map<String, dynamic>)
+          : null,
     );
   }
 }
 
 class DictionaryAudio {
-  const DictionaryAudio({required this.id, required this.url, this.mimeType});
+  const DictionaryAudio({
+    required this.id,
+    required this.url,
+    this.mimeType,
+    this.sizeBytes,
+    this.checksumSha256,
+  });
 
   final String id;
   final String url;
   final String? mimeType;
+  final int? sizeBytes;
+  final String? checksumSha256;
+
+  bool get hasIntegrity =>
+      sizeBytes != null && checksumSha256?.isNotEmpty == true;
 
   factory DictionaryAudio.fromJson(Map<String, dynamic> json) {
     return DictionaryAudio(
       id: json['id'] as String? ?? '',
       url: json['url'] as String? ?? '',
       mimeType: json['mime_type'] as String?,
+      sizeBytes: _nullableInt(json['size_bytes']),
+      checksumSha256: json['checksum_sha256'] as String?,
     );
   }
 }
@@ -144,8 +176,10 @@ class DictionaryPage {
   }
 }
 
-int _int(Object? value) {
+int _int(Object? value) => _nullableInt(value) ?? 0;
+
+int? _nullableInt(Object? value) {
   if (value is int) return value;
   if (value is num) return value.round();
-  return int.tryParse(value?.toString() ?? '') ?? 0;
+  return int.tryParse(value?.toString() ?? '');
 }

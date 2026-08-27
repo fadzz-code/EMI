@@ -8,6 +8,7 @@ import '../../../shared/widgets/student_style.dart';
 import '../../../shared/widgets/student_widgets.dart';
 import '../data/dictionary_entry.dart';
 import '../data/dictionary_providers.dart';
+import 'dictionary_offline_providers.dart';
 
 class DictionaryDetailScreen extends ConsumerWidget {
   const DictionaryDetailScreen({super.key, required this.entryId});
@@ -16,21 +17,27 @@ class DictionaryDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final entry = ref.watch(dictionaryDetailProvider(entryId));
+    final entry = ref.watch(integratedDictionaryDetailProvider(entryId));
 
     return EmiScaffold(
       title: 'Kamus Mekongga',
       child: entry.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => _ErrorState(
-          onRetry: () => ref.invalidate(dictionaryDetailProvider(entryId)),
+          onRetry: () =>
+              ref.invalidate(integratedDictionaryDetailProvider(entryId)),
         ),
         data: (data) => ListView(
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
             _HeroCard(entry: data),
             const SizedBox(height: EmiSpacing.md),
-            if (data.hasAudio) DictionaryAudioPlayer(audio: data.audio!),
+            if (data.hasAudio)
+              DictionaryAudioControl(
+                key: Key('dictionaryDetailAudio-${data.id}'),
+                audio: data.audio!,
+                label: 'Putar pelafalan',
+              ),
             if (data.hasAudio) const SizedBox(height: EmiSpacing.md),
             _ExamplesCard(entry: data),
           ],
@@ -103,24 +110,31 @@ class _MeaningRow extends StatelessWidget {
   }
 }
 
-class DictionaryAudioPlayer extends StatefulWidget {
-  const DictionaryAudioPlayer({super.key, required this.audio});
+class DictionaryAudioControl extends ConsumerStatefulWidget {
+  const DictionaryAudioControl({
+    super.key,
+    required this.audio,
+    required this.label,
+  });
 
   final DictionaryAudio audio;
+  final String label;
 
   @override
-  State<DictionaryAudioPlayer> createState() => _DictionaryAudioPlayerState();
+  ConsumerState<DictionaryAudioControl> createState() =>
+      _DictionaryAudioControlState();
 }
 
-class _DictionaryAudioPlayerState extends State<DictionaryAudioPlayer> {
-  late final AudioPlayer _player;
+class _DictionaryAudioControlState
+    extends ConsumerState<DictionaryAudioControl> {
+  late final DictionaryAudioPlayer _player;
   bool _loading = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _player = AudioPlayer();
+    _player = ref.read(dictionaryAudioPlayerFactoryProvider)();
   }
 
   @override
@@ -131,6 +145,17 @@ class _DictionaryAudioPlayerState extends State<DictionaryAudioPlayer> {
 
   @override
   Widget build(BuildContext context) {
+    final source = ref.watch(
+      dictionaryAudioSourceProvider(
+        DictionaryAudioQuery(id: widget.audio.id, remoteUrl: widget.audio.url),
+      ),
+    );
+    if (source.hasValue && source.valueOrNull == null) {
+      return const Text(
+        'Audio belum diunduh untuk penggunaan offline.',
+        style: TextStyle(color: StudentStyle.inkMuted),
+      );
+    }
     return Container(
       padding: const EdgeInsets.all(EmiSpacing.md),
       decoration: BoxDecoration(
@@ -146,7 +171,9 @@ class _DictionaryAudioPlayerState extends State<DictionaryAudioPlayer> {
               final playing = snapshot.data?.playing == true;
               return IconButton.filled(
                 tooltip: playing ? 'Jeda audio' : 'Putar audio',
-                onPressed: _loading ? null : () => _toggle(playing),
+                onPressed: _loading || source.valueOrNull == null
+                    ? null
+                    : () => _toggle(playing, source.valueOrNull!),
                 style: IconButton.styleFrom(
                   backgroundColor: EmiColors.primary,
                   foregroundColor: Colors.white,
@@ -167,7 +194,7 @@ class _DictionaryAudioPlayerState extends State<DictionaryAudioPlayer> {
           const SizedBox(width: EmiSpacing.md),
           Expanded(
             child: Text(
-              _error ?? 'Putar pelafalan',
+              _error ?? widget.label,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: _error != null ? EmiColors.error : StudentStyle.ink,
               ),
@@ -178,7 +205,7 @@ class _DictionaryAudioPlayerState extends State<DictionaryAudioPlayer> {
     );
   }
 
-  Future<void> _toggle(bool playing) async {
+  Future<void> _toggle(bool playing, String source) async {
     setState(() {
       _loading = true;
       _error = null;
@@ -187,7 +214,7 @@ class _DictionaryAudioPlayerState extends State<DictionaryAudioPlayer> {
       if (playing) {
         await _player.pause();
       } else {
-        if (_player.audioSource == null) await _player.setUrl(widget.audio.url);
+        if (!_player.hasSource) await _player.setUrl(source);
         await _player.play();
       }
     } catch (error) {
@@ -271,6 +298,14 @@ class _ExamplesCard extends StatelessWidget {
                         example.indonesia!,
                         style: const TextStyle(color: StudentStyle.inkMuted),
                       ),
+                    if (example.audio != null) ...[
+                      const SizedBox(height: EmiSpacing.sm),
+                      DictionaryAudioControl(
+                        key: Key('dictionarySentenceAudio-${example.id}'),
+                        audio: example.audio!,
+                        label: 'Putar audio contoh',
+                      ),
+                    ],
                   ],
                 ),
               ),

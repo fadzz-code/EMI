@@ -6,11 +6,14 @@ import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../../../app/theme/emi_theme.dart';
+import '../../../core/network/network_status_controller.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
+import '../../../shared/widgets/student_connectivity_banner.dart';
 import '../../../shared/widgets/student_style.dart';
 import '../../../shared/widgets/student_widgets.dart';
 import '../data/dictionary_entry.dart';
 import '../data/dictionary_providers.dart';
+import 'dictionary_offline_providers.dart';
 
 class DictionaryListScreen extends ConsumerStatefulWidget {
   const DictionaryListScreen({super.key});
@@ -43,19 +46,22 @@ class _DictionaryListScreenState extends ConsumerState<DictionaryListScreen> {
       categoryId: _categoryId,
       page: _page,
     );
-    final entries = ref.watch(dictionaryListProvider(query));
-    final categorySource = ref.watch(dictionaryCategorySourceProvider);
+    final entries = ref.watch(integratedDictionaryListProvider(query));
+    final categories = ref.watch(dictionaryCategoriesProvider);
+    final networkMode = ref.watch(dictionaryNetworkModeProvider);
 
     return EmiScaffold(
       title: 'Kamus Mekongga',
       currentIndex: 2,
       onNavTap: (index) => _go(context, index),
       child: RefreshIndicator(
-        onRefresh: () => ref.refresh(dictionaryListProvider(query).future),
+        onRefresh: () =>
+            ref.refresh(integratedDictionaryListProvider(query).future),
         child: entries.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => _ErrorState(
-            onRetry: () => ref.invalidate(dictionaryListProvider(query)),
+            onRetry: () =>
+                ref.invalidate(integratedDictionaryListProvider(query)),
           ),
           data: (page) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
@@ -66,6 +72,9 @@ class _DictionaryListScreenState extends ConsumerState<DictionaryListScreen> {
                 subtitle: 'Cari arti kata Indonesia, Inggris, atau Mekongga.',
               ),
               const SizedBox(height: EmiSpacing.md),
+              StudentConnectivityBanner(mode: networkMode),
+              if (networkMode != NetworkMode.online)
+                const SizedBox(height: EmiSpacing.md),
               Container(
                 decoration: BoxDecoration(
                   color: StudentStyle.tint,
@@ -102,19 +111,23 @@ class _DictionaryListScreenState extends ConsumerState<DictionaryListScreen> {
               ),
               const SizedBox(height: EmiSpacing.sm),
               _CategoryChips(
-                entries: categorySource.valueOrNull?.items ?? page.items,
+                categories:
+                    categories.valueOrNull ?? _categoriesFrom(page.items),
                 activeId: _categoryId,
                 onChanged: (id) => setState(() {
                   _categoryId = id;
                   _page = 1;
                 }),
+                controller: ref.watch(dictionaryPackageControllerProvider),
               ),
               const SizedBox(height: EmiSpacing.md),
               if (page.items.isEmpty)
                 StudentPlaceholder(
                   icon: Icons.search_off_outlined,
                   title: 'Kata Tidak Ditemukan',
-                  message: 'Coba kata kunci atau kategori lain.',
+                  message: networkMode == NetworkMode.online
+                      ? 'Coba kata kunci atau kategori lain.'
+                      : 'Kata tidak ditemukan di kamus yang tersimpan.',
                 )
               else
                 ...page.items.map(
@@ -210,46 +223,180 @@ class _LanguageChips extends StatelessWidget {
   }
 }
 
+List<DictionaryCategory> _categoriesFrom(List<DictionaryEntry> entries) {
+  final values = <String, DictionaryCategory>{};
+  for (final entry in entries) {
+    final category = entry.category;
+    if (category != null && category.id.isNotEmpty) {
+      values[category.id] = category;
+    }
+  }
+  return values.values.toList();
+}
+
 class _CategoryChips extends StatelessWidget {
   const _CategoryChips({
-    required this.entries,
+    required this.categories,
     required this.activeId,
     required this.onChanged,
+    required this.controller,
   });
 
-  final List<DictionaryEntry> entries;
+  final List<DictionaryCategory> categories;
   final String? activeId;
   final ValueChanged<String?> onChanged;
+  final DictionaryPackageController controller;
 
   @override
   Widget build(BuildContext context) {
-    final categories = <String, DictionaryCategory>{};
-    for (final entry in entries) {
-      final category = entry.category;
-      if (category != null && category.id.isNotEmpty) {
-        categories[category.id] = category;
-      }
-    }
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          _Chip(
+    return Column(
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: _Chip(
             label: 'Semua',
             selected: activeId == null,
             onTap: () => onChanged(null),
           ),
-          ...categories.values.map(
-            (category) => _Chip(
-              label: category.name,
-              selected: activeId == category.id,
-              onTap: () => onChanged(category.id),
-            ),
+        ),
+        ...categories.map(
+          (category) => Consumer(
+            builder: (context, ref, _) {
+              final package = ref.watch(
+                dictionaryPackageStateProvider(category.id),
+              );
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Row(
+                  children: [
+                    Flexible(
+                      child: _Chip(
+                        label: category.name,
+                        selected: activeId == category.id,
+                        onTap: () => onChanged(category.id),
+                      ),
+                    ),
+                    if (package.valueOrNull?.isNew == true)
+                      const StudentStatusChip(label: 'BARU'),
+                    if (package.valueOrNull?.status ==
+                        DictionaryPackageStatus.updateAvailable)
+                      const StudentStatusChip(label: 'Pembaruan'),
+                  ],
+                ),
+                trailing: _PackageAction(
+                  state:
+                      package.valueOrNull ??
+                      const DictionaryPackageState(
+                        DictionaryPackageStatus.download,
+                      ),
+                  onDownload: category.entriesCount == 0
+                      ? null
+                      : () => _showDownload(context, category, controller),
+                  onRemove: () => controller.remove(category.id),
+                ),
+              );
+            },
           ),
-        ],
+        ),
+      ],
+    );
+  }
+
+  static Future<void> _showDownload(
+    BuildContext context,
+    DictionaryCategory category,
+    DictionaryPackageController controller,
+  ) async {
+    var audio = await controller.includeAudioDefault(category.id);
+    if (!context.mounted) return;
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Unduh ${category.name}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Kata dan arti wajib diunduh agar kategori dapat dicari tanpa internet.',
+              ),
+              const SizedBox(height: EmiSpacing.sm),
+              const Text('Contoh kalimat ikut diunduh.'),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: audio,
+                title: const Text('Sertakan audio'),
+                onChanged: (value) =>
+                    setDialogState(() => audio = value ?? false),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Download'),
+            ),
+          ],
+        ),
       ),
     );
+    if (accepted == true) {
+      await controller.download(category.id, includeAudio: audio);
+    }
+  }
+}
+
+class _PackageAction extends StatelessWidget {
+  const _PackageAction({
+    required this.state,
+    required this.onDownload,
+    required this.onRemove,
+  });
+
+  final DictionaryPackageState state;
+  final VoidCallback? onDownload;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    switch (state.status) {
+      case DictionaryPackageStatus.downloading:
+        return const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: EmiSpacing.xs),
+            Text('Downloading'),
+          ],
+        );
+      case DictionaryPackageStatus.availableOffline:
+        return PopupMenuButton<void>(
+          tooltip: 'Available Offline',
+          onSelected: (_) => onRemove(),
+          itemBuilder: (_) => const [
+            PopupMenuItem(value: null, child: Text('Remove')),
+          ],
+          child: const Chip(label: Text('Available Offline')),
+        );
+      case DictionaryPackageStatus.updateAvailable:
+        return TextButton(
+          onPressed: onDownload,
+          child: const Text('Update Available'),
+        );
+      case DictionaryPackageStatus.retry:
+        return TextButton(onPressed: onDownload, child: const Text('Retry'));
+      case DictionaryPackageStatus.download:
+        return TextButton(onPressed: onDownload, child: const Text('Download'));
+    }
   }
 }
 
@@ -319,6 +466,16 @@ class _DictionaryCardState extends ConsumerState<_DictionaryCard> {
 
   @override
   Widget build(BuildContext context) {
+    final source = entry.audio == null
+        ? const AsyncValue<String?>.data(null)
+        : ref.watch(
+            dictionaryAudioSourceProvider(
+              DictionaryAudioQuery(
+                id: entry.audio!.id,
+                remoteUrl: entry.audio!.url,
+              ),
+            ),
+          );
     return StudentCard(
       onTap: () => context.push('/student/dictionary/${entry.id}'),
       child: Column(
@@ -343,7 +500,7 @@ class _DictionaryCardState extends ConsumerState<_DictionaryCard> {
                   ],
                 ),
               ),
-              if (entry.hasAudio)
+              if (entry.hasAudio && source.valueOrNull != null)
                 StreamBuilder<PlayerState>(
                   stream: _player.playerStateStream,
                   builder: (context, snapshot) {
@@ -351,7 +508,9 @@ class _DictionaryCardState extends ConsumerState<_DictionaryCard> {
                     return IconButton.filled(
                       key: Key('dictionaryAudio-${entry.id}'),
                       tooltip: playing ? 'Jeda audio' : 'Putar audio',
-                      onPressed: _loading ? null : () => _toggle(playing),
+                      onPressed: _loading
+                          ? null
+                          : () => _toggle(playing, source.valueOrNull!),
                       style: IconButton.styleFrom(
                         backgroundColor: StudentStyle.tint,
                         foregroundColor: EmiColors.primary,
@@ -370,6 +529,15 @@ class _DictionaryCardState extends ConsumerState<_DictionaryCard> {
           ),
           const SizedBox(height: EmiSpacing.sm),
           Text(entry.english, style: const TextStyle(color: StudentStyle.ink)),
+          if (entry.hasAudio &&
+              source.hasValue &&
+              source.valueOrNull == null) ...[
+            const SizedBox(height: EmiSpacing.xs),
+            const Text(
+              'Audio belum diunduh untuk penggunaan offline.',
+              style: TextStyle(color: StudentStyle.inkMuted),
+            ),
+          ],
           if (_error != null) ...[
             const SizedBox(height: EmiSpacing.xs),
             Text(_error!, style: const TextStyle(color: EmiColors.error)),
@@ -383,7 +551,7 @@ class _DictionaryCardState extends ConsumerState<_DictionaryCard> {
     );
   }
 
-  Future<void> _toggle(bool playing) async {
+  Future<void> _toggle(bool playing, String source) async {
     if (_loading) return;
     if (playing) {
       await _player.pause();
@@ -395,7 +563,7 @@ class _DictionaryCardState extends ConsumerState<_DictionaryCard> {
           _loading = true;
           _error = null;
         });
-        await _player.setUrl(entry.audio!.url);
+        await _player.setUrl(source);
         if (!mounted) return;
         setState(() => _loading = false);
       }

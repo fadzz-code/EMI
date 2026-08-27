@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:emi_mobile/features/auth/data/auth_providers.dart';
 import 'package:emi_mobile/features/auth/domain/auth_repository.dart';
+import 'package:emi_mobile/core/network/network_status_controller.dart';
 import 'package:emi_mobile/features/dictionary/data/dictionary_entry.dart';
 import 'package:emi_mobile/features/dictionary/data/dictionary_providers.dart';
 import 'package:emi_mobile/features/dictionary/presentation/dictionary_list_screen.dart';
+import 'package:emi_mobile/features/dictionary/presentation/dictionary_offline_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,6 +21,7 @@ class _AudioPlayer implements DictionaryAudioPlayer {
   final setUrlGate = Completer<void>();
   int setUrlCalls = 0;
   int playCalls = 0;
+  String? source;
   bool disposed = false;
   bool fail = false;
 
@@ -28,6 +31,7 @@ class _AudioPlayer implements DictionaryAudioPlayer {
   Stream<PlayerState> get playerStateStream => states.stream;
   @override
   Future<void> setUrl(String url) async {
+    source = url;
     setUrlCalls++;
     if (fail) throw StateError('audio');
     await setUrlGate.future;
@@ -72,9 +76,80 @@ void main() {
     expect(find.text('Audio gagal diputar. Coba lagi.'), findsOneWidget);
   });
 
+  testWidgets('list audio uses local source and explains missing download', (
+    tester,
+  ) async {
+    final audio = _AudioPlayer();
+    await _pumpDictionary(
+      tester,
+      audio: audio,
+      audioSource: 'file:///offline/entry.mp3',
+    );
+    await tester.tap(find.byKey(const Key('dictionaryAudio-entry-1')));
+    audio.setUrlGate.complete();
+    await tester.pump();
+    expect(audio.source, 'file:///offline/entry.mp3');
+
+    await tester.pumpWidget(const SizedBox());
+    await _pumpDictionary(tester, audio: _AudioPlayer(), audioSource: null);
+    expect(find.byKey(const Key('dictionaryAudio-entry-1')), findsNothing);
+    expect(
+      find.text('Audio belum diunduh untuk penggunaan offline.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('absent audio hidden', (tester) async {
     await _pumpDictionary(tester, audio: _AudioPlayer(), audioAvailable: false);
     expect(find.byKey(const Key('dictionaryAudio-entry-1')), findsNothing);
+  });
+
+  testWidgets('package badges and download dialog show audio option', (
+    tester,
+  ) async {
+    await _pumpDictionary(
+      tester,
+      audio: _AudioPlayer(),
+      packageState: const DictionaryPackageState(
+        DictionaryPackageStatus.updateAvailable,
+        isNew: true,
+      ),
+    );
+    expect(find.text('BARU'), findsOneWidget);
+    expect(find.text('Pembaruan'), findsOneWidget);
+    expect(find.text('Update Available'), findsOneWidget);
+    await tester.tap(find.text('Update Available'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text(
+        'Kata dan arti wajib diunduh agar kategori dapat dicari tanpa internet.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Contoh kalimat ikut diunduh.'), findsOneWidget);
+    expect(find.text('Sertakan audio'), findsOneWidget);
+    await tester.tap(find.byType(Checkbox));
+    await tester.pump();
+    expect(
+      tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
+      true,
+    );
+    await tester.tap(find.text('Batal'));
+  });
+
+  testWidgets('offline empty search uses saved dictionary wording', (
+    tester,
+  ) async {
+    await _pumpDictionary(
+      tester,
+      audio: _AudioPlayer(),
+      empty: true,
+      offline: true,
+    );
+    expect(
+      find.text('Kata tidak ditemukan di kamus yang tersimpan.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('pagination boundaries and search reset page', (tester) async {
@@ -187,6 +262,12 @@ Future<GoRouter> _pumpDictionary(
   required _AudioPlayer audio,
   bool audioAvailable = true,
   List<DictionaryQuery>? queries,
+  String? audioSource = 'https://example.test/audio.mp3',
+  DictionaryPackageState packageState = const DictionaryPackageState(
+    DictionaryPackageStatus.download,
+  ),
+  bool empty = false,
+  bool offline = false,
 }) async {
   await tester.binding.setSurfaceSize(const Size(800, 1200));
   addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -208,6 +289,15 @@ Future<GoRouter> _pumpDictionary(
       overrides: [
         authRepositoryProvider.overrideWithValue(_AuthRepository()),
         dictionaryAudioPlayerFactoryProvider.overrideWithValue(() => audio),
+        dictionaryAudioSourceProvider.overrideWith(
+          (_, query) async => audioSource,
+        ),
+        dictionaryNetworkModeProvider.overrideWithValue(
+          offline ? NetworkMode.offline : NetworkMode.online,
+        ),
+        dictionaryPackageStateProvider(
+          'category-1',
+        ).overrideWith((_) => Stream.value(packageState)),
         dictionaryCategorySourceProvider.overrideWith(
           (_) async => DictionaryPage(
             items: [_entry(audioAvailable: audioAvailable)],
@@ -219,10 +309,10 @@ Future<GoRouter> _pumpDictionary(
         dictionaryListProvider.overrideWith((_, query) async {
           queries?.add(query);
           return DictionaryPage(
-            items: [_entry(audioAvailable: audioAvailable)],
+            items: empty ? const [] : [_entry(audioAvailable: audioAvailable)],
             currentPage: query.page,
             lastPage: 2,
-            total: 2,
+            total: empty ? 0 : 2,
           );
         }),
       ],

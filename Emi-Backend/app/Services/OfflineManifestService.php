@@ -81,7 +81,10 @@ class OfflineManifestService
     {
         return DictionaryCategory::query()
             ->active()
-            ->with(['entries' => fn ($query) => $query->active()->with(['audioMedia', 'sentenceExamples.audioMedia'])->orderBy('id')])
+            ->with(['entries' => fn ($query) => $query->active()->with([
+                'audioMedia',
+                'sentenceExamples' => fn ($sentences) => $sentences->where('status', 'active')->with('audioMedia')->orderBy('id'),
+            ])->orderBy('id')])
             ->orderBy('id')
             ->get()
             ->map(function (DictionaryCategory $category): array {

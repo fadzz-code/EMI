@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
-const offlineDatabaseVersion = 2;
+const offlineDatabaseVersion = 3;
 
 class OfflineDatabase {
   OfflineDatabase(this.database);
@@ -79,6 +79,26 @@ SELECT MIN(id) FROM sync_queue GROUP BY owner_student_id, operation_type, entity
         'CREATE UNIQUE INDEX sync_queue_logical_unique_idx ON sync_queue (owner_student_id, operation_type, entity_id)',
       );
     }
+    if (oldVersion < 3 && newVersion >= 3) {
+      for (final column in ['indonesia', 'mekongga', 'english']) {
+        await db.execute(
+          'ALTER TABLE offline_dictionary_entries ADD COLUMN ${column}_normalized TEXT',
+        );
+      }
+      await db.execute(
+        'ALTER TABLE offline_dictionary_entries ADD COLUMN category_id TEXT',
+      );
+      await db.execute(
+        'CREATE INDEX offline_dictionary_search_idx ON offline_dictionary_entries (owner_student_id, category_id, indonesia_normalized, mekongga_normalized, english_normalized, id)',
+      );
+      await db.execute('''
+CREATE TABLE offline_dictionary_seen_categories (
+  owner_student_id TEXT NOT NULL,
+  category_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (owner_student_id, category_id)
+)''');
+    }
   }
 
   Future<void> put({
@@ -116,7 +136,11 @@ ON CONFLICT(owner_student_id, id) DO UPDATE SET data_json = excluded.data_json, 
   Future<void> deleteOwner(String ownerStudentId) async {
     _validateOwner(ownerStudentId);
     await database.transaction((txn) async {
-      for (final table in {...contentTables, 'sync_queue'}) {
+      for (final table in {
+        ...contentTables,
+        'sync_queue',
+        'offline_dictionary_seen_categories',
+      }) {
         await txn.delete(
           table,
           where: 'owner_student_id = ?',

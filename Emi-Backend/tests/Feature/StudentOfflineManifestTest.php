@@ -119,8 +119,9 @@ class StudentOfflineManifestTest extends TestCase
         $version = $this->assertDictionaryVersionChanged($student, $category->id, $version);
         DB::table('dictionary_sentence_examples')->where('id', $sentence->id)->update(['status' => 'inactive']);
         $version = $this->assertDictionaryVersionChanged($student, $category->id, $version);
+        DB::table('dictionary_sentence_examples')->where('id', $sentence->id)->update(['example_indonesia' => 'mutasi tersembunyi']);
         DB::table('media_files')->where('id', $sentenceAudio->id)->update(['metadata' => json_encode(['duration' => 2])]);
-        $version = $this->assertDictionaryVersionChanged($student, $category->id, $version);
+        $this->assertSame($version, $this->dictionaryVersion($student, $category->id));
         DB::table('media_files')->where('id', $audio->id)->update(['checksum_sha256' => hash('sha256', 'entry audio changed')]);
         $version = $this->assertDictionaryVersionChanged($student, $category->id, $version);
         DB::table('dictionary_entries')->where('id', $inactiveEntry->id)->update(['english' => 'hidden changed']);

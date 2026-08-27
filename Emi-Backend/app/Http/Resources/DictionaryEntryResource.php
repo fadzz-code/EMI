@@ -14,6 +14,7 @@ class DictionaryEntryResource extends JsonResource
 
         return [
             'id' => $this->id,
+            'code' => $this->code,
             'category' => $this->whenLoaded('category', fn () => new DictionaryCategoryResource($this->category)),
             'category_id' => $this->category_id,
             'indonesia' => $this->indonesia,
@@ -30,12 +31,20 @@ class DictionaryEntryResource extends JsonResource
                     'id' => $example->audioMedia->id,
                     'url' => app(MediaAccessService::class)->publicUrl($example->audioMedia),
                     'mime_type' => $example->audioMedia->mime_type,
+                    'extension' => $example->audioMedia->extension,
+                    'size_bytes' => $example->audioMedia->size_bytes,
+                    'checksum_sha256' => $example->audioMedia->checksum_sha256,
+                    'updated_at' => $example->audioMedia->updated_at?->toISOString(),
                 ] : null,
             ])->values()),
             'audio' => $audio ? [
                 'id' => $audio->id,
                 'url' => app(MediaAccessService::class)->publicUrl($audio),
                 'mime_type' => $audio->mime_type,
+                'extension' => $audio->extension,
+                'size_bytes' => $audio->size_bytes,
+                'checksum_sha256' => $audio->checksum_sha256,
+                'updated_at' => $audio->updated_at?->toISOString(),
             ] : null,
             'status' => $this->status,
             'created_at' => $this->created_at?->toISOString(),
