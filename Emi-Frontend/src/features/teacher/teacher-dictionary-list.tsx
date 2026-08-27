@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Languages, Search } from "lucide-react";
@@ -73,6 +73,15 @@ export function TeacherDictionaryList() {
     setPage(1);
     setSearch(searchInput.trim());
   }
+
+  // Live search with short debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   return (
     <div className="grid gap-8">

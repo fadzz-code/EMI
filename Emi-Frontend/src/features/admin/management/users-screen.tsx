@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { GraduationCap, UserRound } from "lucide-react";
@@ -69,6 +69,15 @@ export function UsersScreen() {
     setSearch(searchInput.trim());
   }
 
+  // Live search with short debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
   return (
     <div className="grid gap-8">
       <PageHeader
@@ -105,11 +114,6 @@ export function UsersScreen() {
           <span>Cari nama/email</span>
           <Input
             onChange={(event) => setSearchInput(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                applySearch();
-              }
-            }}
             placeholder="Contoh: budi@example.com"
             value={searchInput}
           />

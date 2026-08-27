@@ -44,21 +44,49 @@ class DictionaryController extends Controller
         $language = $validated['language'] ?? 'all';
 
         $entries = DictionaryEntry::query()
-            ->with(['category', 'audioMedia'])
+            ->with(['category', 'audioMedia', 'sentenceExamples' => fn ($query) => $query->where('status', 'active')->orderBy('id')->limit(1)])
             ->active()
             ->whereHas('category', fn ($query) => $query->active())
             ->when($validated['category_id'] ?? null, fn ($query, $categoryId) => $query->where('category_id', $categoryId))
             ->when($validated['letter'] ?? null, fn ($query, $letter) => $query->where('indonesia_normalized', 'ilike', $this->normalizer->normalize($letter).'%'))
             ->when($search, function ($query) use ($search, $language) {
+                if (strlen($search) >= 1) {
+                    $columns = $language === 'all'
+                        ? ['indonesia_normalized', 'english_normalized', 'mekongga_normalized']
+                        : ["{$language}_normalized"];
+
+                    $query->where(function ($inner) use ($columns, $search) {
+                        foreach ($columns as $column) {
+                            $inner->orWhere($column, 'ilike', "{$search}%");
+                        }
+                        foreach ($columns as $column) {
+                            $inner->orWhere($column, 'ilike', "%{$search}%")->where($column, 'not ilike', "{$search}%");
+                        }
+                    });
+                }
+            })
+            ->when($search && strlen($search) >= 1, function ($query) use ($search, $language) {
                 $columns = $language === 'all'
                     ? ['indonesia_normalized', 'english_normalized', 'mekongga_normalized']
                     : ["{$language}_normalized"];
-
-                $query->where(function ($inner) use ($columns, $search) {
-                    foreach ($columns as $column) {
-                        $inner->orWhere($column, 'ilike', "%{$search}%");
-                    }
-                });
+                
+                $caseExact = [];
+                $casePrefix = [];
+                foreach ($columns as $column) {
+                    $caseExact[] = "WHEN $column ilike '{$search}' THEN 1";
+                    $casePrefix[] = "WHEN $column ilike '{$search}%' THEN 2";
+                }
+                
+                $exactCase = implode(' ', $caseExact);
+                $prefixCase = implode(' ', $casePrefix);
+                
+                $query->orderByRaw("
+                    CASE 
+                        $exactCase
+                        $prefixCase
+                        ELSE 3 
+                    END ASC
+                ");
             })
             ->orderBy($sortColumn, $sortDirection)
             ->orderBy('id', $sortDirection)

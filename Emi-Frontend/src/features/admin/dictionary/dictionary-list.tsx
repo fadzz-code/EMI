@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, Eye, Pencil, Plus, Search, Trash2 } from "lucide-react";
@@ -233,11 +233,6 @@ export function DictionaryList() {
           <span>Cari kata</span>
           <Input
             onChange={(event) => setSearchInput(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                applySearch();
-              }
-            }}
             placeholder="Cari Indonesia, Inggris, atau Mekongga"
             value={searchInput}
           />

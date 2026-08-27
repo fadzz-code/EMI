@@ -132,7 +132,7 @@ class _TeacherDictionaryListScreenState
 
   void _onSearchChanged(String value) {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 400), () {
+    _debounce = Timer(const Duration(milliseconds: 300), () {
       setState(() {
         _search = value.trim().isEmpty ? null : value.trim();
         _page = 1;

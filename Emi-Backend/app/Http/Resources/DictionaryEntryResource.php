@@ -20,8 +20,12 @@ class DictionaryEntryResource extends JsonResource
             'indonesia' => $this->indonesia,
             'english' => $this->english,
             'mekongga' => $this->mekongga,
-            'example_mekongga' => $this->example_mekongga,
-            'example_indonesia' => $this->example_indonesia,
+            'example_mekongga' => $this->relationLoaded('sentenceExamples') && $this->sentenceExamples->isNotEmpty() 
+                ? $this->sentenceExamples->first()->example_mekongga 
+                : $this->example_mekongga,
+            'example_indonesia' => $this->relationLoaded('sentenceExamples') && $this->sentenceExamples->isNotEmpty() 
+                ? $this->sentenceExamples->first()->example_indonesia 
+                : $this->example_indonesia,
             'sentence_examples' => $this->whenLoaded('sentenceExamples', fn () => $this->sentenceExamples->map(fn ($example) => [
                 'id' => $example->id,
                 'kode' => $example->code,
