@@ -59,9 +59,11 @@ function userPayload(form: UserFormState): UserPayload {
 
 function DetailItem({ label, value }: { label: string; value?: React.ReactNode }) {
   return (
-    <div className="h-full rounded-xl border-2 border-border bg-surface-muted p-4">
+    <div className="flex h-full min-w-0 flex-col rounded-xl border-2 border-border bg-surface-muted p-4">
       <p className="text-xs font-black uppercase text-muted">{label}</p>
-      <div className="mt-2 text-sm font-bold text-ink">{value ?? "-"}</div>
+      <div className="mt-2 min-w-0 break-words text-sm font-bold text-ink" style={{ overflowWrap: 'anywhere' }}>
+        {value ?? "-"}
+      </div>
     </div>
   );
 }
@@ -222,8 +224,8 @@ export function UserDetailScreen({ userId }: { userId: string }) {
 
       {user ? (
         <>
-          <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
+          <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div className="min-w-0">
               <div className="flex flex-wrap gap-2">
                 <Badge tone="neutral">{roleLabel(user.role)}</Badge>
                 <Badge tone={statusTone(user.status)}>{userStatusLabel(user.status)}</Badge>
@@ -231,10 +233,14 @@ export function UserDetailScreen({ userId }: { userId: string }) {
                   <Badge tone="orange">Wajib ganti password</Badge>
                 ) : null}
               </div>
-              <h1 className="mt-2 text-3xl font-black text-ink">{user.full_name}</h1>
-              <p className="mt-2 text-sm text-muted">{user.email}</p>
+              <h1 className="mt-2 min-w-0 break-words text-3xl font-black text-ink" style={{ overflowWrap: 'anywhere' }}>
+                {user.full_name}
+              </h1>
+              <p className="mt-2 min-w-0 break-words text-sm text-muted" style={{ overflowWrap: 'anywhere' }}>
+                {user.email}
+              </p>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex flex-wrap gap-2 sm:flex-row">
               <Button onClick={openEdit} variant="secondary">
                 Edit Pengguna
               </Button>
@@ -257,7 +263,7 @@ export function UserDetailScreen({ userId }: { userId: string }) {
             </div>
           </header>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <DetailItem label="Nama" value={user.full_name} />
             <DetailItem label="Email" value={user.email} />
             <DetailItem label="Telepon" value={user.phone} />
