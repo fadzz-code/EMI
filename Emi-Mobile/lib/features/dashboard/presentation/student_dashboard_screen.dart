@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
+import '../../../core/network/network_status_controller.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
+import '../../../shared/widgets/student_connectivity_banner.dart';
 import '../../../shared/widgets/student_style.dart';
 import '../../../shared/widgets/student_widgets.dart';
 import '../../auth/presentation/auth_controller.dart';
@@ -17,6 +19,7 @@ class StudentDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authControllerProvider).user;
     final summary = ref.watch(studentDashboardSummaryProvider);
+    final networkMode = ref.watch(networkStatusControllerProvider).mode;
 
     return EmiScaffold(
       title: 'Beranda',
@@ -40,6 +43,9 @@ class StudentDashboardScreen extends ConsumerWidget {
           data: (data) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
+              StudentConnectivityBanner(mode: networkMode),
+              if (networkMode != NetworkMode.online)
+                const SizedBox(height: EmiSpacing.md),
               StudentHeroCard(
                 greeting: 'Halo,',
                 name: user?.fullName ?? 'Siswa',
@@ -67,6 +73,7 @@ class StudentDashboardScreen extends ConsumerWidget {
                   onTapQuizzes: () => context.go('/student/quizzes'),
                   onTapChatbot: () => context.go('/student/chatbot'),
                   onTapProfile: () => context.go('/student/profile'),
+                  onTapOffline: () => context.go('/student/offline'),
                 ),
               ],
             ],
@@ -195,6 +202,7 @@ class _QuickMenu extends StatelessWidget {
     required this.onTapQuizzes,
     required this.onTapChatbot,
     required this.onTapProfile,
+    required this.onTapOffline,
   });
 
   final VoidCallback onTapModules;
@@ -202,6 +210,7 @@ class _QuickMenu extends StatelessWidget {
   final VoidCallback onTapQuizzes;
   final VoidCallback onTapChatbot;
   final VoidCallback onTapProfile;
+  final VoidCallback onTapOffline;
 
   @override
   Widget build(BuildContext context) {
@@ -248,6 +257,12 @@ class _QuickMenu extends StatelessWidget {
               label: 'Chatbot',
               icon: Icons.auto_awesome_outlined,
               onTap: onTapChatbot,
+            ),
+            _QuickMenuItem(
+              key: const Key('studentQuickMenuOffline'),
+              label: 'Offline',
+              icon: Icons.offline_bolt_outlined,
+              onTap: onTapOffline,
             ),
             _QuickMenuItem(
               key: const Key('studentQuickMenuProfile'),

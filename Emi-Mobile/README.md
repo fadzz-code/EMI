@@ -166,6 +166,23 @@ lib/
 - Flutter hanya memanggil Laravel API `/api/v1`.
 - Flutter tidak memanggil Python Speaking AI langsung.
 
+## Offline Mobile
+
+- Offline mendukung Modul/Lesson yang diunduh manual, Kamus yang diunduh manual, dan antrean sinkronisasi progress lesson.
+- Backend online tetap menjadi sumber data utama; unduhan hanya dilakukan manual saat perangkat online.
+- Data offline disimpan per pemilik akun. Logout mempertahankan data pemilik tersebut, sedangkan hapus unduhan atau hapus data akun lokal menghapus data terkait pemilik.
+- Kuis, Chatbot, Budaya, Speaking, Profil/Account, fitur Admin, login, dan perubahan password/avatar tidak didukung offline.
+- Sinkronisasi tidak berjalan di background; pengguna harus membuka aplikasi dan terhubung ke jaringan.
+
+### Checklist Manual Android Fisik
+
+- Module: unduh modul saat online, buka lesson setelah jaringan dimatikan, selesaikan lesson, lalu buka aplikasi saat online dan verifikasi progress tersinkron.
+- Dictionary: unduh kamus saat online, cari dan buka entri setelah jaringan dimatikan, lalu hapus unduhan dan verifikasi data tidak lagi tersedia offline.
+- Account: verifikasi data offline terpisah antar akun, tetap ada setelah logout, dan terhapus hanya lewat hapus unduhan atau hapus data akun lokal.
+- Network: verifikasi status offline/error tanpa crash, tidak ada sinkronisasi background, dan sinkronisasi berjalan setelah aplikasi dibuka kembali saat online.
+
+**MANUAL DEVICE TEST: DEFERRED.**
+
 ## Fitur Selesai Fase Foundation
 
 - Environment development/production.

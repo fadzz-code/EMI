@@ -117,8 +117,8 @@ void main() {
     );
     expect(find.text('BARU'), findsOneWidget);
     expect(find.text('Pembaruan'), findsOneWidget);
-    expect(find.text('Update Available'), findsOneWidget);
-    await tester.tap(find.text('Update Available'));
+    expect(find.text('Pembaruan tersedia'), findsOneWidget);
+    await tester.tap(find.text('Pembaruan tersedia'));
     await tester.pumpAndSettle();
     expect(
       find.text(

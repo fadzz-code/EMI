@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
+import '../../../core/network/network_status_controller.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
+import '../../../shared/widgets/student_connectivity_banner.dart';
 import '../../../shared/widgets/student_style.dart';
 import '../../../shared/widgets/student_widgets.dart';
 import '../data/culture_models.dart';
@@ -30,6 +32,7 @@ class _StudentCultureListScreenState
   Widget build(BuildContext context) {
     final query = CultureQuery(page: _page, perPage: _perPage);
     final page = ref.watch(cultureListProvider(query));
+    final networkMode = ref.watch(networkStatusControllerProvider).mode;
 
     return EmiScaffold(
       title: 'Budaya Mekongga',

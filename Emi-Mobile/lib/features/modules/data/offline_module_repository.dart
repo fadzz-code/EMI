@@ -34,15 +34,24 @@ class OfflineModuleRepository {
     required OfflineFileStore fileStore,
     required Dio dio,
     required StudentModuleRepository remote,
+    required bool Function(String owner) isActive,
+    required int Function(String owner) ownerGeneration,
+    required bool Function(String owner, int generation) isGenerationCurrent,
   }) : _database = database,
        _fileStore = fileStore,
        _dio = dio,
-       _remote = remote;
+       _remote = remote,
+       _isActive = isActive,
+       _ownerGeneration = ownerGeneration,
+       _isGenerationCurrent = isGenerationCurrent;
 
   final OfflineDatabase _database;
   final OfflineFileStore _fileStore;
   final Dio _dio;
   final StudentModuleRepository _remote;
+  final bool Function(String owner) _isActive;
+  final int Function(String owner) _ownerGeneration;
+  final bool Function(String owner, int generation) _isGenerationCurrent;
   static final _downloads = <String, Future<OfflineModulePackage>>{};
 
   Future<OfflineModulePackage> download(String owner, String moduleId) {
@@ -58,6 +67,7 @@ class OfflineModuleRepository {
 
   Future<OfflineModulePackage> _download(String owner, String moduleId) async {
     _validate(owner, 'ownerStudentId');
+    final generation = _ownerGeneration(owner);
     final version = (await manifest())
         .where((value) => value.moduleId == moduleId)
         .firstOrNull
@@ -72,6 +82,9 @@ class OfflineModuleRepository {
       for (final summary in detail.lessons.where(
         (value) => value.status == 'published',
       )) {
+        if (!_isActive(owner) || !_isGenerationCurrent(owner, generation)) {
+          throw StateError('Dibatalkan.');
+        }
         final lesson = await _remote.lesson(summary.id);
         lessons.add(lesson);
         if (lesson.media == null) continue;
@@ -109,6 +122,9 @@ class OfflineModuleRepository {
             } finally {
               await sink.close();
             }
+            if (!_isActive(owner) || !_isGenerationCurrent(owner, generation)) {
+              throw StateError('Dibatalkan.');
+            }
             if (!await _valid(
               staged,
               metadata.sizeBytes!,
@@ -122,6 +138,9 @@ class OfflineModuleRepository {
           }
         }
         media.add(_DownloadedMedia(metadata: metadata, ref: ref));
+      }
+      if (!_isActive(owner) || !_isGenerationCurrent(owner, generation)) {
+        throw StateError('Dibatalkan.');
       }
       final module = StudentModule(
         id: detail.id,
@@ -139,9 +158,13 @@ class OfflineModuleRepository {
       if (currentVersion != version) {
         throw StateError('Modul berubah saat diunduh. Silakan coba lagi.');
       }
+      if (!_isActive(owner) || !_isGenerationCurrent(owner, generation)) {
+        throw StateError('Dibatalkan.');
+      }
       final oldRefs = await _moduleRefs(owner, moduleId);
       final now = DateTime.now().toUtc();
       await _database.database.transaction((txn) async {
+        if (!_isGenerationCurrent(owner, generation)) return;
         await _deleteRows(txn, owner, moduleId);
         await _put(txn, 'offline_modules', owner, moduleId, {
           'module': _moduleJson(module),
@@ -160,12 +183,16 @@ class OfflineModuleRepository {
             'media': _mediaJson(value.metadata),
           }, now);
         }
-        await _put(txn, 'offline_packages', owner, moduleId, {
+        await _put(txn, 'offline_packages', owner, 'module:$moduleId', {
+          'id': moduleId,
           'kind': 'module',
           'version': version,
           'downloaded_at': now.toIso8601String(),
         }, now);
       });
+      if (!_isGenerationCurrent(owner, generation)) {
+        throw StateError('Dibatalkan.');
+      }
       for (final ref in oldRefs.where(
         (ref) => !media.any((value) => value.ref == ref),
       )) {
@@ -192,7 +219,7 @@ class OfflineModuleRepository {
     final packages = await _database.database.query(
       'offline_packages',
       where: 'owner_student_id = ? AND id = ?',
-      whereArgs: [owner, moduleId],
+      whereArgs: [owner, 'module:$moduleId'],
       limit: 1,
     );
     if (modules.isEmpty || packages.isEmpty) return null;
@@ -215,6 +242,41 @@ class OfflineModuleRepository {
       version: data['version'] as String,
       downloadedAt: DateTime.parse(package['downloaded_at'] as String),
     );
+  }
+
+  Future<StudentModulePage> list(
+    String owner, {
+    String? status,
+    int page = 1,
+  }) async {
+    try {
+      return await _remote.list(status: status, page: page);
+    } on AppError catch (error) {
+      if (!_transport(error)) rethrow;
+      final rows = await _database.readAll(
+        ownerStudentId: owner,
+        table: 'offline_modules',
+      );
+      final modules =
+          rows
+              .map(_decode)
+              .map(
+                (data) => StudentModule.fromJson(
+                  data['module'] as Map<String, dynamic>,
+                ),
+              )
+              .where(
+                (module) => status == null || module.progress.status == status,
+              )
+              .toList()
+            ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      return StudentModulePage(
+        items: modules,
+        currentPage: 1,
+        lastPage: 1,
+        total: modules.length,
+      );
+    }
   }
 
   Future<StudentModule> detail(
@@ -340,7 +402,7 @@ class OfflineModuleRepository {
     final local = <String, String>{
       for (final row in rows)
         if (_decode(row)['kind'] == 'module')
-          row['id'] as String: _decode(row)['version'] as String,
+          _decode(row)['id'] as String: _decode(row)['version'] as String,
     };
     return remote
         .where(
@@ -415,13 +477,18 @@ class OfflineModuleRepository {
     String owner,
     String moduleId,
   ) async {
-    for (final table in ['offline_packages', 'offline_modules']) {
+    for (final table in ['offline_modules']) {
       await txn.delete(
         table,
         where: 'owner_student_id = ? AND id = ?',
         whereArgs: [owner, moduleId],
       );
     }
+    await txn.delete(
+      'offline_packages',
+      where: 'owner_student_id = ? AND id = ?',
+      whereArgs: [owner, 'module:$moduleId'],
+    );
     for (final table in ['offline_lessons', 'offline_media']) {
       final rows = await txn.query(
         table,

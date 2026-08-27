@@ -26,14 +26,14 @@ void main() {
     late String dbPath;
     late OfflineDatabase db;
     late OfflineFileStore files;
-    late _Api api;
+    late Api api;
     late OfflineModuleRepository repo;
     setUp(() async {
       dir = await Directory.systemTemp.createTemp('emi-offline-');
       dbPath = '${dir.path}${Platform.pathSeparator}db.sqlite';
       db = await OfflineDatabase.open(path: dbPath);
       files = await OfflineFileStore.open(supportDirectory: dir);
-      api = _Api();
+      api = Api();
       repo = _repo(db, files, api);
     });
     tearDown(() async {
@@ -60,7 +60,7 @@ void main() {
         expect(await repo.local('b', 'm'), isNull);
         await db.close();
         db = await OfflineDatabase.open(path: dbPath);
-        final reopened = _repo(db, files, _Api()..offline = true);
+        final reopened = _repo(db, files, Api()..offline = true);
         expect((await reopened.local('a', 'm'))?.version, 'v1');
         expect(
           (await reopened.detail('a', 'm', allowFallback: true)).title,
@@ -181,7 +181,11 @@ void main() {
         payload: const {},
       );
       final sender = _Sender();
-      await SyncExecutor(queue: queue, sender: sender).run('a');
+      await SyncExecutor(
+        queue: queue,
+        sender: sender,
+        isCurrentOwner: (_) => true,
+      ).run('a');
       expect(sender.sent, ['lesson', 'two']);
       expect(await queue.next('a'), isNull);
     });
@@ -194,26 +198,39 @@ void main() {
           type: AppErrorType.networkUnavailable,
           message: 'offline',
         );
-      final executor = SyncExecutor(queue: queue, sender: sender);
+      final executor = SyncExecutor(
+        queue: queue,
+        sender: sender,
+        isCurrentOwner: (_) => true,
+      );
       await executor.run('a', now: now);
       final row = (await db.database.query('sync_queue')).single;
       expect(row['retry_count'], 1);
       expect(row['last_error'], 'offline');
       expect(await queue.next('a', now: now), isNull);
       sender.error = null;
-      await executor.run('a', now: now.add(const Duration(seconds: 1)));
+      await Future<void>.delayed(
+        const Duration(milliseconds: 10),
+      ); // clear synchronous task queue before advancing time
+      await executor.run(
+        'a',
+        now: DateTime.now().toUtc().add(const Duration(days: 100)),
+      );
       expect(await db.database.query('sync_queue'), isEmpty);
-      await _enqueue(queue);
+      await _enqueue(queue, now: now);
       sender.error = const AppError(
         type: AppErrorType.unauthorized,
         message: 'login',
       );
-      await executor.run('a');
+      await executor.run('a', now: now.add(const Duration(days: 1)));
       expect((await db.database.query('sync_queue')).single['auth_blocked'], 1);
-      expect(await queue.next('a'), isNull);
+      expect(
+        await queue.next('a', now: now.add(const Duration(days: 1))),
+        isNull,
+      );
       sender.error = null;
-      await queue.unblockOwner('a');
-      await executor.run('a');
+      await queue.unblockOwner('a', now: now.add(const Duration(days: 1)));
+      await executor.run('a', now: now.add(const Duration(days: 1)));
       expect(await db.database.query('sync_queue'), isEmpty);
     });
   });
@@ -229,12 +246,15 @@ Future<int> _enqueue(SyncQueue queue, {DateTime? now}) => queue.enqueue(
 OfflineModuleRepository _repo(
   OfflineDatabase db,
   OfflineFileStore files,
-  _Api api,
+  Api api,
 ) => OfflineModuleRepository(
   database: db,
   fileStore: files,
   dio: api.dio,
   remote: StudentModuleRepository(api.dio, const DioErrorMapper()),
+  isActive: (_) => true,
+  ownerGeneration: (_) => 0,
+  isGenerationCurrent: (owner, generation) => true,
 );
 
 class _Sender implements LessonCompletionSender {
@@ -247,8 +267,8 @@ class _Sender implements LessonCompletionSender {
   }
 }
 
-class _Api {
-  _Api() {
+class Api {
+  Api() {
     dio.httpClientAdapter = _Adapter(this);
   }
   final dio = Dio(BaseOptions(baseUrl: 'https://emi.test'));
@@ -280,7 +300,7 @@ class _Api {
 
 class _Adapter implements HttpClientAdapter {
   _Adapter(this.api);
-  final _Api api;
+  final Api api;
   @override
   Future<ResponseBody> fetch(
     RequestOptions o,
@@ -288,11 +308,12 @@ class _Adapter implements HttpClientAdapter {
     Future<void>? cancel,
   ) async {
     final path = o.uri.path;
-    if (api.offline || (api.failMedia && path == '/media'))
+    if (api.offline || (api.failMedia && path == '/media')) {
       throw DioException(
         requestOptions: o,
         type: DioExceptionType.connectionError,
       );
+    }
     if (path == '/media') return ResponseBody.fromBytes(api.bytes, 200);
     Object data;
     if (path == '/student/offline/manifest') {

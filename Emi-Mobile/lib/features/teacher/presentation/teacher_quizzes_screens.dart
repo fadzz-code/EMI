@@ -356,19 +356,19 @@ class _TeacherQuizDetailScreenState
                 alignment: Alignment.centerLeft,
                 child: _StatusBadge(status: quiz.status),
               ),
-               const SizedBox(height: EmiSpacing.sm),
-               if (quiz.status == 'published')
-                 const TeacherStatusChip(label: 'Terkunci')
-               else if (quiz.attemptsCount > 0)
-                 const TeacherStatusChip(label: 'Sudah ada pengerjaan'),
-               if (quiz.attemptsCount > 0) ...[
-                 const SizedBox(height: EmiSpacing.sm),
-                 const Text(
-                   'Kuis sudah memiliki pengerjaan siswa. Kuis tidak dapat dihapus dan pertanyaan tidak dapat diubah.',
-                 ),
-               ],
-               const SizedBox(height: EmiSpacing.lg),
-               FilledButton.icon(
+              const SizedBox(height: EmiSpacing.sm),
+              if (quiz.status == 'published')
+                const TeacherStatusChip(label: 'Terkunci')
+              else if (quiz.attemptsCount > 0)
+                const TeacherStatusChip(label: 'Sudah ada pengerjaan'),
+              if (quiz.attemptsCount > 0) ...[
+                const SizedBox(height: EmiSpacing.sm),
+                const Text(
+                  'Kuis sudah memiliki pengerjaan siswa. Kuis tidak dapat dihapus dan pertanyaan tidak dapat diubah.',
+                ),
+              ],
+              const SizedBox(height: EmiSpacing.lg),
+              FilledButton.icon(
                 onPressed: quiz.status == 'published'
                     ? null
                     : () => context.push('/teacher/quizzes/${widget.id}/edit'),
@@ -394,8 +394,8 @@ class _TeacherQuizDetailScreenState
                 trailing: Wrap(
                   spacing: EmiSpacing.xs,
                   children: [
-                     if (quiz.questions.length > 1 &&
-                         teacherQuizCanEditQuestions(quiz))
+                    if (quiz.questions.length > 1 &&
+                        teacherQuizCanEditQuestions(quiz))
                       IconButton(
                         tooltip: 'Ubah Urutan Soal',
                         onPressed: () => _showReorderQuestionsDialog(
@@ -407,8 +407,8 @@ class _TeacherQuizDetailScreenState
                         icon: const Icon(Icons.swap_vert),
                       ),
                     FilledButton.icon(
-                       onPressed: teacherQuizCanEditQuestions(quiz)
-                           ? () => context.push(
+                      onPressed: teacherQuizCanEditQuestions(quiz)
+                          ? () => context.push(
                               '/teacher/quizzes/${widget.id}/questions/create',
                             )
                           : null,

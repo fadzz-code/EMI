@@ -31,7 +31,7 @@ class StudentModuleDetailScreen extends ConsumerWidget {
       onNavTap: (index) => _go(context, index),
       child: RefreshIndicator(
         onRefresh: () =>
-            ref.refresh(studentModuleDetailProvider(moduleId).future),
+            ref.refresh(offlineStudentModuleDetailProvider(moduleId).future),
         child: detail.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => _ErrorState(
@@ -50,14 +50,22 @@ class StudentModuleDetailScreen extends ConsumerWidget {
                 alignment: Alignment.centerRight,
                 child: offline.when(
                   loading: () => const SizedBox.shrink(),
-                  error: (_, _) => ModuleOfflineAction(
+                  error: (error, _) => ModuleOfflineAction(
                     state: const ModuleOfflineState(ModuleOfflineStatus.retry),
-                    onDownload: () => offlineController.download(moduleId),
+                    onDownload: () => _downloadWithNotice(
+                      context,
+                      offlineController,
+                      moduleId,
+                    ),
                     onRemove: null,
                   ),
                   data: (state) => ModuleOfflineAction(
                     state: state,
-                    onDownload: () => offlineController.download(moduleId),
+                    onDownload: () => _downloadWithNotice(
+                      context,
+                      offlineController,
+                      moduleId,
+                    ),
                     onRemove: () => offlineController.remove(moduleId),
                   ),
                 ),
@@ -94,6 +102,31 @@ class StudentModuleDetailScreen extends ConsumerWidget {
     if (index == 2) context.go('/student/dictionary');
     if (index == 3) context.go('/student/quizzes');
     if (index == 4) context.go('/student/profile');
+  }
+
+  Future<void> _downloadWithNotice(
+    BuildContext context,
+    StudentModuleOfflineController controller,
+    String id,
+  ) async {
+    try {
+      await controller.download(id);
+    } catch (e) {
+      if (!context.mounted) return;
+      if (e.toString().contains('berubah saat diunduh')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Modul gagal diunduh karena versi telah berubah di server. Modul lama tetap tersimpan. Daftar modul telah dimuat ulang, silakan coba unduh lagi.',
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+        );
+      }
+    }
   }
 }
 

@@ -34,6 +34,7 @@ import '../../features/dictionary/presentation/dictionary_list_screen.dart';
 import '../../features/modules/presentation/student_lesson_detail_screen.dart';
 import '../../features/modules/presentation/student_module_detail_screen.dart';
 import '../../features/modules/presentation/student_modules_screen.dart';
+import '../../features/offline/presentation/student_offline_screen.dart';
 import '../../features/profile/presentation/student_profile_screen.dart';
 import '../../features/progress/presentation/student_progress_screen.dart';
 import '../../features/quizzes/presentation/student_quiz_attempt_screen.dart';
@@ -354,6 +355,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/student/dashboard',
         builder: (_, _) => const StudentDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/student/offline',
+        builder: (_, _) => const StudentOfflineScreen(),
       ),
       GoRoute(
         path: '/student/modules',

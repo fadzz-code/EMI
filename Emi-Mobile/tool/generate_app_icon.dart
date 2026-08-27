@@ -167,11 +167,7 @@ void main() {
   // shrunk toward the center so Android's adaptive-icon mask (which can
   // crop up to ~33% of the edges depending on device shape) never clips
   // it.
-  final foreground = img.Image(
-    width: size,
-    height: size,
-    numChannels: 4,
-  );
+  final foreground = img.Image(width: size, height: size, numChannels: 4);
   img.fill(foreground, color: img.ColorRgba8(0, 0, 0, 0));
   _drawHouse(foreground, scale: 0.62);
 

@@ -30,14 +30,18 @@ final dictionaryNetworkModeProvider = Provider<NetworkMode>(
 );
 
 final offlineDictionaryRepositoryProvider =
-    Provider<Future<OfflineDictionaryRepository>>(
-      (ref) async => OfflineDictionaryRepository(
-        database: await ref.watch(offlineDatabaseProvider),
-        fileStore: await ref.watch(offlineFileStoreProvider),
-        dio: ref.watch(dioProvider),
-        remote: ref.watch(dictionaryRepositoryProvider),
-      ),
-    );
+    Provider<Future<OfflineDictionaryRepository>>((ref) async {
+      final database = await ref.watch(offlineDatabaseProvider);
+      final fileStore = await ref.watch(offlineFileStoreProvider);
+      final dio = ref.watch(dioProvider);
+      final remote = ref.watch(dictionaryRepositoryProvider);
+      return OfflineDictionaryRepository(
+        database: database,
+        fileStore: fileStore,
+        dio: dio,
+        remote: remote,
+      );
+    });
 
 final dictionaryCategoriesProvider =
     FutureProvider.autoDispose<List<DictionaryCategory>>((ref) async {
@@ -202,6 +206,13 @@ class DictionaryPackageController {
       '$owner:$categoryId',
       StreamController.broadcast,
     );
+    if (_ref
+            .read(dictionaryPackageStateProvider(categoryId))
+            .valueOrNull
+            ?.status ==
+        DictionaryPackageStatus.downloading) {
+      return;
+    }
     state.add(
       const DictionaryPackageState(DictionaryPackageStatus.downloading),
     );
@@ -212,7 +223,10 @@ class DictionaryPackageController {
       state.add(
         const DictionaryPackageState(DictionaryPackageStatus.availableOffline),
       );
-    } catch (_) {
+    } catch (e) {
+      if (e.toString().contains('berubah saat diunduh')) {
+        _ref.invalidate(dictionaryCategoriesProvider);
+      }
       state.add(const DictionaryPackageState(DictionaryPackageStatus.retry));
       rethrow;
     }
@@ -221,6 +235,13 @@ class DictionaryPackageController {
   Future<void> remove(String categoryId) async {
     final owner = _owner;
     if (owner == null) return;
+    if (_ref
+            .read(dictionaryPackageStateProvider(categoryId))
+            .valueOrNull
+            ?.status ==
+        DictionaryPackageStatus.download) {
+      return;
+    }
     await (await _ref.read(
       offlineDictionaryRepositoryProvider,
     )).remove(owner, categoryId);

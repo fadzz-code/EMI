@@ -81,7 +81,7 @@ class SyncQueue {
     final rows = await database.query(
       'sync_queue',
       where:
-          'owner_student_id = ? AND auth_blocked = 0 AND (next_attempt_at IS NULL OR next_attempt_at <= ?)',
+          'owner_student_id = ? AND auth_blocked = 0 AND terminal = 0 AND (next_attempt_at IS NULL OR next_attempt_at <= ?)',
       whereArgs: [
         ownerStudentId,
         (now ?? DateTime.now().toUtc()).toIso8601String(),
@@ -165,7 +165,8 @@ WHERE owner_student_id = ? AND id = ? AND auth_blocked = 0''',
     return database.update(
       'sync_queue',
       {
-        'auth_blocked': 1,
+        'terminal': 1,
+        'auth_blocked': 0,
         'last_error': boundedError,
         'next_attempt_at': null,
         'updated_at': (now ?? DateTime.now().toUtc()).toIso8601String(),
@@ -183,7 +184,7 @@ WHERE owner_student_id = ? AND id = ? AND auth_blocked = 0''',
         'auth_blocked': 0,
         'updated_at': (now ?? DateTime.now().toUtc()).toIso8601String(),
       },
-      where: 'owner_student_id = ?',
+      where: 'owner_student_id = ? AND terminal = 0',
       whereArgs: [ownerStudentId],
     );
   }

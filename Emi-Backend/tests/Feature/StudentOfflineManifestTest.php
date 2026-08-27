@@ -12,6 +12,7 @@ use App\Models\School;
 use App\Models\SchoolClass;
 use App\Models\StudentClassMembership;
 use App\Models\User;
+use App\Services\OfflineManifestService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -126,6 +127,59 @@ class StudentOfflineManifestTest extends TestCase
         $version = $this->assertDictionaryVersionChanged($student, $category->id, $version);
         DB::table('dictionary_entries')->where('id', $inactiveEntry->id)->update(['english' => 'hidden changed']);
         $this->assertSame($version, $this->dictionaryVersion($student, $category->id));
+    }
+
+    public function test_manifest_service_query_count_stays_constant_with_multiple_records(): void
+    {
+        $admin = User::factory()->admin()->create();
+        [$student, $class] = $this->studentInClass($admin);
+
+        $modules = ClassModule::factory()->published()->count(3)->create(['class_id' => $class->id, 'created_by' => $admin->id]);
+        foreach ($modules as $module) {
+            $media = MediaFile::factory()->lessonImage()->create(['uploaded_by' => $admin->id]);
+            ClassLesson::factory()->published()->count(3)->create([
+                'class_module_id' => $module->id,
+                'created_by' => $admin->id,
+                'content_type' => 'image',
+                'content_body' => null,
+                'media_id' => $media->id,
+            ]);
+        }
+
+        $categories = DictionaryCategory::factory()->count(3)->create(['created_by' => $admin->id]);
+        foreach ($categories as $category) {
+            $audio = MediaFile::factory()->audio()->create(['uploaded_by' => $admin->id]);
+            $entries = DictionaryEntry::factory()->count(3)->create([
+                'category_id' => $category->id,
+                'created_by' => $admin->id,
+                'audio_media_id' => $audio->id,
+            ]);
+            foreach ($entries as $entry) {
+                DictionarySentenceExample::query()->create([
+                    'dictionary_entry_id' => $entry->id,
+                    'code' => (string) Str::uuid(),
+                    'example_mekongga' => 'Mekongga',
+                    'example_indonesia' => 'Indonesia',
+                    'example_mekongga_normalized' => 'mekongga',
+                    'example_indonesia_normalized' => 'indonesia',
+                    'status' => 'active',
+                    'audio_media_id' => $audio->id,
+                    'created_by' => $admin->id,
+                ]);
+            }
+        }
+
+        $service = $this->app->make(OfflineManifestService::class);
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $manifest = $service->build($student);
+        $queryCount = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        $this->assertCount(3, $manifest['modules']);
+        $this->assertCount(3, $manifest['dictionaries']);
+        $this->assertSame(9, $queryCount);
     }
 
     private function studentInClass(User $admin): array

@@ -27,13 +27,18 @@ final dioProvider = Provider<Dio>((ref) {
         final token = await tokenStorage.readAccessToken();
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
+          options.extra['sessionToken'] = token;
         }
         handler.next(options);
       },
       onError: (error, handler) async {
         if (error.response?.statusCode == 401) {
-          await tokenStorage.clearSession();
-          ref.read(sessionInvalidationProvider.notifier).state++;
+          final requestToken = error.requestOptions.extra['sessionToken'];
+          final currentToken = await tokenStorage.readAccessToken();
+          if (requestToken != null && requestToken == currentToken) {
+            await tokenStorage.clearSession();
+            ref.read(sessionInvalidationProvider.notifier).state++;
+          }
         }
         handler.next(error);
       },

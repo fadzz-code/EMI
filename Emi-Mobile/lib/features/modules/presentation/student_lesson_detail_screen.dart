@@ -7,7 +7,9 @@ import 'package:just_audio/just_audio.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/theme/emi_theme.dart';
+import '../../../core/network/network_status_controller.dart';
 import '../../../shared/media/media_opener.dart';
+import '../../../shared/widgets/student_connectivity_banner.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
 import '../../../shared/widgets/student_style.dart';
 import '../../../shared/widgets/student_widgets.dart';
@@ -49,22 +51,29 @@ class _StudentLessonDetailScreenState
             .watch(studentLessonCompletionStateProvider(widget.lessonId))
             .valueOrNull ??
         LessonCompletionSyncStatus.idle;
+    final networkMode = ref.watch(networkStatusControllerProvider).mode;
 
     return EmiScaffold(
       title: 'Detail Lesson',
       currentIndex: 1,
       onNavTap: (index) => _go(context, index),
-      child: lesson.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => _ErrorState(
-          onRetry: () {
-            ref.invalidate(studentLessonDetailProvider(widget.lessonId));
-            ref.invalidate(studentLessonContentProvider(widget.lessonId));
-          },
-        ),
-        data: (item) => ListView(
-          padding: const EdgeInsets.all(EmiSpacing.md),
-          children: [
+      child: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(offlineStudentLessonDetailProvider(widget.lessonId));
+          ref.invalidate(offlineStudentLessonContentProvider(widget.lessonId));
+        },
+        child: lesson.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => _ErrorState(
+            onRetry: () {
+              ref.invalidate(offlineStudentLessonDetailProvider(widget.lessonId));
+              ref.invalidate(offlineStudentLessonContentProvider(widget.lessonId));
+            },
+          ),
+          data: (item) => ListView(
+            padding: const EdgeInsets.all(EmiSpacing.md),
+            children: [
+            StudentConnectivityBanner(mode: networkMode),
             _LessonCard(lesson: item, content: content),
             const SizedBox(height: EmiSpacing.lg),
             SizedBox(
@@ -117,6 +126,7 @@ class _StudentLessonDetailScreenState
               ),
             ),
           ],
+        ),
         ),
       ),
     );

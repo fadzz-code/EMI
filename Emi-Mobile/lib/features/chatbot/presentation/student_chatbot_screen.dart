@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/theme/emi_theme.dart';
+import '../../../core/network/network_status_controller.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
+import '../../../shared/widgets/student_connectivity_banner.dart';
 import '../../../shared/widgets/student_style.dart';
 import '../../../shared/widgets/student_widgets.dart';
 import '../data/chatbot_models.dart';
@@ -44,12 +46,15 @@ class _StudentChatbotScreenState extends ConsumerState<StudentChatbotScreen> {
       if (!next.isSending && next.error == null) _messageController.clear();
     });
 
+    final networkMode = ref.watch(networkStatusControllerProvider).mode;
+
     final state = ref.watch(chatbotControllerProvider);
 
     return EmiScaffold(
       title: 'Chatbot AI',
       child: Column(
         children: [
+          StudentConnectivityBanner(mode: networkMode),
           _ChatbotToolbar(
             onHistory: () => _openHistory(context),
             onNewSession: () =>

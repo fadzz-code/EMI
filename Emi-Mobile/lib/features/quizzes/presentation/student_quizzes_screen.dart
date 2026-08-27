@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
+import '../../../core/network/network_status_controller.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
+import '../../../shared/widgets/student_connectivity_banner.dart';
 import '../../../shared/widgets/student_style.dart';
 import '../../../shared/widgets/student_widgets.dart';
 import '../data/student_quiz.dart';
@@ -25,6 +27,7 @@ class _StudentQuizzesScreenState extends ConsumerState<StudentQuizzesScreen> {
   Widget build(BuildContext context) {
     final query = StudentQuizQuery(availability: _availability, page: _page);
     final quizzes = ref.watch(studentQuizListProvider(query));
+    final networkMode = ref.watch(networkStatusControllerProvider).mode;
 
     return EmiScaffold(
       title: 'Kuis & LKPD',
@@ -48,6 +51,7 @@ class _StudentQuizzesScreenState extends ConsumerState<StudentQuizzesScreen> {
           data: (page) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
+              StudentConnectivityBanner(mode: networkMode),
               const StudentPageHeader(
                 icon: Icons.quiz_outlined,
                 title: 'Kuis & LKPD',

@@ -66,6 +66,7 @@ class _DictionaryListScreenState extends ConsumerState<DictionaryListScreen> {
           data: (page) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
+              StudentConnectivityBanner(mode: networkMode),
               const StudentPageHeader(
                 icon: Icons.translate_outlined,
                 title: 'Kamus Mekongga',
@@ -346,7 +347,24 @@ class _CategoryChips extends StatelessWidget {
       ),
     );
     if (accepted == true) {
-      await controller.download(category.id, includeAudio: audio);
+      try {
+        await controller.download(category.id, includeAudio: audio);
+      } catch (e) {
+        if (!context.mounted) return;
+        if (e.toString().contains('berubah saat diunduh')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Kategori gagal diunduh karena versi telah berubah di server. Kategori lama tetap tersimpan. Daftar kategori telah dimuat ulang, silakan coba unduh lagi.',
+              ),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+          );
+        }
+      }
     }
   }
 }
@@ -375,28 +393,57 @@ class _PackageAction extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
             SizedBox(width: EmiSpacing.xs),
-            Text('Downloading'),
+            Text('MENGUNDUH'),
           ],
         );
       case DictionaryPackageStatus.availableOffline:
         return PopupMenuButton<void>(
-          tooltip: 'Available Offline',
-          onSelected: (_) => onRemove(),
+          tooltip: 'Tersedia offline',
+          onSelected: (_) => _showRemove(context, onRemove),
           itemBuilder: (_) => const [
-            PopupMenuItem(value: null, child: Text('Remove')),
+            PopupMenuItem(value: null, child: Text('Hapus dari Perangkat')),
           ],
-          child: const Chip(label: Text('Available Offline')),
+          child: const Chip(label: Text('Tersedia offline')),
         );
       case DictionaryPackageStatus.updateAvailable:
         return TextButton(
           onPressed: onDownload,
-          child: const Text('Update Available'),
+          child: const Text('Pembaruan tersedia'),
         );
       case DictionaryPackageStatus.retry:
-        return TextButton(onPressed: onDownload, child: const Text('Retry'));
+        return TextButton(
+          onPressed: onDownload,
+          child: const Text('GAGAL MENGUNDUH'),
+        );
       case DictionaryPackageStatus.download:
-        return TextButton(onPressed: onDownload, child: const Text('Download'));
+        return TextButton(
+          onPressed: onDownload,
+          child: const Text('BELUM DIUNDUH'),
+        );
     }
+  }
+
+  Future<void> _showRemove(BuildContext context, VoidCallback onRemove) async {
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Kamus'),
+        content: const Text(
+          'Kategori ini tidak bisa dicari saat offline jika dihapus.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (accepted == true) onRemove();
   }
 }
 

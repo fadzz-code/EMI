@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
-const offlineDatabaseVersion = 3;
+const offlineDatabaseVersion = 4;
 
 class OfflineDatabase {
   OfflineDatabase(this.database);
@@ -98,6 +98,27 @@ CREATE TABLE offline_dictionary_seen_categories (
   created_at TEXT NOT NULL,
   PRIMARY KEY (owner_student_id, category_id)
 )''');
+    }
+    if (oldVersion < 4 && newVersion >= 4) {
+      await db.execute(
+        'ALTER TABLE sync_queue ADD COLUMN terminal INTEGER NOT NULL DEFAULT 0 CHECK (terminal IN (0, 1))',
+      );
+      await db.rawUpdate(
+        "UPDATE sync_queue SET terminal = 1, auth_blocked = 0 WHERE last_error LIKE 'terminal:%'",
+      );
+      final packages = await db.query('offline_packages');
+      for (final row in packages) {
+        final data =
+            jsonDecode(row['data_json'] as String) as Map<String, dynamic>;
+        final kind = data['kind'];
+        if (kind != 'module' && kind != 'dictionary') continue;
+        await db.update(
+          'offline_packages',
+          {'id': '$kind:${row['id']}'},
+          where: 'owner_student_id = ? AND id = ?',
+          whereArgs: [row['owner_student_id'], row['id']],
+        );
+      }
     }
   }
 

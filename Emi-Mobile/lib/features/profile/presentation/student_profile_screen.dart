@@ -6,8 +6,10 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../app/theme/emi_theme.dart';
+import '../../../core/network/network_status_controller.dart';
 import '../../../shared/legal/privacy_policy.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
+import '../../../shared/widgets/student_connectivity_banner.dart';
 import '../../../shared/widgets/student_style.dart';
 import '../../../shared/widgets/student_widgets.dart';
 import '../../auth/domain/session_user.dart';
@@ -68,12 +70,14 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
     final user = auth.user;
+    final networkMode = ref.watch(networkStatusControllerProvider).mode;
 
     final isStudent = user?.role == UserRole.student;
 
     final content = ListView(
       padding: const EdgeInsets.all(EmiSpacing.md),
       children: [
+        StudentConnectivityBanner(mode: networkMode),
         if (auth.error != null) ...[
           StudentPlaceholder(
             icon: Icons.error_outline,
@@ -384,8 +388,9 @@ class _StudentProfileScreenState extends ConsumerState<StudentProfileScreen> {
   }
 
   Future<void> _showDeleteAccount() async {
-    if (_isDeletingAccount || ref.read(authControllerProvider).isLoading)
+    if (_isDeletingAccount || ref.read(authControllerProvider).isLoading) {
       return;
+    }
     _deleteAccountPasswordController.clear();
     final confirmed = await showDialog<bool>(
       context: context,

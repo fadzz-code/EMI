@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:emi_mobile/core/network/network_status_controller.dart';
 import 'package:emi_mobile/core/offline/offline_database.dart';
 import 'package:emi_mobile/core/offline/offline_file_store.dart';
+import 'package:emi_mobile/core/offline/owner_lifecycle.dart';
 import 'package:emi_mobile/core/offline/owner_offline_data_store.dart';
 import 'package:emi_mobile/core/offline/sync_queue.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -219,10 +220,16 @@ void main() {
       await files.write(owner, 'media', [1]);
     }
 
+    final lifecycle = OwnerLifecycle();
+
     await OwnerOfflineDataStore(
       database: offline,
       fileStore: files,
+      lifecycle: lifecycle,
     ).deleteOwner('student-a');
+
+    expect(lifecycle.generation('student-a'), 1);
+    expect(lifecycle.generation('student-b'), 0);
 
     expect(
       await offline.readAll(
@@ -267,6 +274,44 @@ void main() {
     expect(controller.mode, NetworkMode.offline);
     controller.dispose();
   });
+
+  test(
+    'v4 migration extracts package ids and drops terminal queue entries from retry loop',
+    () async {
+      final directory = await Directory.systemTemp.createTemp('emi-v4-test');
+      addTearDown(() => directory.delete(recursive: true));
+      final db = await databaseFactoryFfi.openDatabase(
+        '${directory.path}${Platform.pathSeparator}migration.db',
+      );
+      addTearDown(db.close);
+      await OfflineDatabase.migrate(db, 0, 3);
+      await db.insert('sync_queue', {
+        'owner_student_id': 'student-a',
+        'operation_type': 'lesson_completed',
+        'entity_id': 'lesson-1',
+        'payload_json': '{}',
+        'created_at': DateTime.utc(2026).toIso8601String(),
+        'updated_at': DateTime.utc(2026).toIso8601String(),
+        'last_error': 'terminal:unauthorized:rejected',
+      });
+      await db.insert('offline_packages', {
+        'owner_student_id': 'student-a',
+        'id': 'abc',
+        'data_json': '{"kind": "module"}',
+        'created_at': DateTime.utc(2026).toIso8601String(),
+        'updated_at': DateTime.utc(2026).toIso8601String(),
+      });
+
+      await OfflineDatabase.migrate(db, 3, 4);
+
+      final queue = await db.query('sync_queue');
+      expect(queue.single['terminal'], 1);
+      expect(queue.single['auth_blocked'], 0);
+
+      final packages = await db.query('offline_packages');
+      expect(packages.single['id'], 'module:abc');
+    },
+  );
 
   test(
     'file store encodes paths, atomically completes, and deletes owner',

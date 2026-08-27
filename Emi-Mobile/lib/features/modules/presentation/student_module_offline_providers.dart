@@ -15,21 +15,52 @@ import '../data/student_module_repository.dart';
 import 'student_module_ui_controller.dart';
 
 final offlineModuleRepositoryProvider =
-    Provider<Future<OfflineModuleRepository>>(
-      (ref) async => OfflineModuleRepository(
-        database: await ref.watch(offlineDatabaseProvider),
-        fileStore: await ref.watch(offlineFileStoreProvider),
-        dio: ref.watch(dioProvider),
-        remote: ref.watch(studentModuleRepositoryProvider),
-      ),
-    );
+    Provider<Future<OfflineModuleRepository>>((ref) async {
+      final database = await ref.watch(offlineDatabaseProvider);
+      final fileStore = await ref.watch(offlineFileStoreProvider);
+      final dio = ref.watch(dioProvider);
+      final remote = ref.watch(studentModuleRepositoryProvider);
+      final lifecycle = ref.watch(ownerLifecycleProvider);
+      return OfflineModuleRepository(
+        database: database,
+        fileStore: fileStore,
+        dio: dio,
+        remote: remote,
+        isActive: (owner) {
+          final auth = ref.read(authControllerProvider);
+          return auth.status == AuthStatus.authenticatedStudent &&
+              auth.user?.id == owner;
+        },
+        ownerGeneration: (owner) => lifecycle.generation(owner),
+        isGenerationCurrent: (owner, generation) =>
+            lifecycle.isCurrent(owner, generation),
+      );
+    });
 
-final syncExecutorProvider = Provider<Future<SyncExecutor>>(
-  (ref) async => SyncExecutor(
-    queue: await ref.watch(syncQueueProvider),
-    sender: _Sender(ref.watch(studentModuleRepositoryProvider)),
-  ),
-);
+final syncExecutorProvider = Provider<Future<SyncExecutor>>((ref) async {
+  final queue = await ref.watch(syncQueueProvider);
+  final sender = _Sender(ref.watch(studentModuleRepositoryProvider));
+  return SyncExecutor(
+    queue: queue,
+    sender: sender,
+    isCurrentOwner: (owner) {
+      final auth = ref.read(authControllerProvider);
+      return auth.status == AuthStatus.authenticatedStudent &&
+          auth.user?.id == owner;
+    },
+  );
+});
+
+final offlineStudentModuleListProvider = FutureProvider.autoDispose
+    .family<StudentModulePage, StudentModuleQuery>((ref, query) async {
+      final owner = ref.watch(authControllerProvider).user?.id;
+      if (owner == null) {
+        return ref.watch(studentModuleListProvider(query).future);
+      }
+      return (await ref.watch(
+        offlineModuleRepositoryProvider,
+      )).list(owner, status: query.status);
+    });
 
 final offlineStudentModuleDetailProvider = FutureProvider.autoDispose
     .family<StudentModule, String>((ref, moduleId) async {
@@ -170,13 +201,24 @@ class IntegratedStudentModuleOfflineController
       '$owner:$moduleId',
       () => StreamController.broadcast(),
     );
+    if (_ref
+            .read(studentModuleOfflineStateProvider(moduleId))
+            .valueOrNull
+            ?.status ==
+        ModuleOfflineStatus.downloading) {
+      return;
+    }
     state.add(const ModuleOfflineState(ModuleOfflineStatus.downloading));
     try {
       await (await _ref.read(
         offlineModuleRepositoryProvider,
       )).download(owner, moduleId);
       state.add(const ModuleOfflineState(ModuleOfflineStatus.availableOffline));
-    } catch (_) {
+    } catch (e) {
+      if (e.toString().contains('berubah saat diunduh')) {
+        _ref.invalidate(studentModuleListProvider);
+        _ref.invalidate(offlineStudentModuleListProvider);
+      }
       state.add(const ModuleOfflineState(ModuleOfflineStatus.retry));
       rethrow;
     }
@@ -185,6 +227,14 @@ class IntegratedStudentModuleOfflineController
   @override
   Future<void> remove(String moduleId) async {
     final owner = _owner;
+    if (_ref
+            .read(studentModuleOfflineStateProvider(moduleId))
+            .valueOrNull
+            ?.status ==
+        ModuleOfflineStatus.download) {
+      return;
+    }
+
     await (await _ref.read(
       offlineModuleRepositoryProvider,
     )).remove(owner, moduleId);

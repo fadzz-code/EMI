@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../../../app/theme/emi_theme.dart';
+import '../../../core/network/network_status_controller.dart';
 import '../../../core/errors/app_error.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
+import '../../../shared/widgets/student_connectivity_banner.dart';
 import '../../../shared/widgets/student_style.dart';
 import '../../../shared/widgets/student_widgets.dart';
 import '../data/speaking_models.dart';
@@ -29,6 +31,7 @@ class _StudentSpeakingListScreenState
   Widget build(BuildContext context) {
     final exercises = ref.watch(speakingExercisesProvider);
     final attempts = ref.watch(speakingAttemptsProvider(_page));
+    final networkMode = ref.watch(networkStatusControllerProvider).mode;
 
     return EmiScaffold(
       title: 'Speaking',
@@ -42,6 +45,7 @@ class _StudentSpeakingListScreenState
         child: ListView(
           padding: const EdgeInsets.all(EmiSpacing.md),
           children: [
+            StudentConnectivityBanner(mode: networkMode),
             StudentPageHeader(
               icon: Icons.mic_none_outlined,
               title: widget.resultsOnly ? 'Hasil Speaking' : 'Latihan Speaking',

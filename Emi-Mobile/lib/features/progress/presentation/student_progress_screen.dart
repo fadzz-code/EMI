@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/emi_theme.dart';
+import '../../../core/network/network_status_controller.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
+import '../../../shared/widgets/student_connectivity_banner.dart';
 import '../../../shared/widgets/student_style.dart';
 import '../../../shared/widgets/student_widgets.dart';
 import '../data/student_progress.dart';
@@ -16,6 +18,7 @@ class StudentProgressScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     const query = StudentProgressQuery();
     final progress = ref.watch(studentProgressReportProvider(query));
+    final networkMode = ref.watch(networkStatusControllerProvider).mode;
 
     return EmiScaffold(
       title: 'Progress Belajar',
@@ -41,6 +44,7 @@ class StudentProgressScreen extends ConsumerWidget {
               return ListView(
                 padding: const EdgeInsets.all(EmiSpacing.md),
                 children: [
+                  StudentConnectivityBanner(mode: networkMode),
                   StudentPlaceholder(
                     icon: Icons.trending_up_outlined,
                     title: 'Progress Belum Tersedia',
@@ -52,6 +56,7 @@ class StudentProgressScreen extends ConsumerWidget {
             return ListView(
               padding: const EdgeInsets.all(EmiSpacing.md),
               children: [
+                StudentConnectivityBanner(mode: networkMode),
                 if (report.summary != null)
                   _SummaryCard(summary: report.summary!),
                 const StudentSectionHeader(

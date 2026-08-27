@@ -9,6 +9,7 @@ import '../../../shared/widgets/student_style.dart';
 import '../../../shared/widgets/student_widgets.dart';
 import '../data/student_module.dart';
 import '../data/student_module_providers.dart';
+import 'student_module_offline_providers.dart';
 import 'student_module_offline_widgets.dart';
 import 'student_module_ui_controller.dart';
 
@@ -26,7 +27,7 @@ class _StudentModulesScreenState extends ConsumerState<StudentModulesScreen> {
   @override
   Widget build(BuildContext context) {
     final query = StudentModuleQuery(status: _status);
-    final modules = ref.watch(studentModuleListProvider(query));
+    final modules = ref.watch(offlineStudentModuleListProvider(query));
     final networkMode = ref.watch(networkStatusControllerProvider).mode;
 
     return EmiScaffold(
@@ -34,7 +35,8 @@ class _StudentModulesScreenState extends ConsumerState<StudentModulesScreen> {
       currentIndex: 1,
       onNavTap: (index) => _go(context, index),
       child: RefreshIndicator(
-        onRefresh: () => ref.refresh(studentModuleListProvider(query).future),
+        onRefresh: () =>
+            ref.refresh(offlineStudentModuleListProvider(query).future),
         child: modules.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => ListView(
@@ -44,7 +46,7 @@ class _StudentModulesScreenState extends ConsumerState<StudentModulesScreen> {
                 icon: Icons.cloud_off_outlined,
                 title: 'Modul Belum Bisa Dimuat',
                 message: 'Periksa koneksi internetmu, lalu coba lagi.',
-                onRetry: () => ref.invalidate(studentModuleListProvider),
+                onRetry: () => ref.invalidate(offlineStudentModuleListProvider),
               ),
             ],
           ),
@@ -240,16 +242,18 @@ class _ModuleCard extends ConsumerWidget {
                   alignment: Alignment.centerRight,
                   child: offline.when(
                     loading: () => const SizedBox.shrink(),
-                    error: (_, _) => ModuleOfflineAction(
+                    error: (error, _) => ModuleOfflineAction(
                       state: const ModuleOfflineState(
                         ModuleOfflineStatus.retry,
                       ),
-                      onDownload: () => controller.download(module.id),
+                      onDownload: () =>
+                          _downloadWithNotice(context, controller, module.id),
                       onRemove: null,
                     ),
                     data: (state) => ModuleOfflineAction(
                       state: state,
-                      onDownload: () => controller.download(module.id),
+                      onDownload: () =>
+                          _downloadWithNotice(context, controller, module.id),
                       onRemove: () => controller.remove(module.id),
                     ),
                   ),
@@ -260,5 +264,30 @@ class _ModuleCard extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _downloadWithNotice(
+    BuildContext context,
+    StudentModuleOfflineController controller,
+    String id,
+  ) async {
+    try {
+      await controller.download(id);
+    } catch (e) {
+      if (!context.mounted) return;
+      if (e.toString().contains('berubah saat diunduh')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Modul gagal diunduh karena versi telah berubah di server. Modul lama tetap tersimpan. Daftar modul telah dimuat ulang, silakan coba unduh lagi.',
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+        );
+      }
+    }
   }
 }

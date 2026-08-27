@@ -35,34 +35,33 @@ TeacherQuiz _quiz({
   String status = 'draft',
   int questions = 1,
   int attempts = 3,
-}) =>
-    TeacherQuiz.fromJson({
-      'id': 'quiz-1',
-      'class_id': 'class-1',
-      'class': {'name': 'Kelas 7A'},
-      'title': 'Sapaan',
-      'description': 'Dasar',
-      'instructions': 'Pilih jawaban',
-      'duration_minutes': 30,
-      'max_attempts': 2,
-      'show_result': true,
-      'status': status,
-      'questions_count': questions,
-      'attempts_count': attempts,
-      'updated_at': '2026-07-18T09:00:00Z',
-      'questions': questions == 0
-          ? []
-          : [
-              {
-                'id': 'question-1',
-                'question_type': 'multiple_choice',
-                'question_text': 'Arti halo?',
-                'points': 2,
-                'order_number': 1,
-                'options': [],
-              },
-            ],
-    });
+}) => TeacherQuiz.fromJson({
+  'id': 'quiz-1',
+  'class_id': 'class-1',
+  'class': {'name': 'Kelas 7A'},
+  'title': 'Sapaan',
+  'description': 'Dasar',
+  'instructions': 'Pilih jawaban',
+  'duration_minutes': 30,
+  'max_attempts': 2,
+  'show_result': true,
+  'status': status,
+  'questions_count': questions,
+  'attempts_count': attempts,
+  'updated_at': '2026-07-18T09:00:00Z',
+  'questions': questions == 0
+      ? []
+      : [
+          {
+            'id': 'question-1',
+            'question_type': 'multiple_choice',
+            'question_text': 'Arti halo?',
+            'points': 2,
+            'order_number': 1,
+            'options': [],
+          },
+        ],
+});
 
 Future<GoRouter> _pump(
   WidgetTester tester, {
@@ -616,20 +615,23 @@ void main() {
     },
   );
 
-  testWidgets('quiz lifecycle widget matrix separates published lock and attempts', (_) async {
-    for (final row in [
-      ('draft', 0, true, true),
-      ('draft', 1, false, false),
-      ('archived', 0, true, true),
-      ('archived', 1, false, false),
-      ('published', 0, false, false),
-      ('published', 1, false, false),
-    ]) {
-      final item = _quiz(status: row.$1, attempts: row.$2);
-      expect(teacherQuizCanDelete(item), row.$3);
-      expect(teacherQuizCanEditQuestions(item), row.$4);
-    }
-  });
+  testWidgets(
+    'quiz lifecycle widget matrix separates published lock and attempts',
+    (_) async {
+      for (final row in [
+        ('draft', 0, true, true),
+        ('draft', 1, false, false),
+        ('archived', 0, true, true),
+        ('archived', 1, false, false),
+        ('published', 0, false, false),
+        ('published', 1, false, false),
+      ]) {
+        final item = _quiz(status: row.$1, attempts: row.$2);
+        expect(teacherQuizCanDelete(item), row.$3);
+        expect(teacherQuizCanEditQuestions(item), row.$4);
+      }
+    },
+  );
 
   testWidgets('draft question menu deletes with confirmation and feedback', (
     tester,

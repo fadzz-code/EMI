@@ -23,7 +23,7 @@ class ModuleOfflineAction extends StatelessWidget {
     final status = state.status;
     if (status == ModuleOfflineStatus.downloading) {
       return Semantics(
-        label: 'Downloading',
+        label: 'MENGUNDUH',
         value: state.progress == null
             ? null
             : '${(state.progress! * 100).round()}%',
@@ -38,8 +38,8 @@ class ModuleOfflineAction extends StatelessWidget {
             const SizedBox(width: EmiSpacing.xs),
             Text(
               state.progress == null
-                  ? 'Downloading'
-                  : 'Downloading ${(state.progress! * 100).round()}%',
+                  ? 'MENGUNDUH'
+                  : 'MENGUNDUH ${(state.progress! * 100).round()}%',
             ),
           ],
         ),
@@ -47,14 +47,14 @@ class ModuleOfflineAction extends StatelessWidget {
     }
     if (status == ModuleOfflineStatus.availableOffline) {
       return PopupMenuButton<void>(
-        tooltip: 'Available Offline',
-        onSelected: (_) => onRemove?.call(),
+        tooltip: 'Tersedia offline',
+        onSelected: (_) => _showRemove(context, onRemove),
         itemBuilder: (_) => const [
-          PopupMenuItem(value: null, child: Text('Remove')),
+          PopupMenuItem(value: null, child: Text('Hapus dari Perangkat')),
         ],
         child: const Chip(
           avatar: Icon(Icons.offline_pin_outlined, size: 18),
-          label: Text('Available Offline'),
+          label: Text('Tersedia offline'),
         ),
       );
     }
@@ -71,12 +71,35 @@ class ModuleOfflineAction extends StatelessWidget {
       ),
       label: Text(
         retry
-            ? 'Retry'
+            ? 'GAGAL MENGUNDUH'
             : update
-            ? 'Update Available'
-            : 'Download',
+            ? 'Pembaruan tersedia'
+            : 'BELUM DIUNDUH',
       ),
     );
+  }
+
+  Future<void> _showRemove(BuildContext context, VoidCallback? onRemove) async {
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Modul'),
+        content: const Text(
+          'Modul ini tidak bisa diakses saat offline jika dihapus.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (accepted == true) onRemove?.call();
   }
 }
 
@@ -98,9 +121,12 @@ class OfflineUnavailableMessage extends StatelessWidget {
         children: [
           const Icon(Icons.cloud_off_outlined, color: EmiColors.primary),
           const SizedBox(height: EmiSpacing.xs),
-          const Text('Konten ini belum tersedia offline.'),
+          const Text(
+            'Fitur ini memerlukan koneksi internet',
+            textAlign: TextAlign.center,
+          ),
           if (onRetry != null)
-            TextButton(onPressed: onRetry, child: const Text('Retry')),
+            TextButton(onPressed: onRetry, child: const Text('Coba Lagi')),
         ],
       ),
     );

@@ -190,7 +190,8 @@ class OfflineDictionaryRepository {
             now,
           );
         }
-        await _put(txn, 'offline_packages', owner, categoryId, {
+        await _put(txn, 'offline_packages', owner, 'dictionary:$categoryId', {
+          'id': categoryId,
           'kind': 'dictionary',
           'version': version,
           'downloaded_at': now.toIso8601String(),
@@ -374,7 +375,7 @@ class OfflineDictionaryRepository {
     );
     return rows
         .where((row) => _decode(row)['kind'] == 'dictionary')
-        .map((row) => row['id'] as String)
+        .map((row) => _decode(row)['id'] as String)
         .toSet();
   }
 
@@ -402,7 +403,7 @@ class OfflineDictionaryRepository {
     final rows = await _database.database.query(
       'offline_packages',
       where: 'owner_student_id = ? AND id = ?',
-      whereArgs: [owner, categoryId],
+      whereArgs: [owner, 'dictionary:$categoryId'],
       limit: 1,
     );
     return rows.isNotEmpty && _decode(rows.single)['include_audio'] == true;
@@ -444,10 +445,10 @@ class OfflineDictionaryRepository {
         .where((row) => _decode(row)['kind'] == 'dictionary')
         .where(
           (row) =>
-              remote[row['id']] != null &&
-              remote[row['id']] != _decode(row)['version'],
+              remote[_decode(row)['id']] != null &&
+              remote[_decode(row)['id']] != _decode(row)['version'],
         )
-        .map((row) => row['id'] as String)
+        .map((row) => _decode(row)['id'] as String)
         .toSet();
   }
 
@@ -506,14 +507,18 @@ class OfflineDictionaryRepository {
     String owner,
     String categoryId,
   ) async {
-    for (final table in ['offline_packages', 'offline_dictionary_entries']) {
+    for (final table in ['offline_dictionary_entries']) {
       await txn.delete(
         table,
-        where:
-            'owner_student_id = ? AND ${table == 'offline_packages' ? 'id' : 'category_id'} = ?',
+        where: 'owner_student_id = ? AND category_id = ?',
         whereArgs: [owner, categoryId],
       );
     }
+    await txn.delete(
+      'offline_packages',
+      where: 'owner_student_id = ? AND id = ?',
+      whereArgs: [owner, 'dictionary:$categoryId'],
+    );
     for (final table in ['offline_dictionary_sentences', 'offline_media']) {
       final key = table == 'offline_media'
           ? 'dictionary_category_id'
