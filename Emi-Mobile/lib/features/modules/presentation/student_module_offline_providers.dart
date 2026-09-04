@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/dio_provider.dart';
@@ -150,6 +151,7 @@ class IntegratedStudentModuleOfflineController
   IntegratedStudentModuleOfflineController(this._ref);
   final Ref _ref;
   final _states = <String, StreamController<ModuleOfflineState>>{};
+  final _downloads = <String, Future<void>>{};
 
   String get _owner {
     final owner = _ref.read(authControllerProvider).user?.id;
@@ -197,25 +199,32 @@ class IntegratedStudentModuleOfflineController
   @override
   Future<void> download(String moduleId) async {
     final owner = _owner;
+    final key = '$owner:$moduleId';
+    final existing = _downloads[key];
+    if (existing != null) return existing;
+    final future = _download(owner, moduleId);
+    _downloads[key] = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_downloads[key], future)) _downloads.remove(key);
+    }
+  }
+
+  Future<void> _download(String owner, String moduleId) async {
     final state = _states.putIfAbsent(
       '$owner:$moduleId',
       () => StreamController.broadcast(),
     );
-    if (_ref
-            .read(studentModuleOfflineStateProvider(moduleId))
-            .valueOrNull
-            ?.status ==
-        ModuleOfflineStatus.downloading) {
-      return;
-    }
     state.add(const ModuleOfflineState(ModuleOfflineStatus.downloading));
     try {
       await (await _ref.read(
         offlineModuleRepositoryProvider,
       )).download(owner, moduleId);
       state.add(const ModuleOfflineState(ModuleOfflineStatus.availableOffline));
-    } catch (e) {
-      if (e.toString().contains('berubah saat diunduh')) {
+    } catch (error, stackTrace) {
+      debugPrint('Offline module download failed: $error\n$stackTrace');
+      if (error.toString().contains('berubah saat diunduh')) {
         _ref.invalidate(studentModuleListProvider);
         _ref.invalidate(offlineStudentModuleListProvider);
       }
@@ -227,14 +236,6 @@ class IntegratedStudentModuleOfflineController
   @override
   Future<void> remove(String moduleId) async {
     final owner = _owner;
-    if (_ref
-            .read(studentModuleOfflineStateProvider(moduleId))
-            .valueOrNull
-            ?.status ==
-        ModuleOfflineStatus.download) {
-      return;
-    }
-
     await (await _ref.read(
       offlineModuleRepositoryProvider,
     )).remove(owner, moduleId);

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../core/errors/app_error.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -284,9 +286,9 @@ class _ModuleCard extends ConsumerWidget {
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(offlineDownloadErrorMessage(e))));
       }
     }
   }

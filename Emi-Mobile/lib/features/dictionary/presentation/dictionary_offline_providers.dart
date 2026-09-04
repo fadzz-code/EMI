@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/dio_provider.dart';
@@ -122,6 +123,7 @@ class DictionaryPackageController {
   final Ref _ref;
   final _states = <String, StreamController<DictionaryPackageState>>{};
   final _loads = <String, Future<void>>{};
+  final _downloads = <String, Future<void>>{};
   final _newByOwner = <String, Set<String>>{};
 
   String? get _owner => _ref.read(authControllerProvider).user?.id;
@@ -202,17 +204,27 @@ class DictionaryPackageController {
   Future<void> download(String categoryId, {required bool includeAudio}) async {
     final owner = _owner;
     if (owner == null) return;
+    final key = '$owner:$categoryId';
+    final existing = _downloads[key];
+    if (existing != null) return existing;
+    final future = _download(owner, categoryId, includeAudio: includeAudio);
+    _downloads[key] = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_downloads[key], future)) _downloads.remove(key);
+    }
+  }
+
+  Future<void> _download(
+    String owner,
+    String categoryId, {
+    required bool includeAudio,
+  }) async {
     final state = _states.putIfAbsent(
       '$owner:$categoryId',
       StreamController.broadcast,
     );
-    if (_ref
-            .read(dictionaryPackageStateProvider(categoryId))
-            .valueOrNull
-            ?.status ==
-        DictionaryPackageStatus.downloading) {
-      return;
-    }
     state.add(
       const DictionaryPackageState(DictionaryPackageStatus.downloading),
     );
@@ -223,8 +235,9 @@ class DictionaryPackageController {
       state.add(
         const DictionaryPackageState(DictionaryPackageStatus.availableOffline),
       );
-    } catch (e) {
-      if (e.toString().contains('berubah saat diunduh')) {
+    } catch (error, stackTrace) {
+      debugPrint('Offline dictionary download failed: $error\n$stackTrace');
+      if (error.toString().contains('berubah saat diunduh')) {
         _ref.invalidate(dictionaryCategoriesProvider);
       }
       state.add(const DictionaryPackageState(DictionaryPackageStatus.retry));
@@ -235,13 +248,6 @@ class DictionaryPackageController {
   Future<void> remove(String categoryId) async {
     final owner = _owner;
     if (owner == null) return;
-    if (_ref
-            .read(dictionaryPackageStateProvider(categoryId))
-            .valueOrNull
-            ?.status ==
-        DictionaryPackageStatus.download) {
-      return;
-    }
     await (await _ref.read(
       offlineDictionaryRepositoryProvider,
     )).remove(owner, categoryId);
