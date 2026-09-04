@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,7 +10,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../app/theme/emi_theme.dart';
 import '../../../core/network/network_status_controller.dart';
 import '../../../shared/media/media_opener.dart';
-import '../../../shared/widgets/student_connectivity_banner.dart';
 import '../../../shared/widgets/emi_scaffold.dart';
 import '../../../shared/widgets/student_style.dart';
 import '../../../shared/widgets/student_widgets.dart';
@@ -66,67 +66,71 @@ class _StudentLessonDetailScreenState
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => _ErrorState(
             onRetry: () {
-              ref.invalidate(offlineStudentLessonDetailProvider(widget.lessonId));
-              ref.invalidate(offlineStudentLessonContentProvider(widget.lessonId));
+              ref.invalidate(
+                offlineStudentLessonDetailProvider(widget.lessonId),
+              );
+              ref.invalidate(
+                offlineStudentLessonContentProvider(widget.lessonId),
+              );
             },
           ),
           data: (item) => ListView(
             padding: const EdgeInsets.all(EmiSpacing.md),
             children: [
-            StudentConnectivityBanner(mode: networkMode),
-            _LessonCard(lesson: item, content: content),
-            const SizedBox(height: EmiSpacing.lg),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _submitting ? null : () => _complete(item),
-                icon: _submitting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.check_circle_outline),
-                label: const Text('Tandai Selesai'),
+              StudentConnectivityBanner(mode: networkMode),
+              _LessonCard(lesson: item, content: content),
+              const SizedBox(height: EmiSpacing.lg),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _submitting ? null : () => _complete(item),
+                  icon: _submitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.check_circle_outline),
+                  label: const Text('Tandai Selesai'),
+                ),
               ),
-            ),
-            if (completion != LessonCompletionSyncStatus.idle) ...[
-              const SizedBox(height: EmiSpacing.xs),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    completion == LessonCompletionSyncStatus.pending
-                        ? Icons.schedule
-                        : Icons.cloud_done_outlined,
-                    size: 16,
-                    color: StudentStyle.inkMuted,
-                  ),
-                  const SizedBox(width: EmiSpacing.xs),
-                  Text(
-                    completion == LessonCompletionSyncStatus.pending
-                        ? 'Selesai · Pending sync'
-                        : 'Selesai · Synced',
-                    style: const TextStyle(color: StudentStyle.inkMuted),
-                  ),
-                ],
+              if (completion != LessonCompletionSyncStatus.idle) ...[
+                const SizedBox(height: EmiSpacing.xs),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      completion == LessonCompletionSyncStatus.pending
+                          ? Icons.schedule
+                          : Icons.cloud_done_outlined,
+                      size: 16,
+                      color: StudentStyle.inkMuted,
+                    ),
+                    const SizedBox(width: EmiSpacing.xs),
+                    Text(
+                      completion == LessonCompletionSyncStatus.pending
+                          ? 'Selesai · Pending sync'
+                          : 'Selesai · Synced',
+                      style: const TextStyle(color: StudentStyle.inkMuted),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: EmiSpacing.sm),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => widget.moduleId == null
+                      ? context.go('/student/modules')
+                      : context.go('/student/modules/${widget.moduleId}'),
+                  child: const Text('Kembali ke Modul'),
+                ),
               ),
             ],
-            const SizedBox(height: EmiSpacing.sm),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () => widget.moduleId == null
-                    ? context.go('/student/modules')
-                    : context.go('/student/modules/${widget.moduleId}'),
-                child: const Text('Kembali ke Modul'),
-              ),
-            ),
-          ],
-        ),
+          ),
         ),
       ),
     );
@@ -149,11 +153,14 @@ class _StudentLessonDetailScreenState
           context,
         ).showSnackBar(const SnackBar(content: Text('Lesson selesai.')));
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      debugPrint('Offline lesson completion failed: $error\n$stackTrace');
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.toString())));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lesson belum berhasil disimpan. Silakan coba lagi.'),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
