@@ -56,10 +56,45 @@ class _DictionaryListScreenState extends ConsumerState<DictionaryListScreen> {
       title: 'Kamus Mekongga',
       currentIndex: 2,
       onNavTap: (index) => _go(context, index),
-      child: RefreshIndicator(
-        onRefresh: () =>
-            ref.refresh(integratedDictionaryListProvider(query).future),
-        child: entries.when(
+       child: Column(
+         children: [
+           Padding(
+             padding: const EdgeInsets.fromLTRB(
+               EmiSpacing.md,
+               EmiSpacing.md,
+               EmiSpacing.md,
+               0,
+             ),
+             child: Container(
+               decoration: BoxDecoration(
+                 color: StudentStyle.tint,
+                 borderRadius: BorderRadius.circular(EmiRadii.pill),
+               ),
+               child: TextField(
+                 controller: _searchController,
+                 style: const TextStyle(color: StudentStyle.ink),
+                 decoration: const InputDecoration(
+                   hintText: 'Cari kata (Mekongga / Indo / Eng)...',
+                   filled: false,
+                   border: InputBorder.none,
+                   enabledBorder: InputBorder.none,
+                   focusedBorder: InputBorder.none,
+                   contentPadding: EdgeInsets.symmetric(
+                     horizontal: EmiSpacing.md,
+                     vertical: EmiSpacing.sm,
+                   ),
+                   prefixIcon: Icon(Icons.search, color: StudentStyle.inkMuted),
+                 ),
+                 onChanged: _onSearchChanged,
+               ),
+             ),
+           ),
+           Expanded(
+             child: RefreshIndicator(
+               onRefresh: () =>
+                   ref.refresh(integratedDictionaryListProvider(query).future),
+               child: entries.when(
+
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => _ErrorState(
             onRetry: () =>
@@ -78,32 +113,6 @@ class _DictionaryListScreenState extends ConsumerState<DictionaryListScreen> {
               StudentConnectivityBanner(mode: networkMode),
               if (networkMode != NetworkMode.online)
                 const SizedBox(height: EmiSpacing.md),
-              Container(
-                decoration: BoxDecoration(
-                  color: StudentStyle.tint,
-                  borderRadius: BorderRadius.circular(EmiRadii.pill),
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  style: const TextStyle(color: StudentStyle.ink),
-                  decoration: const InputDecoration(
-                    hintText: 'Cari kata (Mekongga / Indo / Eng)...',
-                    filled: false,
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: EmiSpacing.md,
-                      vertical: EmiSpacing.sm,
-                    ),
-                    prefixIcon: Icon(
-                      Icons.search,
-                      color: StudentStyle.inkMuted,
-                    ),
-                  ),
-                  onChanged: _onSearchChanged,
-                ),
-              ),
               const SizedBox(height: EmiSpacing.md),
               _LanguageChips(
                 active: _language,
@@ -170,8 +179,11 @@ class _DictionaryListScreenState extends ConsumerState<DictionaryListScreen> {
                 ],
               ),
             ],
+              ),
+            ),
           ),
         ),
+        ],
       ),
     );
   }
